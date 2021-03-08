@@ -15,7 +15,7 @@ module rec Item: ItemType = {
     let make = (~item) => {
         let Item({text, subitems}) = item
         <>
-            <li><textarea>{text->React.string}</textarea></li>
+            <li><textarea defaultValue={text} /></li>
             <ul>
                 {subitems->Belt.Array.map(item => {
                     let Item({id}) = item
