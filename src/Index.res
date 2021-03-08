@@ -7,7 +7,14 @@ let items = [
     Item({id: "3", text: "fuga", subitems: []}),
 ]
 
+module App = {
+    @react.component
+    let make = () => {
+        <List items />
+    }
+}
+
 switch ReactDOM.querySelector("#app") {
-    | Some(app) => ReactDOM.render(<List items />, app)
+    | Some(app) => ReactDOM.render(<App />, app)
     | None => ()
 }

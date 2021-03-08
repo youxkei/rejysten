@@ -1,7 +1,6 @@
 const path = require("path");
 const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const webpack = require("webpack");
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 
@@ -35,12 +34,15 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: "src/index.html",
     }),
-    isDevelopment && new webpack.HotModuleReplacementPlugin(),
     isDevelopment && new ReactRefreshWebpackPlugin(),
   ].filter(Boolean),
 
   output: {
     path: path.resolve(__dirname, "./dist"),
     filename: "index.js",
+  },
+
+  devServer: {
+    hot: true,
   },
 };
