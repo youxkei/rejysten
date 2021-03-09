@@ -1,5 +1,3 @@
-open List
-
 @bs.module("firebase/app") external firebase: 'a = "default"
 %%raw(`import "firebase/firestore"`)
 
@@ -18,21 +16,24 @@ let firebaseConfig = {
 
 firebase["initializeApp"](firebaseConfig)
 
-let items = [
-    Item({id: "1", text: "hoge", subitems: [
-        Item({id: "2", text: "piyo", subitems: []}),
-    ]}),
-    Item({id: "3", text: "fuga", subitems: []}),
-]
-
 module App = {
     @react.component
     let make = () => {
-        let (values, loading, error) = useCollectionData(firebase["firestore"]()["collection"]("items"), { "idField": "id" })
+        let (items, loading, error) = useCollectionData(firebase["firestore"]()["collection"]("items"), { "idField": "id" })
+        let document = "NdxNjoPpHTuFjfhRDUth"
 
-        Js.log(values)
+        switch error {
+            | Some(error) => <span>{error["toString"]()->React.string}</span>
+            | None => if loading {
+                <span>loading</span>
+            } else {
+                let items = items->Belt.Array.map(item => {
+                    Items.Item({id: item["id"], text: item["text"], subitems: []})
+                })
 
-        <List items />
+                <Items items />
+            }
+        }
     }
 }
 

@@ -5,9 +5,9 @@ type rec item = Item({
 })
 
 module type ItemType = {
-	let make: ({"item": item}) => ReasonReact.reactElement;
-	let makeProps: (~item: 'item, ~key: string=?, unit) => {"item": 'item};
-};
+	let make: ({"item": item}) => ReasonReact.reactElement
+	let makeProps: (~item: 'item, ~key: string=?, unit) => {"item": 'item}
+}
 
 module rec Item: ItemType = {
     @react.component
