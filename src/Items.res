@@ -1,24 +1,20 @@
-type rec item = Item({
-    id: string,
-    text: string,
-    subitems: array<item>,
-})
+open Belt
 
-module type ItemType = {
-	let make: ({"item": item}) => ReasonReact.reactElement
+module type ItemsInnerType = {
+	let make: ({"item": Item.item}) => ReasonReact.reactElement
 	let makeProps: (~item: 'item, ~key: string=?, unit) => {"item": 'item}
 }
 
-module rec Item: ItemType = {
+module rec ItemsInner: ItemsInnerType = {
     @react.component
     let make = (~item) => {
-        let Item({text, subitems}) = item
+        let Item.Item({subitems}) = item
         <>
-            <li><textarea defaultValue={text} /></li>
+            <li><Item item /></li>
             <ul>
-                {subitems->Belt.Array.map(item => {
-                    let Item({id}) = item
-                    <Item item key={id} />
+                {subitems->Array.map(item => {
+                    let Item.Item({id, text}) = item
+                    <ItemsInner item key={`${id}-${text}`} />
                 })->React.array}
             </ul>
         </>
@@ -29,8 +25,8 @@ module rec Item: ItemType = {
 let make = (~items) => {
     <ul>
         {items->Belt.Array.map(item => {
-            let Item({id}) = item
-            <Item item key={id} />
+            let Item.Item({id, text}) = item
+            <ItemsInner item key={`${id}-${text}`} />
         })->React.array}
     </ul>
 }
