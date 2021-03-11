@@ -1,5 +1,3 @@
-@bs.module("firebase/app") external firebase: 'any = "default"
-
 type rec item = Item({
     id: string,
     text: string,
@@ -8,11 +6,7 @@ type rec item = Item({
 
 @react.component
 let make = (~item) => {
-    let Item({id, text}) = item
+    let Item({text}) = item
 
-    let handleChange = event => {
-        firebase["firestore"]()["collection"]("items")["doc"](id)["update"]({ "text": ReactEvent.Form.target(event)["value"] })
-    }
-
-    <textarea defaultValue=text onChange=handleChange />
+    <span>{text->React.string}</span>
 }

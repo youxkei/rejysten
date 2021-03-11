@@ -10,11 +10,11 @@ module rec ItemsInner: ItemsInnerType = {
     let make = (~item) => {
         let Item.Item({subitems}) = item
         <>
-            <li><Item item /></li>
+            <li><ItemEditor item /></li>
             <ul>
                 {subitems->Array.map(item => {
-                    let Item.Item({id, text}) = item
-                    <ItemsInner item key={`${id}-${text}`} />
+                    let Item.Item({id}) = item
+                    <ItemsInner item key=id />
                 })->React.array}
             </ul>
         </>
@@ -25,8 +25,8 @@ module rec ItemsInner: ItemsInnerType = {
 let make = (~items) => {
     <ul>
         {items->Belt.Array.map(item => {
-            let Item.Item({id, text}) = item
-            <ItemsInner item key={`${id}-${text}`} />
+            let Item.Item({id}) = item
+            <ItemsInner item key=id />
         })->React.array}
     </ul>
 }
