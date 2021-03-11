@@ -3,41 +3,27 @@ open Belt
 @bs.module("firebase/app") external firebase: 'any = "default"
 @bs.module("react-firebase-hooks/firestore") external useCollectionData: 'any = "useCollectionData"
 
-let rec makeItems = (items, level, children) => {
-    switch level {
-        | -1 => children->Map.String.getExn("")
+let makeItemsMap = items => {
+    let itemsMap = HashMap.String.make(~hintSize=10)
+    let rootItem = ref(None)
 
-        | _ => {
-            let children = items->Array.reduce(
-                children,
-                (accumulated, item) => {
-                    if item["level"] == level {
-                        let id = item["id"]
+    items->Array.forEach(item => {
+        let id = item["id"]
+        let text = item["text"]
+        let next = item["next"]
+        let prev = item["prev"]
+        let parent = item["parent"]
+        let firstSubitem = item["firstSubitem"]
+        let item = Item.Item({ id, text, next, prev, parent, firstSubitem })
 
-                        let addingItem = Item.Item({
-                            id: id,
-                            text: item["text"],
-                            subitems: accumulated->Map.String.getWithDefault(id, []),
-                        })
+        itemsMap->HashMap.String.set(id, item)
 
-                        let parent = item["parent"]
-
-                        accumulated->Map.String.set(
-                            parent,
-                            Array.concat(
-                                accumulated->Map.String.getWithDefault(parent, []),
-                                [addingItem]
-                            )
-                        )
-                    } else {
-                        accumulated
-                    }
-                }
-            )
-
-            makeItems(items, level - 1, children)
+        if parent == "" {
+            rootItem.contents = Some(item)
         }
-    }
+    })
+
+    (itemsMap, Option.getExn(rootItem.contents))
 }
 
 @react.component
@@ -49,18 +35,9 @@ let make = (~document) => {
         | None => if loading {
             <span>loading</span>
         } else {
-            let maxLevel = items->Array.reduce(
-                0,
-                (accumulated, item) => if item["level"] > accumulated {
-                    item["level"]
-                } else {
-                    accumulated
-                }
-            )
+            let (itemsMap, item) = makeItemsMap(items)
 
-            let items = makeItems(items, maxLevel, Map.String.empty)
-
-            <Items items />
+            <Items itemsMap item />
         }
     }
 }

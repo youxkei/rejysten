@@ -1,7 +1,11 @@
 type rec item = Item({
     id: string,
     text: string,
-    subitems: array<item>,
+
+    parent: string,
+    prev: string,
+    next: string,
+    firstSubitem: string,
 })
 
 @react.component
