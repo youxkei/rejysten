@@ -3,28 +3,30 @@ open Belt
 @bs.module("firebase/app") external firebase: 'any = "default"
 @bs.module("react-firebase-hooks/firestore") external useCollectionData: 'any = "useCollectionData"
 
-let makeItemsMap = items => {
-    let itemsMap = HashMap.String.make(~hintSize=10)
-    let rootItem = ref(None)
+%%private(
+    let makeItemsMap = items => {
+        let itemsMap = HashMap.String.make(~hintSize=10)
+        let rootItem = ref(None)
 
-    items->Array.forEach(item => {
-        let id = item["id"]
-        let text = item["text"]
-        let next = item["next"]
-        let prev = item["prev"]
-        let parent = item["parent"]
-        let firstSubitem = item["firstSubitem"]
-        let item = Item.Item({ id, text, next, prev, parent, firstSubitem })
+        items->Array.forEach(item => {
+            let id = item["id"]
+            let text = item["text"]
+            let next = item["next"]
+            let prev = item["prev"]
+            let parent = item["parent"]
+            let firstSubitem = item["firstSubitem"]
+            let item = Item.Item({ id, text, next, prev, parent, firstSubitem })
 
-        itemsMap->HashMap.String.set(id, item)
+            itemsMap->HashMap.String.set(id, item)
 
-        if parent == "" {
-            rootItem.contents = Some(item)
-        }
-    })
+            if parent == "" {
+                rootItem.contents = Some(item)
+            }
+        })
 
-    (itemsMap, Option.getExn(rootItem.contents))
-}
+        (itemsMap, Option.getExn(rootItem.contents))
+    }
+)
 
 @react.component
 let make = (~document) => {

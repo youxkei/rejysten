@@ -27,7 +27,7 @@ module rec ItemsInner: ItemsInnerType = {
     let make = (~itemsMap, ~item) => {
         let subitems: array<Item.item> = makeSubitems(itemsMap, item)
         <>
-            <li><Item item /></li>
+            <li><ItemEditor item /></li>
             <ul>
                 {subitems->Array.map(item => {
                     let Item.Item({id}) = item

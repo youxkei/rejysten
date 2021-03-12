@@ -1,14 +1,31 @@
 @bs.module("firebase/app") external firebase: 'any = "default"
 
+%%private(
+    let keyCode = ReactEvent.Keyboard.keyCode
+    let target = ReactEvent.Form.target
+)
+
 @react.component
 let make = (~item) => {
-    let Item.Item({text}) = item
+    let Item.Item({id, text}) = item
 
     let (text, setText) = React.useState(() => text)
 
     let handleChange = event => {
-        setText(ReactEvent.Form.target(event)["value"])
+        setText(target(event)["value"])
     }
 
-    <textarea value=text onChange=handleChange />
+    let handleKeyDown = event => {
+        let keyCode = keyCode(event)
+
+        switch keyCode {
+            | 27 => {
+                let _ = firebase["firestore"]()["collection"]("items")["doc"](id)["update"]({ "text": text })
+            }
+
+            | _ => ()
+        }
+    }
+
+    <textarea value=text onChange=handleChange onKeyDown=handleKeyDown/>
 }
