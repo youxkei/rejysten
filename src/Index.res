@@ -1,5 +1,10 @@
 @module("firebase/app") external firebase: 'a = "default"
-%%raw(`import "firebase/firestore"`)
+@module("react-firebase-hooks/auth") external useAuthState: 'any = "useAuthState"
+
+%%raw(`
+  import "firebase/firestore";
+  import "firebase/auth";
+`)
 
 let firebaseConfig = {
   "apiKey": "AIzaSyBibda14rl7kYHvJJPyqxXYkL-FnnbpIKk",
@@ -17,7 +22,39 @@ firebase["initializeApp"](firebaseConfig)
 module App = {
   @react.component
   let make = () => {
-    <Document document={"NdxNjoPpHTuFjfhRDUth"} />
+    let (user, initializing, error) = useAuthState(firebase["auth"]())
+    let user = user->Js.toOption
+
+    React.useEffect(() => {
+      if !initializing {
+        switch error {
+        | Some(_) => ()
+        | None =>
+          switch user {
+          | Some(_) => ()
+          | None => {
+              let provider = %raw(`new App.auth.GoogleAuthProvider()`)
+              firebase["auth"]()["signInWithPopup"](provider)
+            }
+          }
+        }
+      }
+
+      None
+    })
+
+    if initializing {
+      <span> initializing </span>
+    } else {
+      switch error {
+      | Some(error) => <span> {error["toString"]()->React.string} </span>
+      | None =>
+        switch user {
+        | Some(_) => <Document document={"NdxNjoPpHTuFjfhRDUth"} />
+        | None => <span> {"logging in"->React.string} </span>
+        }
+      }
+    }
   }
 }
 
