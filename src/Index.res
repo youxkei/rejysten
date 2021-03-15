@@ -44,14 +44,14 @@ module App = {
     })
 
     if initializing {
-      <span> initializing </span>
+      "initializing"->React.string
     } else {
       switch error {
-      | Some(error) => <span> {error["toString"]()->React.string} </span>
+      | Some(error) => error["toString"]()->React.string
       | None =>
         switch user {
         | Some(_) => <Document document={"NdxNjoPpHTuFjfhRDUth"} />
-        | None => <span> {"logging in"->React.string} </span>
+        | None => "logging in"->React.string
         }
       }
     }
