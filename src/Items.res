@@ -32,7 +32,7 @@ module rec ItemsInner: ItemsInnerType = {
   let make = (~itemsMap, ~item) => {
     let subitems: array<Item.item> = makeSubitems(itemsMap, item)
     <>
-      <li> <ItemEditor item /> </li>
+      <li> <ItemEditor itemsMap item /> </li>
       <ul>
         {subitems
         ->Array.map(item => {

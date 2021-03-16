@@ -6,6 +6,7 @@ type rec item =
       prev: string,
       next: string,
       firstSubitem: string,
+      lastSubitem: string,
     })
 
 @react.component

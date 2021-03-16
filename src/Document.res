@@ -15,6 +15,7 @@ open Belt
       let prev = item["prev"]
       let parent = item["parent"]
       let firstSubitem = item["firstSubitem"]
+      let lastSubitem = item["lastSubitem"]
       let item = Item.Item({
         id: id,
         text: text,
@@ -22,6 +23,7 @@ open Belt
         prev: prev,
         parent: parent,
         firstSubitem: firstSubitem,
+        lastSubitem: lastSubitem,
       })
 
       itemsMap->HashMap.String.set(id, item)
