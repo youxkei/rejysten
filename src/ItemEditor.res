@@ -46,7 +46,7 @@ let indentItem = (itemsMap, item) => {
 }
 
 let unindentItem = (itemsMap, item) => {
-  let Item.Item({id, parent, prev, next, firstSubitem, lastSubitem}) = item
+  let Item.Item({id, parent, prev, next}) = item
 
   switch itemsMap->HashMap.String.get(parent) {
   | Some(Item.Item({
@@ -54,31 +54,42 @@ let unindentItem = (itemsMap, item) => {
       next: parentNext,
       firstSubitem: parentFirstSubitem,
       lastSubitem: parentLastSubitem,
-    })) => {
-      let db = firebase["firestore"]()
-      let batch = db["batch"]()
-      let items = db["collection"]("items")
+    })) => switch itemsMap->HashMap.String.get(parentParent) {
+    | Some(Item.Item({lastSubitem: parentParentLastSubitem})) => {
+        let db = firebase["firestore"]()
+        let batch = db["batch"]()
+        let items = db["collection"]("items")
 
-      batch["update"](items["doc"](id), {"parent": parentParent, "prev": parent, "next": parentNext})
+        batch["update"](
+          items["doc"](id),
+          {"parent": parentParent, "prev": parent, "next": parentNext},
+        )
+        batch["update"](items["doc"](parent), {"next": id})
 
-      if next == "" {
-        batch["update"](items["doc"](parent), {"next": id, "firstSubitem": "", "lastSubitem": ""})
-      } else {
-        batch["update"](items["doc"](parent), {"next": id, "firstSubitem": next})
+        if next == "" {
+          batch["update"](items["doc"](parent), {"lastSubitem": prev})
+        } else {
+          batch["update"](items["doc"](next), {"prev": prev})
+        }
+
+        if prev == "" {
+          batch["update"](items["doc"](parent), {"firstSubitem": next})
+        } else {
+          batch["update"](items["doc"](prev), {"next": next})
+        }
+
+        if parentNext != "" {
+          batch["update"](items["doc"](parentNext), {"prev": id})
+        }
+
+        if parentParentLastSubitem == parent {
+          batch["update"](items["doc"](parentParent), {"lastSubitem": id})
+        }
+
+        batch["commit"]()
       }
 
-      if parentNext != "" {
-        batch["update"](items["doc"](parentNext), {"prev": id})
-      }
-
-      switch itemsMap->HashMap.String.get(parentParent) {
-      | Some(Item.Item({lastSubitem})) if lastSubitem == parent =>
-        batch["update"](items["doc"](parentParent), {"lastSubitem": id})
-
-      | _ => ()
-      }
-
-      batch["commit"]()
+    | _ => ()
     }
 
   | _ => ()
