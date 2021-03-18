@@ -135,8 +135,6 @@ let addItem = (document, item, text) => {
   if next == "" {
     if parent != "" {
       let () = batch["update"](items["doc"](parent), {"lastSubitem": addingItemId})
-    } else {
-      Js.Exn.raiseError(j`addItem: there should be a parent of $item`)
     }
   } else {
     let () = batch["update"](items["doc"](next), {"prev": addingItemId})
