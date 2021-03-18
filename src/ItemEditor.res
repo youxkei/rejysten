@@ -135,7 +135,7 @@ let addItem = (document, item, text) => {
     if parent != "" {
       let () = batch["update"](items["doc"](parent), {"lastSubitem": addingItemId})
     } else {
-      Js.Exn.raiseError("addItem: there should be a parent item")
+      Js.Exn.raiseError(j`addItem: there should be a parent of $item`)
     }
   } else {
     let () = batch["update"](items["doc"](next), {"prev": addingItemId})
@@ -144,9 +144,37 @@ let addItem = (document, item, text) => {
   let () = batch["commit"]()
 }
 
+let deleteItem = item => {
+  let db = firebase["firestore"]()
+  let batch = db["batch"]()
+  let items = db["collection"]("items")
+
+  let Item.Item({id, parent, prev, next}) = item
+
+  let () = batch["delete"](items["doc"](id))
+
+  if prev == "" {
+    if parent != "" {
+      let () = batch["update"](items["doc"](parent), {"firstSubitem": next})
+    }
+  } else {
+    let () = batch["update"](items["doc"](prev), {"next": next})
+  }
+
+  if next == "" {
+    if parent != "" {
+      let () = batch["update"](items["doc"](parent), {"lastSubitem": prev})
+    }
+  } else {
+    let () = batch["update"](items["doc"](next), {"prev": prev})
+  }
+
+  let () = batch["commit"]()
+}
+
 @react.component
 let make = (~document, ~itemsMap, ~item) => {
-  let Item.Item({id, text}) = item
+  let Item.Item({id, text, firstSubitem, lastSubitem}) = item
 
   let (text, setText) = React.useState(() => text)
 
@@ -159,7 +187,7 @@ let make = (~document, ~itemsMap, ~item) => {
     let shiftKey = event->shiftKey
     let ctrlKey = event->ctrlKey
 
-    Js.log((keyCode, shiftKey))
+    Js.log(j`$keyCode, $shiftKey`)
 
     switch keyCode {
     | 27 => firebase["firestore"]()["collection"]("items")["doc"](id)["update"]({"text": text})
@@ -178,6 +206,11 @@ let make = (~document, ~itemsMap, ~item) => {
         addItem(document, item, text)
         event->preventDefault
       }
+
+    | 8 if text == "" && firstSubitem == "" && lastSubitem == "" => {
+      deleteItem(item)
+      event->preventDefault
+    }
 
     | _ => ()
     }
