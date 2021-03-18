@@ -43,15 +43,12 @@ let indentItem = (itemsMap, item, text) => {
         let () = batch["update"](items["doc"](prevLastSubitem), {"next": id})
       }
 
-      if next != "" {
+      if next == "" {
+        if parent != "" {
+          let () = batch["update"](items["doc"](parent), {"lastSubitem": prev})
+        }
+      } else {
         let () = batch["update"](items["doc"](next), {"prev": prev})
-      }
-
-      switch itemsMap->get(parent) {
-      | Some(Item.Item({lastSubitem})) if lastSubitem == id =>
-        let () = batch["update"](items["doc"](parent), {"lastSubitem": prev})
-
-      | _ => ()
       }
 
       let () = batch["commit"]()
@@ -65,43 +62,38 @@ let unindentItem = (itemsMap, item, text) => {
   let Item.Item({id, parent, prev, next}) = item
 
   switch itemsMap->get(parent) {
-  | Some(Item.Item({parent: parentParent, next: parentNext})) =>
-    switch itemsMap->get(parentParent) {
-    | Some(Item.Item({lastSubitem: parentParentLastSubitem})) => {
-        let db = firebase["firestore"]()
-        let batch = db["batch"]()
-        let items = db["collection"]("items")
+  | Some(Item.Item({parent: parentParent, next: parentNext})) => {
+      let db = firebase["firestore"]()
+      let batch = db["batch"]()
+      let items = db["collection"]("items")
 
-        let () = batch["update"](
-          items["doc"](id),
-          {"parent": parentParent, "prev": parent, "next": parentNext, "text": text},
-        )
-        let () = batch["update"](items["doc"](parent), {"next": id})
+      let () = batch["update"](
+        items["doc"](id),
+        {"parent": parentParent, "prev": parent, "next": parentNext, "text": text},
+      )
+      let () = batch["update"](items["doc"](parent), {"next": id})
 
-        if next == "" {
-          let () = batch["update"](items["doc"](parent), {"lastSubitem": prev})
-        } else {
-          let () = batch["update"](items["doc"](next), {"prev": prev})
-        }
-
-        if prev == "" {
-          let () = batch["update"](items["doc"](parent), {"firstSubitem": next})
-        } else {
-          let () = batch["update"](items["doc"](prev), {"next": next})
-        }
-
-        if parentNext != "" {
-          let () = batch["update"](items["doc"](parentNext), {"prev": id})
-        }
-
-        if parentParentLastSubitem == parent {
-          let () = batch["update"](items["doc"](parentParent), {"lastSubitem": id})
-        }
-
-        let () = batch["commit"]()
+      if next == "" {
+        let () = batch["update"](items["doc"](parent), {"lastSubitem": prev})
+      } else {
+        let () = batch["update"](items["doc"](next), {"prev": prev})
       }
 
-    | _ => ()
+      if prev == "" {
+        let () = batch["update"](items["doc"](parent), {"firstSubitem": next})
+      } else {
+        let () = batch["update"](items["doc"](prev), {"next": next})
+      }
+
+      if parentNext == "" {
+        if parentParent != "" {
+          let () = batch["update"](items["doc"](parentParent), {"lastSubitem": id})
+        }
+      } else {
+        let () = batch["update"](items["doc"](parentNext), {"prev": id})
+      }
+
+      let () = batch["commit"]()
     }
 
   | _ => ()
@@ -209,9 +201,9 @@ let make = (~document, ~itemsMap, ~item) => {
       }
 
     | 8 if itemsNum > 2 && text == "" && firstSubitem == "" && lastSubitem == "" => {
-      deleteItem(item)
-      event->preventDefault
-    }
+        deleteItem(item)
+        event->preventDefault
+      }
 
     | _ => ()
     }
