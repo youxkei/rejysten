@@ -13,6 +13,7 @@ open Belt
   let preventDefault = ReactEvent.Synthetic.preventDefault
 
   let get = HashMap.String.get
+  let size = HashMap.String.size
 )
 
 let indentItem = (itemsMap, item, text) => {
@@ -174,6 +175,8 @@ let deleteItem = item => {
 
 @react.component
 let make = (~document, ~itemsMap, ~item) => {
+  let itemsNum = itemsMap->size
+
   let Item.Item({id, text, firstSubitem, lastSubitem}) = item
 
   let (text, setText) = React.useState(() => text)
@@ -207,7 +210,7 @@ let make = (~document, ~itemsMap, ~item) => {
         event->preventDefault
       }
 
-    | 8 if text == "" && firstSubitem == "" && lastSubitem == "" => {
+    | 8 if itemsNum > 2 && text == "" && firstSubitem == "" && lastSubitem == "" => {
       deleteItem(item)
       event->preventDefault
     }
