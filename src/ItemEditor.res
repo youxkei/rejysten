@@ -15,7 +15,7 @@ open Belt
   let get = HashMap.String.get
 )
 
-let indentItem = (itemsMap, item) => {
+let indentItem = (itemsMap, item, text) => {
   let Item.Item({id, parent, prev, next}) = item
 
   switch itemsMap->get(prev) {
@@ -25,75 +25,79 @@ let indentItem = (itemsMap, item) => {
       let items = db["collection"]("items")
 
       if prevLastSubitem == "" {
-        batch["update"](items["doc"](id), {"parent": prev, "prev": "", "next": ""})
-        batch["update"](items["doc"](prev), {"next": next, "firstSubitem": id, "lastSubitem": id})
+        let () = batch["update"](
+          items["doc"](id),
+          {"parent": prev, "prev": "", "next": "", "text": text},
+        )
+        let () = batch["update"](
+          items["doc"](prev),
+          {"next": next, "firstSubitem": id, "lastSubitem": id},
+        )
       } else {
-        batch["update"](items["doc"](id), {"parent": prev, "prev": prevLastSubitem, "next": ""})
-        batch["update"](items["doc"](prev), {"next": next, "lastSubitem": id})
-        batch["update"](items["doc"](prevLastSubitem), {"next": id})
+        let () = batch["update"](
+          items["doc"](id),
+          {"parent": prev, "prev": prevLastSubitem, "next": "", "text": text},
+        )
+        let () = batch["update"](items["doc"](prev), {"next": next, "lastSubitem": id})
+        let () = batch["update"](items["doc"](prevLastSubitem), {"next": id})
       }
 
       if next != "" {
-        batch["update"](items["doc"](next), {"prev": prev})
+        let () = batch["update"](items["doc"](next), {"prev": prev})
       }
 
       switch itemsMap->get(parent) {
       | Some(Item.Item({lastSubitem})) if lastSubitem == id =>
-        batch["update"](items["doc"](parent), {"lastSubitem": prev})
+        let () = batch["update"](items["doc"](parent), {"lastSubitem": prev})
 
       | _ => ()
       }
 
-      batch["commit"]()
+      let () = batch["commit"]()
     }
 
   | _ => ()
   }
 }
 
-let unindentItem = (itemsMap, item) => {
+let unindentItem = (itemsMap, item, text) => {
   let Item.Item({id, parent, prev, next}) = item
 
   switch itemsMap->get(parent) {
-  | Some(Item.Item({
-      parent: parentParent,
-      next: parentNext,
-      firstSubitem: parentFirstSubitem,
-      lastSubitem: parentLastSubitem,
-    })) =>
+  | Some(Item.Item({parent: parentParent, next: parentNext})) =>
     switch itemsMap->get(parentParent) {
     | Some(Item.Item({lastSubitem: parentParentLastSubitem})) => {
         let db = firebase["firestore"]()
         let batch = db["batch"]()
         let items = db["collection"]("items")
 
-        batch["update"](
+        let () = batch["update"](
           items["doc"](id),
-          {"parent": parentParent, "prev": parent, "next": parentNext},
+          {"parent": parentParent, "prev": parent, "next": parentNext, "text": text},
         )
-        batch["update"](items["doc"](parent), {"next": id})
+        let () = batch["update"](items["doc"](parent), {"next": id})
 
         if next == "" {
-          batch["update"](items["doc"](parent), {"lastSubitem": prev})
+          let () = batch["update"](items["doc"](parent), {"lastSubitem": prev})
         } else {
-          batch["update"](items["doc"](next), {"prev": prev})
+          let () = batch["update"](items["doc"](next), {"prev": prev})
         }
 
         if prev == "" {
-          batch["update"](items["doc"](parent), {"firstSubitem": next})
+          let () = batch["update"](items["doc"](parent), {"firstSubitem": next})
         } else {
-          batch["update"](items["doc"](prev), {"next": next})
+          let () = batch["update"](items["doc"](prev), {"next": next})
         }
 
         if parentNext != "" {
-          batch["update"](items["doc"](parentNext), {"prev": id})
+          let () = batch["update"](items["doc"](parentNext), {"prev": id})
         }
 
         if parentParentLastSubitem == parent {
-          batch["update"](items["doc"](parentParent), {"lastSubitem": id})
+          let () = batch["update"](items["doc"](parentParent), {"lastSubitem": id})
         }
 
-        batch["commit"]()
+        let () = batch["commit"]()
       }
 
     | _ => ()
@@ -103,19 +107,18 @@ let unindentItem = (itemsMap, item) => {
   }
 }
 
-let addItem = (document, itemsMap, item) => {
+let addItem = (document, item, text) => {
   let db = firebase["firestore"]()
   let batch = db["batch"]()
   let items = db["collection"]("items")
 
   let Item.Item({id, parent, next}) = item
 
-
   let addingItemId = uuidv4()
 
-  batch["update"](items["doc"](id), {"next": addingItemId})
+  let () = batch["update"](items["doc"](id), {"next": addingItemId, "text": text})
 
-  batch["set"](
+  let () = batch["set"](
     items["doc"](addingItemId),
     {
       "document": document,
@@ -130,15 +133,15 @@ let addItem = (document, itemsMap, item) => {
 
   if next == "" {
     if parent != "" {
-      batch["update"](items["doc"](parent), {"lastSubitem": addingItemId})
+      let () = batch["update"](items["doc"](parent), {"lastSubitem": addingItemId})
     } else {
       Js.Exn.raiseError("addItem: there should be a parent item")
     }
   } else {
-    batch["update"](items["doc"](next), {"prev": addingItemId})
+    let () = batch["update"](items["doc"](next), {"prev": addingItemId})
   }
 
-  batch["commit"]()
+  let () = batch["commit"]()
 }
 
 @react.component
@@ -162,17 +165,17 @@ let make = (~document, ~itemsMap, ~item) => {
     | 27 => firebase["firestore"]()["collection"]("items")["doc"](id)["update"]({"text": text})
 
     | 9 if !shiftKey => {
-        indentItem(itemsMap, item)
+        indentItem(itemsMap, item, text)
         event->preventDefault
       }
 
     | 9 if shiftKey => {
-        unindentItem(itemsMap, item)
+        unindentItem(itemsMap, item, text)
         event->preventDefault
       }
 
     | 13 if ctrlKey => {
-        addItem(document, itemsMap, item)
+        addItem(document, item, text)
         event->preventDefault
       }
 
