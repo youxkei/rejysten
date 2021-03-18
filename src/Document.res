@@ -52,7 +52,7 @@ let make = (~document) => {
     } else {
       let (itemsMap, item) = makeItemsMap(items)
 
-      <Items itemsMap item />
+      <Items document itemsMap item />
     }
   }
 }

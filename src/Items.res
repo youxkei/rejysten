@@ -18,26 +18,31 @@ let makeSubitems = (itemsMap, item) => {
 }
 
 module type ItemsInnerType = {
-  let make: {"itemsMap": HashMap.String.t<Item.item>, "item": Item.item} => ReasonReact.reactElement
+  let make: {
+    "document": string,
+    "itemsMap": HashMap.String.t<Item.item>,
+    "item": Item.item,
+  } => ReasonReact.reactElement
   let makeProps: (
+    ~document: 'document,
     ~itemsMap: 'itemsMap,
     ~item: 'item,
     ~key: string=?,
     unit,
-  ) => {"itemsMap": 'itemsMap, "item": 'item}
+  ) => {"document": 'document, "itemsMap": 'itemsMap, "item": 'item}
 }
 
 module rec ItemsInner: ItemsInnerType = {
   @react.component
-  let make = (~itemsMap, ~item) => {
+  let make = (~document, ~itemsMap, ~item) => {
     let subitems: array<Item.item> = makeSubitems(itemsMap, item)
     <>
-      <li> <ItemEditor itemsMap item /> </li>
+      <li> <ItemEditor document itemsMap item /> </li>
       <ul>
         {subitems
         ->Array.map(item => {
           let Item.Item({id}) = item
-          <ItemsInner itemsMap item key=id />
+          <ItemsInner document itemsMap item key=id />
         })
         ->React.array}
       </ul>
@@ -46,12 +51,12 @@ module rec ItemsInner: ItemsInnerType = {
 }
 
 @react.component
-let make = (~itemsMap, ~item) => {
+let make = (~document, ~itemsMap, ~item) => {
   <ul>
     {makeSubitems(itemsMap, item)
     ->Array.map(item => {
       let Item.Item({id}) = item
-      <ItemsInner itemsMap item key=id />
+      <ItemsInner document itemsMap item key=id />
     })
     ->React.array}
   </ul>
