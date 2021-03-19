@@ -180,7 +180,7 @@ let make = (~document, ~itemsMap, ~item) => {
     let shiftKey = event->shiftKey
     let ctrlKey = event->ctrlKey
 
-    Js.log(j`$keyCode, $shiftKey`)
+    Js.log(j`$keyCode, $shiftKey, $ctrlKey`)
 
     switch keyCode {
     | 27 => firebase["firestore"]()["collection"]("items")["doc"](id)["update"]({"text": text})
@@ -209,5 +209,9 @@ let make = (~document, ~itemsMap, ~item) => {
     }
   }
 
-  <textarea value=text onChange=handleChange onKeyDown=handleKeyDown />
+  let handleFocusOut = _ => {
+    firebase["firestore"]()["collection"]("items")["doc"](id)["update"]({"text": text})
+  }
+
+  <textarea value=text onChange=handleChange onKeyDown=handleKeyDown onBlur=handleFocusOut />
 }
