@@ -1,4 +1,7 @@
 @module("firebase/app") external firebase: 'a = "default"
+@module("firebase/app") @new @scope(("default", "auth"))
+external googleAuthProvider: unit => 'a = "GoogleAuthProvider"
+
 @module("react-firebase-hooks/auth") external useAuthState: 'any = "useAuthState"
 
 %%raw(`
@@ -33,7 +36,7 @@ module App = {
           switch user {
           | Some(_) => ()
           | None => {
-              let provider = %raw(`new App.auth.GoogleAuthProvider()`)
+              let provider = googleAuthProvider()
               firebase["auth"]()["signInWithPopup"](provider)
             }
           }
