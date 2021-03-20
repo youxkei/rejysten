@@ -1,3 +1,8 @@
+%%private(
+  let preventDefault = ReactEvent.Synthetic.preventDefault
+  let button = ReactEvent.Mouse.button
+)
+
 type rec item =
   | Item({
       id: string,
@@ -11,12 +16,18 @@ type rec item =
 
 @react.component
 let make = (~item) => {
-  let (_, setFocus) = Recoil.useRecoilState(Atom.focus)
+  let (_, setCursor) = Recoil.useRecoilState(Atom.cursor)
   let Item({id, text}) = item
 
-  let handleClick = _ => {
-    setFocus(Atom.FocusOnItem(id))
+  let handleMouseDown = event => {
+    let button = event->button
+
+    Js.log(button)
+    if button == 0 {
+      setCursor(Atom.Cursor({id: id, editing: true}))
+      event->preventDefault
+    }
   }
 
-  <span onClick=handleClick> {text->React.string} </span>
+  <span onMouseDown=handleMouseDown> {text->React.string} </span>
 }

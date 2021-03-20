@@ -5,7 +5,7 @@ module RecoilRoot = {
 
 type atom<'a>
 
-@module("recoil") external atom: ({"key": string, "default": 'a}) => atom<'a> = "atom"
+@module("recoil") external atom: {"key": string, "default": 'a} => atom<'a> = "atom"
 
-@module("recoil") external useRecoilValue: (atom<'a>) => 'a = "useRecoilValue"
-@module("recoil") external useRecoilState: (atom<'a>) => ('a, ('a) => ()) = "useRecoilState"
+@module("recoil") external useRecoilValue: atom<'a> => 'a = "useRecoilValue"
+@module("recoil") external useRecoilState: atom<'a> => ('a, 'a => unit) = "useRecoilState"

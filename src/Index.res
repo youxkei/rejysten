@@ -53,7 +53,8 @@ module App = {
       | Some(error) => error["toString"]()->React.string
       | None =>
         switch user {
-        | Some(_) => <Recoil.RecoilRoot> <Document document={"NdxNjoPpHTuFjfhRDUth"} /> </Recoil.RecoilRoot>
+        | Some(_) =>
+          <Recoil.RecoilRoot> <Document document={"NdxNjoPpHTuFjfhRDUth"} /> </Recoil.RecoilRoot>
         | None => "logging in"->React.string
         }
       }

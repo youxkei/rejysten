@@ -35,14 +35,14 @@ module type ItemsInnerType = {
 module rec ItemsInner: ItemsInnerType = {
   @react.component
   let make = (~document, ~itemsMap, ~item) => {
-    let focus = Recoil.useRecoilValue(Atom.focus)
+    let cursor = Recoil.useRecoilValue(Atom.cursor)
 
     let Item.Item({id}) = item
     let subitems: array<Item.item> = makeSubitems(itemsMap, item)
 
     <>
-      <li> {switch focus {
-        | Atom.FocusOnItem(itemId) if itemId == id => <ItemEditor document itemsMap item />
+      <li> {switch cursor {
+        | Cursor({id: itemId, editing}) if itemId == id && editing => <ItemEditor document itemsMap item />
         | _ => <Item item/>
       }} </li>
       <ul>

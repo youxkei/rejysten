@@ -5,7 +5,6 @@ open Belt
 @send external doFocus: Dom.element => unit = "focus"
 
 %%private(
-
   let keyCode = ReactEvent.Keyboard.keyCode
   let shiftKey = ReactEvent.Keyboard.shiftKey
   let ctrlKey = ReactEvent.Keyboard.ctrlKey
@@ -102,7 +101,7 @@ let unindentItem = (itemsMap, item, text) => {
   }
 }
 
-let addItem = (document, item, text, setFocus) => {
+let addItem = (document, item, text, setCursor) => {
   let db = firebase["firestore"]()
   let batch = db["batch"]()
   let items = db["collection"]("items")
@@ -136,10 +135,10 @@ let addItem = (document, item, text, setFocus) => {
 
   let () = batch["commit"]()
 
-  setFocus(Atom.FocusOnItem(addingItemId))
+  setCursor(Atom.Cursor({id: addingItemId, editing: true}))
 }
 
-let deleteItem = (item, setFocus) => {
+let deleteItem = (item, setCursor) => {
   let db = firebase["firestore"]()
   let batch = db["batch"]()
   let items = db["collection"]("items")
@@ -168,10 +167,10 @@ let deleteItem = (item, setFocus) => {
 
   if prev == "" {
     if parent != "" {
-      setFocus(Atom.FocusOnItem(parent))
+      setCursor(Atom.Cursor({id: parent, editing: true}))
     }
   } else {
-    setFocus(Atom.FocusOnItem(prev))
+    setCursor(Atom.Cursor({id: prev, editing: true}))
   }
 }
 
@@ -180,7 +179,7 @@ let make = (~document, ~itemsMap, ~item) => {
   let Item.Item({id, text, firstSubitem, lastSubitem}) = item
 
   let (text, setText) = React.useState(() => text)
-  let (focus, setFocus) = Recoil.useRecoilState(Atom.focus)
+  let (cursor, setCursor) = Recoil.useRecoilState(Atom.cursor)
 
   let itemsNum = itemsMap->size
 
@@ -196,7 +195,10 @@ let make = (~document, ~itemsMap, ~item) => {
     Js.log(j`$keyCode, $shiftKey, $ctrlKey`)
 
     switch keyCode {
-    | 27 => firebase["firestore"]()["collection"]("items")["doc"](id)["update"]({"text": text})
+    | 27 => {
+        let () = firebase["firestore"]()["collection"]("items")["doc"](id)["update"]({"text": text})
+        setCursor(Atom.Cursor({id: id, editing: false}))
+      }
 
     | 9 if !shiftKey => {
         indentItem(itemsMap, item, text)
@@ -209,12 +211,12 @@ let make = (~document, ~itemsMap, ~item) => {
       }
 
     | 13 if ctrlKey => {
-        addItem(document, item, text, setFocus)
+        addItem(document, item, text, setCursor)
         event->preventDefault
       }
 
     | 8 if itemsNum > 2 && text == "" && firstSubitem == "" && lastSubitem == "" => {
-        deleteItem(item, setFocus)
+        deleteItem(item, setCursor)
         event->preventDefault
       }
 
@@ -223,18 +225,26 @@ let make = (~document, ~itemsMap, ~item) => {
   }
 
   let handleFocusOut = _ => {
-    firebase["firestore"]()["collection"]("items")["doc"](id)["update"]({"text": text})
+    let () = firebase["firestore"]()["collection"]("items")["doc"](id)["update"]({"text": text})
+    setCursor(Atom.Cursor({id: id, editing: false}))
   }
 
   let textareaRef = React.useRef(Js.Nullable.null)
 
   React.useEffect1(() => {
-    switch focus {
-      | FocusOnItem(itemId) if itemId == id => textareaRef.current->Js.Nullable.toOption->Option.forEach(textarea => textarea->doFocus)
-      | _ => ()
+    switch cursor {
+    | Cursor({id: itemId, editing}) if itemId == id && editing =>
+      textareaRef.current->Js.Nullable.toOption->Option.forEach(textarea => textarea->doFocus)
+    | _ => ()
     }
     None
-  }, [focus])
+  }, [cursor])
 
-  <textarea value=text ref={ReactDOM.Ref.domRef(textareaRef)} onChange=handleChange onKeyDown=handleKeyDown onBlur=handleFocusOut />
+  <textarea
+    value=text
+    ref={ReactDOM.Ref.domRef(textareaRef)}
+    onChange=handleChange
+    onKeyDown=handleKeyDown
+    onBlur=handleFocusOut
+  />
 }
