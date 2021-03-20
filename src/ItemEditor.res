@@ -2,8 +2,10 @@ open Belt
 
 @module("firebase/app") external firebase: 'any = "default"
 @module("uuid") external uuidv4: unit => string = "v4"
+@send external doFocus: Dom.element => unit = "focus"
 
 %%private(
+
   let keyCode = ReactEvent.Keyboard.keyCode
   let shiftKey = ReactEvent.Keyboard.shiftKey
   let ctrlKey = ReactEvent.Keyboard.ctrlKey
@@ -100,7 +102,7 @@ let unindentItem = (itemsMap, item, text) => {
   }
 }
 
-let addItem = (document, item, text) => {
+let addItem = (document, item, text, setFocus) => {
   let db = firebase["firestore"]()
   let batch = db["batch"]()
   let items = db["collection"]("items")
@@ -133,9 +135,11 @@ let addItem = (document, item, text) => {
   }
 
   let () = batch["commit"]()
+
+  setFocus(Atom.FocusOnItem(addingItemId))
 }
 
-let deleteItem = item => {
+let deleteItem = (item, setFocus) => {
   let db = firebase["firestore"]()
   let batch = db["batch"]()
   let items = db["collection"]("items")
@@ -161,15 +165,24 @@ let deleteItem = item => {
   }
 
   let () = batch["commit"]()
+
+  if prev == "" {
+    if parent != "" {
+      setFocus(Atom.FocusOnItem(parent))
+    }
+  } else {
+    setFocus(Atom.FocusOnItem(prev))
+  }
 }
 
 @react.component
 let make = (~document, ~itemsMap, ~item) => {
-  let itemsNum = itemsMap->size
-
   let Item.Item({id, text, firstSubitem, lastSubitem}) = item
 
   let (text, setText) = React.useState(() => text)
+  let (focus, setFocus) = Recoil.useRecoilState(Atom.focus)
+
+  let itemsNum = itemsMap->size
 
   let handleChange = event => {
     setText(target(event)["value"])
@@ -196,12 +209,12 @@ let make = (~document, ~itemsMap, ~item) => {
       }
 
     | 13 if ctrlKey => {
-        addItem(document, item, text)
+        addItem(document, item, text, setFocus)
         event->preventDefault
       }
 
     | 8 if itemsNum > 2 && text == "" && firstSubitem == "" && lastSubitem == "" => {
-        deleteItem(item)
+        deleteItem(item, setFocus)
         event->preventDefault
       }
 
@@ -213,5 +226,15 @@ let make = (~document, ~itemsMap, ~item) => {
     firebase["firestore"]()["collection"]("items")["doc"](id)["update"]({"text": text})
   }
 
-  <textarea value=text onChange=handleChange onKeyDown=handleKeyDown onBlur=handleFocusOut />
+  let textareaRef = React.useRef(Js.Nullable.null)
+
+  React.useEffect1(() => {
+    switch focus {
+      | FocusOnItem(itemId) if itemId == id => textareaRef.current->Js.Nullable.toOption->Option.forEach(textarea => textarea->doFocus)
+      | _ => ()
+    }
+    None
+  }, [focus])
+
+  <textarea value=text ref={ReactDOM.Ref.domRef(textareaRef)} onChange=handleChange onKeyDown=handleKeyDown onBlur=handleFocusOut />
 }

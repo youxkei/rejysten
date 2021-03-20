@@ -11,7 +11,12 @@ type rec item =
 
 @react.component
 let make = (~item) => {
-  let Item({text}) = item
+  let (_, setFocus) = Recoil.useRecoilState(Atom.focus)
+  let Item({id, text}) = item
 
-  <span> {text->React.string} </span>
+  let handleClick = _ => {
+    setFocus(Atom.FocusOnItem(id))
+  }
+
+  <span onClick=handleClick> {text->React.string} </span>
 }
