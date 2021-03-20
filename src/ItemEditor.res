@@ -1,8 +1,8 @@
 open Belt
 
-@module("firebase/app") external firebase: 'any = "default"
 @module("uuid") external uuidv4: unit => string = "v4"
-@send external doFocus: Dom.element => unit = "focus"
+@send external focus: Dom.element => unit = "focus"
+@get external value: Js.t<'a> => string = "value"
 
 %%private(
   let keyCode = ReactEvent.Keyboard.keyCode
@@ -22,37 +22,33 @@ let indentItem = (itemsMap, item, text) => {
 
   switch itemsMap->get(prev) {
   | Some(Item.Item({lastSubitem: prevLastSubitem})) => {
-      let db = firebase["firestore"]()
-      let batch = db["batch"]()
-      let items = db["collection"]("items")
+      open Firebase.Firestore
+
+      let db = Firebase.firestore()
+      let batch = db->batch
+      let items = db->collection("items")
 
       if prevLastSubitem == "" {
-        let () = batch["update"](
-          items["doc"](id),
-          {"parent": prev, "prev": "", "next": "", "text": text},
-        )
-        let () = batch["update"](
-          items["doc"](prev),
-          {"next": next, "firstSubitem": id, "lastSubitem": id},
-        )
+        batch->addUpdate(items->doc(id), {"parent": prev, "prev": "", "next": "", "text": text})
+        batch->addUpdate(items->doc(prev), {"next": next, "firstSubitem": id, "lastSubitem": id})
       } else {
-        let () = batch["update"](
-          items["doc"](id),
+        batch->addUpdate(
+          items->doc(id),
           {"parent": prev, "prev": prevLastSubitem, "next": "", "text": text},
         )
-        let () = batch["update"](items["doc"](prev), {"next": next, "lastSubitem": id})
-        let () = batch["update"](items["doc"](prevLastSubitem), {"next": id})
+        batch->addUpdate(items->doc(prev), {"next": next, "lastSubitem": id})
+        batch->addUpdate(items->doc(prevLastSubitem), {"next": id})
       }
 
       if next == "" {
         if parent != "" {
-          let () = batch["update"](items["doc"](parent), {"lastSubitem": prev})
+          batch->addUpdate(items->doc(parent), {"lastSubitem": prev})
         }
       } else {
-        let () = batch["update"](items["doc"](next), {"prev": prev})
+        batch->addUpdate(items->doc(next), {"prev": prev})
       }
 
-      let () = batch["commit"]()
+      batch->commit
     }
 
   | _ => ()
@@ -64,37 +60,39 @@ let unindentItem = (itemsMap, item, text) => {
 
   switch itemsMap->get(parent) {
   | Some(Item.Item({parent: parentParent, next: parentNext})) => {
-      let db = firebase["firestore"]()
-      let batch = db["batch"]()
-      let items = db["collection"]("items")
+      open Firebase.Firestore
 
-      let () = batch["update"](
-        items["doc"](id),
+      let db = Firebase.firestore()
+      let batch = db->batch
+      let items = db->collection("items")
+
+      batch->addUpdate(
+        items->doc(id),
         {"parent": parentParent, "prev": parent, "next": parentNext, "text": text},
       )
-      let () = batch["update"](items["doc"](parent), {"next": id})
+      batch->addUpdate(items->doc(parent), {"next": id})
 
       if next == "" {
-        let () = batch["update"](items["doc"](parent), {"lastSubitem": prev})
+        batch->addUpdate(items->doc(parent), {"lastSubitem": prev})
       } else {
-        let () = batch["update"](items["doc"](next), {"prev": prev})
+        batch->addUpdate(items->doc(next), {"prev": prev})
       }
 
       if prev == "" {
-        let () = batch["update"](items["doc"](parent), {"firstSubitem": next})
+        batch->addUpdate(items->doc(parent), {"firstSubitem": next})
       } else {
-        let () = batch["update"](items["doc"](prev), {"next": next})
+        batch->addUpdate(items->doc(prev), {"next": next})
       }
 
       if parentNext == "" {
         if parentParent != "" {
-          let () = batch["update"](items["doc"](parentParent), {"lastSubitem": id})
+          batch->addUpdate(items->doc(parentParent), {"lastSubitem": id})
         }
       } else {
-        let () = batch["update"](items["doc"](parentNext), {"prev": id})
+        batch->addUpdate(items->doc(parentNext), {"prev": id})
       }
 
-      let () = batch["commit"]()
+      batch->commit
     }
 
   | _ => ()
@@ -102,18 +100,20 @@ let unindentItem = (itemsMap, item, text) => {
 }
 
 let addItem = (document, item, text, setCursor) => {
-  let db = firebase["firestore"]()
-  let batch = db["batch"]()
-  let items = db["collection"]("items")
+  open Firebase.Firestore
+
+  let db = Firebase.firestore()
+  let batch = db->batch
+  let items = db->collection("items")
 
   let Item.Item({id, parent, next}) = item
 
   let addingItemId = uuidv4()
 
-  let () = batch["update"](items["doc"](id), {"next": addingItemId, "text": text})
+  batch->addUpdate(items->doc(id), {"next": addingItemId, "text": text})
 
-  let () = batch["set"](
-    items["doc"](addingItemId),
+  batch->addSet(
+    items->doc(addingItemId),
     {
       "document": document,
       "text": "",
@@ -127,50 +127,52 @@ let addItem = (document, item, text, setCursor) => {
 
   if next == "" {
     if parent != "" {
-      let () = batch["update"](items["doc"](parent), {"lastSubitem": addingItemId})
+      batch->addUpdate(items->doc(parent), {"lastSubitem": addingItemId})
     }
   } else {
-    let () = batch["update"](items["doc"](next), {"prev": addingItemId})
+    batch->addUpdate(items->doc(next), {"prev": addingItemId})
   }
 
-  let () = batch["commit"]()
+  batch->commit
 
-  setCursor(Atom.Cursor({id: addingItemId, editing: true}))
+  setCursor(_ => Atom.Cursor({id: addingItemId, editing: true}))
 }
 
 let deleteItem = (item, setCursor) => {
-  let db = firebase["firestore"]()
-  let batch = db["batch"]()
-  let items = db["collection"]("items")
+  open Firebase.Firestore
+
+  let db = Firebase.firestore()
+  let batch = db->batch
+  let items = db->collection("items")
 
   let Item.Item({id, parent, prev, next}) = item
 
-  let () = batch["delete"](items["doc"](id))
+  batch->addDelete(items->doc(id))
 
   if prev == "" {
     if parent != "" {
-      let () = batch["update"](items["doc"](parent), {"firstSubitem": next})
+      batch->addUpdate(items->doc(parent), {"firstSubitem": next})
     }
   } else {
-    let () = batch["update"](items["doc"](prev), {"next": next})
+    batch->addUpdate(items->doc(prev), {"next": next})
   }
 
   if next == "" {
     if parent != "" {
-      let () = batch["update"](items["doc"](parent), {"lastSubitem": prev})
+      batch->addUpdate(items->doc(parent), {"lastSubitem": prev})
     }
   } else {
-    let () = batch["update"](items["doc"](next), {"prev": prev})
+    batch->addUpdate(items->doc(next), {"prev": prev})
   }
 
-  let () = batch["commit"]()
+  batch->commit
 
   if prev == "" {
     if parent != "" {
-      setCursor(Atom.Cursor({id: parent, editing: true}))
+      setCursor(_ => Atom.Cursor({id: parent, editing: true}))
     }
   } else {
-    setCursor(Atom.Cursor({id: prev, editing: true}))
+    setCursor(_ => Atom.Cursor({id: prev, editing: true}))
   }
 }
 
@@ -178,16 +180,19 @@ let deleteItem = (item, setCursor) => {
 let make = (~document, ~itemsMap, ~item) => {
   let Item.Item({id, text, firstSubitem, lastSubitem}) = item
 
-  let (text, setText) = React.useState(() => text)
+  let (text, setText) = React.useState(_ => text)
   let (cursor, setCursor) = Recoil.useRecoilState(Atom.cursor)
 
   let itemsNum = itemsMap->size
 
   let handleChange = event => {
-    setText(target(event)["value"])
+    Js.log(event->target->value)
+    setText(_ => event->target->value)
   }
 
   let handleKeyDown = event => {
+    open Firebase.Firestore
+
     let keyCode = event->keyCode
     let shiftKey = event->shiftKey
     let ctrlKey = event->ctrlKey
@@ -196,8 +201,9 @@ let make = (~document, ~itemsMap, ~item) => {
 
     switch keyCode {
     | 27 => {
-        let () = firebase["firestore"]()["collection"]("items")["doc"](id)["update"]({"text": text})
-        setCursor(Atom.Cursor({id: id, editing: false}))
+        Js.log(text)
+        Firebase.firestore()->collection("items")->doc(id)->update({"text": text})
+        setCursor(_ => Atom.Cursor({id: id, editing: false}))
       }
 
     | 9 if !shiftKey => {
@@ -225,8 +231,10 @@ let make = (~document, ~itemsMap, ~item) => {
   }
 
   let handleFocusOut = _ => {
-    let () = firebase["firestore"]()["collection"]("items")["doc"](id)["update"]({"text": text})
-    setCursor(Atom.Cursor({id: id, editing: false}))
+    open Firebase.Firestore
+
+    Firebase.firestore()->collection("items")->doc(id)->update({"text": text})
+    setCursor(_ => Atom.Cursor({id: id, editing: false}))
   }
 
   let textareaRef = React.useRef(Js.Nullable.null)
@@ -234,7 +242,7 @@ let make = (~document, ~itemsMap, ~item) => {
   React.useEffect1(() => {
     switch cursor {
     | Cursor({id: itemId, editing}) if itemId == id && editing =>
-      textareaRef.current->Js.Nullable.toOption->Option.forEach(textarea => textarea->doFocus)
+      textareaRef.current->Js.Nullable.toOption->Option.forEach(textarea => textarea->focus)
     | _ => ()
     }
     None

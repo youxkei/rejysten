@@ -39,8 +39,10 @@ open Belt
 
 @react.component
 let make = (~document) => {
+  open Firebase.Firestore
+
   let (items, loading, error) = useCollectionData(
-    firebase["firestore"]()["collection"]("items")["where"]("document", "==", document),
+    Firebase.firestore()->collection("items")->where("document", "==", document),
     {"idField": "id"},
   )
 

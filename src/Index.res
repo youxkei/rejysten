@@ -1,7 +1,3 @@
-@module("firebase/app") external firebase: 'a = "default"
-@module("firebase/app") @new @scope(("default", "auth"))
-external googleAuthProvider: unit => 'a = "GoogleAuthProvider"
-
 @module("react-firebase-hooks/auth") external useAuthState: 'any = "useAuthState"
 
 %%raw(`
@@ -20,12 +16,12 @@ let firebaseConfig = {
   "measurementId": "G-64RW992RRF",
 }
 
-firebase["initializeApp"](firebaseConfig)
+Firebase.initializeApp(firebaseConfig)
 
 module App = {
   @react.component
   let make = () => {
-    let (user, initializing, error) = useAuthState(firebase["auth"]())
+    let (user, initializing, error) = useAuthState(Firebase.auth())
     let user = user->Js.toOption
 
     React.useEffect1(() => {
@@ -36,8 +32,8 @@ module App = {
           switch user {
           | Some(_) => ()
           | None => {
-              let provider = googleAuthProvider()
-              firebase["auth"]()["signInWithPopup"](provider)
+              let provider = Firebase.Auth.googleAuthProvider()
+              Firebase.auth()->Firebase.Auth.signInWithPopup(provider)
             }
           }
         }

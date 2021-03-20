@@ -22,9 +22,8 @@ let make = (~item) => {
   let handleMouseDown = event => {
     let button = event->button
 
-    Js.log(button)
     if button == 0 {
-      setCursor(Atom.Cursor({id: id, editing: true}))
+      setCursor(_ => Atom.Cursor({id: id, editing: true}))
       event->preventDefault
     }
   }
