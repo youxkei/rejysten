@@ -28,7 +28,7 @@ module App = {
     let (user, initializing, error) = useAuthState(firebase["auth"]())
     let user = user->Js.toOption
 
-    React.useEffect(() => {
+    React.useEffect1(() => {
       if !initializing {
         switch error {
         | Some(_) => ()
@@ -44,7 +44,7 @@ module App = {
       }
 
       None
-    })
+    }, [user])
 
     if initializing {
       "initializing"->React.string
