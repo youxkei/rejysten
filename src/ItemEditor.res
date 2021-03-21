@@ -4,23 +4,10 @@ open Belt
 @send external focus: Dom.element => unit = "focus"
 @get external value: Js.t<'a> => string = "value"
 
-%%private(
-  let keyCode = ReactEvent.Keyboard.keyCode
-  let shiftKey = ReactEvent.Keyboard.shiftKey
-  let ctrlKey = ReactEvent.Keyboard.ctrlKey
-
-  let target = ReactEvent.Form.target
-
-  let preventDefault = ReactEvent.Synthetic.preventDefault
-
-  let get = HashMap.String.get
-  let size = HashMap.String.size
-)
-
 let indentItem = (itemsMap, item, text) => {
   let Item.Item({id, parent, prev, next}) = item
 
-  switch itemsMap->get(prev) {
+  switch itemsMap->HashMap.String.get(prev) {
   | Some(Item.Item({lastSubitem: prevLastSubitem})) => {
       open Firebase.Firestore
 
@@ -58,7 +45,7 @@ let indentItem = (itemsMap, item, text) => {
 let unindentItem = (itemsMap, item, text) => {
   let Item.Item({id, parent, prev, next}) = item
 
-  switch itemsMap->get(parent) {
+  switch itemsMap->HashMap.String.get(parent) {
   | Some(Item.Item({parent: parentParent, next: parentNext})) => {
       open Firebase.Firestore
 
@@ -183,19 +170,19 @@ let make = (~document, ~itemsMap, ~item) => {
   let (text, setText) = React.useState(_ => text)
   let (cursor, setCursor) = Recoil.useRecoilState(Atom.cursor)
 
-  let itemsNum = itemsMap->size
+  let itemsNum = itemsMap->HashMap.String.size
 
   let handleChange = event => {
-    Js.log(event->target->value)
-    setText(_ => event->target->value)
+    setText(_ => event->ReactEvent.Form.target->value)
   }
 
   let handleKeyDown = event => {
     open Firebase.Firestore
+    let preventDefault = ReactEvent.Synthetic.preventDefault
 
-    let keyCode = event->keyCode
-    let shiftKey = event->shiftKey
-    let ctrlKey = event->ctrlKey
+    let keyCode = event->ReactEvent.Keyboard.keyCode
+    let shiftKey = event->ReactEvent.Keyboard.shiftKey
+    let ctrlKey = event->ReactEvent.Keyboard.ctrlKey
 
     Js.log(j`$keyCode, $shiftKey, $ctrlKey`)
 

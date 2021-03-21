@@ -41,10 +41,13 @@ module rec ItemsInner: ItemsInnerType = {
     let subitems: array<Item.item> = makeSubitems(itemsMap, item)
 
     <>
-      <li> {switch cursor {
-        | Cursor({id: itemId, editing}) if itemId == id && editing => <ItemEditor document itemsMap item />
-        | _ => <Item item/>
-      }} </li>
+      <li>
+        {switch cursor {
+        | Cursor({id: itemId, editing}) if itemId == id && editing =>
+          <ItemEditor document itemsMap item />
+        | _ => <Item item />
+        }}
+      </li>
       <ul>
         {subitems
         ->Array.map(item => {

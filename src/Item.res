@@ -16,7 +16,7 @@ type rec item =
 
 @react.component
 let make = (~item) => {
-  let (_, setCursor) = Recoil.useRecoilState(Atom.cursor)
+  let (cursor, setCursor) = Recoil.useRecoilState(Atom.cursor)
   let Item({id, text}) = item
 
   let handleMouseDown = event => {
@@ -28,5 +28,12 @@ let make = (~item) => {
     }
   }
 
-  <span onMouseDown=handleMouseDown> {text->React.string} </span>
+  let style = switch cursor {
+  | Cursor({id: itemId}) if id == itemId =>
+    ReactDOM.Style.make(~backgroundColor= "red", ())
+
+  | _ => ReactDOM.Style.make()
+  }
+
+  <span style onMouseDown=handleMouseDown> {text->React.string} </span>
 }
