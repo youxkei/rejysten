@@ -45,17 +45,14 @@ module App = {
       None
     }, [user])
 
-    let cursor = Recoil.useRecoilValue(Atom.cursor)
+    let cursorEditing = Recoil.useRecoilValue(Atom.cursorEditing)
 
     Hook.useKeyDown(event => {
-      switch cursor {
-      | Cursor({editing: false}) => {
+      if !cursorEditing {
           let keyCode = event->keyCode
           Js.log(keyCode)
-        }
-      | _ => ()
       }
-    }, [cursor])
+    }, [cursorEditing])
 
     if initializing {
       "initializing"->React.string
