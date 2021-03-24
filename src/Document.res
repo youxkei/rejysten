@@ -49,10 +49,10 @@ let make = React.memo((~document) => {
   Js.log("useCollectionData")
 
   switch error {
-  | Some(error) => <span> {error["toString"]()->React.string} </span>
+  | Some(error) => error["toString"]()->React.string
   | None =>
     if loading {
-      <span> loading </span>
+      "loading"->React.string
     } else {
       let (itemsMap, item) = makeItemsMap(items)
 
