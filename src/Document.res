@@ -38,13 +38,15 @@ open Belt
 )
 
 @react.component
-let make = (~document) => {
+let make = React.memo((~document) => {
   open Firebase.Firestore
 
   let (items, loading, error) = useCollectionData(
     Firebase.firestore()->collection("items")->where("document", "==", document),
     {"idField": "id"},
   )
+
+  Js.log("useCollectionData")
 
   switch error {
   | Some(error) => <span> {error["toString"]()->React.string} </span>
@@ -57,4 +59,4 @@ let make = (~document) => {
       <Items document itemsMap item />
     }
   }
-}
+})
