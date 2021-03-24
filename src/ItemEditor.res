@@ -122,7 +122,7 @@ let addItem = (document, item, text, setCursor) => {
 
   batch->commit
 
-  setCursor(_ => Atom.Cursor({id: addingItemId, editing: true}))
+  setCursor(_ => Atom.Item.Cursor({id: addingItemId, editing: true}))
 }
 
 let deleteItem = (item, setCursor) => {
@@ -156,10 +156,10 @@ let deleteItem = (item, setCursor) => {
 
   if prev == "" {
     if parent != "" {
-      setCursor(_ => Atom.Cursor({id: parent, editing: true}))
+      setCursor(_ => Atom.Item.Cursor({id: parent, editing: true}))
     }
   } else {
-    setCursor(_ => Atom.Cursor({id: prev, editing: true}))
+    setCursor(_ => Atom.Item.Cursor({id: prev, editing: true}))
   }
 }
 
@@ -168,7 +168,7 @@ let make = (~document, ~itemsMap, ~item) => {
   let Item.Item({id, text, firstSubitem, lastSubitem}) = item
 
   let (text, setText) = React.useState(_ => text)
-  let (cursor, setCursor) = Recoil.useRecoilState(Atom.cursor)
+  let (cursor, setCursor) = Recoil.useRecoilState(Atom.Item.cursor)
 
   let itemsNum = itemsMap->HashMap.String.size
 
@@ -190,7 +190,7 @@ let make = (~document, ~itemsMap, ~item) => {
     | 27 => {
         Js.log(text)
         Firebase.firestore()->collection("items")->doc(id)->update({"text": text})
-        setCursor(_ => Atom.Cursor({id: id, editing: false}))
+        setCursor(_ => Atom.Item.Cursor({id: id, editing: false}))
       }
 
     | 9 if !shiftKey => {
@@ -221,7 +221,7 @@ let make = (~document, ~itemsMap, ~item) => {
     open Firebase.Firestore
 
     Firebase.firestore()->collection("items")->doc(id)->update({"text": text})
-    setCursor(_ => Atom.Cursor({id: id, editing: false}))
+    setCursor(_ => Atom.Item.Cursor({id: id, editing: false}))
   }
 
   let textareaRef = React.useRef(Js.Nullable.null)

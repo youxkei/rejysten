@@ -1,6 +1,5 @@
 open Belt
 
-@module("firebase/app") external firebase: 'any = "default"
 @module("react-firebase-hooks/firestore") external useCollectionData: 'any = "useCollectionData"
 
 %%private(
@@ -37,16 +36,18 @@ open Belt
   }
 )
 
+
+
 @react.component
-let make = React.memo((~document) => {
+let make = React.memo(() => {
   open Firebase.Firestore
+
+  let document = Recoil.useRecoilValue(Atom.Document.cursorId)
 
   let (items, loading, error) = useCollectionData(
     Firebase.firestore()->collection("items")->where("document", "==", document),
     {"idField": "id"},
   )
-
-  Js.log("useCollectionData")
 
   switch error {
   | Some(error) => error["toString"]()->React.string

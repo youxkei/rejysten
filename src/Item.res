@@ -16,8 +16,8 @@ type rec item =
 
 @react.component
 let make = (~item) => {
-  let cursorId = Recoil.useRecoilValue(Atom.cursorId)
-  let setCursor = Recoil.useSetRecoilState(Atom.cursor)
+  let cursorId = Recoil.useRecoilValue(Atom.Item.cursorId)
+  let setCursor = Recoil.useSetRecoilState(Atom.Item.cursor)
 
   let Item({id, text}) = item
 
@@ -25,7 +25,7 @@ let make = (~item) => {
     let button = event->button
 
     if button == 0 {
-      setCursor(._ => Atom.Cursor({id: id, editing: true}))
+      setCursor(._ => Atom.Item.Cursor({id: id, editing: true}))
       event->preventDefault
     }
   }

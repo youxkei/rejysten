@@ -1,7 +1,6 @@
 @module("react-firebase-hooks/auth") external useAuthState: 'any = "useAuthState"
 @send external toString: Js.t<'a> => string = "toString"
 
-@get external keyCode: Dom.keyboardEvent => int = "keyCode"
 
 %%raw(`
   import "firebase/firestore";
@@ -45,15 +44,6 @@ module App = {
       None
     }, [user])
 
-    let cursorEditing = Recoil.useRecoilValue(Atom.cursorEditing)
-
-    Hook.useKeyDown(event => {
-      if !cursorEditing {
-          let keyCode = event->keyCode
-          Js.log(keyCode)
-      }
-    }, [cursorEditing])
-
     if initializing {
       "initializing"->React.string
     } else {
@@ -61,7 +51,7 @@ module App = {
       | Some(error) => error->toString->React.string
       | None =>
         switch user {
-        | Some(_) => <Document document={"NdxNjoPpHTuFjfhRDUth"} />
+        | Some(_) => <Document />
         | None => "logging in"->React.string
         }
       }

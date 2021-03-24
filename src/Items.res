@@ -35,7 +35,7 @@ module type ItemsInnerType = {
 module rec ItemsInner: ItemsInnerType = {
   @react.component
   let make = (~document, ~itemsMap, ~item) => {
-    let cursor = Recoil.useRecoilValue(Atom.cursor)
+    let cursor = Recoil.useRecoilValue(Atom.Item.cursor)
 
     let Item.Item({id}) = item
     let subitems: array<Item.item> = makeSubitems(itemsMap, item)
