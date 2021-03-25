@@ -1,7 +1,6 @@
 @module("react-firebase-hooks/auth") external useAuthState: 'any = "useAuthState"
 @send external toString: Js.t<'a> => string = "toString"
 
-
 %%raw(`
   import "firebase/firestore";
   import "firebase/auth";
@@ -19,6 +18,13 @@ let firebaseConfig = {
 }
 
 Firebase.initializeApp(firebaseConfig)
+
+let store = Reductive.Store.create(
+  ~reducer=Action.reducer,
+  ~preloadedState=State.initialState,
+  ~enhancer=Action.firestoreReducer,
+  (),
+)
 
 module App = {
   @react.component
@@ -51,7 +57,7 @@ module App = {
       | Some(error) => error->toString->React.string
       | None =>
         switch user {
-        | Some(_) => <Document />
+        | Some(_) => <> <Document /> <SyncItemsMap /> <SyncDocumentsMap /> </>
         | None => "logging in"->React.string
         }
       }
@@ -60,6 +66,6 @@ module App = {
 }
 
 switch ReactDOM.querySelector("#app") {
-| Some(app) => ReactDOM.render(<Recoil.RecoilRoot> <App /> </Recoil.RecoilRoot>, app)
+| Some(app) => ReactDOM.render(<Redux.Provider store> {<> <App /> </>} </Redux.Provider>, app)
 | None => ()
 }

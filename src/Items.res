@@ -3,12 +3,12 @@ open Belt
 let makeSubitems = (itemsMap, item) => {
   let subitems = []
 
-  let Item.Item({firstSubitem}) = item
+  let State.Item({firstSubitem}) = item
   let currentItem = ref(itemsMap->HashMap.String.get(firstSubitem))
 
   while Option.isSome(currentItem.contents) {
     let item = Option.getExn(currentItem.contents)
-    let Item.Item({next}) = item
+    let State.Item({next}) = item
 
     let _ = subitems->Js.Array2.push(item)
     currentItem := itemsMap->HashMap.String.get(next)
@@ -19,40 +19,38 @@ let makeSubitems = (itemsMap, item) => {
 
 module type ItemsInnerType = {
   let make: {
-    "document": string,
-    "itemsMap": HashMap.String.t<Item.item>,
-    "item": Item.item,
+    "item": State.item,
   } => ReasonReact.reactElement
   let makeProps: (
-    ~document: 'document,
-    ~itemsMap: 'itemsMap,
     ~item: 'item,
     ~key: string=?,
     unit,
-  ) => {"document": 'document, "itemsMap": 'itemsMap, "item": 'item}
+  ) => {"item": 'item}
 }
 
 module rec ItemsInner: ItemsInnerType = {
   @react.component
-  let make = (~document, ~itemsMap, ~item) => {
-    let cursor = Recoil.useRecoilValue(Atom.Item.cursor)
+  let make = (~item) => {
+    let itemsMap = Redux.useSelector(State.itemsMap)
+    let currentItem = Redux.useSelector(State.currentItem)
+    let editing = Redux.useSelector(State.editing)
 
-    let Item.Item({id}) = item
-    let subitems: array<Item.item> = makeSubitems(itemsMap, item)
+    let State.Item({id}) = item
+    let subitems: array<State.item> = makeSubitems(itemsMap, item)
 
     <>
       <li>
-        {switch cursor {
-        | Cursor({id: itemId, editing}) if itemId == id && editing =>
-          <ItemEditor document itemsMap item />
-        | _ => <Item item />
+        {if id == currentItem && editing {
+          <ItemEditor item />
+        } else {
+          <Item item />
         }}
       </li>
       <ul>
         {subitems
         ->Array.map(item => {
-          let Item.Item({id}) = item
-          <ItemsInner document itemsMap item key=id />
+          let State.Item({id}) = item
+          <ItemsInner item key=id />
         })
         ->React.array}
       </ul>
@@ -61,12 +59,14 @@ module rec ItemsInner: ItemsInnerType = {
 }
 
 @react.component
-let make = (~document, ~itemsMap, ~item) => {
+let make = (~item) => {
+  let itemsMap = Redux.useSelector(State.itemsMap)
+
   <ul>
     {makeSubitems(itemsMap, item)
     ->Array.map(item => {
-      let Item.Item({id}) = item
-      <ItemsInner document itemsMap item key=id />
+      let State.Item({id}) = item
+      <ItemsInner item key=id />
     })
     ->React.array}
   </ul>
