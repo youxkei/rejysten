@@ -17,20 +17,24 @@ let makeSubitems = (itemsMap, item) => {
   subitems
 }
 
+let memo = React.memoCustomCompareProps(_, (before, after) => {
+  let State.Item({id: beforeId}) = before["item"]
+  let State.Item({id: afterId}) = after["item"]
+
+  beforeId == afterId
+})
+
 module type ItemsInnerType = {
-  let make: {
-    "item": State.item,
-  } => ReasonReact.reactElement
-  let makeProps: (
-    ~item: 'item,
-    ~key: string=?,
-    unit,
-  ) => {"item": 'item}
+  let make: {"item": State.item} => ReasonReact.reactElement
+  let makeProps: (~item: 'item, ~key: string=?, unit) => {"item": 'item}
 }
 
 module rec ItemsInner: ItemsInnerType = {
   @react.component
-  let make = (~item) => {
+  let make = React.memo((~item) => {
+    Js.log("items")
+    Js.log(item)
+
     let itemsMap = Redux.useSelector(State.itemsMap)
     let currentItem = Redux.useSelector(State.currentItem)
     let editing = Redux.useSelector(State.editing)
@@ -55,7 +59,7 @@ module rec ItemsInner: ItemsInnerType = {
         ->React.array}
       </ul>
     </>
-  }
+  })
 }
 
 @react.component

@@ -10,9 +10,9 @@ let make = () => {
   switch documentsMap->HashMap.String.get(currentDocument) {
   | Some(State.Document({rootItem})) => switch itemsMap->HashMap.String.get(rootItem) {
     | Some(item) => <Items item />
-    | _ => React.array([])
+    | _ => React.null
     }
 
-  | _ => React.array([])
+  | _ => React.null
   }
 }

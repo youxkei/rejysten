@@ -9,12 +9,22 @@ type firestore_action =
   | AddItem({text: string})
   | DeleteItem
 
+type normal_mode_action =
+  | ToInsertMode({item_id: option<string>})
+  | MoveCursorLeft
+  | MoveCursorDown
+  | MoveCursorUp
+  | MoveCursorRight
+
+type insert_mode_action = ToNormalMode
+
 type t =
   | Firestore(firestore_action)
-  | EditingItem({id: string})
-  | EditedItem
-  | SyncItemsMap(Belt.HashMap.String.t<State.item>)
-  | SyncDocumentsMap(Belt.HashMap.String.t<State.document>)
+  | NormalMode(normal_mode_action)
+  | InsertMode(insert_mode_action)
+  | SetCurrentItem({id: string})
+  | SetItemsMap(Belt.HashMap.String.t<State.item>)
+  | SetDocumentsMap(Belt.HashMap.String.t<State.document>)
 
 let firestoreReducer = (store, next, action) => {
   switch action {
@@ -28,7 +38,7 @@ let firestoreReducer = (store, next, action) => {
             open Firebase.Firestore
 
             Firebase.firestore()->collection("items")->doc(id)->update({"text": text})
-            Reductive.Store.dispatch(store, EditedItem)
+            Reductive.Store.dispatch(store, InsertMode(ToNormalMode))
           }
         | _ => ()
         }
@@ -173,7 +183,7 @@ let firestoreReducer = (store, next, action) => {
 
             batch->commit
 
-            Reductive.Store.dispatch(store, EditingItem({id: addingItemId}))
+            Reductive.Store.dispatch(store, SetCurrentItem({id: addingItemId}))
           }
 
         | _ => ()
@@ -212,10 +222,10 @@ let firestoreReducer = (store, next, action) => {
 
             if prev == "" {
               if parent != "" {
-                Reductive.Store.dispatch(store, EditingItem({id: parent}))
+                Reductive.Store.dispatch(store, SetCurrentItem({id: parent}))
               }
             } else {
-              Reductive.Store.dispatch(store, EditingItem({id: prev}))
+              Reductive.Store.dispatch(store, SetCurrentItem({id: prev}))
             }
           }
 
@@ -228,31 +238,191 @@ let firestoreReducer = (store, next, action) => {
   }
 }
 
+let normalModeReducer = (state: State.t, action) => {
+  switch action {
+  | ToInsertMode({item_id}) =>
+    switch item_id {
+    | Some(item_id) => {
+        ...state,
+        item: {
+          ...state.item,
+          current: item_id,
+        },
+        mode: State.Insert,
+      }
+
+    | None => {
+        ...state,
+        mode: State.Insert,
+      }
+    }
+
+  | MoveCursorLeft => {
+      let {item: {current: currentItem, map: itemsMap}} = state
+
+      switch itemsMap->HashMap.String.get(currentItem) {
+      | Some(State.Item({parent})) if parent != "" =>
+        switch itemsMap->HashMap.String.get(parent) {
+        | Some(State.Item({parent: parentParent})) if parentParent != "" => {
+            ...state,
+            item: {
+              ...state.item,
+              current: parent,
+            },
+          }
+
+        | _ => state
+        }
+
+      | _ => state
+      }
+    }
+
+  | MoveCursorDown => {
+      let {item: {current: currentItem, map: itemsMap}} = state
+
+      switch itemsMap->HashMap.String.get(currentItem) {
+      | Some(State.Item({parent, next, firstSubitem})) =>
+        switch (next, firstSubitem) {
+        | ("", "") =>
+          switch itemsMap->HashMap.String.get(parent) {
+          | Some(State.Item({next: parentNext})) if parentNext != "" => {
+              ...state,
+              item: {
+                ...state.item,
+                current: parentNext,
+              },
+            }
+
+          | _ => state
+          }
+
+        | (next, "") => {
+            ...state,
+            item: {
+              ...state.item,
+              current: next,
+            },
+          }
+
+        | (_, firstSubitem) => {
+            ...state,
+            item: {
+              ...state.item,
+              current: firstSubitem,
+            },
+          }
+        }
+
+      | _ => state
+      }
+    }
+
+  | MoveCursorUp => {
+      let {item: {current: currentItem, map: itemsMap}} = state
+
+      switch itemsMap->HashMap.String.get(currentItem) {
+      | Some(State.Item({prev, parent})) =>
+        switch (prev, parent) {
+        | ("", "") => state
+
+        | ("", parent) =>
+          switch itemsMap->HashMap.String.get(parent) {
+          | Some(State.Item({parent: parentParent})) if parentParent != "" => {
+              ...state,
+              item: {
+                ...state.item,
+                current: parent,
+              },
+            }
+
+          | _ => state
+          }
+
+        | (prev, _) => switch itemsMap->HashMap.String.get(prev) {
+          | Some(State.Item({lastSubitem})) if lastSubitem != "" => {
+              ...state,
+              item: {
+                ...state.item,
+                current: lastSubitem,
+              },
+            }
+
+          | _ => {
+              ...state,
+              item: {
+                ...state.item,
+                current: prev,
+              },
+            }
+          }
+        }
+      | _ => state
+      }
+    }
+
+  | MoveCursorRight => {
+      let {item: {current: currentItem, map: itemsMap}} = state
+
+      switch itemsMap->HashMap.String.get(currentItem) {
+      | Some(State.Item({firstSubitem})) if firstSubitem != "" => {
+          ...state,
+          item: {
+            ...state.item,
+            current: firstSubitem,
+          },
+        }
+
+      | _ => state
+      }
+    }
+  }
+}
+
+let insertModeReducer = (state: State.t, action) => {
+  switch action {
+  | ToNormalMode => {
+      ...state,
+      mode: Normal,
+    }
+  }
+}
+
 let reducer = (state: State.t, action) => {
   switch action {
-  | EditingItem({id}) => {
+  | Firestore(_) => state
+
+  | NormalMode(normalModeAction) =>
+    switch state.mode {
+    | Normal => normalModeReducer(state, normalModeAction)
+
+    | _ => state
+    }
+
+  | InsertMode(insertModeAction) =>
+    switch state.mode {
+    | Insert => insertModeReducer(state, insertModeAction)
+
+    | _ => state
+    }
+
+  | SetCurrentItem({id}) => {
       ...state,
-      editing: true,
       item: {
         ...state.item,
         current: id,
       },
     }
 
-  | EditedItem => {
-      ...state,
-      editing: false,
-    }
-
-  | Firestore(_) => state
-  | SyncItemsMap(itemsMap) => {
+  | SetItemsMap(itemsMap) => {
       ...state,
       item: {
         ...state.item,
         map: itemsMap,
       },
     }
-  | SyncDocumentsMap(documentsMap) => {
+
+  | SetDocumentsMap(documentsMap) => {
       ...state,
       document: {
         ...state.document,

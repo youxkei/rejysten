@@ -19,10 +19,16 @@ let firebaseConfig = {
 
 Firebase.initializeApp(firebaseConfig)
 
+let loggerMiddleware = (store, next, action)=> {
+  Js.log(action)
+  next(action)
+  Js.log(Reductive.Store.getState(store))
+}
+
 let store = Reductive.Store.create(
   ~reducer=Action.reducer,
   ~preloadedState=State.initialState,
-  ~enhancer=Action.firestoreReducer,
+  ~enhancer=(store, next) => next->loggerMiddleware(store, _)->Action.firestoreReducer(store, _),
   (),
 )
 
@@ -57,7 +63,7 @@ module App = {
       | Some(error) => error->toString->React.string
       | None =>
         switch user {
-        | Some(_) => <> <Document /> <SyncItemsMap /> <SyncDocumentsMap /> </>
+        | Some(_) => <> <Document /> <SyncItemsMap /> <SyncDocumentsMap /> <KeyDownHandler /> </>
         | None => "logging in"->React.string
         }
       }

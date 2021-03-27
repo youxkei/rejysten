@@ -35,9 +35,7 @@ let make = () => {
   React.useEffect(() => {
     switch error {
     | None if !loading => {
-        let documentsMap = makeDocumentsMap(documents)
-        Js.log(documentsMap)
-        dispatch(Action.SyncDocumentsMap(documentsMap))
+        dispatch(Action.SetDocumentsMap(makeDocumentsMap(documents)))
       }
     | _ => ()
     }

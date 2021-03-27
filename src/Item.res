@@ -14,7 +14,7 @@ let make = React.memo((~item) => {
     let button = event->button
 
     if button == 0 {
-      dispatch(Action.EditingItem({id: id}))
+      dispatch(Action.NormalMode(Action.ToInsertMode({item_id: Some(id)})))
       event->preventDefault
     }
   }
