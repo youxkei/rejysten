@@ -52,5 +52,5 @@ let make = () => {
     None
   })
 
-  React.array([])
+  React.null
 }
