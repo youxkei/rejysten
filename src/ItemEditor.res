@@ -23,33 +23,31 @@ let make = (~item) => {
   let handleKeyDown = React.useCallback1(event => {
     let preventDefault = ReactEvent.Synthetic.preventDefault
 
-    let keyCode = event->ReactEvent.Keyboard.keyCode
+    let key = event->ReactEvent.Keyboard.key
     let shiftKey = event->ReactEvent.Keyboard.shiftKey
     let ctrlKey = event->ReactEvent.Keyboard.ctrlKey
 
-    Js.log(j`$keyCode, $shiftKey, $ctrlKey`)
-
-    switch keyCode {
-    | 27 => {
+    switch key {
+    | "Escape" => {
         dispatch(Action.Firestore(Action.SaveItem({text: text})))
       }
 
-    | 9 if !shiftKey => {
+    | "Tab" if !shiftKey => {
         dispatch(Action.Firestore(Action.IndentItem({text: text})))
         event->preventDefault
       }
 
-    | 9 if shiftKey => {
+    | "Tab" if shiftKey => {
         dispatch(Action.Firestore(Action.UnindentItem({text: text})))
         event->preventDefault
       }
 
-    | 13 if ctrlKey => {
+    | "Enter" if ctrlKey => {
         dispatch(Action.Firestore(Action.AddItem({text: text})))
         event->preventDefault
       }
 
-    | 8 if itemsNum > 2 && text == "" && firstSubitem == "" && lastSubitem == "" => {
+    | "Backspace" if itemsNum > 2 && text == "" && firstSubitem == "" && lastSubitem == "" => {
         dispatch(Action.Firestore(Action.DeleteItem))
         event->preventDefault
       }
@@ -59,7 +57,6 @@ let make = (~item) => {
   }, [text])
 
   let handleFocusOut = React.useCallback1(_ => {
-    Js.log("focus out")
     dispatch(Action.Firestore(Action.SaveItem({text: text})))
   }, [text])
 
