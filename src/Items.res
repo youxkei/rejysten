@@ -24,6 +24,22 @@ let memo = React.memoCustomCompareProps(_, (before, after) => {
   beforeId == afterId
 })
 
+module ItemOrItemEditor = {
+  @react.component
+  let make = (~item) => {
+    let currentItem = Redux.useSelector(State.currentItem)
+    let editing = Redux.useSelector(State.editing)
+
+    let State.Item({id}) = item
+
+    if id == currentItem && editing {
+      <ItemEditor item />
+    } else {
+      <Item item />
+    }
+  }
+}
+
 module type ItemsInnerType = {
   let make: {"item": State.item} => ReasonReact.reactElement
   let makeProps: (~item: 'item, ~key: string=?, unit) => {"item": 'item}
@@ -32,24 +48,12 @@ module type ItemsInnerType = {
 module rec ItemsInner: ItemsInnerType = {
   @react.component
   let make = React.memo((~item) => {
-    Js.log("items")
-    Js.log(item)
-
     let itemsMap = Redux.useSelector(State.itemsMap)
-    let currentItem = Redux.useSelector(State.currentItem)
-    let editing = Redux.useSelector(State.editing)
 
-    let State.Item({id}) = item
     let subitems: array<State.item> = makeSubitems(itemsMap, item)
 
     <>
-      <li>
-        {if id == currentItem && editing {
-          <ItemEditor item />
-        } else {
-          <Item item />
-        }}
-      </li>
+      <li> <ItemOrItemEditor item /> </li>
       <ul>
         {subitems
         ->Array.map(item => {

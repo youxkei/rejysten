@@ -4,7 +4,7 @@ open Belt
 @get external value: Js.t<'a> => string = "value"
 
 @react.component
-let make = (~item) => {
+let make = React.memo((~item) => {
   let State.Item({id, text, firstSubitem, lastSubitem}) = item
 
   let (text, setText) = React.useState(_ => text)
@@ -76,4 +76,4 @@ let make = (~item) => {
     onKeyDown=handleKeyDown
     onBlur=handleFocusOut
   />
-}
+})
