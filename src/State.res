@@ -14,12 +14,12 @@ type document = Document({id: string, rootItem: string})
 type mode = Normal | Insert
 
 type item_state = {
-  current: string,
+  currentId: string,
   map: Belt.HashMap.String.t<item>,
 }
 
 type document_state = {
-  current: string,
+  currentId: string,
   map: Belt.HashMap.String.t<document>,
 }
 
@@ -32,11 +32,11 @@ type t = {
 let initialState: t = {
   mode: Normal,
   item: {
-    current: "",
+    currentId: "",
     map: Belt.HashMap.String.make(~hintSize=0),
   },
   document: {
-    current: "NdxNjoPpHTuFjfhRDUth",
+    currentId: "NdxNjoPpHTuFjfhRDUth",
     map: Belt.HashMap.String.make(~hintSize=0),
   },
 }
@@ -47,8 +47,10 @@ let editing = ({mode}) =>
   | Insert => true
   }
 
-let currentItem = ({item: {current}}) => current
+let state = state => state
+
+let currentItem = ({item: {currentId}}) => currentId
 let itemsMap = ({item: {map}}) => map
 
-let currentDocument = ({document: {current}}) => current
+let currentDocument = ({document: {currentId}}) => currentId
 let documentsMap = ({document: {map}}) => map
