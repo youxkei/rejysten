@@ -4,8 +4,7 @@
 )
 
 @react.component
-let make = React.memo((~item) => {
-  let currentItem = Redux.useSelector(State.currentItem)
+let make = React.memo((~item, ~isCurrent) => {
   let dispatch = Redux.useDispatch()
 
   let State.Item({id, text}) = item
@@ -19,7 +18,7 @@ let make = React.memo((~item) => {
     }
   }
 
-  let style = if id == currentItem {
+  let style = if isCurrent {
     ReactDOM.Style.make(~backgroundColor="red", ())
   } else {
     ReactDOM.Style.make()

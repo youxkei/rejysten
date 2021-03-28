@@ -19,10 +19,9 @@ let firebaseConfig = {
 
 Firebase.initializeApp(firebaseConfig)
 
-let loggerMiddleware = (store, next, action)=> {
+let loggerMiddleware = (store, next, action) => {
   Js.log(action)
   next(action)
-  Js.log(Reductive.Store.getState(store))
 }
 
 let store = Reductive.Store.create(
@@ -56,6 +55,12 @@ module App = {
       None
     }, [user])
 
+    let {
+      mode,
+      item: {currentId: currentItemId, map: itemsMap},
+      document: {currentId: currentDocumentId, map: documentsMap},
+    } = Redux.useSelector(State.state)
+
     if initializing {
       "initializing"->React.string
     } else {
@@ -63,7 +68,7 @@ module App = {
       | Some(error) => error->toString->React.string
       | None =>
         switch user {
-        | Some(_) => <> <Document /> <SyncItemsMap /> <SyncDocumentsMap /> <KeyDownHandler /> </>
+        | Some(_) => <> <Document mode currentItemId itemsMap currentDocumentId documentsMap /> </>
         | None => "logging in"->React.string
         }
       }
@@ -72,6 +77,12 @@ module App = {
 }
 
 switch ReactDOM.querySelector("#app") {
-| Some(app) => ReactDOM.render(<Redux.Provider store> {<> <App /> </>} </Redux.Provider>, app)
+| Some(app) =>
+  ReactDOM.render(
+    <Redux.Provider store>
+      {<> <App /> <SyncItemsMap /> <SyncDocumentsMap /> <KeyDownHandler /> </>}
+    </Redux.Provider>,
+    app,
+  )
 | None => ()
 }

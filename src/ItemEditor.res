@@ -4,17 +4,12 @@ open Belt
 @get external value: Js.t<'a> => string = "value"
 
 @react.component
-let make = React.memo((~item) => {
-  let State.Item({id, text, firstSubitem, lastSubitem}) = item
+let make = React.memo((~item, ~isTrivialDocument) => {
+  let State.Item({text, firstSubitem, lastSubitem}) = item
 
   let (text, setText) = React.useState(_ => text)
 
   let dispatch = Redux.useDispatch()
-  let editing = Redux.useSelector(State.editing)
-  let itemsMap = Redux.useSelector(State.itemsMap)
-  let currentItem = Redux.useSelector(State.currentItem)
-
-  let itemsNum = itemsMap->HashMap.String.size
 
   let handleChange = React.useCallback1(event => {
     setText(_ => event->ReactEvent.Form.target->value)
@@ -47,7 +42,7 @@ let make = React.memo((~item) => {
         event->preventDefault
       }
 
-    | "Backspace" if itemsNum > 2 && text == "" && firstSubitem == "" && lastSubitem == "" => {
+    | "Backspace" if !isTrivialDocument && text == "" && firstSubitem == "" && lastSubitem == "" => {
         dispatch(Action.Firestore(Action.DeleteItem))
         event->preventDefault
       }
@@ -63,11 +58,9 @@ let make = React.memo((~item) => {
   let textareaRef = React.useRef(Js.Nullable.null)
 
   React.useEffect1(() => {
-    if id == currentItem && editing {
-      textareaRef.current->Js.Nullable.toOption->Option.forEach(textarea => textarea->focus)
-    }
+    textareaRef.current->Js.Nullable.toOption->Option.forEach(textarea => textarea->focus)
     None
-  }, [(currentItem, editing)])
+  }, [])
 
   <textarea
     value=text

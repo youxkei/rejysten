@@ -19,5 +19,6 @@
     "error" : "+101"
   },
   "reason": {"react-jsx": 3},
-  "refmt": 3
+  "refmt": 3,
+  "bsc-flags": ["-bs-g"]
 }
