@@ -31,10 +31,10 @@ let make = () => {
   open Firebase.Firestore
 
   let dispatch = Redux.useDispatch()
-  let document = Redux.useSelector(State.currentDocument)
+  let currentDocumentId = Redux.useSelector(State.currentDocumentId)
 
   let (items, loading, error) = useCollectionData(
-    Firebase.firestore()->collection("items")->where("documentId", "==", document),
+    Firebase.firestore()->collection("items")->where("documentId", "==", currentDocumentId),
     {"idField": "id"},
   )
 

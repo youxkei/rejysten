@@ -48,9 +48,5 @@ let editing = ({mode}) =>
   }
 
 let state = state => state
-
-let currentItem = ({item: {currentId}}) => currentId
-let itemsMap = ({item: {map}}) => map
-
-let currentDocument = ({document: {currentId}}) => currentId
-let documentsMap = ({document: {map}}) => map
+let mode = ({mode}) => mode
+let currentDocumentId = ({document: {currentId}}) => currentId
