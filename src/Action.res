@@ -26,7 +26,7 @@ type t =
   | SetItemsMap(Belt.HashMap.String.t<State.item>)
   | SetDocumentsMap(Belt.HashMap.String.t<State.document>)
 
-let firestoreReducer = (store, next, action) => {
+let firestoreReducerMiddleware = (store, next, action) => {
   switch action {
   | Firestore(firestoreAction) =>
     switch firestoreAction {
@@ -48,39 +48,39 @@ let firestoreReducer = (store, next, action) => {
         let {item: {currentId: currentItemId, map: itemMap}}: State.t = Reductive.Store.getState(store)
 
         switch itemMap->HashMap.String.get(currentItemId) {
-        | Some(State.Item({id, parent, prev, next})) =>
-          switch itemMap->HashMap.String.get(prev) {
-          | Some(State.Item({lastSubitem: prevLastSubitem})) => {
+        | Some(State.Item({id, parentId, prevId, nextId})) =>
+          switch itemMap->HashMap.String.get(prevId) {
+          | Some(State.Item({lastSubitemId: prevLastSubitemId})) => {
               open Firebase.Firestore
 
               let db = Firebase.firestore()
               let batch = db->batch
               let items = db->collection("items")
 
-              if prevLastSubitem == "" {
+              if prevLastSubitemId == "" {
                 batch->addUpdate(
                   items->doc(id),
-                  {"parent": prev, "prev": "", "next": "", "text": text},
+                  {"parentId": prevId, "prevId": "", "nextId": "", "text": text},
                 )
                 batch->addUpdate(
-                  items->doc(prev),
-                  {"next": next, "firstSubitem": id, "lastSubitem": id},
+                  items->doc(prevId),
+                  {"nextId": nextId, "firstSubitemId": id, "lastSubitemId": id},
                 )
               } else {
                 batch->addUpdate(
                   items->doc(id),
-                  {"parent": prev, "prev": prevLastSubitem, "next": "", "text": text},
+                  {"parentId": prevId, "prevId": prevLastSubitemId, "nextId": "", "text": text},
                 )
-                batch->addUpdate(items->doc(prev), {"next": next, "lastSubitem": id})
-                batch->addUpdate(items->doc(prevLastSubitem), {"next": id})
+                batch->addUpdate(items->doc(prevId), {"nextId": nextId, "lastSubitemId": id})
+                batch->addUpdate(items->doc(prevLastSubitemId), {"nextId": id})
               }
 
-              if next == "" {
-                if parent != "" {
-                  batch->addUpdate(items->doc(parent), {"lastSubitem": prev})
+              if nextId == "" {
+                if parentId != "" {
+                  batch->addUpdate(items->doc(parentId), {"lastSubitemId": prevId})
                 }
               } else {
-                batch->addUpdate(items->doc(next), {"prev": prev})
+                batch->addUpdate(items->doc(nextId), {"prevId": prevId})
               }
 
               batch->commit
@@ -97,9 +97,9 @@ let firestoreReducer = (store, next, action) => {
         let {item: {currentId: currentItemId, map: itemMap}}: State.t = Reductive.Store.getState(store)
 
         switch itemMap->HashMap.String.get(currentItemId) {
-        | Some(State.Item({id, parent, prev, next})) =>
-          switch itemMap->HashMap.String.get(parent) {
-          | Some(State.Item({parent: parentParent, next: parentNext})) => {
+        | Some(State.Item({id, parentId, prevId, nextId})) =>
+          switch itemMap->HashMap.String.get(parentId) {
+          | Some(State.Item({parentId: parentParentId, nextId: parentNextId})) => if parentParentId != "" {
               open Firebase.Firestore
 
               let db = Firebase.firestore()
@@ -108,28 +108,28 @@ let firestoreReducer = (store, next, action) => {
 
               batch->addUpdate(
                 items->doc(id),
-                {"parent": parentParent, "prev": parent, "next": parentNext, "text": text},
+                {"parentId": parentParentId, "prevId": parentId, "nextId": parentNextId, "text": text},
               )
-              batch->addUpdate(items->doc(parent), {"next": id})
+              batch->addUpdate(items->doc(parentId), {"nextId": id})
 
-              if next == "" {
-                batch->addUpdate(items->doc(parent), {"lastSubitem": prev})
+              if nextId == "" {
+                batch->addUpdate(items->doc(parentId), {"lastSubitemId": prevId})
               } else {
-                batch->addUpdate(items->doc(next), {"prev": prev})
+                batch->addUpdate(items->doc(nextId), {"prevId": prevId})
               }
 
-              if prev == "" {
-                batch->addUpdate(items->doc(parent), {"firstSubitem": next})
+              if prevId == "" {
+                batch->addUpdate(items->doc(parentId), {"firstSubitemId": nextId})
               } else {
-                batch->addUpdate(items->doc(prev), {"next": next})
+                batch->addUpdate(items->doc(prevId), {"nextId": nextId})
               }
 
-              if parentNext == "" {
-                if parentParent != "" {
-                  batch->addUpdate(items->doc(parentParent), {"lastSubitem": id})
+              if parentNextId == "" {
+                if parentParentId != "" {
+                  batch->addUpdate(items->doc(parentParentId), {"lastSubitemId": id})
                 }
               } else {
-                batch->addUpdate(items->doc(parentNext), {"prev": id})
+                batch->addUpdate(items->doc(parentNextId), {"prevId": id})
               }
 
               batch->commit
@@ -149,7 +149,7 @@ let firestoreReducer = (store, next, action) => {
         }: State.t = Reductive.Store.getState(store)
 
         switch itemMap->HashMap.String.get(currentItemId) {
-        | Some(State.Item({id, parent, next})) => {
+        | Some(State.Item({id, parentId, nextId})) => {
             open Firebase.Firestore
 
             let db = Firebase.firestore()
@@ -158,27 +158,27 @@ let firestoreReducer = (store, next, action) => {
 
             let addingItemId = uuidv4()
 
-            batch->addUpdate(items->doc(id), {"next": addingItemId, "text": text})
+            batch->addUpdate(items->doc(id), {"nextId": addingItemId, "text": text})
 
             batch->addSet(
               items->doc(addingItemId),
               {
-                "document": currentDocumentId,
+                "documentId": currentDocumentId,
                 "text": "",
-                "parent": parent,
-                "prev": id,
-                "next": next,
-                "firstSubitem": "",
-                "lastSubitem": "",
+                "parentId": parentId,
+                "prevId": id,
+                "nextId": nextId,
+                "firstSubitemId": "",
+                "lastSubitemId": "",
               },
             )
 
-            if next == "" {
-              if parent != "" {
-                batch->addUpdate(items->doc(parent), {"lastSubitem": addingItemId})
+            if nextId == "" {
+              if parentId != "" {
+                batch->addUpdate(items->doc(parentId), {"lastSubitemId": addingItemId})
               }
             } else {
-              batch->addUpdate(items->doc(next), {"prev": addingItemId})
+              batch->addUpdate(items->doc(nextId), {"prevId": addingItemId})
             }
 
             batch->commit
@@ -193,7 +193,7 @@ let firestoreReducer = (store, next, action) => {
         let {item: {currentId: currentItemId, map: itemMap}}: State.t = Reductive.Store.getState(store)
 
         switch itemMap->HashMap.String.get(currentItemId) {
-        | Some(State.Item({id, parent, prev, next})) => {
+        | Some(State.Item({id, parentId, prevId, nextId})) => {
             open Firebase.Firestore
 
             let db = Firebase.firestore()
@@ -202,30 +202,30 @@ let firestoreReducer = (store, next, action) => {
 
             batch->addDelete(items->doc(id))
 
-            if prev == "" {
-              if parent != "" {
-                batch->addUpdate(items->doc(parent), {"firstSubitem": next})
+            if prevId == "" {
+              if parentId != "" {
+                batch->addUpdate(items->doc(parentId), {"firstSubitemId": nextId})
               }
             } else {
-              batch->addUpdate(items->doc(prev), {"next": next})
+              batch->addUpdate(items->doc(prevId), {"nextId": nextId})
             }
 
-            if next == "" {
-              if parent != "" {
-                batch->addUpdate(items->doc(parent), {"lastSubitem": prev})
+            if nextId == "" {
+              if parentId != "" {
+                batch->addUpdate(items->doc(parentId), {"lastSubitemId": prevId})
               }
             } else {
-              batch->addUpdate(items->doc(next), {"prev": prev})
+              batch->addUpdate(items->doc(nextId), {"prevId": prevId})
             }
 
             batch->commit
 
-            if prev == "" {
-              if parent != "" {
-                Reductive.Store.dispatch(store, SetCurrentItem({id: parent}))
+            if prevId == "" {
+              if parentId != "" {
+                Reductive.Store.dispatch(store, SetCurrentItem({id: parentId}))
               }
             } else {
-              Reductive.Store.dispatch(store, SetCurrentItem({id: prev}))
+              Reductive.Store.dispatch(store, SetCurrentItem({id: prevId}))
             }
           }
 
@@ -261,13 +261,13 @@ let normalModeReducer = (state: State.t, action) => {
       let {item: {currentId: currentItemId, map: itemsMap}} = state
 
       switch itemsMap->HashMap.String.get(currentItemId) {
-      | Some(State.Item({parent})) if parent != "" =>
-        switch itemsMap->HashMap.String.get(parent) {
-        | Some(State.Item({parent: parentParent})) if parentParent != "" => {
+      | Some(State.Item({parentId})) if parentId != "" =>
+        switch itemsMap->HashMap.String.get(parentId) {
+        | Some(State.Item({parentId: parentParentId})) if parentParentId != "" => {
             ...state,
             item: {
               ...state.item,
-              currentId: parent,
+              currentId: parentId,
             },
           }
 
@@ -282,34 +282,34 @@ let normalModeReducer = (state: State.t, action) => {
       let {item: {currentId: currentItemId, map: itemsMap}} = state
 
       switch itemsMap->HashMap.String.get(currentItemId) {
-      | Some(State.Item({parent, next, firstSubitem})) =>
-        switch (next, firstSubitem) {
+      | Some(State.Item({parentId, nextId, firstSubitemId})) =>
+        switch (nextId, firstSubitemId) {
         | ("", "") =>
-          switch itemsMap->HashMap.String.get(parent) {
-          | Some(State.Item({next: parentNext})) if parentNext != "" => {
+          switch itemsMap->HashMap.String.get(parentId) {
+          | Some(State.Item({nextId: parentNextId})) if parentNextId != "" => {
               ...state,
               item: {
                 ...state.item,
-                currentId: parentNext,
+                currentId: parentNextId,
               },
             }
 
           | _ => state
           }
 
-        | (next, "") => {
+        | (nextId, "") => {
             ...state,
             item: {
               ...state.item,
-              currentId: next,
+              currentId: nextId,
             },
           }
 
-        | (_, firstSubitem) => {
+        | (_, firstSubitemId) => {
             ...state,
             item: {
               ...state.item,
-              currentId: firstSubitem,
+              currentId: firstSubitemId,
             },
           }
         }
@@ -322,29 +322,29 @@ let normalModeReducer = (state: State.t, action) => {
       let {item: {currentId: currentItemId, map: itemsMap}} = state
 
       switch itemsMap->HashMap.String.get(currentItemId) {
-      | Some(State.Item({prev, parent})) =>
-        switch (prev, parent) {
+      | Some(State.Item({prevId, parentId})) =>
+        switch (prevId, parentId) {
         | ("", "") => state
 
-        | ("", parent) =>
-          switch itemsMap->HashMap.String.get(parent) {
-          | Some(State.Item({parent: parentParent})) if parentParent != "" => {
+        | ("", parentId) =>
+          switch itemsMap->HashMap.String.get(parentId) {
+          | Some(State.Item({parentId: parentParentId})) if parentParentId != "" => {
               ...state,
               item: {
                 ...state.item,
-                currentId: parent,
+                currentId: parentId,
               },
             }
 
           | _ => state
           }
 
-        | (prev, _) => switch itemsMap->HashMap.String.get(prev) {
-          | Some(State.Item({lastSubitem})) if lastSubitem != "" => {
+        | (prevId, _) => switch itemsMap->HashMap.String.get(prevId) {
+          | Some(State.Item({lastSubitemId})) if lastSubitemId != "" => {
               ...state,
               item: {
                 ...state.item,
-                currentId: lastSubitem,
+                currentId: lastSubitemId,
               },
             }
 
@@ -352,7 +352,7 @@ let normalModeReducer = (state: State.t, action) => {
               ...state,
               item: {
                 ...state.item,
-                currentId: prev,
+                currentId: prevId,
               },
             }
           }
@@ -365,11 +365,11 @@ let normalModeReducer = (state: State.t, action) => {
       let {item: {currentId: currentItemId, map: itemsMap}} = state
 
       switch itemsMap->HashMap.String.get(currentItemId) {
-      | Some(State.Item({firstSubitem})) if firstSubitem != "" => {
+      | Some(State.Item({firstSubitemId})) if firstSubitemId != "" => {
           ...state,
           item: {
             ...state.item,
-            currentId: firstSubitem,
+            currentId: firstSubitemId,
           },
         }
 

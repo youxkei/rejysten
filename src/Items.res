@@ -3,15 +3,15 @@ open Belt
 let makeSubitems = (itemsMap, item) => {
   let subitems = []
 
-  let State.Item({firstSubitem}) = item
-  let currentItem = ref(itemsMap->HashMap.String.get(firstSubitem))
+  let State.Item({firstSubitemId}) = item
+  let currentItem = ref(itemsMap->HashMap.String.get(firstSubitemId))
 
   while Option.isSome(currentItem.contents) {
     let item = Option.getExn(currentItem.contents)
-    let State.Item({next}) = item
+    let State.Item({nextId}) = item
 
     let _ = subitems->Js.Array2.push(item)
-    currentItem := itemsMap->HashMap.String.get(next)
+    currentItem := itemsMap->HashMap.String.get(nextId)
   }
 
   subitems

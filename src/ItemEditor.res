@@ -5,7 +5,7 @@ open Belt
 
 @react.component
 let make = React.memo((~item, ~isTrivialDocument) => {
-  let State.Item({text, firstSubitem, lastSubitem}) = item
+  let State.Item({text, firstSubitemId, lastSubitemId}) = item
 
   let (text, setText) = React.useState(_ => text)
 
@@ -42,7 +42,7 @@ let make = React.memo((~item, ~isTrivialDocument) => {
         event->preventDefault
       }
 
-    | "Backspace" if !isTrivialDocument && text == "" && firstSubitem == "" && lastSubitem == "" => {
+    | "Backspace" if !isTrivialDocument && text == "" && firstSubitemId == "" && lastSubitemId == "" => {
         dispatch(Action.Firestore(Action.DeleteItem))
         event->preventDefault
       }

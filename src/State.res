@@ -2,14 +2,14 @@ type item =
   | Item({
       id: string,
       text: string,
-      parent: string,
-      prev: string,
-      next: string,
-      firstSubitem: string,
-      lastSubitem: string,
+      parentId: string,
+      prevId: string,
+      nextId: string,
+      firstSubitemId: string,
+      lastSubitemId: string,
     })
 
-type document = Document({id: string, rootItem: string})
+type document = Document({id: string, rootItemId: string})
 
 type mode = Normal | Insert
 

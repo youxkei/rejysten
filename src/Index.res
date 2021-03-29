@@ -19,7 +19,7 @@ let firebaseConfig = {
 
 Firebase.initializeApp(firebaseConfig)
 
-let loggerMiddleware = (store, next, action) => {
+let loggerMiddleware = (_, next, action) => {
   Js.log(action)
   next(action)
 }
@@ -27,7 +27,7 @@ let loggerMiddleware = (store, next, action) => {
 let store = Reductive.Store.create(
   ~reducer=Action.reducer,
   ~preloadedState=State.initialState,
-  ~enhancer=(store, next) => next->loggerMiddleware(store, _)->Action.firestoreReducer(store, _),
+  ~enhancer=(store, next) => next->loggerMiddleware(store, _)->Action.firestoreReducerMiddleware(store, _),
   (),
 )
 
