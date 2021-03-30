@@ -9,8 +9,10 @@ type firestore_action =
   | AddItem({text: string})
   | DeleteItem
 
+type cursor_position = Begin | End
+
 type normal_mode_action =
-  | ToInsertMode({item_id: option<string>})
+  | ToInsertMode({cursor_position: cursor_position, item_id: option<string>})
   | MoveCursorLeft
   | MoveCursorDown
   | MoveCursorUp

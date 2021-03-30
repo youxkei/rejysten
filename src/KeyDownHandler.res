@@ -41,7 +41,12 @@ let make = () => {
             }
 
           | "KeyI" => {
-              dispatch(Action.NormalMode(Action.ToInsertMode({item_id: None})))
+              dispatch(Action.NormalMode(Action.ToInsertMode({cursor_position: Action.Begin, item_id: None})))
+              event->preventDefault
+            }
+
+          | "KeyA" => {
+              dispatch(Action.NormalMode(Action.ToInsertMode({cursor_position: Action.End, item_id: None})))
               event->preventDefault
             }
 
