@@ -13,7 +13,11 @@ let make = React.memo((~item, ~isCurrent) => {
     let button = event->button
 
     if button == 0 {
-      dispatch(Action.NormalMode(Action.ToInsertMode({cursor_position: Action.End, item_id: Some(id)})))
+      dispatch(
+        Action.NormalMode(
+          Action.ToInsertMode({initialCursorPosition: State.End, item_id: Some(id)}),
+        ),
+      )
       event->preventDefault
     }
   }

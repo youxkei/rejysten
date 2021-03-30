@@ -11,7 +11,9 @@ type item =
 
 type document = Document({id: string, rootItemId: string})
 
-type mode = Normal | Insert
+type initial_cursor_position = Start | End
+
+type mode = Normal | Insert({initialCursorPosition: initial_cursor_position})
 
 type item_state = {
   currentId: string,
@@ -44,7 +46,7 @@ let initialState: t = {
 let editing = ({mode}) =>
   switch mode {
   | Normal => false
-  | Insert => true
+  | Insert(_) => true
   }
 
 let state = state => state

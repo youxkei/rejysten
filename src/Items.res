@@ -45,7 +45,8 @@ module rec ItemsInner: ItemsInnerType = {
     <>
       <li>
         {switch mode {
-        | State.Insert if isCurrentItem => <ItemEditor item isTrivialDocument />
+        | State.Insert({initialCursorPosition}) if isCurrentItem =>
+          <ItemEditor item initialCursorPosition isTrivialDocument />
         | _ => <Item item isCurrent=isCurrentItem />
         }}
       </li>

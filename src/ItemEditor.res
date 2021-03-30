@@ -1,10 +1,11 @@
 open Belt
 
 @send external focus: Dom.element => unit = "focus"
+@send external setSelectionRange: (Dom.element, int, int) => unit = "setSelectionRange"
 @get external value: Js.t<'a> => string = "value"
 
 @react.component
-let make = React.memo((~item, ~isTrivialDocument) => {
+let make = React.memo((~item, ~isTrivialDocument, ~initialCursorPosition) => {
   let State.Item({text, firstSubitemId, lastSubitemId}) = item
 
   let (text, setText) = React.useState(_ => text)
@@ -22,9 +23,7 @@ let make = React.memo((~item, ~isTrivialDocument) => {
     let shiftKey = event->ReactEvent.Keyboard.shiftKey
 
     switch key {
-    | "Escape" => {
-        dispatch(Action.Firestore(Action.SaveItem({text: text})))
-      }
+    | "Escape" => dispatch(Action.Firestore(Action.SaveItem({text: text})))
 
     | "Tab" if !shiftKey => {
         dispatch(Action.Firestore(Action.IndentItem({text: text})))
@@ -41,7 +40,8 @@ let make = React.memo((~item, ~isTrivialDocument) => {
         event->preventDefault
       }
 
-    | "Backspace" if !isTrivialDocument && text == "" && firstSubitemId == "" && lastSubitemId == "" => {
+    | "Backspace"
+      if !isTrivialDocument && text == "" && firstSubitemId == "" && lastSubitemId == "" => {
         dispatch(Action.Firestore(Action.DeleteItem))
         event->preventDefault
       }
@@ -57,7 +57,21 @@ let make = React.memo((~item, ~isTrivialDocument) => {
   let textareaRef = React.useRef(Js.Nullable.null)
 
   React.useEffect1(() => {
-    textareaRef.current->Js.Nullable.toOption->Option.forEach(textarea => textarea->focus)
+    textareaRef.current
+    ->Js.Nullable.toOption
+    ->Option.forEach(textarea => {
+      textarea->focus
+
+      switch (initialCursorPosition: State.initial_cursor_position) {
+      | Start => textarea->setSelectionRange(0, 0)
+
+      | End => {
+          let length = text->Js.String.length
+          textarea->setSelectionRange(length, length)
+        }
+      }
+    })
+
     None
   }, [])
 
