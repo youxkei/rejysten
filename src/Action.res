@@ -274,7 +274,10 @@ let normalModeReducer = (state: State.t, action) => {
     }
 
   | MoveCursorLeft => {
-      let {item: {currentId: currentItemId, map: itemsMap}} = state
+      let {
+        document: {currentId: currentDocumentId, map: documentsMap},
+        item: {currentId: currentItemId, map: itemsMap},
+      } = state
 
       switch itemsMap->HashMap.String.get(currentItemId) {
       | Some(State.Item({parentId})) if parentId != "" =>
@@ -290,12 +293,32 @@ let normalModeReducer = (state: State.t, action) => {
         | _ => state
         }
 
+      | None =>
+        switch documentsMap->HashMap.String.get(currentDocumentId) {
+        | Some(State.Document({rootItemId})) => switch itemsMap->HashMap.String.get(rootItemId) {
+          | Some(State.Item({firstSubitemId})) => {
+              ...state,
+              item: {
+                ...state.item,
+                currentId: firstSubitemId,
+              },
+            }
+
+          | _ => state
+          }
+
+        | _ => state
+        }
+
       | _ => state
       }
     }
 
   | MoveCursorDown => {
-      let {item: {currentId: currentItemId, map: itemsMap}} = state
+      let {
+        document: {currentId: currentDocumentId, map: documentsMap},
+        item: {currentId: currentItemId, map: itemsMap},
+      } = state
 
       switch itemsMap->HashMap.String.get(currentItemId) {
       | Some(State.Item({parentId, nextId, firstSubitemId})) =>
@@ -330,12 +353,30 @@ let normalModeReducer = (state: State.t, action) => {
           }
         }
 
-      | _ => state
+      | None =>
+        switch documentsMap->HashMap.String.get(currentDocumentId) {
+        | Some(State.Document({rootItemId})) => switch itemsMap->HashMap.String.get(rootItemId) {
+          | Some(State.Item({firstSubitemId})) => {
+              ...state,
+              item: {
+                ...state.item,
+                currentId: firstSubitemId,
+              },
+            }
+
+          | _ => state
+          }
+
+        | _ => state
+        }
       }
     }
 
   | MoveCursorUp => {
-      let {item: {currentId: currentItemId, map: itemsMap}} = state
+      let {
+        document: {currentId: currentDocumentId, map: documentsMap},
+        item: {currentId: currentItemId, map: itemsMap},
+      } = state
 
       switch itemsMap->HashMap.String.get(currentItemId) {
       | Some(State.Item({prevId, parentId})) =>
@@ -374,12 +415,33 @@ let normalModeReducer = (state: State.t, action) => {
             }
           }
         }
-      | _ => state
+
+      | None =>
+        switch documentsMap->HashMap.String.get(currentDocumentId) {
+        | Some(State.Document({rootItemId})) => switch itemsMap->HashMap.String.get(rootItemId) {
+          | Some(State.Item({firstSubitemId})) => {
+              ...state,
+              item: {
+                ...state.item,
+                currentId: firstSubitemId,
+              },
+            }
+
+          | _ => state
+          }
+
+        | _ => state
+        }
       }
     }
 
   | MoveCursorRight => {
-      let {item: {currentId: currentItemId, map: itemsMap}} = state
+      let {
+        document: {currentId: currentDocumentId, map: documentsMap},
+        item: {currentId: currentItemId, map: itemsMap},
+      } = state
+
+      Js.log(currentItemId)
 
       switch itemsMap->HashMap.String.get(currentItemId) {
       | Some(State.Item({firstSubitemId})) if firstSubitemId != "" => {
@@ -388,6 +450,23 @@ let normalModeReducer = (state: State.t, action) => {
             ...state.item,
             currentId: firstSubitemId,
           },
+        }
+
+      | None =>
+        switch documentsMap->HashMap.String.get(currentDocumentId) {
+        | Some(State.Document({rootItemId})) => switch itemsMap->HashMap.String.get(rootItemId) {
+          | Some(State.Item({firstSubitemId})) => {
+              ...state,
+              item: {
+                ...state.item,
+                currentId: firstSubitemId,
+              },
+            }
+
+          | _ => state
+          }
+
+        | _ => state
         }
 
       | _ => state
