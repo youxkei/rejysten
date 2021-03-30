@@ -20,7 +20,6 @@ let make = React.memo((~item, ~isTrivialDocument) => {
 
     let key = event->ReactEvent.Keyboard.key
     let shiftKey = event->ReactEvent.Keyboard.shiftKey
-    let ctrlKey = event->ReactEvent.Keyboard.ctrlKey
 
     switch key {
     | "Escape" => {
@@ -37,7 +36,7 @@ let make = React.memo((~item, ~isTrivialDocument) => {
         event->preventDefault
       }
 
-    | "Enter" if ctrlKey => {
+    | "Enter" if !shiftKey => {
         dispatch(Action.Firestore(Action.AddItem({text: text})))
         event->preventDefault
       }
