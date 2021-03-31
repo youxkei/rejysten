@@ -9,7 +9,7 @@ open Belt
     items->Array.forEach(item => {
       let id = item["id"]
 
-      let item = State.Item({
+      let item: State.item = {
         id: id,
         text: item["text"],
         nextId: item["nextId"],
@@ -17,7 +17,7 @@ open Belt
         parentId: item["parentId"],
         firstSubitemId: item["firstSubitemId"],
         lastSubitemId: item["lastSubitemId"],
-      })
+      }
 
       itemsMap->HashMap.String.set(id, item)
     })

@@ -9,10 +9,10 @@ open Belt
     documents->Array.forEach(document => {
       let id = document["id"]
 
-      let document = State.Document({
+      let document: State.document = {
         id: id,
         rootItemId: document["rootItemId"],
-      })
+      }
 
       documentsMap->HashMap.String.set(id, document)
     })

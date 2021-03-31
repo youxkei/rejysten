@@ -1,15 +1,14 @@
-type item =
-  | Item({
-      id: string,
-      text: string,
-      parentId: string,
-      prevId: string,
-      nextId: string,
-      firstSubitemId: string,
-      lastSubitemId: string,
-    })
+type item = {
+  id: string,
+  text: string,
+  parentId: string,
+  prevId: string,
+  nextId: string,
+  firstSubitemId: string,
+  lastSubitemId: string,
+}
 
-type document = Document({id: string, rootItemId: string})
+type document = {id: string, rootItemId: string}
 
 type initial_cursor_position = Start | End
 

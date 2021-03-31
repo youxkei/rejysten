@@ -1,17 +1,15 @@
 open Belt
 
-let makeSubitems = (itemsMap, item) => {
+let makeSubitems = (itemsMap, item: State.item) => {
   let subitems = []
 
-  let State.Item({firstSubitemId}) = item
-  let currentItem = ref(itemsMap->HashMap.String.get(firstSubitemId))
+  let currentItem = ref(itemsMap->HashMap.String.get(item.firstSubitemId))
 
   while Option.isSome(currentItem.contents) {
-    let item = Option.getExn(currentItem.contents)
-    let State.Item({nextId}) = item
+    let item: State.item = Option.getExn(currentItem.contents)
 
     let _ = subitems->Js.Array2.push(item)
-    currentItem := itemsMap->HashMap.String.get(nextId)
+    currentItem := itemsMap->HashMap.String.get(item.nextId)
   }
 
   subitems
@@ -25,21 +23,20 @@ module type ItemsInnerType = {
     "itemsMap": HashMap.String.t<State.item>,
   } => ReasonReact.reactElement
   let makeProps: (
-    ~item: 'item,
+    ~item: State.item,
     ~mode: 'mode,
     ~currentItemId: 'currentItemId,
     ~itemsMap: 'itemsMap,
     ~key: string=?,
     unit,
-  ) => {"item": 'item, "mode": 'mode, "currentItemId": 'currentItemId, "itemsMap": 'itemsMap}
+  ) => {"item": State.item, "mode": 'mode, "currentItemId": 'currentItemId, "itemsMap": 'itemsMap}
 }
 
 module rec ItemsInner: ItemsInnerType = {
   @react.component
-  let make = (~item, ~mode, ~currentItemId, ~itemsMap) => {
-    let State.Item({id: itemId}) = item
+  let make = (~item: State.item, ~mode, ~currentItemId, ~itemsMap) => {
     let subitems: array<State.item> = makeSubitems(itemsMap, item)
-    let isCurrentItem = itemId == currentItemId
+    let isCurrentItem = item.id == currentItemId
     let isTrivialDocument = itemsMap->HashMap.String.size == 2
 
     <>
@@ -52,9 +49,8 @@ module rec ItemsInner: ItemsInnerType = {
       </li>
       <ul>
         {subitems
-        ->Array.map(item => {
-          let State.Item({id}) = item
-          <ItemsInner key=id item mode currentItemId itemsMap />
+        ->Array.map((item: State.item) => {
+          <ItemsInner key=item.id item mode currentItemId itemsMap />
         })
         ->React.array}
       </ul>
@@ -63,12 +59,11 @@ module rec ItemsInner: ItemsInnerType = {
 }
 
 @react.component
-let make = (~item, ~mode, ~currentItemId, ~itemsMap) => {
+let make = (~item: State.item, ~mode, ~currentItemId, ~itemsMap) => {
   <ul>
     {makeSubitems(itemsMap, item)
     ->Array.map(item => {
-      let State.Item({id}) = item
-      <ItemsInner key=id item mode currentItemId itemsMap />
+      <ItemsInner key=item.id item mode currentItemId itemsMap />
     })
     ->React.array}
   </ul>

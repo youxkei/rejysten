@@ -5,10 +5,8 @@ open Belt
 @get external value: Js.t<'a> => string = "value"
 
 @react.component
-let make = React.memo((~item, ~isTrivialDocument, ~initialCursorPosition) => {
-  let State.Item({text, firstSubitemId, lastSubitemId}) = item
-
-  let (text, setText) = React.useState(_ => text)
+let make = React.memo((~item: State.item, ~isTrivialDocument, ~initialCursorPosition) => {
+  let (text, setText) = React.useState(_ => item.text)
 
   let dispatch = Redux.useDispatch()
 
@@ -41,7 +39,7 @@ let make = React.memo((~item, ~isTrivialDocument, ~initialCursorPosition) => {
       }
 
     | "Backspace"
-      if !isTrivialDocument && text == "" && firstSubitemId == "" && lastSubitemId == "" => {
+      if !isTrivialDocument && text == "" && item.firstSubitemId == "" && item.lastSubitemId == "" => {
         dispatch(Action.Firestore(Action.DeleteItem))
         event->preventDefault
       }

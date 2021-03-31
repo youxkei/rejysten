@@ -4,10 +4,8 @@
 )
 
 @react.component
-let make = React.memo((~item, ~isCurrent) => {
+let make = React.memo((~item: State.item, ~isCurrent) => {
   let dispatch = Redux.useDispatch()
-
-  let State.Item({id, text}) = item
 
   let handleMouseDown = event => {
     let button = event->button
@@ -15,7 +13,7 @@ let make = React.memo((~item, ~isCurrent) => {
     if button == 0 {
       dispatch(
         Action.NormalMode(
-          Action.ToInsertMode({initialCursorPosition: State.End, item_id: Some(id)}),
+          Action.ToInsertMode({initialCursorPosition: State.End, itemId: Some(item.id)}),
         ),
       )
       event->preventDefault
@@ -28,5 +26,5 @@ let make = React.memo((~item, ~isCurrent) => {
     ReactDOM.Style.make()
   }
 
-  <span style onMouseDown=handleMouseDown> {text->React.string} </span>
+  <span style onMouseDown=handleMouseDown> {item.text->React.string} </span>
 })
