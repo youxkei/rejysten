@@ -13,7 +13,9 @@
   "suffix": ".bs.js",
   "bs-dependencies": [
     "reason-react",
-    "reductive"
+    "reductive",
+    "bs-css",
+    "bs-css-emotion"
   ],
   "warnings": {
     "error" : "+101"

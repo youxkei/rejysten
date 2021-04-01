@@ -27,7 +27,8 @@ let loggerMiddleware = (_, next, action) => {
 let store = Reductive.Store.create(
   ~reducer=Action.reducer,
   ~preloadedState=State.initialState,
-  ~enhancer=(store, next) => next->loggerMiddleware(store, _)->Action.firestoreReducerMiddleware(store, _),
+  ~enhancer=(store, next) =>
+    next->loggerMiddleware(store, _)->Action.firestoreReducerMiddleware(store, _),
   (),
 )
 
@@ -68,7 +69,11 @@ module App = {
       | Some(error) => error->toString->React.string
       | None =>
         switch user {
-        | Some(_) => <> <Document mode currentItemId itemsMap currentDocumentId documentsMap /> </>
+        | Some(_) =>
+          <main className=Style.app>
+            <Documents />
+            <Document mode currentItemId itemsMap currentDocumentId documentsMap />
+          </main>
         | None => "logging in"->React.string
         }
       }
