@@ -26,7 +26,7 @@ type t =
   | InsertMode(insert_mode_action)
   | SetCurrentItem({id: string})
   | SetItemsMap(Belt.HashMap.String.t<State.item>)
-  | SetDocumentsMap(Belt.HashMap.String.t<State.document>)
+  | SetDocumentsMap({map: Belt.HashMap.String.t<State.document>, rootId: string})
 
 let firestoreReducerMiddleware = (store, next, action) => {
   switch action {
@@ -518,11 +518,12 @@ let reducer = (state: State.t, action) => {
       },
     }
 
-  | SetDocumentsMap(documentsMap) => {
+  | SetDocumentsMap({map, rootId}) => {
       ...state,
       document: {
         ...state.document,
-        map: documentsMap,
+        map,
+        rootId,
       },
     }
   }

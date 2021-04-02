@@ -8,7 +8,16 @@ type item = {
   lastChildId: string,
 }
 
-type document = {id: string, rootItemId: string}
+type document = {
+  id: string,
+  text: string,
+  rootItemId: string,
+  parentId: string,
+  prevId: string,
+  nextId: string,
+  firstChildId: string,
+  lastChildId: string,
+}
 
 type initial_cursor_position = Start | End
 
@@ -22,6 +31,7 @@ type item_state = {
 type document_state = {
   currentId: string,
   map: Belt.HashMap.String.t<document>,
+  rootId: string,
 }
 
 type t = {
@@ -38,6 +48,7 @@ let initialState: t = {
   },
   document: {
     currentId: "a87b54e5-46ef-4f71-9a5d-f7df33b9dd51",
+    rootId: "629ca8ea-56e5-491f-b5ee-455ff9d3c358",
     map: Belt.HashMap.String.make(~hintSize=0),
   },
 }

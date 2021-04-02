@@ -5,19 +5,30 @@ open Belt
 %%private(
   let makeDocumentsMap = documents => {
     let documentsMap = HashMap.String.make(~hintSize=10)
+    let rootDocumentId = ref("")
 
     documents->Array.forEach(document => {
       let id = document["id"]
 
       let document: State.document = {
         id: id,
+        text: document["text"],
         rootItemId: document["rootItemId"],
+        parentId: document["parentId"],
+        prevId: document["prevId"],
+        nextId: document["nextId"],
+        firstChildId: document["firstChildId"],
+        lastChildId: document["lastChildId"],
       }
 
       documentsMap->HashMap.String.set(id, document)
+
+      if document.parentId == "" {
+        rootDocumentId := document.id
+      }
     })
 
-    documentsMap
+    (documentsMap, rootDocumentId.contents)
   }
 )
 
@@ -35,7 +46,9 @@ let make = () => {
   React.useEffect(() => {
     switch error {
     | None if !loading => {
-        dispatch(Action.SetDocumentsMap(makeDocumentsMap(documents)))
+        let (documentsMap, rootDocumentId) = makeDocumentsMap(documents)
+
+        dispatch(Action.SetDocumentsMap({map: documentsMap, rootId: rootDocumentId}))
       }
     | _ => ()
     }
