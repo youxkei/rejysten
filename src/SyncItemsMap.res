@@ -15,8 +15,8 @@ open Belt
         nextId: item["nextId"],
         prevId: item["prevId"],
         parentId: item["parentId"],
-        firstSubitemId: item["firstSubitemId"],
-        lastSubitemId: item["lastSubitemId"],
+        firstChildId: item["firstChildId"],
+        lastChildId: item["lastChildId"],
       }
 
       itemsMap->HashMap.String.set(id, item)
@@ -41,6 +41,7 @@ let make = () => {
   React.useEffect(() => {
     switch error {
     | None if !loading => dispatch(Action.SetItemsMap(makeItemsMap(items)))
+
     | _ => ()
     }
 

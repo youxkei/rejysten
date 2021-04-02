@@ -4,8 +4,8 @@ type item = {
   parentId: string,
   prevId: string,
   nextId: string,
-  firstSubitemId: string,
-  lastSubitemId: string,
+  firstChildId: string,
+  lastChildId: string,
 }
 
 type document = {id: string, rootItemId: string}
@@ -37,7 +37,7 @@ let initialState: t = {
     map: Belt.HashMap.String.make(~hintSize=0),
   },
   document: {
-    currentId: "NdxNjoPpHTuFjfhRDUth",
+    currentId: "a87b54e5-46ef-4f71-9a5d-f7df33b9dd51",
     map: Belt.HashMap.String.make(~hintSize=0),
   },
 }

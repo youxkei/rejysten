@@ -42,9 +42,11 @@ module App = {
       if !initializing {
         switch error {
         | Some(_) => ()
+
         | None =>
           switch user {
           | Some(_) => ()
+
           | None => {
               let provider = Firebase.Auth.googleAuthProvider()
               Firebase.auth()->Firebase.Auth.signInWithPopup(provider)
@@ -71,9 +73,9 @@ module App = {
         switch user {
         | Some(_) =>
           <main className=Style.app>
-            <Documents />
-            <Document mode currentItemId itemsMap currentDocumentId documentsMap />
+            <Documents /> <Document mode currentItemId itemsMap currentDocumentId documentsMap />
           </main>
+
         | None => "logging in"->React.string
         }
       }
@@ -89,5 +91,6 @@ switch ReactDOM.querySelector("#app") {
     </Redux.Provider>,
     app,
   )
+
 | None => ()
 }

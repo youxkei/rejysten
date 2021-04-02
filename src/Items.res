@@ -1,18 +1,18 @@
 open Belt
 
-let makeSubitems = (itemsMap, item: State.item) => {
-  let subitems = []
+let makeChildren = (itemsMap, item: State.item) => {
+  let children = []
 
-  let currentItem = ref(itemsMap->HashMap.String.get(item.firstSubitemId))
+  let currentItem = ref(itemsMap->HashMap.String.get(item.firstChildId))
 
   while Option.isSome(currentItem.contents) {
     let item: State.item = Option.getExn(currentItem.contents)
 
-    let _ = subitems->Js.Array2.push(item)
+    let _ = children->Js.Array2.push(item)
     currentItem := itemsMap->HashMap.String.get(item.nextId)
   }
 
-  subitems
+  children
 }
 
 module type ItemsInnerType = {
@@ -35,7 +35,7 @@ module type ItemsInnerType = {
 module rec ItemsInner: ItemsInnerType = {
   @react.component
   let make = (~item: State.item, ~mode, ~currentItemId, ~itemsMap) => {
-    let subitems: array<State.item> = makeSubitems(itemsMap, item)
+    let children: array<State.item> = makeChildren(itemsMap, item)
     let isCurrentItem = item.id == currentItemId
     let isTrivialDocument = itemsMap->HashMap.String.size == 2
 
@@ -48,7 +48,7 @@ module rec ItemsInner: ItemsInnerType = {
         }}
       </li>
       <ul>
-        {subitems
+        {children
         ->Array.map((item: State.item) => {
           <ItemsInner key=item.id item mode currentItemId itemsMap />
         })
@@ -61,7 +61,7 @@ module rec ItemsInner: ItemsInnerType = {
 @react.component
 let make = (~item: State.item, ~mode, ~currentItemId, ~itemsMap) => {
   <ul>
-    {makeSubitems(itemsMap, item)
+    {makeChildren(itemsMap, item)
     ->Array.map(item => {
       <ItemsInner key=item.id item mode currentItemId itemsMap />
     })
