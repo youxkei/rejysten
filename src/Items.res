@@ -1,15 +1,15 @@
 open Belt
 
-let makeChildren = (itemsMap, item: State.item) => {
+let makeChildren = (documentItemMap, item: State.item) => {
   let children = []
 
-  let currentItem = ref(itemsMap->HashMap.String.get(item.firstChildId))
+  let currentItem = ref(documentItemMap->HashMap.String.get(item.firstChildId))
 
   while Option.isSome(currentItem.contents) {
     let item: State.item = Option.getExn(currentItem.contents)
 
     let _ = children->Js.Array2.push(item)
-    currentItem := itemsMap->HashMap.String.get(item.nextId)
+    currentItem := documentItemMap->HashMap.String.get(item.nextId)
   }
 
   children
@@ -19,25 +19,25 @@ module type ItemsInnerType = {
   let make: {
     "item": State.item,
     "mode": State.mode,
-    "currentItemId": string,
-    "itemsMap": HashMap.String.t<State.item>,
+    "currentDocumentItemId": string,
+    "documentItemMap": HashMap.String.t<State.item>,
   } => ReasonReact.reactElement
   let makeProps: (
     ~item: State.item,
     ~mode: 'mode,
-    ~currentItemId: 'currentItemId,
-    ~itemsMap: 'itemsMap,
+    ~currentDocumentItemId: 'currentDocumentItemId,
+    ~documentItemMap: 'documentItemMap,
     ~key: string=?,
     unit,
-  ) => {"item": State.item, "mode": 'mode, "currentItemId": 'currentItemId, "itemsMap": 'itemsMap}
+  ) => {"item": State.item, "mode": 'mode, "currentDocumentItemId": 'currentDocumentItemId, "documentItemMap": 'documentItemMap}
 }
 
 module rec ItemsInner: ItemsInnerType = {
   @react.component
-  let make = (~item: State.item, ~mode, ~currentItemId, ~itemsMap) => {
-    let children: array<State.item> = makeChildren(itemsMap, item)
-    let isCurrentItem = item.id == currentItemId
-    let isTrivialDocument = itemsMap->HashMap.String.size == 2
+  let make = (~item: State.item, ~mode, ~currentDocumentItemId, ~documentItemMap) => {
+    let children: array<State.item> = makeChildren(documentItemMap, item)
+    let isCurrentItem = item.id == currentDocumentItemId
+    let isTrivialDocument = documentItemMap->HashMap.String.size == 2
 
     <>
       <li>
@@ -50,7 +50,7 @@ module rec ItemsInner: ItemsInnerType = {
       <ul>
         {children
         ->Array.map((item: State.item) => {
-          <ItemsInner key=item.id item mode currentItemId itemsMap />
+          <ItemsInner key=item.id item mode currentDocumentItemId documentItemMap />
         })
         ->React.array}
       </ul>
@@ -59,11 +59,11 @@ module rec ItemsInner: ItemsInnerType = {
 }
 
 @react.component
-let make = (~item: State.item, ~mode, ~currentItemId, ~itemsMap) => {
+let make = (~item: State.item, ~mode, ~currentDocumentItemId, ~documentItemMap) => {
   <ul>
-    {makeChildren(itemsMap, item)
+    {makeChildren(documentItemMap, item)
     ->Array.map(item => {
-      <ItemsInner key=item.id item mode currentItemId itemsMap />
+      <ItemsInner key=item.id item mode currentDocumentItemId documentItemMap />
     })
     ->React.array}
   </ul>

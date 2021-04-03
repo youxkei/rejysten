@@ -48,7 +48,7 @@ let make = () => {
     | None if !loading => {
         let (documentsMap, rootDocumentId) = makeDocumentsMap(documents)
 
-        dispatch(Action.SetDocumentsMap({map: documentsMap, rootId: rootDocumentId}))
+        dispatch(Action.SetDocumentState({map: documentsMap, rootId: rootDocumentId}))
       }
     | _ => ()
     }

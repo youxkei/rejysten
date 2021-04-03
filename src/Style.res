@@ -9,11 +9,11 @@ let app = style(. [
 ])
 
 let documents = style(. [
-  gridColumn(1, 1),
+  gridColumnStart(1),
   overflow(auto)
 ])
 
 let document = style(. [
-  gridColumn(2, 2),
+  gridColumnStart(2),
   overflow(auto)
 ])

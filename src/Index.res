@@ -60,8 +60,8 @@ module App = {
 
     let {
       mode,
-      item: {currentId: currentItemId, map: itemsMap},
-      document: {currentId: currentDocumentId, map: documentsMap},
+      documentItem: {currentId: currentDocumentItemId, map: documentItemMap},
+      document: {currentId: currentDocumentId, map: documentMap},
     } = Redux.useSelector(State.state)
 
     if initializing {
@@ -73,7 +73,7 @@ module App = {
         switch user {
         | Some(_) =>
           <main className=Style.app>
-            <Documents /> <Document mode currentItemId itemsMap currentDocumentId documentsMap />
+            <Documents /> <Document mode currentDocumentItemId documentItemMap currentDocumentId documentMap />
           </main>
 
         | None => "logging in"->React.string
@@ -87,7 +87,7 @@ switch ReactDOM.querySelector("#app") {
 | Some(app) =>
   ReactDOM.render(
     <Redux.Provider store>
-      {<> <App /> <SyncItemsMap /> <SyncDocumentsMap /> <KeyDownHandler /> </>}
+      {<> <App /> <SyncDocumentItemState /> <SyncDocumentState /> <KeyDownHandler /> </>}
     </Redux.Provider>,
     app,
   )

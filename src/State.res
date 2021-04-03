@@ -19,16 +19,16 @@ type document = {
   lastChildId: string,
 }
 
-type initial_cursor_position = Start | End
+type initialCursorPosition = Start | End
 
-type mode = Normal | Insert({initialCursorPosition: initial_cursor_position})
+type mode = Normal | Insert({initialCursorPosition: initialCursorPosition})
 
-type item_state = {
+type documentItemState = {
   currentId: string,
   map: Belt.HashMap.String.t<item>,
 }
 
-type document_state = {
+type documentState = {
   currentId: string,
   map: Belt.HashMap.String.t<document>,
   rootId: string,
@@ -36,13 +36,13 @@ type document_state = {
 
 type t = {
   mode: mode,
-  item: item_state,
-  document: document_state,
+  documentItem: documentItemState,
+  document: documentState,
 }
 
 let initialState: t = {
   mode: Normal,
-  item: {
+  documentItem: {
     currentId: "",
     map: Belt.HashMap.String.make(~hintSize=0),
   },

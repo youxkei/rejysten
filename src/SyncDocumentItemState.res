@@ -40,7 +40,7 @@ let make = () => {
 
   React.useEffect(() => {
     switch error {
-    | None if !loading => dispatch(Action.SetItemsMap(makeItemsMap(items)))
+    | None if !loading => dispatch(Action.SetDocumentItemState({map: makeItemsMap(items)}))
 
     | _ => ()
     }

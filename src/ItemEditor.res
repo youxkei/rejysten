@@ -60,7 +60,7 @@ let make = React.memo((~item: State.item, ~isTrivialDocument, ~initialCursorPosi
     ->Option.forEach(textarea => {
       textarea->focus
 
-      switch (initialCursorPosition: State.initial_cursor_position) {
+      switch (initialCursorPosition: State.initialCursorPosition) {
       | Start => textarea->setSelectionRange(0, 0)
 
       | End => {
