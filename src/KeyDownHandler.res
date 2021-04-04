@@ -9,7 +9,7 @@ external removeEventListener: (Dom.window, string, Dom.keyboardEvent => unit) =>
 @send external preventDefault: Dom.keyboardEvent => unit = "preventDefault"
 
 @react.component
-let make = () => {
+let make = React.memo(() => {
   let dispatch = Redux.useDispatch()
   let mode = Redux.useSelector(State.mode)
 
@@ -76,4 +76,6 @@ let make = () => {
   }, [mode])
 
   React.null
-}
+})
+
+React.setDisplayName(make, "KeyDownHandler")

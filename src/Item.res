@@ -28,3 +28,5 @@ let make = React.memo((~item: State.item, ~isCurrent) => {
 
   <span style onMouseDown=handleMouseDown> {item.text->React.string} </span>
 })
+
+React.setDisplayName(make, "Item")

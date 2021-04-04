@@ -81,3 +81,5 @@ let make = React.memo((~item: State.item, ~isTrivialDocument, ~initialCursorPosi
     onBlur=handleFocusOut
   />
 })
+
+React.setDisplayName(make, "ItemEditor")

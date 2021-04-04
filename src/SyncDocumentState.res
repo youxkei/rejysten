@@ -44,7 +44,7 @@ open Belt
 )
 
 @react.component
-let make = () => {
+let make = React.memo(() => {
   open Firebase.Firestore
 
   let dispatch = Redux.useDispatch()
@@ -68,4 +68,6 @@ let make = () => {
   })
 
   React.null
-}
+})
+
+React.setDisplayName(make, "SyncDocumentState")

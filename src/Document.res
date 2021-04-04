@@ -1,14 +1,12 @@
-open Belt
-
 @react.component
-let make = (~mode, ~currentDocumentItemId, ~documentItemMap, ~currentDocumentId, ~documentMap) => {
-  switch documentMap->HashMap.String.get(currentDocumentId) {
-  | Some(State.Document({rootItemId})) => switch documentItemMap->HashMap.String.get(rootItemId) {
-    | Some(item) => <section className=Style.document><Items item mode currentDocumentItemId documentItemMap /></section>
+let make = React.memo(() => {
+  let currentRootDocumentItem = Redux.useSelector(State.currentRootDocumentItem)
 
-    | None => React.null
-    }
+  switch currentRootDocumentItem {
+  | Some(item) => <section className=Style.document> <Items item /> </section>
 
-  | _ => React.null
+  | None => React.null
   }
-}
+})
+
+React.setDisplayName(make, "Document")

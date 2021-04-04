@@ -1,3 +1,5 @@
+open Belt
+
 type item = {
   id: string,
   text: string,
@@ -69,4 +71,17 @@ let editing = ({mode}) =>
 
 let state = state => state
 let mode = ({mode}) => mode
+
+let currentDocumentItemId = ({documentItem: {currentId}}) => currentId
+let currentRootDocumentItem = ({document: {map: documentMap, currentId: currentDocumentId}, documentItem: {map: documentItemMap}}) => {
+  switch documentMap->HashMap.String.get(currentDocumentId) {
+  | Some(Document({rootItemId})) => documentItemMap->HashMap.String.get(rootItemId)
+
+  | _ => None
+  }
+}
+
 let currentDocumentId = ({document: {currentId}}) => currentId
+let currentDocument = ({document: {map, currentId}}) => map->HashMap.String.get(currentId)
+
+let documentItemMap = ({documentItem: {map}}) => map

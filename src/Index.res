@@ -58,12 +58,6 @@ module App = {
       None
     }, [user])
 
-    let {
-      mode,
-      documentItem: {currentId: currentDocumentItemId, map: documentItemMap},
-      document: {currentId: currentDocumentId, map: documentMap},
-    } = Redux.useSelector(State.state)
-
     if initializing {
       "initializing"->React.string
     } else {
@@ -73,7 +67,7 @@ module App = {
         switch user {
         | Some(_) =>
           <main className=Style.app>
-            <Documents /> <Document mode currentDocumentItemId documentItemMap currentDocumentId documentMap />
+            <Documents /> <Document />
           </main>
 
         | None => "logging in"->React.string
