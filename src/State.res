@@ -10,24 +10,16 @@ type item = {
   lastChildId: string,
 }
 
-type document =
-  | Document({
-      id: string,
-      text: string,
-      rootItemId: string,
-      parentId: string,
-      prevId: string,
-      nextId: string,
-    })
-  | DocumentDirectory({
-      id: string,
-      text: string,
-      parentId: string,
-      prevId: string,
-      nextId: string,
-      firstChildId: string,
-      lastChildId: string,
-    })
+type document = {
+  id: string,
+  text: string,
+  rootItemId: string,
+  parentId: string,
+  prevId: string,
+  nextId: string,
+  firstChildId: string,
+  lastChildId: string,
+}
 
 type initialCursorPosition = Start | End
 
@@ -72,16 +64,22 @@ let editing = ({mode}) =>
 let state = state => state
 let mode = ({mode}) => mode
 
+let documentMap = ({document: {map}}) => map
+let currentDocumentId = ({document: {currentId}}) => currentId
+let currentDocument = ({document: {map, currentId}}) => map->HashMap.String.get(currentId)
+let rootDocument = ({document: {map, rootId}}) => {
+  map->HashMap.String.get(rootId)
+}
+
+let documentItemMap = ({documentItem: {map}}) => map
 let currentDocumentItemId = ({documentItem: {currentId}}) => currentId
-let currentRootDocumentItem = ({document: {map: documentMap, currentId: currentDocumentId}, documentItem: {map: documentItemMap}}) => {
+let currentRootDocumentItem = ({
+  document: {map: documentMap, currentId: currentDocumentId},
+  documentItem: {map: documentItemMap},
+}) => {
   switch documentMap->HashMap.String.get(currentDocumentId) {
-  | Some(Document({rootItemId})) => documentItemMap->HashMap.String.get(rootItemId)
+  | Some({rootItemId}) => documentItemMap->HashMap.String.get(rootItemId)
 
   | _ => None
   }
 }
-
-let currentDocumentId = ({document: {currentId}}) => currentId
-let currentDocument = ({document: {map, currentId}}) => map->HashMap.String.get(currentId)
-
-let documentItemMap = ({documentItem: {map}}) => map

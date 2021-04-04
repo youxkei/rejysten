@@ -4,42 +4,29 @@ open Belt
 
 %%private(
   let makeDocumentsMap = documents => {
-    let documentsMap = HashMap.String.make(~hintSize=10)
+    let documentMap = HashMap.String.make(~hintSize=10)
     let rootDocumentId = ref("")
 
     documents->Array.forEach(document => {
-      let id = document["id"]
-      let parentId = document["parerntId"]
-
-      let document = if document["isDirectory"] {
-        State.DocumentDirectory({
-          id: id,
-          text: document["text"],
-          parentId: document["parentId"],
-          prevId: document["prevId"],
-          nextId: document["nextId"],
-          firstChildId: document["firstChildId"],
-          lastChildId: document["lastChildId"],
-        })
-      } else {
-        State.Document({
-          id: id,
-          text: document["text"],
-          rootItemId: document["rootItemId"],
-          parentId: document["parentId"],
-          prevId: document["prevId"],
-          nextId: document["nextId"],
-        })
+      let document: State.document = {
+        id: document["id"],
+        text: document["text"],
+        rootItemId: document["rootItemId"],
+        parentId: document["parentId"],
+        prevId: document["prevId"],
+        nextId: document["nextId"],
+        firstChildId: document["firstChildId"],
+        lastChildId: document["lastChildId"],
       }
 
-      documentsMap->HashMap.String.set(id, document)
+      documentMap->HashMap.String.set(document.id, document)
 
-      if parentId == "" {
-        rootDocumentId := id
+      if document.parentId == "" {
+        rootDocumentId := document.id
       }
     })
 
-    (documentsMap, rootDocumentId.contents)
+    (documentMap, rootDocumentId.contents)
   }
 )
 
@@ -57,9 +44,9 @@ let make = React.memo(() => {
   React.useEffect(() => {
     switch error {
     | None if !loading => {
-        let (documentsMap, rootDocumentId) = makeDocumentsMap(documents)
+        let (documentMap, rootDocumentId) = makeDocumentsMap(documents)
 
-        dispatch(Action.SetDocumentState({map: documentsMap, rootId: rootDocumentId}))
+        dispatch(Action.SetDocumentState({map: documentMap, rootId: rootDocumentId}))
       }
     | _ => ()
     }

@@ -20,13 +20,13 @@ let make = React.memo((~item: State.item, ~isCurrent) => {
     }
   }
 
-  let style = if isCurrent {
-    ReactDOM.Style.make(~backgroundColor="red", ())
+  let className = if isCurrent {
+    Style.currentItem
   } else {
-    ReactDOM.Style.make()
+    ""
   }
 
-  <span style onMouseDown=handleMouseDown> {item.text->React.string} </span>
+  <span className onMouseDown=handleMouseDown> {item.text->React.string} </span>
 })
 
 React.setDisplayName(make, "Item")

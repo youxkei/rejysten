@@ -1,12 +1,10 @@
 @react.component
-let make = React.memo(() => {
-  let currentRootDocumentItem = Redux.useSelector(State.currentRootDocumentItem)
-
-  switch currentRootDocumentItem {
-  | Some(item) => <section className=Style.document> <Items item /> </section>
-
-  | None => React.null
+let make = React.memo((~document: State.document, ~isCurrent) => {
+  let className = if isCurrent {
+    Style.currentDocument
+  } else {
+    ""
   }
-})
 
-React.setDisplayName(make, "Document")
+  <span className> {document.text->React.string} </span>
+})

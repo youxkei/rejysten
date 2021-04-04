@@ -17,3 +17,11 @@ let document = style(. [
   gridColumnStart(2),
   overflow(auto)
 ])
+
+let currentItem = style(. [
+  backgroundColor(red)
+])
+
+let currentDocument = style(. [
+  backgroundColor(red)
+])

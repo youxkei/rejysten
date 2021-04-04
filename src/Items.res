@@ -1,19 +1,21 @@
 open Belt
 
-let makeChildren = (documentItemMap, item: State.item) => {
-  let children = []
+%%private(
+  let makeChildren = (documentItemMap, item: State.item) => {
+    let children = []
 
-  let currentItem = ref(documentItemMap->HashMap.String.get(item.firstChildId))
+    let currentItem = ref(documentItemMap->HashMap.String.get(item.firstChildId))
 
-  while Option.isSome(currentItem.contents) {
-    let item: State.item = Option.getExn(currentItem.contents)
+    while Option.isSome(currentItem.contents) {
+      let item: State.item = Option.getExn(currentItem.contents)
 
-    let _ = children->Js.Array2.push(item)
-    currentItem := documentItemMap->HashMap.String.get(item.nextId)
+      let _ = children->Js.Array2.push(item)
+      currentItem := documentItemMap->HashMap.String.get(item.nextId)
+    }
+
+    children
   }
-
-  children
-}
+)
 
 module type ItemsInnerType = {
   let make: {"item": State.item} => ReasonReact.reactElement
@@ -27,7 +29,6 @@ module rec ItemsInner: ItemsInnerType = {
     let documentItemMap = Redux.useSelector(State.documentItemMap)
     let currentDocumentItemId = Redux.useSelector(State.currentDocumentItemId)
 
-    let children = makeChildren(documentItemMap, item)
     let isCurrentItem = item.id == currentDocumentItemId
 
     <>
@@ -43,7 +44,7 @@ module rec ItemsInner: ItemsInnerType = {
         }}
       </li>
       <ul>
-        {children
+        {makeChildren(documentItemMap, item)
         ->Array.map((item: State.item) => {
           <ItemsInner key=item.id item />
         })

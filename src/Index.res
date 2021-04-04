@@ -67,7 +67,7 @@ module App = {
         switch user {
         | Some(_) =>
           <main className=Style.app>
-            <Documents /> <Document />
+            <Documents /> <DocumentItems />
           </main>
 
         | None => "logging in"->React.string

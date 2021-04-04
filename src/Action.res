@@ -295,7 +295,7 @@ let normalModeReducer = (state: State.t, action) => {
 
       | None =>
         switch documentsMap->HashMap.String.get(currentDocumentId) {
-        | Some(State.Document({rootItemId})) =>
+        | Some({rootItemId}) =>
           switch itemsMap->HashMap.String.get(rootItemId) {
           | Some({firstChildId}) => {
               ...state,
@@ -356,7 +356,7 @@ let normalModeReducer = (state: State.t, action) => {
 
       | None =>
         switch documentsMap->HashMap.String.get(currentDocumentId) {
-        | Some(State.Document({rootItemId})) =>
+        | Some({rootItemId}) =>
           switch itemsMap->HashMap.String.get(rootItemId) {
           | Some({firstChildId}) => {
               ...state,
@@ -420,7 +420,7 @@ let normalModeReducer = (state: State.t, action) => {
 
       | None =>
         switch documentsMap->HashMap.String.get(currentDocumentId) {
-        | Some(State.Document({rootItemId})) =>
+        | Some({rootItemId}) =>
           switch itemsMap->HashMap.String.get(rootItemId) {
           | Some({firstChildId}) => {
               ...state,
@@ -457,7 +457,7 @@ let normalModeReducer = (state: State.t, action) => {
 
       | None =>
         switch documentsMap->HashMap.String.get(currentDocumentId) {
-        | Some(State.Document({rootItemId})) =>
+        | Some({rootItemId}) =>
           switch itemsMap->HashMap.String.get(rootItemId) {
           | Some({firstChildId}) => {
               ...state,
