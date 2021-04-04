@@ -8,16 +8,24 @@ type item = {
   lastChildId: string,
 }
 
-type document = {
-  id: string,
-  text: string,
-  rootItemId: string,
-  parentId: string,
-  prevId: string,
-  nextId: string,
-  firstChildId: string,
-  lastChildId: string,
-}
+type document =
+  | Document({
+      id: string,
+      text: string,
+      rootItemId: string,
+      parentId: string,
+      prevId: string,
+      nextId: string,
+    })
+  | DocumentDirectory({
+      id: string,
+      text: string,
+      parentId: string,
+      prevId: string,
+      nextId: string,
+      firstChildId: string,
+      lastChildId: string,
+    })
 
 type initialCursorPosition = Start | End
 

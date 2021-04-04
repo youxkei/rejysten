@@ -9,22 +9,33 @@ open Belt
 
     documents->Array.forEach(document => {
       let id = document["id"]
+      let parentId = document["parerntId"]
 
-      let document: State.document = {
-        id: id,
-        text: document["text"],
-        rootItemId: document["rootItemId"],
-        parentId: document["parentId"],
-        prevId: document["prevId"],
-        nextId: document["nextId"],
-        firstChildId: document["firstChildId"],
-        lastChildId: document["lastChildId"],
+      let document = if document["isDirectory"] {
+        State.DocumentDirectory({
+          id: id,
+          text: document["text"],
+          parentId: document["parentId"],
+          prevId: document["prevId"],
+          nextId: document["nextId"],
+          firstChildId: document["firstChildId"],
+          lastChildId: document["lastChildId"],
+        })
+      } else {
+        State.Document({
+          id: id,
+          text: document["text"],
+          rootItemId: document["rootItemId"],
+          parentId: document["parentId"],
+          prevId: document["prevId"],
+          nextId: document["nextId"],
+        })
       }
 
       documentsMap->HashMap.String.set(id, document)
 
-      if document.parentId == "" {
-        rootDocumentId := document.id
+      if parentId == "" {
+        rootDocumentId := id
       }
     })
 
