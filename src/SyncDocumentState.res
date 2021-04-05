@@ -3,7 +3,7 @@ open Belt
 @module("react-firebase-hooks/firestore") external useCollectionData: 'any = "useCollectionData"
 
 %%private(
-  let makeDocumentsMap = documents => {
+  let makeDocumentMap = documents => {
     let documentMap = HashMap.String.make(~hintSize=10)
     let rootDocumentId = ref("")
 
@@ -44,7 +44,7 @@ let make = React.memo(() => {
   React.useEffect(() => {
     switch error {
     | None if !loading => {
-        let (documentMap, rootDocumentId) = makeDocumentsMap(documents)
+        let (documentMap, rootDocumentId) = makeDocumentMap(documents)
 
         dispatch(Action.SetDocumentState({map: documentMap, rootId: rootDocumentId}))
       }

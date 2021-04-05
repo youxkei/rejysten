@@ -1,7 +1,14 @@
 @react.component
-let make = React.memo((~document: State.document, ~isCurrent) => {
-  let className = if isCurrent {
-    Style.currentDocument
+let make = React.memo((~document: State.document) => {
+  let currentDocumentId = Redux.useSelector(State.currentDocumentId)
+  let focus = Redux.useSelector(State.focus)
+
+  let className = if document.id == currentDocumentId {
+    switch focus {
+    | State.Documents => Style.currentFocused
+
+    | _ => Style.currentUnfocused
+    }
   } else {
     ""
   }

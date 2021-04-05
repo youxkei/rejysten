@@ -3,8 +3,8 @@ open Belt
 @module("react-firebase-hooks/firestore") external useCollectionData: 'any = "useCollectionData"
 
 %%private(
-  let makeItemsMap = items => {
-    let itemsMap = HashMap.String.make(~hintSize=10)
+  let makeItemMap = items => {
+    let itemMap = HashMap.String.make(~hintSize=10)
 
     items->Array.forEach(item => {
       let id = item["id"]
@@ -19,10 +19,10 @@ open Belt
         lastChildId: item["lastChildId"],
       }
 
-      itemsMap->HashMap.String.set(id, item)
+      itemMap->HashMap.String.set(id, item)
     })
 
-    itemsMap
+    itemMap
   }
 )
 
@@ -40,7 +40,7 @@ let make = React.memo(() => {
 
   React.useEffect(() => {
     switch error {
-    | None if !loading => dispatch(Action.SetDocumentItemState({map: makeItemsMap(items)}))
+    | None if !loading => dispatch(Action.SetDocumentItemState({map: makeItemMap(items)}))
 
     | _ => ()
     }

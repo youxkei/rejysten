@@ -25,13 +25,10 @@ module type DocumentsInnerType = {
 module rec DocumentsInner: DocumentsInnerType = {
   @react.component
   let make = React.memo((~document: State.document) => {
-    let currentDocumentId = Redux.useSelector(State.currentDocumentId)
     let documentMap = Redux.useSelector(State.documentMap)
 
-    let isCurrent = document.id == currentDocumentId
-
     <>
-      <li> <Document document isCurrent /> </li>
+      <li> <Document document /> </li>
       <ul>
         {makeChildren(documentMap, document)
         ->Array.map((document: State.document) => {

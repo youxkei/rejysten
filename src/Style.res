@@ -18,10 +18,10 @@ let document = style(. [
   overflow(auto)
 ])
 
-let currentItem = style(. [
+let currentFocused = style(. [
   backgroundColor(red)
 ])
 
-let currentDocument = style(. [
-  backgroundColor(red)
+let currentUnfocused = style(. [
+  backgroundColor(grey)
 ])

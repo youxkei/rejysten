@@ -25,6 +25,8 @@ type initialCursorPosition = Start | End
 
 type mode = Normal | Insert({initialCursorPosition: initialCursorPosition})
 
+type focus = Documents | DocumentItems
+
 type documentItemState = {
   currentId: string,
   map: Belt.HashMap.String.t<item>,
@@ -38,12 +40,14 @@ type documentState = {
 
 type t = {
   mode: mode,
+  focus: focus,
   documentItem: documentItemState,
   document: documentState,
 }
 
 let initialState: t = {
   mode: Normal,
+  focus: Documents,
   documentItem: {
     currentId: "",
     map: Belt.HashMap.String.make(~hintSize=0),
@@ -63,6 +67,7 @@ let editing = ({mode}) =>
 
 let state = state => state
 let mode = ({mode}) => mode
+let focus = ({focus}) => focus
 
 let documentMap = ({document: {map}}) => map
 let currentDocumentId = ({document: {currentId}}) => currentId

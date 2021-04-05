@@ -4,7 +4,9 @@
 )
 
 @react.component
-let make = React.memo((~item: State.item, ~isCurrent) => {
+let make = React.memo((~item: State.item) => {
+  let currentDocumentItemId = Redux.useSelector(State.currentDocumentItemId)
+  let focus = Redux.useSelector(State.focus)
   let dispatch = Redux.useDispatch()
 
   let handleMouseDown = event => {
@@ -20,8 +22,12 @@ let make = React.memo((~item: State.item, ~isCurrent) => {
     }
   }
 
-  let className = if isCurrent {
-    Style.currentItem
+  let className = if item.id == currentDocumentItemId {
+    switch focus {
+    | State.DocumentItems => Style.currentFocused
+
+    | _ => Style.currentUnfocused
+    }
   } else {
     ""
   }

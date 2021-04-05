@@ -273,59 +273,51 @@ let normalModeReducer = (state: State.t, action) => {
       }
     }
 
-  | MoveCursorLeft => {
-      let {
-        document: {currentId: currentDocumentId, map: documentsMap},
-        documentItem: {currentId: currentDocumentItemId, map: itemsMap},
-      } = state
+  | MoveCursorLeft =>
+    switch state.focus {
+    | State.Documents => state
 
-      switch itemsMap->HashMap.String.get(currentDocumentItemId) {
-      | Some({parentId}) if parentId != "" =>
-        switch itemsMap->HashMap.String.get(parentId) {
-        | Some({parentId: parentParentId}) if parentParentId != "" => {
-            ...state,
-            documentItem: {
-              ...state.documentItem,
-              currentId: parentId,
-            },
-          }
+    | State.DocumentItems => {
+        let {
+          document: {map: documentMap, currentId: currentDocumentId, rootId: rootDocumentId},
+        } = state
 
-        | _ => state
-        }
-
-      | None =>
-        switch documentsMap->HashMap.String.get(currentDocumentId) {
-        | Some({rootItemId}) =>
-          switch itemsMap->HashMap.String.get(rootItemId) {
-          | Some({firstChildId}) => {
-              ...state,
-              documentItem: {
-                ...state.documentItem,
-                currentId: firstChildId,
-              },
+        if currentDocumentId == "" {
+          switch documentMap->HashMap.String.get(rootDocumentId) {
+          | Some(document) => if document.firstChildId == "" {
+              state
+            } else {
+              {
+                ...state,
+                document: {
+                  ...state.document,
+                  currentId: document.firstChildId,
+                },
+              }
             }
 
-          | _ => state
+          | None => state
           }
-
-        | _ => state
+        } else {
+          {
+            ...state,
+            focus: State.Documents,
+          }
         }
-
-      | _ => state
       }
     }
 
   | MoveCursorDown => {
       let {
-        document: {currentId: currentDocumentId, map: documentsMap},
-        documentItem: {currentId: currentDocumentItemId, map: itemsMap},
+        document: {currentId: currentDocumentId, map: documentMap},
+        documentItem: {currentId: currentDocumentItemId, map: documentItemMap},
       } = state
 
-      switch itemsMap->HashMap.String.get(currentDocumentItemId) {
+      switch documentItemMap->HashMap.String.get(currentDocumentItemId) {
       | Some({parentId, nextId, firstChildId}) =>
         switch (nextId, firstChildId) {
         | ("", "") =>
-          switch itemsMap->HashMap.String.get(parentId) {
+          switch documentItemMap->HashMap.String.get(parentId) {
           | Some({nextId: parentNextId}) if parentNextId != "" => {
               ...state,
               documentItem: {
@@ -355,9 +347,9 @@ let normalModeReducer = (state: State.t, action) => {
         }
 
       | None =>
-        switch documentsMap->HashMap.String.get(currentDocumentId) {
+        switch documentMap->HashMap.String.get(currentDocumentId) {
         | Some({rootItemId}) =>
-          switch itemsMap->HashMap.String.get(rootItemId) {
+          switch documentItemMap->HashMap.String.get(rootItemId) {
           | Some({firstChildId}) => {
               ...state,
               documentItem: {
@@ -376,17 +368,17 @@ let normalModeReducer = (state: State.t, action) => {
 
   | MoveCursorUp => {
       let {
-        document: {currentId: currentDocumentId, map: documentsMap},
-        documentItem: {currentId: currentDocumentItemId, map: itemsMap},
+        document: {currentId: currentDocumentId, map: documentMap},
+        documentItem: {currentId: currentDocumentItemId, map: documentItemMap},
       } = state
 
-      switch itemsMap->HashMap.String.get(currentDocumentItemId) {
+      switch documentItemMap->HashMap.String.get(currentDocumentItemId) {
       | Some({prevId, parentId}) =>
         switch (prevId, parentId) {
         | ("", "") => state
 
         | ("", parentId) =>
-          switch itemsMap->HashMap.String.get(parentId) {
+          switch documentItemMap->HashMap.String.get(parentId) {
           | Some({parentId: parentParentId}) if parentParentId != "" => {
               ...state,
               documentItem: {
@@ -399,7 +391,7 @@ let normalModeReducer = (state: State.t, action) => {
           }
 
         | (prevId, _) =>
-          switch itemsMap->HashMap.String.get(prevId) {
+          switch documentItemMap->HashMap.String.get(prevId) {
           | Some({lastChildId}) if lastChildId != "" => {
               ...state,
               documentItem: {
@@ -419,9 +411,9 @@ let normalModeReducer = (state: State.t, action) => {
         }
 
       | None =>
-        switch documentsMap->HashMap.String.get(currentDocumentId) {
+        switch documentMap->HashMap.String.get(currentDocumentId) {
         | Some({rootItemId}) =>
-          switch itemsMap->HashMap.String.get(rootItemId) {
+          switch documentItemMap->HashMap.String.get(rootItemId) {
           | Some({firstChildId}) => {
               ...state,
               documentItem: {
@@ -438,43 +430,50 @@ let normalModeReducer = (state: State.t, action) => {
       }
     }
 
-  | MoveCursorRight => {
-      let {
-        document: {currentId: currentDocumentId, map: documentsMap},
-        documentItem: {currentId: currentDocumentItemId, map: itemsMap},
-      } = state
+  | MoveCursorRight =>
+    switch state.focus {
+    | State.Documents => {
+        let {
+          document: {map: documentMap, currentId: currentDocumentId},
+          documentItem: {map: documentItemMap, currentId: currentDocumentItemId},
+        } = state
 
-      Js.log(currentDocumentItemId)
+        if currentDocumentItemId == "" {
+          switch documentMap->HashMap.String.get(currentDocumentId) {
+          | Some(document) =>
+            if document.rootItemId == "" {
+              state
+            } else {
+              switch documentItemMap->HashMap.String.get(document.rootItemId) {
+              | Some(item) =>
+                if item.firstChildId == "" {
+                  state
+                } else {
+                  {
+                    ...state,
+                    focus: State.DocumentItems,
+                    documentItem: {
+                      ...state.documentItem,
+                      currentId: item.firstChildId,
+                    },
+                  }
+                }
 
-      switch itemsMap->HashMap.String.get(currentDocumentItemId) {
-      | Some({firstChildId}) if firstChildId != "" => {
-          ...state,
-          documentItem: {
-            ...state.documentItem,
-            currentId: firstChildId,
-          },
-        }
-
-      | None =>
-        switch documentsMap->HashMap.String.get(currentDocumentId) {
-        | Some({rootItemId}) =>
-          switch itemsMap->HashMap.String.get(rootItemId) {
-          | Some({firstChildId}) => {
-              ...state,
-              documentItem: {
-                ...state.documentItem,
-                currentId: firstChildId,
-              },
+              | None => state
+              }
             }
 
-          | _ => state
+          | None => state
           }
-
-        | _ => state
+        } else {
+          {
+            ...state,
+            focus: State.DocumentItems,
+          }
         }
-
-      | _ => state
       }
+
+    | State.DocumentItems => state
     }
   }
 }

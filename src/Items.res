@@ -40,7 +40,7 @@ module rec ItemsInner: ItemsInnerType = {
             <ItemEditor item initialCursorPosition isTrivialDocument />
           }
 
-        | _ => <Item item isCurrent=isCurrentItem />
+        | _ => <Item item />
         }}
       </li>
       <ul>
