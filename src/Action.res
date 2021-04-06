@@ -34,7 +34,7 @@ let firestoreReducerMiddleware = (store, next, action) => {
     switch firestoreAction {
     | SaveItem({text}) => {
         let {
-          documentItem: {currentId: currentDocumentItemId, map: documentItemMap},
+          documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
         }: State.t = Reductive.Store.getState(store)
 
         switch documentItemMap->HashMap.String.get(currentDocumentItemId) {
@@ -50,7 +50,7 @@ let firestoreReducerMiddleware = (store, next, action) => {
 
     | IndentItem({text}) => {
         let {
-          documentItem: {currentId: currentDocumentItemId, map: documentItemMap},
+          documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
         }: State.t = Reductive.Store.getState(store)
 
         switch documentItemMap->HashMap.String.get(currentDocumentItemId) {
@@ -101,7 +101,7 @@ let firestoreReducerMiddleware = (store, next, action) => {
 
     | UnindentItem({text}) => {
         let {
-          documentItem: {currentId: currentDocumentItemId, map: documentItemMap},
+          documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
         }: State.t = Reductive.Store.getState(store)
 
         switch documentItemMap->HashMap.String.get(currentDocumentItemId) {
@@ -158,8 +158,8 @@ let firestoreReducerMiddleware = (store, next, action) => {
 
     | AddItem({text}) => {
         let {
-          documentItem: {currentId: currentDocumentItemId, map: documentItemMap},
-          document: {currentId: currentDocumentId},
+          documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
+          documents: {currentId: currentDocumentId},
         }: State.t = Reductive.Store.getState(store)
 
         switch documentItemMap->HashMap.String.get(currentDocumentItemId) {
@@ -205,7 +205,7 @@ let firestoreReducerMiddleware = (store, next, action) => {
       }
     | DeleteItem => {
         let {
-          documentItem: {currentId: currentDocumentItemId, map: documentItemMap},
+          documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
         }: State.t = Reductive.Store.getState(store)
 
         switch documentItemMap->HashMap.String.get(currentDocumentItemId) {
@@ -260,8 +260,8 @@ let normalModeReducer = (state: State.t, action) => {
     switch itemId {
     | Some(itemId) => {
         ...state,
-        documentItem: {
-          ...state.documentItem,
+        documentItems: {
+          ...state.documentItems,
           currentId: itemId,
         },
         mode: State.Insert({initialCursorPosition: initialCursorPosition}),
@@ -279,19 +279,19 @@ let normalModeReducer = (state: State.t, action) => {
 
     | State.DocumentItems => {
         let {
-          document: {map: documentMap, currentId: currentDocumentId, rootId: rootDocumentId},
+          documents: {map: documentMap, currentId: currentDocumentId, rootId: rootDocumentId},
         } = state
 
         if currentDocumentId == "" {
           switch documentMap->HashMap.String.get(rootDocumentId) {
-          | Some(document) => if document.firstChildId == "" {
+          | Some(documents) => if documents.firstChildId == "" {
               state
             } else {
               {
                 ...state,
-                document: {
-                  ...state.document,
-                  currentId: document.firstChildId,
+                documents: {
+                  ...state.documents,
+                  currentId: documents.firstChildId,
                 },
               }
             }
@@ -309,8 +309,8 @@ let normalModeReducer = (state: State.t, action) => {
 
   | MoveCursorDown => {
       let {
-        document: {currentId: currentDocumentId, map: documentMap},
-        documentItem: {currentId: currentDocumentItemId, map: documentItemMap},
+        documents: {currentId: currentDocumentId, map: documentMap},
+        documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
       } = state
 
       switch documentItemMap->HashMap.String.get(currentDocumentItemId) {
@@ -320,8 +320,8 @@ let normalModeReducer = (state: State.t, action) => {
           switch documentItemMap->HashMap.String.get(parentId) {
           | Some({nextId: parentNextId}) if parentNextId != "" => {
               ...state,
-              documentItem: {
-                ...state.documentItem,
+              documentItems: {
+                ...state.documentItems,
                 currentId: parentNextId,
               },
             }
@@ -331,16 +331,16 @@ let normalModeReducer = (state: State.t, action) => {
 
         | (nextId, "") => {
             ...state,
-            documentItem: {
-              ...state.documentItem,
+            documentItems: {
+              ...state.documentItems,
               currentId: nextId,
             },
           }
 
         | (_, firstChildId) => {
             ...state,
-            documentItem: {
-              ...state.documentItem,
+            documentItems: {
+              ...state.documentItems,
               currentId: firstChildId,
             },
           }
@@ -352,8 +352,8 @@ let normalModeReducer = (state: State.t, action) => {
           switch documentItemMap->HashMap.String.get(rootItemId) {
           | Some({firstChildId}) => {
               ...state,
-              documentItem: {
-                ...state.documentItem,
+              documentItems: {
+                ...state.documentItems,
                 currentId: firstChildId,
               },
             }
@@ -368,8 +368,8 @@ let normalModeReducer = (state: State.t, action) => {
 
   | MoveCursorUp => {
       let {
-        document: {currentId: currentDocumentId, map: documentMap},
-        documentItem: {currentId: currentDocumentItemId, map: documentItemMap},
+        documents: {currentId: currentDocumentId, map: documentMap},
+        documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
       } = state
 
       switch documentItemMap->HashMap.String.get(currentDocumentItemId) {
@@ -381,8 +381,8 @@ let normalModeReducer = (state: State.t, action) => {
           switch documentItemMap->HashMap.String.get(parentId) {
           | Some({parentId: parentParentId}) if parentParentId != "" => {
               ...state,
-              documentItem: {
-                ...state.documentItem,
+              documentItems: {
+                ...state.documentItems,
                 currentId: parentId,
               },
             }
@@ -394,16 +394,16 @@ let normalModeReducer = (state: State.t, action) => {
           switch documentItemMap->HashMap.String.get(prevId) {
           | Some({lastChildId}) if lastChildId != "" => {
               ...state,
-              documentItem: {
-                ...state.documentItem,
+              documentItems: {
+                ...state.documentItems,
                 currentId: lastChildId,
               },
             }
 
           | _ => {
               ...state,
-              documentItem: {
-                ...state.documentItem,
+              documentItems: {
+                ...state.documentItems,
                 currentId: prevId,
               },
             }
@@ -416,8 +416,8 @@ let normalModeReducer = (state: State.t, action) => {
           switch documentItemMap->HashMap.String.get(rootItemId) {
           | Some({firstChildId}) => {
               ...state,
-              documentItem: {
-                ...state.documentItem,
+              documentItems: {
+                ...state.documentItems,
                 currentId: firstChildId,
               },
             }
@@ -434,17 +434,17 @@ let normalModeReducer = (state: State.t, action) => {
     switch state.focus {
     | State.Documents => {
         let {
-          document: {map: documentMap, currentId: currentDocumentId},
-          documentItem: {map: documentItemMap, currentId: currentDocumentItemId},
+          documents: {map: documentMap, currentId: currentDocumentId},
+          documentItems: {map: documentItemMap, currentId: currentDocumentItemId},
         } = state
 
         if currentDocumentItemId == "" {
           switch documentMap->HashMap.String.get(currentDocumentId) {
-          | Some(document) =>
-            if document.rootItemId == "" {
+          | Some(documents) =>
+            if documents.rootItemId == "" {
               state
             } else {
-              switch documentItemMap->HashMap.String.get(document.rootItemId) {
+              switch documentItemMap->HashMap.String.get(documents.rootItemId) {
               | Some(item) =>
                 if item.firstChildId == "" {
                   state
@@ -452,8 +452,8 @@ let normalModeReducer = (state: State.t, action) => {
                   {
                     ...state,
                     focus: State.DocumentItems,
-                    documentItem: {
-                      ...state.documentItem,
+                    documentItems: {
+                      ...state.documentItems,
                       currentId: item.firstChildId,
                     },
                   }
@@ -507,24 +507,24 @@ let reducer = (state: State.t, action) => {
 
   | SetCurrentDocumentItem({id}) => {
       ...state,
-      documentItem: {
-        ...state.documentItem,
+      documentItems: {
+        ...state.documentItems,
         currentId: id,
       },
     }
 
   | SetDocumentItemState({map}) => {
       ...state,
-      documentItem: {
-        ...state.documentItem,
+      documentItems: {
+        ...state.documentItems,
         map: map,
       },
     }
 
   | SetDocumentState({map, rootId}) => {
       ...state,
-      document: {
-        ...state.document,
+      documents: {
+        ...state.documents,
         map: map,
         rootId: rootId,
       },
