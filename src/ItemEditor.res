@@ -21,26 +21,26 @@ let make = React.memo((~item: State.item, ~isTrivialDocument, ~initialCursorPosi
     let shiftKey = event->ReactEvent.Keyboard.shiftKey
 
     switch key {
-    | "Escape" => dispatch(Action.Firestore(Action.SaveItem({text: text})))
+    | "Escape" => dispatch(Action.FirestoreItem(Action.Save({text: text})))
 
     | "Tab" if !shiftKey => {
-        dispatch(Action.Firestore(Action.IndentItem({text: text})))
+        dispatch(Action.FirestoreItem(Action.Indent({text: text})))
         event->preventDefault
       }
 
     | "Tab" if shiftKey => {
-        dispatch(Action.Firestore(Action.UnindentItem({text: text})))
+        dispatch(Action.FirestoreItem(Action.Unindent({text: text})))
         event->preventDefault
       }
 
     | "Enter" if !shiftKey => {
-        dispatch(Action.Firestore(Action.AddItem({text: text})))
+        dispatch(Action.FirestoreItem(Action.Add({text: Some(text), direction: Action.Next})))
         event->preventDefault
       }
 
     | "Backspace"
       if !isTrivialDocument && text == "" && item.firstChildId == "" && item.lastChildId == "" => {
-        dispatch(Action.Firestore(Action.DeleteItem))
+        dispatch(Action.FirestoreItem(Action.Delete))
         event->preventDefault
       }
 
@@ -49,7 +49,7 @@ let make = React.memo((~item: State.item, ~isTrivialDocument, ~initialCursorPosi
   }, [text])
 
   let handleFocusOut = React.useCallback1(_ => {
-    dispatch(Action.Firestore(Action.SaveItem({text: text})))
+    dispatch(Action.FirestoreItem(Action.Save({text: text})))
   }, [text])
 
   let textareaRef = React.useRef(Js.Nullable.null)

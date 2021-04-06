@@ -25,10 +25,10 @@ let loggerMiddleware = (_, next, action) => {
 }
 
 let store = Reductive.Store.create(
-  ~reducer=Action.reducer,
+  ~reducer=Reducer.reducer,
   ~preloadedState=State.initialState,
   ~enhancer=(store, next) =>
-    next->loggerMiddleware(store, _)->Action.firestoreReducerMiddleware(store, _),
+    next->loggerMiddleware(store, _)->FirestoreMiddleware.middleware(store, _),
   (),
 )
 

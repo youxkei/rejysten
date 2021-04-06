@@ -6,6 +6,7 @@ external addEventListener: (Dom.window, string, Dom.keyboardEvent => unit) => un
 external removeEventListener: (Dom.window, string, Dom.keyboardEvent => unit) => unit =
   "removeEventListener"
 @get external code: Dom.keyboardEvent => string = "code"
+@get external shiftKey: Dom.keyboardEvent => bool = "shiftKey"
 @send external preventDefault: Dom.keyboardEvent => unit = "preventDefault"
 
 @react.component
@@ -18,6 +19,7 @@ let make = React.memo(() => {
     | State.Normal => {
         let listener = event => {
           let key = event->code
+          let shiftKey = event->shiftKey
 
           switch key {
           | "KeyH" => {
@@ -53,6 +55,23 @@ let make = React.memo(() => {
               dispatch(
                 Action.NormalMode(
                   Action.ToInsertMode({initialCursorPosition: State.End, itemId: None}),
+                ),
+              )
+              event->preventDefault
+            }
+
+          | "KeyO" => {
+              let direction = if shiftKey {
+                Action.Prev
+              } else {
+                Action.Next
+              }
+
+              dispatch(Action.FirestoreItem(Action.Add({text: None, direction: direction})))
+
+              dispatch(
+                Action.NormalMode(
+                  Action.ToInsertMode({initialCursorPosition: State.Start, itemId: None}),
                 ),
               )
               event->preventDefault
