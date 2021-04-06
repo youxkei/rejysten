@@ -204,14 +204,14 @@ let middleware = (store, action: Action.firestore_item_action) => {
 
           batch->commit
 
-          Reductive.Store.dispatch(store, SetCurrentDocumentItem({id: addingItemId}))
+          Reductive.Store.dispatch(store, SetCurrentDocumentItem({id: addingItemId, initialCursorPosition: State.Start}))
         }
 
       | _ => ()
       }
     }
 
-  | Action.Delete => {
+  | Action.Delete({direction}) => {
       let {
         documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
       }: State.t = Reductive.Store.getState(store)
@@ -244,12 +244,48 @@ let middleware = (store, action: Action.firestore_item_action) => {
 
           batch->commit
 
-          if prevId == "" {
-            if parentId != "" {
-              Reductive.Store.dispatch(store, SetCurrentDocumentItem({id: parentId}))
+          switch direction {
+          | Action.Prev =>
+            if prevId == "" {
+              if parentId != "" {
+                Reductive.Store.dispatch(
+                  store,
+                  Action.SetCurrentDocumentItem({
+                    id: parentId,
+                    initialCursorPosition: State.End,
+                  }),
+                )
+              }
+            } else {
+              Reductive.Store.dispatch(
+                store,
+                Action.SetCurrentDocumentItem({
+                  id: prevId,
+                  initialCursorPosition: State.End,
+                }),
+              )
             }
-          } else {
-            Reductive.Store.dispatch(store, SetCurrentDocumentItem({id: prevId}))
+
+          | Action.Next =>
+            if nextId == "" {
+              switch documentItemMap->HashMap.String.get(parentId) {
+              | Some({nextId: parentNextId}) if parentNextId != "" =>
+                Reductive.Store.dispatch(
+                  store,
+                  SetCurrentDocumentItem({
+                    id: parentNextId,
+                    initialCursorPosition: State.Start,
+                  }),
+                )
+
+              | _ => ()
+              }
+            } else {
+              Reductive.Store.dispatch(
+                store,
+                SetCurrentDocumentItem({id: nextId, initialCursorPosition: State.Start}),
+              )
+            }
           }
         }
 

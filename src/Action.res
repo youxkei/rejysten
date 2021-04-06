@@ -7,7 +7,7 @@ type firestore_item_action =
   | Indent({text: string})
   | Unindent({text: string})
   | Add({text: option<string>, direction: direction})
-  | Delete
+  | Delete({direction: direction})
 
 type firestore_document_action =
   | Save({text: string})
@@ -33,6 +33,6 @@ type t =
   | FirestoreDocument(firestore_document_action)
   | NormalMode(normal_mode_action)
   | InsertMode(insert_mode_action)
-  | SetCurrentDocumentItem({id: string})
+  | SetCurrentDocumentItem({id: string, initialCursorPosition: State.initialCursorPosition})
   | SetDocumentItemState({map: HashMap.String.t<State.item>})
   | SetDocumentState({map: HashMap.String.t<State.document>, rootId: string})

@@ -40,7 +40,13 @@ let make = React.memo((~item: State.item, ~isTrivialDocument, ~initialCursorPosi
 
     | "Backspace"
       if !isTrivialDocument && text == "" && item.firstChildId == "" && item.lastChildId == "" => {
-        dispatch(Action.FirestoreItem(Action.Delete))
+        dispatch(Action.FirestoreItem(Action.Delete({direction: Action.Prev})))
+        event->preventDefault
+      }
+
+    | "Delete"
+      if !isTrivialDocument && text == "" && item.firstChildId == "" && item.lastChildId == "" => {
+        dispatch(Action.FirestoreItem(Action.Delete({direction: Action.Next})))
         event->preventDefault
       }
 

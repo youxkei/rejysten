@@ -229,7 +229,7 @@ let insertModeReducer = (state: State.t, action) => {
   switch action {
   | Action.ToNormalMode => {
       ...state,
-      mode: Normal,
+      mode: State.Normal,
     }
   }
 }
@@ -238,9 +238,9 @@ let reducer = (state: State.t, action) => {
   switch action {
   | Action.FirestoreItem(_)
   | Action.FirestoreDocument(_) => {
-    Js.log(j`$action should be processed by middleware`)
-    state
-  }
+      Js.log(j`$action should be processed by middleware`)
+      state
+    }
 
   | Action.NormalMode(normalModeAction) =>
     switch state.mode {
@@ -256,12 +256,24 @@ let reducer = (state: State.t, action) => {
     | _ => state
     }
 
-  | Action.SetCurrentDocumentItem({id}) => {
-      ...state,
-      documentItems: {
-        ...state.documentItems,
-        currentId: id,
-      },
+  | Action.SetCurrentDocumentItem({id, initialCursorPosition}) =>
+    switch state.mode {
+    | State.Insert(_) => {
+        ...state,
+        mode: State.Insert({initialCursorPosition: initialCursorPosition}),
+        documentItems: {
+          ...state.documentItems,
+          currentId: id,
+        },
+      }
+
+    | _ => {
+        ...state,
+        documentItems: {
+          ...state.documentItems,
+          currentId: id,
+        },
+      }
     }
 
   | Action.SetDocumentItemState({map}) => {
