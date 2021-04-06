@@ -15,7 +15,8 @@
     "reason-react",
     "reductive",
     "bs-css",
-    "bs-css-emotion"
+    "bs-css-emotion",
+    "reductive-dev-tools"
   ],
   "warnings": {
     "error" : "+101"

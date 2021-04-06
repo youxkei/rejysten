@@ -36,3 +36,4 @@ type t =
   | SetCurrentDocumentItem({id: string, initialCursorPosition: State.initialCursorPosition})
   | SetDocumentItemState({map: HashMap.String.t<State.item>})
   | SetDocumentState({map: HashMap.String.t<State.document>, rootId: string})
+  | DevToolUpdate({state: State.t})

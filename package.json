@@ -27,6 +27,9 @@
     "gh-pages": "^3.1.0",
     "html-webpack-plugin": "^5.3.1",
     "react-refresh": "^0.9.0",
+    "reductive-dev-tools": "^3.0.0",
+    "redux": "^4.0.5",
+    "redux-devtools-extension": "^2.13.9",
     "webpack": "^5.24.4",
     "webpack-cli": "^4.5.0",
     "webpack-dev-server": "^3.11.2"

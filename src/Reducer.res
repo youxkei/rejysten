@@ -242,6 +242,8 @@ let reducer = (state: State.t, action) => {
       state
     }
 
+  | Action.DevToolUpdate(_) => state
+
   | Action.NormalMode(normalModeAction) =>
     switch state.mode {
     | Normal => normalModeReducer(state, normalModeAction)

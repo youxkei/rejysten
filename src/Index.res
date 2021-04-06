@@ -24,7 +24,13 @@ let loggerMiddleware = (_, next, action) => {
   next(action)
 }
 
-let store = Reductive.Store.create(
+let enhancer = ReductiveDevTools.Connectors.enhancer(
+  ~options=ReductiveDevTools.Extension.enhancerOptions(~name="rejysten", ()),
+  ~devToolsUpdateActionCreator=state => Action.DevToolUpdate({state: state}),
+  (),
+)
+
+let store = enhancer(Reductive.Store.create)(
   ~reducer=Reducer.reducer,
   ~preloadedState=State.initialState,
   ~enhancer=(store, next) =>
@@ -65,10 +71,7 @@ module App = {
       | Some(error) => error->toString->React.string
       | None =>
         switch user {
-        | Some(_) =>
-          <main className=Style.app>
-            <Documents /> <DocumentItems />
-          </main>
+        | Some(_) => <main className=Style.app> <Documents /> <DocumentItems /> </main>
 
         | None => "logging in"->React.string
         }
