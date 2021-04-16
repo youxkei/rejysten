@@ -23,40 +23,32 @@ let make = React.memo(() => {
 
           switch key {
           | "KeyH" => {
-              dispatch(Action.NormalMode(Action.MoveCursorLeft))
+              dispatch(Action.MoveCursorLeft())
               event->preventDefault
             }
 
           | "KeyJ" => {
-              dispatch(Action.NormalMode(Action.MoveCursorDown))
+              dispatch(Action.MoveCursorDown())
               event->preventDefault
             }
 
           | "KeyK" => {
-              dispatch(Action.NormalMode(Action.MoveCursorUp))
+              dispatch(Action.MoveCursorUp())
               event->preventDefault
             }
 
           | "KeyL" => {
-              dispatch(Action.NormalMode(Action.MoveCursorRight))
+              dispatch(Action.MoveCursorRight())
               event->preventDefault
             }
 
           | "KeyI" => {
-              dispatch(
-                Action.NormalMode(
-                  Action.ToInsertMode({initialCursorPosition: State.Start, itemId: None}),
-                ),
-              )
+              dispatch(Action.ToInsertMode({initialCursorPosition: State.Start, itemId: None}))
               event->preventDefault
             }
 
           | "KeyA" => {
-              dispatch(
-                Action.NormalMode(
-                  Action.ToInsertMode({initialCursorPosition: State.End, itemId: None}),
-                ),
-              )
+              dispatch(Action.ToInsertMode({initialCursorPosition: State.End, itemId: None}))
               event->preventDefault
             }
 
@@ -69,11 +61,7 @@ let make = React.memo(() => {
 
               dispatch(Action.FirestoreItem(Action.Add({text: None, direction: direction})))
 
-              dispatch(
-                Action.NormalMode(
-                  Action.ToInsertMode({initialCursorPosition: State.Start, itemId: None}),
-                ),
-              )
+              dispatch(Action.ToInsertMode({initialCursorPosition: State.Start, itemId: None}))
               event->preventDefault
             }
 

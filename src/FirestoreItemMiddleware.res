@@ -14,7 +14,7 @@ let middleware = (store, action: Action.firestore_item_action) => {
           open Firebase.Firestore
 
           Firebase.firestore()->collection("items")->doc(id)->update({"text": text})
-          Reductive.Store.dispatch(store, Action.InsertMode(ToNormalMode))
+          Reductive.Store.dispatch(store, Action.ToNormalMode())
         }
       | _ => ()
       }

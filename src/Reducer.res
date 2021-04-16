@@ -1,25 +1,14 @@
 open Belt
 
-let normalModeReducer = (state: State.t, action) => {
+let reducer = (state: State.t, action) => {
   switch action {
-  | Action.ToInsertMode({initialCursorPosition, itemId}) =>
-    switch itemId {
-    | Some(itemId) => {
-        ...state,
-        documentItems: {
-          ...state.documentItems,
-          currentId: itemId,
-        },
-        mode: State.Insert({initialCursorPosition: initialCursorPosition}),
-      }
-
-    | None => {
-        ...state,
-        mode: State.Insert({initialCursorPosition: initialCursorPosition}),
-      }
+  | Action.FirestoreItem(_)
+  | Action.FirestoreDocument(_) => {
+      Js.log(j`$action should be processed by middleware`)
+      state
     }
 
-  | Action.MoveCursorLeft =>
+  | Action.MoveCursorLeft() =>
     switch state.focus {
     | State.Documents => state
 
@@ -54,7 +43,7 @@ let normalModeReducer = (state: State.t, action) => {
       }
     }
 
-  | Action.MoveCursorDown => {
+  | Action.MoveCursorDown() => {
       let {
         documents: {currentId: currentDocumentId, map: documentMap},
         documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
@@ -113,7 +102,7 @@ let normalModeReducer = (state: State.t, action) => {
       }
     }
 
-  | Action.MoveCursorUp => {
+  | Action.MoveCursorUp() => {
       let {
         documents: {currentId: currentDocumentId, map: documentMap},
         documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
@@ -177,7 +166,7 @@ let normalModeReducer = (state: State.t, action) => {
       }
     }
 
-  | Action.MoveCursorRight =>
+  | Action.MoveCursorRight() =>
     switch state.focus {
     | State.Documents => {
         let {
@@ -222,40 +211,27 @@ let normalModeReducer = (state: State.t, action) => {
 
     | State.DocumentItems => state
     }
-  }
-}
 
-let insertModeReducer = (state: State.t, action) => {
-  switch action {
-  | Action.ToNormalMode => {
+  | Action.ToInsertMode({initialCursorPosition, itemId}) =>
+    switch itemId {
+    | Some(itemId) => {
+        ...state,
+        documentItems: {
+          ...state.documentItems,
+          currentId: itemId,
+        },
+        mode: State.Insert({initialCursorPosition: initialCursorPosition}),
+      }
+
+    | None => {
+        ...state,
+        mode: State.Insert({initialCursorPosition: initialCursorPosition}),
+      }
+    }
+
+  | Action.ToNormalMode() => {
       ...state,
       mode: State.Normal,
-    }
-  }
-}
-
-let reducer = (state: State.t, action) => {
-  switch action {
-  | Action.FirestoreItem(_)
-  | Action.FirestoreDocument(_) => {
-      Js.log(j`$action should be processed by middleware`)
-      state
-    }
-
-  | Action.DevToolUpdate(_) => state
-
-  | Action.NormalMode(normalModeAction) =>
-    switch state.mode {
-    | Normal => normalModeReducer(state, normalModeAction)
-
-    | _ => state
-    }
-
-  | Action.InsertMode(insertModeAction) =>
-    switch state.mode {
-    | Insert(_) => insertModeReducer(state, insertModeAction)
-
-    | _ => state
     }
 
   | Action.SetCurrentDocumentItem({id, initialCursorPosition}) =>
@@ -294,5 +270,7 @@ let reducer = (state: State.t, action) => {
         rootId: rootId,
       },
     }
+
+  | Action.DevToolUpdate({state}) => state
   }
 }

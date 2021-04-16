@@ -19,21 +19,20 @@ type firestore_document_action =
 
 type cursor_position = Begin | End
 
-type normal_mode_action =
-  | ToInsertMode({initialCursorPosition: State.initialCursorPosition, itemId: option<string>})
-  | MoveCursorLeft
-  | MoveCursorDown
-  | MoveCursorUp
-  | MoveCursorRight
-
-type insert_mode_action = ToNormalMode
-
 type t =
   | FirestoreItem(firestore_item_action)
   | FirestoreDocument(firestore_document_action)
-  | NormalMode(normal_mode_action)
-  | InsertMode(insert_mode_action)
+
+  | MoveCursorLeft(unit)
+  | MoveCursorDown(unit)
+  | MoveCursorUp(unit)
+  | MoveCursorRight(unit)
+
+  | ToInsertMode({initialCursorPosition: State.initialCursorPosition, itemId: option<string>})
+  | ToNormalMode(unit)
+
   | SetCurrentDocumentItem({id: string, initialCursorPosition: State.initialCursorPosition})
   | SetDocumentItemState({map: HashMap.String.t<State.item>})
   | SetDocumentState({map: HashMap.String.t<State.document>, rootId: string})
+
   | DevToolUpdate({state: State.t})
