@@ -45,123 +45,234 @@ let reducer = (state: State.t, action) => {
 
   | Action.MoveCursorDown() => {
       let {
+        focus,
         documents: {currentId: currentDocumentId, map: documentMap},
         documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
       } = state
 
-      switch documentItemMap->HashMap.String.get(currentDocumentItemId) {
-      | Some({parentId, nextId, firstChildId}) =>
-        switch (nextId, firstChildId) {
-        | ("", "") =>
-          switch documentItemMap->HashMap.String.get(parentId) {
-          | Some({nextId: parentNextId}) if parentNextId != "" => {
+      switch focus {
+      | State.Documents =>
+        switch documentMap->HashMap.String.get(currentDocumentId) {
+        | Some({parentId, nextId, firstChildId}) =>
+          switch (nextId, firstChildId) {
+          | ("", "") =>
+            switch documentMap->HashMap.String.get(parentId) {
+            | Some({nextId: parentNextId}) if parentNextId != "" => {
+                ...state,
+                documents: {
+                  ...state.documents,
+                  currentId: parentNextId,
+                },
+                documentItems: {
+                  ...state.documentItems,
+                  currentId: "",
+                },
+              }
+
+            | _ => state
+            }
+
+          | (nextId, "") => {
               ...state,
+              documents: {
+                ...state.documents,
+                currentId: nextId,
+              },
               documentItems: {
                 ...state.documentItems,
-                currentId: parentNextId,
+                currentId: "",
               },
             }
 
-          | _ => state
+          | (_, firstChildId) => {
+              ...state,
+              documents: {
+                ...state.documents,
+                currentId: firstChildId,
+              },
+              documentItems: {
+                ...state.documentItems,
+                currentId: "",
+              },
+            }
           }
 
-        | (nextId, "") => {
-            ...state,
-            documentItems: {
-              ...state.documentItems,
-              currentId: nextId,
-            },
-          }
-
-        | (_, firstChildId) => {
-            ...state,
-            documentItems: {
-              ...state.documentItems,
-              currentId: firstChildId,
-            },
-          }
+        | None => state
         }
 
-      | None =>
-        switch documentMap->HashMap.String.get(currentDocumentId) {
-        | Some({rootItemId}) =>
-          switch documentItemMap->HashMap.String.get(rootItemId) {
-          | Some({firstChildId}) => {
+      | State.DocumentItems =>
+        switch documentItemMap->HashMap.String.get(currentDocumentItemId) {
+        | Some({parentId, nextId, firstChildId}) =>
+          switch (nextId, firstChildId) {
+          | ("", "") =>
+            switch documentItemMap->HashMap.String.get(parentId) {
+            | Some({nextId: parentNextId}) if parentNextId != "" => {
+                ...state,
+                documentItems: {
+                  ...state.documentItems,
+                  currentId: parentNextId,
+                },
+              }
+
+            | _ => state
+            }
+
+          | (nextId, "") => {
+              ...state,
+              documentItems: {
+                ...state.documentItems,
+                currentId: nextId,
+              },
+            }
+
+          | (_, firstChildId) => {
               ...state,
               documentItems: {
                 ...state.documentItems,
                 currentId: firstChildId,
               },
             }
+          }
+
+        | None =>
+          switch documentMap->HashMap.String.get(currentDocumentId) {
+          | Some({rootItemId}) =>
+            switch documentItemMap->HashMap.String.get(rootItemId) {
+            | Some({firstChildId}) => {
+                ...state,
+                documentItems: {
+                  ...state.documentItems,
+                  currentId: firstChildId,
+                },
+              }
+
+            | _ => state
+            }
 
           | _ => state
           }
-
-        | _ => state
         }
       }
     }
 
   | Action.MoveCursorUp() => {
       let {
+        focus,
         documents: {currentId: currentDocumentId, map: documentMap},
         documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
       } = state
 
-      switch documentItemMap->HashMap.String.get(currentDocumentItemId) {
-      | Some({prevId, parentId}) =>
-        switch (prevId, parentId) {
-        | ("", "") => state
+      switch focus {
+      | State.Documents =>
+        switch documentMap->HashMap.String.get(currentDocumentId) {
+        | Some({prevId, parentId}) =>
+          switch (prevId, parentId) {
+          | ("", "") => state
 
-        | ("", parentId) =>
-          switch documentItemMap->HashMap.String.get(parentId) {
-          | Some({parentId: parentParentId}) if parentParentId != "" => {
-              ...state,
-              documentItems: {
-                ...state.documentItems,
-                currentId: parentId,
-              },
+          | ("", parentId) =>
+            switch documentMap->HashMap.String.get(parentId) {
+            | Some({parentId: parentParentId}) if parentParentId != "" => {
+                ...state,
+                documents: {
+                  ...state.documents,
+                  currentId: parentId,
+                },
+                documentItems: {
+                  ...state.documentItems,
+                  currentId: "",
+                },
+              }
+
+            | _ => state
             }
 
-          | _ => state
+          | (prevId, _) =>
+            switch documentMap->HashMap.String.get(prevId) {
+            | Some({lastChildId: prevLastChildId}) if prevLastChildId != "" => {
+                ...state,
+                documents: {
+                  ...state.documents,
+                  currentId: prevLastChildId,
+                },
+                documentItems: {
+                  ...state.documentItems,
+                  currentId: "",
+                },
+              }
+
+            | _ => {
+                ...state,
+                documents: {
+                  ...state.documents,
+                  currentId: prevId,
+                },
+                documentItems: {
+                  ...state.documentItems,
+                  currentId: "",
+                },
+              }
+            }
           }
 
-        | (prevId, _) =>
-          switch documentItemMap->HashMap.String.get(prevId) {
-          | Some({lastChildId}) if lastChildId != "" => {
-              ...state,
-              documentItems: {
-                ...state.documentItems,
-                currentId: lastChildId,
-              },
-            }
-
-          | _ => {
-              ...state,
-              documentItems: {
-                ...state.documentItems,
-                currentId: prevId,
-              },
-            }
-          }
+        | None => state
         }
 
-      | None =>
-        switch documentMap->HashMap.String.get(currentDocumentId) {
-        | Some({rootItemId}) =>
-          switch documentItemMap->HashMap.String.get(rootItemId) {
-          | Some({firstChildId}) => {
-              ...state,
-              documentItems: {
-                ...state.documentItems,
-                currentId: firstChildId,
-              },
+      | State.DocumentItems =>
+        switch documentItemMap->HashMap.String.get(currentDocumentItemId) {
+        | Some({prevId, parentId}) =>
+          switch (prevId, parentId) {
+          | ("", "") => state
+
+          | ("", parentId) =>
+            switch documentItemMap->HashMap.String.get(parentId) {
+            | Some({parentId: parentParentId}) if parentParentId != "" => {
+                ...state,
+                documentItems: {
+                  ...state.documentItems,
+                  currentId: parentId,
+                },
+              }
+
+            | _ => state
+            }
+
+          | (prevId, _) =>
+            switch documentItemMap->HashMap.String.get(prevId) {
+            | Some({lastChildId: prevLastChildId}) if prevLastChildId != "" => {
+                ...state,
+                documentItems: {
+                  ...state.documentItems,
+                  currentId: prevLastChildId,
+                },
+              }
+
+            | _ => {
+                ...state,
+                documentItems: {
+                  ...state.documentItems,
+                  currentId: prevId,
+                },
+              }
+            }
+          }
+
+        | None =>
+          switch documentMap->HashMap.String.get(currentDocumentId) {
+          | Some({rootItemId}) =>
+            switch documentItemMap->HashMap.String.get(rootItemId) {
+            | Some({firstChildId}) => {
+                ...state,
+                documentItems: {
+                  ...state.documentItems,
+                  currentId: firstChildId,
+                },
+              }
+
+            | _ => state
             }
 
           | _ => state
           }
-
-        | _ => state
         }
       }
     }
