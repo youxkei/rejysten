@@ -11,6 +11,16 @@ let normalModeKeyDownHandler = (store, event) => {
   let shiftKey = event->shiftKey
 
   switch code {
+  | "Tab" if !ctrlKey && !shiftKey => {
+      dispatch(Action.FirestoreItem(Action.Indent))
+      event->preventDefault
+    }
+
+  | "Tab" if !ctrlKey && shiftKey => {
+      dispatch(Action.FirestoreItem(Action.Unindent))
+      event->preventDefault
+    }
+
   | "KeyH" if !ctrlKey => {
       dispatch(Action.MoveCursorLeft())
       event->preventDefault
