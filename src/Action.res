@@ -3,19 +3,18 @@ open Belt
 type direction = Prev | Next
 
 type firestore_item_action =
-  | Save({text: string})
-  | Indent({text: string})
-  | Unindent({text: string})
-  | Add({text: option<string>, direction: direction})
+  | Save
+  | Indent
+  | Unindent
+  | Add({direction: direction})
   | Delete({direction: direction})
 
 type firestore_document_action =
-  | Save({text: string})
-  | Indent({text: string})
-  | Unindent({text: string})
-  | Add({text: option<string>})
-  | AddDirectory
-  | Delete
+  | Save
+  | Indent
+  | Unindent
+  | Add({direction: direction})
+  | Delete({direction: direction})
 
 type cursor_position = Begin | End
 
@@ -30,6 +29,9 @@ type t =
 
   | ToInsertMode({initialCursorPosition: State.initialCursorPosition, itemId: option<string>})
   | ToNormalMode(unit)
+
+  | SetDocumentEditingText({text: string})
+  | SetDocumentItemEditingText({text: string})
 
   | SetCurrentDocumentItem({id: string, initialCursorPosition: State.initialCursorPosition})
   | SetDocumentItemState({map: HashMap.String.t<State.item>})

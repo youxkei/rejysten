@@ -5,57 +5,17 @@ open Belt
 @get external value: Js.t<'a> => string = "value"
 
 @react.component
-let make = React.memo((~item: State.item, ~isTrivialDocument, ~initialCursorPosition) => {
-  let (text, setText) = React.useState(_ => item.text)
+let make = React.memo((~item: State.item, ~initialCursorPosition) => {
+  let text = Redux.useSelector(State.editingDocumentItemText)
 
   let dispatch = Redux.useDispatch()
 
   let handleChange = React.useCallback1(event => {
-    setText(_ => event->ReactEvent.Form.target->value)
+    dispatch(Action.SetDocumentItemEditingText({text: event->ReactEvent.Form.target->value}))
   }, [])
 
-  let handleKeyDown = React.useCallback1(event => {
-    let preventDefault = ReactEvent.Synthetic.preventDefault
-
-    let key = event->ReactEvent.Keyboard.key
-    let shiftKey = event->ReactEvent.Keyboard.shiftKey
-
-    switch key {
-    | "Escape" => dispatch(Action.FirestoreItem(Action.Save({text: text})))
-
-    | "Tab" if !shiftKey => {
-        dispatch(Action.FirestoreItem(Action.Indent({text: text})))
-        event->preventDefault
-      }
-
-    | "Tab" if shiftKey => {
-        dispatch(Action.FirestoreItem(Action.Unindent({text: text})))
-        event->preventDefault
-      }
-
-    | "Enter" if !shiftKey => {
-        dispatch(Action.FirestoreItem(Action.Add({text: Some(text), direction: Action.Next})))
-        event->preventDefault
-      }
-
-    | "Backspace"
-      if !isTrivialDocument && text == "" && item.firstChildId == "" && item.lastChildId == "" => {
-        dispatch(Action.FirestoreItem(Action.Delete({direction: Action.Prev})))
-        event->preventDefault
-      }
-
-    | "Delete"
-      if !isTrivialDocument && text == "" && item.firstChildId == "" && item.lastChildId == "" => {
-        dispatch(Action.FirestoreItem(Action.Delete({direction: Action.Next})))
-        event->preventDefault
-      }
-
-    | _ => ()
-    }
-  }, [text])
-
   let handleFocusOut = React.useCallback1(_ => {
-    dispatch(Action.FirestoreItem(Action.Save({text: text})))
+    dispatch(Action.FirestoreItem(Action.Save))
   }, [text])
 
   let textareaRef = React.useRef(Js.Nullable.null)
@@ -83,7 +43,6 @@ let make = React.memo((~item: State.item, ~isTrivialDocument, ~initialCursorPosi
     value=text
     ref={ReactDOM.Ref.domRef(textareaRef)}
     onChange=handleChange
-    onKeyDown=handleKeyDown
     onBlur=handleFocusOut
   />
 })

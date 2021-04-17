@@ -35,9 +35,7 @@ module rec ItemsInner: ItemsInnerType = {
       <li>
         {switch mode {
         | State.Insert({initialCursorPosition}) if isCurrentItem => {
-            let isTrivialDocument = documentItemMap->HashMap.String.size == 2
-
-            <ItemEditor item initialCursorPosition isTrivialDocument />
+            <ItemEditor item initialCursorPosition />
           }
 
         | _ => <Item item />

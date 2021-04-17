@@ -1,5 +1,7 @@
 open Belt
 
+let get = HashMap.String.get
+
 let reducer = (state: State.t, action) => {
   switch action {
   | Action.FirestoreItem(_)
@@ -324,36 +326,73 @@ let reducer = (state: State.t, action) => {
     }
 
   | Action.ToInsertMode({initialCursorPosition, itemId}) =>
-    switch itemId {
-    | Some(itemId) => {
+    let {documentItems: {map: documentItemMap, currentId: currentDocumentItemId}} = state
+
+    let editingItem = switch itemId {
+    | Some(itemId) => documentItemMap->get(itemId)
+
+    | None => documentItemMap->get(currentDocumentItemId)
+    }
+
+    switch editingItem {
+    | Some({id, text}) => {
         ...state,
         documentItems: {
           ...state.documentItems,
-          currentId: itemId,
+          currentId: id,
+          editingText: text,
         },
         mode: State.Insert({initialCursorPosition: initialCursorPosition}),
       }
 
-    | None => {
-        ...state,
-        mode: State.Insert({initialCursorPosition: initialCursorPosition}),
-      }
+    | None => state
     }
 
   | Action.ToNormalMode() => {
       ...state,
       mode: State.Normal,
+      documentItems: {
+        ...state.documentItems,
+        editingText: "",
+      },
+      documents: {
+        ...state.documents,
+        editingText: "",
+      }
+    }
+
+  | Action.SetDocumentEditingText({text}) => {
+      ...state,
+      documents: {
+        ...state.documents,
+        editingText: text,
+      },
+    }
+
+  | Action.SetDocumentItemEditingText({text}) => {
+      ...state,
+      documentItems: {
+        ...state.documentItems,
+        editingText: text,
+      },
     }
 
   | Action.SetCurrentDocumentItem({id, initialCursorPosition}) =>
     switch state.mode {
     | State.Insert(_) => {
+      let {documentItems: {map: documentItemMap}} = state
+
+      switch documentItemMap->get(id) {
+      | Some({text}) =>{
         ...state,
         mode: State.Insert({initialCursorPosition: initialCursorPosition}),
         documentItems: {
           ...state.documentItems,
           currentId: id,
+          editingText: text,
         },
+      }
+      }
       }
 
     | _ => {
