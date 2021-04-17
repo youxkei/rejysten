@@ -34,8 +34,8 @@ module rec ItemsInner: ItemsInnerType = {
     <>
       <li>
         {switch mode {
-        | State.Insert({initialCursorPosition}) if isCurrentItem => {
-            <ItemEditor item initialCursorPosition />
+        | State.Insert(_) if isCurrentItem => {
+            <ItemEditor />
           }
 
         | _ => <Item item />

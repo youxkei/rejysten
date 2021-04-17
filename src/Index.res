@@ -1,3 +1,8 @@
+@val external window: Dom.window = "window"
+@send
+external addEventListener: (Dom.window, string, Dom.keyboardEvent => unit) => unit =
+  "addEventListener"
+
 @module("react-firebase-hooks/auth") external useAuthState: 'any = "useAuthState"
 @send external toString: Js.t<'a> => string = "toString"
 
@@ -19,9 +24,11 @@ let firebaseConfig = {
 
 Firebase.initializeApp(firebaseConfig)
 
-let loggerMiddleware = (_, next, action) => {
+let loggerMiddleware = (store, next, action) => {
+  Js.log(Reductive.Store.getState(store))
   Js.log(action)
   next(action)
+  Js.log(Reductive.Store.getState(store))
 }
 
 let enhancer = ReductiveDevTools.Connectors.enhancer(
@@ -34,9 +41,28 @@ let store = enhancer(Reductive.Store.create)(
   ~reducer=Reducer.reducer,
   ~preloadedState=State.initialState,
   ~enhancer=(store, next) =>
-    next->loggerMiddleware(store, _)->FirestoreMiddleware.middleware(store, _),
+    next->loggerMiddleware(store, _)->FirestoreMiddleware.middleware(store, _)->KeyDownMiddleware.middleware(store, _),
   (),
 )
+
+module KeyDownHandler = {
+  @react.component
+  let make = React.memo(() => {
+    let dispatch = Redux.useDispatch()
+
+    React.useEffect1(() => {
+      let listener = event => dispatch(Action.KeyDown({event: event}))
+
+      window->addEventListener("keydown", listener)
+
+      None
+    }, [])
+
+    React.null
+  })
+
+  React.setDisplayName(make, "KeyDownHandler")
+}
 
 module App = {
   @react.component

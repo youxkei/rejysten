@@ -1,1 +1,1 @@
-let middleware = (store, action) => ()
+let middleware = (_store, _action) => ()

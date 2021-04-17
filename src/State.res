@@ -72,6 +72,23 @@ let editing = ({mode}) =>
 let state = state => state
 let mode = ({mode}) => mode
 let focus = ({focus}) => focus
+let editingText = ({
+  focus,
+  documents: {editingText: editingDocumentText},
+  documentItems: {editingText: editingDocumentItemText},
+}) =>
+  switch focus {
+  | Documents => editingDocumentText
+
+  | DocumentItems => editingDocumentItemText
+  }
+
+let initialCursorPosition = ({mode}) =>
+  switch mode {
+  | Normal => Start
+
+  | Insert({initialCursorPosition}) => initialCursorPosition
+  }
 
 let documentMap = ({documents: {map}}) => map
 let currentDocumentId = ({documents: {currentId}}) => currentId

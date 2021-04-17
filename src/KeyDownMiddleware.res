@@ -1,16 +1,11 @@
-@val external window: Dom.window = "window"
-@send
-external addEventListener: (Dom.window, string, Dom.keyboardEvent => unit) => unit =
-  "addEventListener"
-@send
-external removeEventListener: (Dom.window, string, Dom.keyboardEvent => unit) => unit =
-  "removeEventListener"
 @get external code: Dom.keyboardEvent => string = "code"
 @get external shiftKey: Dom.keyboardEvent => bool = "shiftKey"
 @get external ctrlKey: Dom.keyboardEvent => bool = "ctrlKey"
 @send external preventDefault: Dom.keyboardEvent => unit = "preventDefault"
 
-let normalModeKeyDownHandler = (dispatch, event) => {
+let normalModeKeyDownHandler = (store, event) => {
+  let dispatch = Reductive.Store.dispatch(store)
+
   let code = event->code
   let ctrlKey = event->ctrlKey
   let shiftKey = event->shiftKey
@@ -54,7 +49,6 @@ let normalModeKeyDownHandler = (dispatch, event) => {
       }
 
       dispatch(Action.FirestoreItem(Action.Add({direction: direction})))
-
       dispatch(Action.ToInsertMode({initialCursorPosition: State.Start, itemId: None}))
       event->preventDefault
     }
@@ -63,69 +57,71 @@ let normalModeKeyDownHandler = (dispatch, event) => {
   }
 }
 
-let insertModeKeyDownHandler = (dispatch, event) => {
+let insertModeKeyDownHandler = (store, event) => {
+  let dispatch = Reductive.Store.dispatch(store)
+
   let code = event->code
   let ctrlKey = event->ctrlKey
   let shiftKey = event->shiftKey
 
   switch code {
-  | "Escape" => {
+  | "Escape" if !ctrlKey => {
       dispatch(Action.FirestoreItem(Action.Save))
       dispatch(Action.ToNormalMode())
     }
 
-  | "Tab" if !shiftKey => {
+  | "Tab" if !ctrlKey && !shiftKey => {
       dispatch(Action.FirestoreItem(Action.Indent))
       event->preventDefault
     }
 
-  | "Tab" if shiftKey => {
+  | "Tab" if !ctrlKey && shiftKey => {
       dispatch(Action.FirestoreItem(Action.Unindent))
       event->preventDefault
     }
 
-  | "Enter" if !shiftKey => {
+  | "Enter" if !ctrlKey && !shiftKey => {
       dispatch(Action.FirestoreItem(Action.Add({direction: Action.Next})))
       event->preventDefault
     }
 
-  | "Backspace" => {
+  | "Backspace" if !ctrlKey => {
+      let editingText = State.editingText(Reductive.Store.getState(store))
+
       dispatch(Action.FirestoreItem(Action.Delete({direction: Action.Prev})))
+
+      if editingText == "" {
+
+        event->preventDefault
+      }
     }
 
-  | "Delete" => {
+  | "Delete" if !ctrlKey => {
+      let editingText = State.editingText(Reductive.Store.getState(store))
+
       dispatch(Action.FirestoreItem(Action.Delete({direction: Action.Next})))
+
+      if editingText == "" {
+        event->preventDefault
+      }
     }
 
   | _ => ()
   }
 }
 
-@react.component
-let make = React.memo(() => {
-  let dispatch = Redux.useDispatch()
-  let mode = Redux.useSelector(State.mode)
+let middleware = (store, next, action) => {
+  switch action {
+  | Action.KeyDown({event}) => {
+      let {mode}: State.t = Reductive.Store.getState(store)
 
-  let normalModeKeyDownHandler = React.useMemo1(() => normalModeKeyDownHandler(dispatch), [])
-  let insertModeKeyDownHandler = React.useMemo1(() => insertModeKeyDownHandler(dispatch), [])
+      switch mode {
+      | State.Normal => normalModeKeyDownHandler(store, event)
 
-  React.useEffect1(() => {
-    let listener = switch mode {
-    | State.Normal => normalModeKeyDownHandler
-
-    | State.Insert(_) => insertModeKeyDownHandler
+      | State.Insert(_) => insertModeKeyDownHandler(store, event)
+      }
     }
 
-    window->addEventListener("keydown", listener)
-
-    Some(
-      () => {
-        window->removeEventListener("keydown", listener)
-      },
-    )
-  }, [mode])
-
-  React.null
-})
-
-React.setDisplayName(make, "KeyDownHandler")
+  | _ => next(action)
+  }
+}

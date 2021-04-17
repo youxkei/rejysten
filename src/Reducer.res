@@ -4,6 +4,7 @@ let get = HashMap.String.get
 
 let reducer = (state: State.t, action) => {
   switch action {
+  | Action.KeyDown(_)
   | Action.FirestoreItem(_)
   | Action.FirestoreDocument(_) => {
       Js.log(j`$action should be processed by middleware`)
@@ -328,24 +329,26 @@ let reducer = (state: State.t, action) => {
   | Action.ToInsertMode({initialCursorPosition, itemId}) =>
     let {documentItems: {map: documentItemMap, currentId: currentDocumentItemId}} = state
 
-    let editingItem = switch itemId {
-    | Some(itemId) => documentItemMap->get(itemId)
+    let itemId = switch itemId {
+    | Some(itemId) => itemId
 
-    | None => documentItemMap->get(currentDocumentItemId)
+    | None => currentDocumentItemId
     }
 
-    switch editingItem {
-    | Some({id, text}) => {
-        ...state,
-        documentItems: {
-          ...state.documentItems,
-          currentId: id,
-          editingText: text,
-        },
-        mode: State.Insert({initialCursorPosition: initialCursorPosition}),
-      }
+    let editingText = switch documentItemMap->get(itemId) {
+    | Some({text}) => text
 
-    | None => state
+    | None => ""
+    }
+
+    {
+      ...state,
+      documentItems: {
+        ...state.documentItems,
+        currentId: itemId,
+        editingText: editingText,
+      },
+      mode: State.Insert({initialCursorPosition: initialCursorPosition}),
     }
 
   | Action.ToNormalMode() => {
@@ -358,7 +361,7 @@ let reducer = (state: State.t, action) => {
       documents: {
         ...state.documents,
         editingText: "",
-      }
+      },
     }
 
   | Action.SetDocumentEditingText({text}) => {
@@ -380,19 +383,23 @@ let reducer = (state: State.t, action) => {
   | Action.SetCurrentDocumentItem({id, initialCursorPosition}) =>
     switch state.mode {
     | State.Insert(_) => {
-      let {documentItems: {map: documentItemMap}} = state
+        let {documentItems: {map: documentItemMap}} = state
 
-      switch documentItemMap->get(id) {
-      | Some({text}) =>{
-        ...state,
-        mode: State.Insert({initialCursorPosition: initialCursorPosition}),
-        documentItems: {
-          ...state.documentItems,
-          currentId: id,
-          editingText: text,
-        },
-      }
-      }
+        let editingText = switch documentItemMap->get(id) {
+        | Some({text}) => text
+
+        | None => ""
+        }
+
+        {
+            ...state,
+            mode: State.Insert({initialCursorPosition: initialCursorPosition}),
+            documentItems: {
+              ...state.documentItems,
+              currentId: id,
+              editingText,
+            },
+          }
       }
 
     | _ => {

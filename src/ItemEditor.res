@@ -5,8 +5,9 @@ open Belt
 @get external value: Js.t<'a> => string = "value"
 
 @react.component
-let make = React.memo((~item: State.item, ~initialCursorPosition) => {
+let make = React.memo(() => {
   let text = Redux.useSelector(State.editingDocumentItemText)
+  let initialCursorPosition = Redux.useSelector(State.initialCursorPosition)
 
   let dispatch = Redux.useDispatch()
 
@@ -25,6 +26,8 @@ let make = React.memo((~item: State.item, ~initialCursorPosition) => {
     ->Js.Nullable.toOption
     ->Option.forEach(textarea => {
       textarea->focus
+
+      Js.log(initialCursorPosition)
 
       switch (initialCursorPosition: State.initialCursorPosition) {
       | Start => textarea->setSelectionRange(0, 0)

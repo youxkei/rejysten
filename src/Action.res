@@ -19,6 +19,7 @@ type firestore_document_action =
 type cursor_position = Begin | End
 
 type t =
+  | KeyDown({event: Dom.keyboardEvent})
   | FirestoreItem(firestore_item_action)
   | FirestoreDocument(firestore_document_action)
 
