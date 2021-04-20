@@ -104,37 +104,18 @@ let reducer = (state: State.t, action) => {
         }
 
       | State.DocumentItems =>
-        switch documentItemMap->HashMap.String.get(currentDocumentItemId) {
-        | Some({parentId, nextId, firstChildId}) =>
-          switch (nextId, firstChildId) {
-          | ("", "") =>
-            switch documentItemMap->HashMap.String.get(parentId) {
-            | Some({nextId: parentNextId}) if parentNextId != "" => {
-                ...state,
-                documentItems: {
-                  ...state.documentItems,
-                  currentId: parentNextId,
-                },
-              }
-
-            | _ => state
-            }
-
-          | (nextId, "") => {
+        switch documentItemMap->State.Item.get(currentDocumentItemId) {
+        | Some(item) =>
+          switch item->State.Item.below(documentItemMap) {
+          | Some({id: belowItemId}) => {
               ...state,
               documentItems: {
                 ...state.documentItems,
-                currentId: nextId,
+                currentId: belowItemId,
               },
             }
 
-          | (_, firstChildId) => {
-              ...state,
-              documentItems: {
-                ...state.documentItems,
-                currentId: firstChildId,
-              },
-            }
+          | None => state
           }
 
         | None =>
@@ -392,14 +373,14 @@ let reducer = (state: State.t, action) => {
         }
 
         {
-            ...state,
-            mode: State.Insert({initialCursorPosition: initialCursorPosition}),
-            documentItems: {
-              ...state.documentItems,
-              currentId: id,
-              editingText,
-            },
-          }
+          ...state,
+          mode: State.Insert({initialCursorPosition: initialCursorPosition}),
+          documentItems: {
+            ...state.documentItems,
+            currentId: id,
+            editingText: editingText,
+          },
+        }
       }
 
     | _ => {

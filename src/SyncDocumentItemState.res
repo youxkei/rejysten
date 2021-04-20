@@ -9,7 +9,7 @@ open Belt
     items->Array.forEach(item => {
       let id = item["id"]
 
-      let item: State.item = {
+      let item: State.Item.t = {
         id: id,
         text: item["text"],
         nextId: item["nextId"],

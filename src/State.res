@@ -1,13 +1,62 @@
 open Belt
 
-type item = {
-  id: string,
-  text: string,
-  parentId: string,
-  prevId: string,
-  nextId: string,
-  firstChildId: string,
-  lastChildId: string,
+module Item = {
+  type t = {
+    id: string,
+    text: string,
+    parentId: string,
+    prevId: string,
+    nextId: string,
+    firstChildId: string,
+    lastChildId: string,
+  }
+
+  exception ItemNotFound(string)
+
+  let get = (map, id) => {
+    if id == "" {
+      None
+    } else {
+      switch map->HashMap.String.get(id) {
+      | Some(item) => Some(item)
+
+      | None => raise(ItemNotFound(id))
+      }
+    }
+  }
+
+  let above = ({prevId, parentId}, map) => {
+    switch map->get(prevId) {
+    | Some(item) => Some(item)
+
+    | None => map->get(parentId)
+    }
+  }
+
+  let below = (item, map) => {
+    let {nextId, firstChildId} = item
+
+    switch map->get(firstChildId) {
+    | Some(item) => Some(item)
+
+    | None =>
+      switch map->get(nextId) {
+      | Some(item) => Some(item)
+
+      | None => {
+          let rec searchNext = ({nextId, parentId}) => {
+            switch map->get(nextId) {
+            | Some(item) => Some(item)
+
+            | None => map->get(parentId)->Option.flatMap(item => searchNext(item))
+            }
+          }
+
+          searchNext(item)
+        }
+      }
+    }
+  }
 }
 
 type document = {
@@ -29,7 +78,7 @@ type focus = Documents | DocumentItems
 
 type documentItemsState = {
   currentId: string,
-  map: Belt.HashMap.String.t<item>,
+  map: Belt.HashMap.String.t<Item.t>,
   editingText: string,
 }
 

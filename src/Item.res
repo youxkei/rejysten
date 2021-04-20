@@ -4,7 +4,7 @@
 )
 
 @react.component
-let make = React.memo((~item: State.item) => {
+let make = React.memo((~item: State.Item.t) => {
   let currentDocumentItemId = Redux.useSelector(State.currentDocumentItemId)
   let focus = Redux.useSelector(State.focus)
   let dispatch = Redux.useDispatch()
