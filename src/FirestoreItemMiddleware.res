@@ -230,92 +230,40 @@ let middleware = (store, action: Action.firestore_item_action) => {
       }
     }
 
-  | Action.Delete({direction}) => {
-      let {mode, documentItems: {currentId, map, editingText}}: State.t = Reductive.Store.getState(
+  | Action.Delete => {
+      let {documentItems: {currentId, map}}: State.t = Reductive.Store.getState(
         store,
       )
 
       switch map->get(currentId) {
-      | Some({id, parentId, prevId, nextId}) => {
-          let delete = switch mode {
-          | State.Insert(_) if editingText == "" && map->size > 2 => true
+      | Some(item) => {
+          open Firebase.Firestore
 
-          | State.Normal if map->size > 2 => true
+          let {id, parentId, prevId, nextId} = item
 
-          | _ => false
+          let db = Firebase.firestore()
+          let batch = db->batch
+          let items = db->collection("items")
+
+          batch->addDelete(items->doc(id))
+
+          if prevId == "" {
+            if parentId != "" {
+              batch->addUpdate(items->doc(parentId), {"firstChildId": nextId})
+            }
+          } else {
+            batch->addUpdate(items->doc(prevId), {"nextId": nextId})
           }
 
-          if delete {
-            open Firebase.Firestore
-
-            let db = Firebase.firestore()
-            let batch = db->batch
-            let items = db->collection("items")
-
-            batch->addDelete(items->doc(id))
-
-            if prevId == "" {
-              if parentId != "" {
-                batch->addUpdate(items->doc(parentId), {"firstChildId": nextId})
-              }
-            } else {
-              batch->addUpdate(items->doc(prevId), {"nextId": nextId})
+          if nextId == "" {
+            if parentId != "" {
+              batch->addUpdate(items->doc(parentId), {"lastChildId": prevId})
             }
-
-            if nextId == "" {
-              if parentId != "" {
-                batch->addUpdate(items->doc(parentId), {"lastChildId": prevId})
-              }
-            } else {
-              batch->addUpdate(items->doc(nextId), {"prevId": prevId})
-            }
-
-            batch->commit
-
-            switch direction {
-            | Action.Prev =>
-              if prevId == "" {
-                if parentId != "" {
-                  Reductive.Store.dispatch(
-                    store,
-                    Action.SetCurrentDocumentItem({
-                      id: parentId,
-                      initialCursorPosition: State.End,
-                    }),
-                  )
-                }
-              } else {
-                Reductive.Store.dispatch(
-                  store,
-                  Action.SetCurrentDocumentItem({
-                    id: prevId,
-                    initialCursorPosition: State.End,
-                  }),
-                )
-              }
-
-            | Action.Next =>
-              if nextId == "" {
-                switch map->get(parentId) {
-                | Some({nextId: parentNextId}) if parentNextId != "" =>
-                  Reductive.Store.dispatch(
-                    store,
-                    SetCurrentDocumentItem({
-                      id: parentNextId,
-                      initialCursorPosition: State.Start,
-                    }),
-                  )
-
-                | _ => ()
-                }
-              } else {
-                Reductive.Store.dispatch(
-                  store,
-                  SetCurrentDocumentItem({id: nextId, initialCursorPosition: State.Start}),
-                )
-              }
-            }
+          } else {
+            batch->addUpdate(items->doc(nextId), {"prevId": prevId})
           }
+
+          batch->commit
         }
 
       | _ => ()

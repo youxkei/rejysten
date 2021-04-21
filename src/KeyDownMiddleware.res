@@ -1,6 +1,3 @@
-open Belt
-let get = HashMap.String.get
-
 @get external code: Dom.keyboardEvent => string = "code"
 @get external shiftKey: Dom.keyboardEvent => bool = "shiftKey"
 @get external ctrlKey: Dom.keyboardEvent => bool = "ctrlKey"
@@ -105,35 +102,25 @@ let get = HashMap.String.get
       | State.DocumentItems => {
           let {documentItems: {currentId, map, editingText}} = state
 
-          let removeItem = if editingText == "" {
-            switch map->get(currentId) {
-            | Some({firstChildId}) if firstChildId != "" => false
+          switch map->State.Item.get(currentId) {
+          | Some(currentItem) if editingText == "" =>
+            switch currentItem->State.Item.above(map) {
+            | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
+                dispatch(Action.FirestoreItem(Action.Delete))
+                dispatch(
+                  Action.SetCurrentDocumentItem({
+                    id: aboveId,
+                    initialCursorPosition: State.End,
+                  }),
+                )
 
-            | Some({parentId, prevId}) =>
-              if prevId == "" {
-                switch map->get(parentId) {
-                | Some({parentId: parentParentId}) =>
-                  if parentParentId == "" {
-                    false
-                  } else {
-                    true
-                  }
-
-                | None => false
-                }
-              } else {
-                true
+                event->preventDefault
               }
 
-            | _ => false
+            | _ => ()
             }
-          } else {
-            false
-          }
 
-          if removeItem {
-            dispatch(Action.FirestoreItem(Action.Delete({direction: Action.Prev})))
-            event->preventDefault
+          | _ => ()
           }
         }
 
@@ -145,31 +132,25 @@ let get = HashMap.String.get
       | State.DocumentItems => {
           let {documentItems: {currentId, map, editingText}} = state
 
-          let removeItem = if editingText == "" {
-            switch map->get(currentId) {
-            | Some({firstChildId}) if firstChildId != "" => false
+          switch map->State.Item.get(currentId) {
+          | Some(currentItem) if editingText == "" =>
+            switch currentItem->State.Item.below(map) {
+            | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" => {
+                dispatch(Action.FirestoreItem(Action.Delete))
+                dispatch(
+                  Action.SetCurrentDocumentItem({
+                    id: belowId,
+                    initialCursorPosition: State.Start,
+                  }),
+                )
 
-            | Some({parentId, nextId}) =>
-              if nextId == "" {
-                switch map->get(parentId) {
-                | Some({nextId: parentNextId}) if parentNextId != "" => true
-
-                | _ => false
-
-                }
-              } else {
-                true
+                event->preventDefault
               }
 
-            | _ => false
+            | _ => ()
             }
-          } else {
-            false
-          }
 
-          if removeItem {
-            dispatch(Action.FirestoreItem(Action.Delete({direction: Action.Next})))
-            event->preventDefault
+          | _ => ()
           }
         }
 

@@ -7,7 +7,7 @@ type firestore_item_action =
   | Indent
   | Unindent
   | Add({direction: direction})
-  | Delete({direction: direction})
+  | Delete
 
 type firestore_document_action =
   | Save
