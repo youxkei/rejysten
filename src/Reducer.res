@@ -107,15 +107,15 @@ let reducer = (state: State.t, action) => {
         switch documentItemMap->State.Item.get(currentDocumentItemId) {
         | Some(item) =>
           switch item->State.Item.below(documentItemMap) {
-          | Some({id: belowItemId}) => {
+          | Some({id: belowId}) => {
               ...state,
               documentItems: {
                 ...state.documentItems,
-                currentId: belowItemId,
+                currentId: belowId,
               },
             }
 
-          | None => state
+          | _ => state
           }
 
         | None =>
@@ -202,42 +202,18 @@ let reducer = (state: State.t, action) => {
         }
 
       | State.DocumentItems =>
-        switch documentItemMap->HashMap.String.get(currentDocumentItemId) {
-        | Some({prevId, parentId}) =>
-          switch (prevId, parentId) {
-          | ("", "") => state
-
-          | ("", parentId) =>
-            switch documentItemMap->HashMap.String.get(parentId) {
-            | Some({parentId: parentParentId}) if parentParentId != "" => {
-                ...state,
-                documentItems: {
-                  ...state.documentItems,
-                  currentId: parentId,
-                },
-              }
-
-            | _ => state
+        switch documentItemMap->State.Item.get(currentDocumentItemId) {
+        | Some(item) =>
+          switch item->State.Item.above(documentItemMap) {
+          | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
+              ...state,
+              documentItems: {
+                ...state.documentItems,
+                currentId: aboveId,
+              },
             }
 
-          | (prevId, _) =>
-            switch documentItemMap->HashMap.String.get(prevId) {
-            | Some({lastChildId: prevLastChildId}) if prevLastChildId != "" => {
-                ...state,
-                documentItems: {
-                  ...state.documentItems,
-                  currentId: prevLastChildId,
-                },
-              }
-
-            | _ => {
-                ...state,
-                documentItems: {
-                  ...state.documentItems,
-                  currentId: prevId,
-                },
-              }
-            }
+          | _ => state
           }
 
         | None =>
@@ -252,10 +228,10 @@ let reducer = (state: State.t, action) => {
                 },
               }
 
-            | _ => state
+            | None => state
             }
 
-          | _ => state
+          | None => state
           }
         }
       }

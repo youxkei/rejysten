@@ -27,7 +27,17 @@ module Item = {
 
   let above = ({prevId, parentId}, map) => {
     switch map->get(prevId) {
-    | Some(item) => Some(item)
+    | Some(item) => {
+        let rec searchPrev = item => {
+          switch map->get(item.lastChildId) {
+          | Some(item) => searchPrev(item)
+
+          | None => item
+          }
+        }
+
+        Some(searchPrev(item))
+      }
 
     | None => map->get(parentId)
     }
