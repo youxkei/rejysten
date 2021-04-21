@@ -230,7 +230,7 @@ let middleware = (store, action: Action.firestore_item_action) => {
       }
     }
 
-  | Action.Delete => {
+  | Action.Delete({nextCurrentId, initialCursorPosition}) => {
       let {documentItems: {currentId, map}}: State.t = Reductive.Store.getState(
         store,
       )
@@ -262,6 +262,14 @@ let middleware = (store, action: Action.firestore_item_action) => {
           } else {
             batch->addUpdate(items->doc(nextId), {"prevId": prevId})
           }
+
+          Reductive.Store.dispatch(
+            store,
+            Action.SetCurrentDocumentItem({
+              id: nextCurrentId,
+              initialCursorPosition: initialCursorPosition,
+            }),
+          )
 
           batch->commit
         }

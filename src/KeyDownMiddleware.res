@@ -61,6 +61,7 @@
 
         dispatch(Action.FirestoreItem(Action.Add({direction: direction})))
         dispatch(Action.ToInsertMode({initialCursorPosition: State.Start, itemId: None}))
+
         event->preventDefault
       }
 
@@ -106,13 +107,7 @@
           | Some(currentItem) if editingText == "" =>
             switch currentItem->State.Item.above(map) {
             | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
-                dispatch(Action.FirestoreItem(Action.Delete))
-                dispatch(
-                  Action.SetCurrentDocumentItem({
-                    id: aboveId,
-                    initialCursorPosition: State.End,
-                  }),
-                )
+                dispatch(Action.FirestoreItem(Action.Delete({nextCurrentId: aboveId, initialCursorPosition: State.End})))
 
                 event->preventDefault
               }
@@ -136,13 +131,7 @@
           | Some(currentItem) if editingText == "" =>
             switch currentItem->State.Item.below(map) {
             | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" => {
-                dispatch(Action.FirestoreItem(Action.Delete))
-                dispatch(
-                  Action.SetCurrentDocumentItem({
-                    id: belowId,
-                    initialCursorPosition: State.Start,
-                  }),
-                )
+                dispatch(Action.FirestoreItem(Action.Delete({nextCurrentId: belowId, initialCursorPosition: State.Start})))
 
                 event->preventDefault
               }

@@ -7,7 +7,7 @@ type firestore_item_action =
   | Indent
   | Unindent
   | Add({direction: direction})
-  | Delete
+  | Delete({nextCurrentId: string, initialCursorPosition: State.initialCursorPosition})
 
 type firestore_document_action =
   | Save
@@ -16,7 +16,6 @@ type firestore_document_action =
   | Add({direction: direction})
   | Delete({direction: direction})
 
-type cursor_position = Begin | End
 
 type t =
   | KeyDown({event: Dom.keyboardEvent})
