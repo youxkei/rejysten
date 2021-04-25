@@ -2,13 +2,14 @@ open Belt
 
 let get = HashMap.String.get
 
+exception ActionShouldBeProcessedByMiddleware(Action.t)
+
 let reducer = (state: State.t, action) => {
   switch action {
   | Action.KeyDown(_)
   | Action.FirestoreItem(_)
   | Action.FirestoreDocument(_) => {
-      Js.log(j`$action should be processed by middleware`)
-      state
+      raise(ActionShouldBeProcessedByMiddleware(action))
     }
 
   | Action.MoveCursorLeft() =>
