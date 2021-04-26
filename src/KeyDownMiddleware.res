@@ -4,7 +4,7 @@
 @send external preventDefault: Dom.keyboardEvent => unit = "preventDefault"
 
 %%private(
-  let normalModeKeyDownHandler = (store, event) => {
+  let documentItemsNormalKeyDownHandler = (store, event) => {
     let dispatch = Reductive.Store.dispatch(store)
 
     let code = event->code
@@ -69,7 +69,7 @@
     }
   }
 
-  let insertModeKeyDownHandler = (store, event) => {
+  let documentItemsInsertModeKeyDownHandler = (store, event) => {
     let dispatch = Reductive.Store.dispatch(store)
     let state: State.t = Reductive.Store.getState(store)
 
@@ -154,12 +154,14 @@
 let middleware = (store, next, action) => {
   switch action {
   | Action.KeyDown({event}) => {
-      let {mode}: State.t = Reductive.Store.getState(store)
+      let {focus, mode}: State.t = Reductive.Store.getState(store)
 
-      switch mode {
-      | State.Normal => normalModeKeyDownHandler(store, event)
+      switch (focus, mode) {
+      | (State.DocumentItems, State.Normal) => documentItemsNormalKeyDownHandler(store, event)
+      | (State.DocumentItems, State.Insert(_)) => documentItemsNormalKeyDownHandler(store, event)
 
-      | State.Insert(_) => insertModeKeyDownHandler(store, event)
+      | (State.Documents, State.Normal) => ()
+      | (State.Documents, State.Insert(_)) => ()
       }
     }
 
