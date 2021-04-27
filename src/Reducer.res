@@ -4,296 +4,95 @@ let get = HashMap.String.get
 
 exception ActionShouldBeProcessedByMiddleware(Action.t)
 
-let reducer = (state: State.t, action) => {
+let documentItemsReducer = (state: State.t, action) => {
   switch action {
-  | Action.KeyDown(_)
-  | Action.FirestoreItem(_)
-  | Action.FirestoreDocument(_) => {
-      raise(ActionShouldBeProcessedByMiddleware(action))
-    }
+  | Action.ToAboveItem() =>
+    let {
+      documents: {currentId: currentDocumentId, map: documentMap},
+      documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
+    } = state
 
-  | Action.MoveCursorLeft() =>
-    switch state.focus {
-    | State.Documents => state
-
-    | State.DocumentItems => {
-        let {
-          documents: {map: documentMap, currentId: currentDocumentId, rootId: rootDocumentId},
-        } = state
-
-        if currentDocumentId == "" {
-          switch documentMap->HashMap.String.get(rootDocumentId) {
-          | Some(documents) =>
-            if documents.firstChildId == "" {
-              state
-            } else {
-              {
-                ...state,
-                documents: {
-                  ...state.documents,
-                  currentId: documents.firstChildId,
-                },
-              }
-            }
-
-          | None => state
-          }
-        } else {
-          {
-            ...state,
-            focus: State.Documents,
-          }
+    switch documentItemMap->State.Item.get(currentDocumentItemId) {
+    | Some(item) =>
+      switch item->State.Item.above(documentItemMap) {
+      | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
+          ...state,
+          documentItems: {
+            ...state.documentItems,
+            currentId: aboveId,
+          },
         }
+
+      | _ => state
       }
-    }
 
-  | Action.MoveCursorDown() => {
-      let {
-        focus,
-        documents: {currentId: currentDocumentId, map: documentMap},
-        documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
-      } = state
-
-      switch focus {
-      | State.Documents =>
-        switch documentMap->HashMap.String.get(currentDocumentId) {
-        | Some({parentId, nextId, firstChildId}) =>
-          switch (nextId, firstChildId) {
-          | ("", "") =>
-            switch documentMap->HashMap.String.get(parentId) {
-            | Some({nextId: parentNextId}) if parentNextId != "" => {
-                ...state,
-                documents: {
-                  ...state.documents,
-                  currentId: parentNextId,
-                },
-                documentItems: {
-                  ...state.documentItems,
-                  currentId: "",
-                },
-              }
-
-            | _ => state
-            }
-
-          | (nextId, "") => {
-              ...state,
-              documents: {
-                ...state.documents,
-                currentId: nextId,
-              },
-              documentItems: {
-                ...state.documentItems,
-                currentId: "",
-              },
-            }
-
-          | (_, firstChildId) => {
-              ...state,
-              documents: {
-                ...state.documents,
-                currentId: firstChildId,
-              },
-              documentItems: {
-                ...state.documentItems,
-                currentId: "",
-              },
-            }
+    | None =>
+      switch documentMap->HashMap.String.get(currentDocumentId) {
+      | Some({rootItemId}) =>
+        switch documentItemMap->State.Item.get(rootItemId) {
+        | Some({firstChildId}) => {
+            ...state,
+            documentItems: {
+              ...state.documentItems,
+              currentId: firstChildId,
+            },
           }
 
         | None => state
         }
 
-      | State.DocumentItems =>
-        switch documentItemMap->State.Item.get(currentDocumentItemId) {
-        | Some(item) =>
-          switch item->State.Item.below(documentItemMap) {
-          | Some({id: belowId}) => {
-              ...state,
-              documentItems: {
-                ...state.documentItems,
-                currentId: belowId,
-              },
-            }
-
-          | _ => state
-          }
-
-        | None =>
-          switch documentMap->HashMap.String.get(currentDocumentId) {
-          | Some({rootItemId}) =>
-            switch documentItemMap->HashMap.String.get(rootItemId) {
-            | Some({firstChildId}) => {
-                ...state,
-                documentItems: {
-                  ...state.documentItems,
-                  currentId: firstChildId,
-                },
-              }
-
-            | _ => state
-            }
-
-          | _ => state
-          }
-        }
+      | None => state
       }
     }
 
-  | Action.MoveCursorUp() => {
-      let {
-        focus,
-        documents: {currentId: currentDocumentId, map: documentMap},
-        documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
-      } = state
+  | Action.ToBelowItem() =>
+    let {
+      documents: {currentId: currentDocumentId, map: documentMap},
+      documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
+    } = state
 
-      switch focus {
-      | State.Documents =>
-        switch documentMap->HashMap.String.get(currentDocumentId) {
-        | Some({prevId, parentId}) =>
-          switch (prevId, parentId) {
-          | ("", "") => state
-
-          | ("", parentId) =>
-            switch documentMap->HashMap.String.get(parentId) {
-            | Some({parentId: parentParentId}) if parentParentId != "" => {
-                ...state,
-                documents: {
-                  ...state.documents,
-                  currentId: parentId,
-                },
-                documentItems: {
-                  ...state.documentItems,
-                  currentId: "",
-                },
-              }
-
-            | _ => state
-            }
-
-          | (prevId, _) =>
-            switch documentMap->HashMap.String.get(prevId) {
-            | Some({lastChildId: prevLastChildId}) if prevLastChildId != "" => {
-                ...state,
-                documents: {
-                  ...state.documents,
-                  currentId: prevLastChildId,
-                },
-                documentItems: {
-                  ...state.documentItems,
-                  currentId: "",
-                },
-              }
-
-            | _ => {
-                ...state,
-                documents: {
-                  ...state.documents,
-                  currentId: prevId,
-                },
-                documentItems: {
-                  ...state.documentItems,
-                  currentId: "",
-                },
-              }
-            }
-          }
-
-        | None => state
+    switch documentItemMap->State.Item.get(currentDocumentItemId) {
+    | Some(item) =>
+      switch item->State.Item.below(documentItemMap) {
+      | Some({id: belowId}) => {
+          ...state,
+          documentItems: {
+            ...state.documentItems,
+            currentId: belowId,
+          },
         }
 
-      | State.DocumentItems =>
-        switch documentItemMap->State.Item.get(currentDocumentItemId) {
-        | Some(item) =>
-          switch item->State.Item.above(documentItemMap) {
-          | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
-              ...state,
-              documentItems: {
-                ...state.documentItems,
-                currentId: aboveId,
-              },
-            }
-
-          | _ => state
-          }
-
-        | None =>
-          switch documentMap->HashMap.String.get(currentDocumentId) {
-          | Some({rootItemId}) =>
-            switch documentItemMap->HashMap.String.get(rootItemId) {
-            | Some({firstChildId}) => {
-                ...state,
-                documentItems: {
-                  ...state.documentItems,
-                  currentId: firstChildId,
-                },
-              }
-
-            | None => state
-            }
-
-          | None => state
-          }
-        }
+      | _ => state
       }
-    }
 
-  | Action.MoveCursorRight() =>
-    switch state.focus {
-    | State.Documents => {
-        let {
-          documents: {map: documentMap, currentId: currentDocumentId},
-          documentItems: {map: documentItemMap, currentId: currentDocumentItemId},
-        } = state
-
-        if currentDocumentItemId == "" {
-          switch documentMap->HashMap.String.get(currentDocumentId) {
-          | Some(documents) =>
-            if documents.rootItemId == "" {
-              state
-            } else {
-              switch documentItemMap->HashMap.String.get(documents.rootItemId) {
-              | Some(item) =>
-                if item.firstChildId == "" {
-                  state
-                } else {
-                  {
-                    ...state,
-                    focus: State.DocumentItems,
-                    documentItems: {
-                      ...state.documentItems,
-                      currentId: item.firstChildId,
-                    },
-                  }
-                }
-
-              | None => state
-              }
-            }
-
-          | None => state
-          }
-        } else {
-          {
+    | None =>
+      switch documentMap->HashMap.String.get(currentDocumentId) {
+      | Some({rootItemId}) =>
+        switch documentItemMap->State.Item.get(rootItemId) {
+        | Some({firstChildId}) => {
             ...state,
-            focus: State.DocumentItems,
+            documentItems: {
+              ...state.documentItems,
+              currentId: firstChildId,
+            },
           }
+
+        | _ => state
         }
+
+      | _ => state
       }
-
-    | State.DocumentItems => state
     }
 
-  | Action.ToInsertMode({initialCursorPosition, itemId}) =>
-    let {documentItems: {map: documentItemMap, currentId: currentDocumentItemId}} = state
-
-    let itemId = switch itemId {
-    | Some(itemId) => itemId
-
-    | None => currentDocumentItemId
+  | Action.ToDocuments() => {
+      ...state,
+      focus: State.Documents,
     }
 
-    let editingText = switch documentItemMap->get(itemId) {
+  | ToInsertMode({initialCursorPosition}) =>
+    let {documentItems: {map, currentId}} = state
+
+    let editingText = switch map->State.Item.get(currentId) {
     | Some({text}) => text
 
     | None => ""
@@ -303,7 +102,7 @@ let reducer = (state: State.t, action) => {
       ...state,
       documentItems: {
         ...state.documentItems,
-        currentId: itemId,
+        currentId: currentId,
         editingText: editingText,
       },
       mode: State.Insert({initialCursorPosition: initialCursorPosition}),
@@ -316,21 +115,9 @@ let reducer = (state: State.t, action) => {
         ...state.documentItems,
         editingText: "",
       },
-      documents: {
-        ...state.documents,
-        editingText: "",
-      },
     }
 
-  | Action.SetDocumentEditingText({text}) => {
-      ...state,
-      documents: {
-        ...state.documents,
-        editingText: text,
-      },
-    }
-
-  | Action.SetDocumentItemEditingText({text}) => {
+  | Action.SetEditingText({text}) => {
       ...state,
       documentItems: {
         ...state.documentItems,
@@ -338,8 +125,16 @@ let reducer = (state: State.t, action) => {
       },
     }
 
-  | Action.SetCurrentDocumentItem({id, initialCursorPosition}) =>
+  | Action.SetCurrentItem({id, initialCursorPosition}) =>
     switch state.mode {
+    | State.Normal => {
+        ...state,
+        documentItems: {
+          ...state.documentItems,
+          currentId: id,
+        },
+      }
+
     | State.Insert(_) => {
         let {documentItems: {map: documentItemMap}} = state
 
@@ -359,15 +154,110 @@ let reducer = (state: State.t, action) => {
           },
         }
       }
+    }
+  }
+}
 
-    | _ => {
+let documentsReducer = (state: State.t, action) => {
+  switch action {
+  | Action.ToAboveDocument() =>
+    let {documents: {currentId, map}} = state
+
+    switch map->State.Document.get(currentId) {
+    | Some(currentDocument) =>
+      switch currentDocument->State.Document.above(map) {
+      | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
+          ...state,
+          documents: {
+            ...state.documents,
+            currentId: aboveId,
+          },
+          documentItems: {
+            ...state.documentItems,
+            currentId: "",
+          },
+        }
+
+      | _ => state
+      }
+
+    | None => state
+    }
+
+  | Action.ToBelowDocument() =>
+    let {documents: {currentId, map}} = state
+
+    switch map->State.Document.get(currentId) {
+    | Some(currentDocument) =>
+      switch currentDocument->State.Document.below(map) {
+      | Some({id: belowId}) => {
+          ...state,
+          documents: {
+            ...state.documents,
+            currentId: belowId,
+          },
+          documentItems: {
+            ...state.documentItems,
+            currentId: "",
+          },
+        }
+
+      | None => state
+      }
+
+    | None => state
+    }
+
+  | Action.ToDocumentItems() =>
+    let {
+      documents: {currentId, map},
+      documentItems: {currentId: currentDocumentItemId, map: documentItemMap},
+    } = state
+
+    if currentDocumentItemId == "" {
+      switch map->State.Document.get(currentId) {
+      | Some({rootItemId}) =>
+        switch documentItemMap->State.Item.get(rootItemId) {
+        | Some({firstChildId}) => {
+            ...state,
+            focus: State.DocumentItems,
+            documents: {
+              ...state.documents,
+              editingText: "",
+            },
+            documentItems: {
+              ...state.documentItems,
+              currentId: firstChildId,
+            },
+          }
+
+        | None => state
+        }
+
+      | None => state
+      }
+    } else {
+      {
         ...state,
-        documentItems: {
-          ...state.documentItems,
-          currentId: id,
+        focus: State.DocumentItems,
+        documents: {
+          ...state.documents,
+          editingText: "",
         },
       }
     }
+  }
+}
+
+let reducer = (state: State.t, action) => {
+  switch action {
+  | Action.KeyDown(_)
+  | Action.FirestoreDocumentItems(_)
+  | Action.FirestoreDocuments(_) =>
+    raise(ActionShouldBeProcessedByMiddleware(action))
+
+  | Action.DocumentItems(action) => documentItemsReducer(state, action)
+  | Action.Documents(action) => documentsReducer(state, action)
 
   | Action.SetDocumentItemState({map}) => {
       ...state,

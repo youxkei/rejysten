@@ -1,5 +1,5 @@
 @react.component
-let make = React.memo((~document: State.document) => {
+let make = React.memo((~document: State.Document.t) => {
   let currentDocumentId = Redux.useSelector(State.currentDocumentId)
   let focus = Redux.useSelector(State.focus)
 

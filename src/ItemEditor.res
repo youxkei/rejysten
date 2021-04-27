@@ -12,11 +12,11 @@ let make = React.memo(() => {
   let dispatch = Redux.useDispatch()
 
   let handleChange = React.useCallback1(event => {
-    dispatch(Action.SetDocumentItemEditingText({text: event->ReactEvent.Form.target->value}))
+    dispatch(Action.DocumentItems(Action.SetEditingText({text: event->ReactEvent.Form.target->value})))
   }, [])
 
   let handleFocusOut = React.useCallback1(_ => {
-    dispatch(Action.FirestoreItem(Action.Save))
+    dispatch(Action.FirestoreDocumentItems(Action.SaveItem()))
   }, [text])
 
   let textareaRef = React.useRef(Js.Nullable.null)

@@ -4,9 +4,9 @@ let size = HashMap.String.size
 
 @module("uuid") external uuidv4: unit => string = "v4"
 
-let middleware = (store, action: Action.firestore_item_action) => {
+let middleware = (store, action: Action.firestoreDocumentItems) => {
   switch action {
-  | Action.Save => {
+  | Action.SaveItem() => {
       let {mode, documentItems: {currentId, map, editingText}}: State.t = Reductive.Store.getState(
         store,
       )
@@ -27,7 +27,7 @@ let middleware = (store, action: Action.firestore_item_action) => {
       }
     }
 
-  | Action.Indent => {
+  | Action.IndentItem() => {
       let {mode, documentItems: {currentId, map, editingText}}: State.t = Reductive.Store.getState(
         store,
       )
@@ -81,7 +81,7 @@ let middleware = (store, action: Action.firestore_item_action) => {
       }
     }
 
-  | Action.Unindent => {
+  | Action.UnindentItem() => {
       let {mode, documentItems: {currentId, map, editingText}}: State.t = Reductive.Store.getState(
         store,
       )
@@ -143,7 +143,7 @@ let middleware = (store, action: Action.firestore_item_action) => {
       }
     }
 
-  | Action.Add({direction}) => {
+  | Action.AddItem({direction}) => {
       let {
         mode,
         documentItems: {currentId, map, editingText},
@@ -222,7 +222,7 @@ let middleware = (store, action: Action.firestore_item_action) => {
 
           Reductive.Store.dispatch(
             store,
-            Action.SetCurrentDocumentItem({id: addingItemId, initialCursorPosition: State.Start}),
+            Action.DocumentItems(Action.SetCurrentItem({id: addingItemId, initialCursorPosition: State.Start})),
           )
         }
 
@@ -230,7 +230,7 @@ let middleware = (store, action: Action.firestore_item_action) => {
       }
     }
 
-  | Action.Delete({nextCurrentId, initialCursorPosition}) => {
+  | Action.DeleteItem({nextCurrentId, initialCursorPosition}) => {
       let {documentItems: {currentId, map}}: State.t = Reductive.Store.getState(
         store,
       )
@@ -265,10 +265,10 @@ let middleware = (store, action: Action.firestore_item_action) => {
 
           Reductive.Store.dispatch(
             store,
-            Action.SetCurrentDocumentItem({
+            Action.DocumentItems(Action.SetCurrentItem({
               id: nextCurrentId,
               initialCursorPosition: initialCursorPosition,
-            }),
+            })),
           )
 
           batch->commit

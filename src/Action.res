@@ -2,39 +2,44 @@ open Belt
 
 type direction = Prev | Next
 
-type firestore_item_action =
-  | Save
-  | Indent
-  | Unindent
-  | Add({direction: direction})
-  | Delete({nextCurrentId: string, initialCursorPosition: State.initialCursorPosition})
+type firestoreDocumentItems =
+  | SaveItem(unit)
+  | IndentItem(unit)
+  | UnindentItem(unit)
+  | AddItem({direction: direction})
+  | DeleteItem({nextCurrentId: string, initialCursorPosition: State.initialCursorPosition})
 
-type firestore_document_action =
-  | Save
-  | Indent
-  | Unindent
+type firestoreDocuments =
+  | Save(unit)
+  | Indent(unit)
+  | Unindent(unit)
   | Add({direction: direction})
   | Delete({direction: direction})
 
+type documentItems =
+  | ToAboveItem(unit)
+  | ToBelowItem(unit)
+  | ToDocuments(unit)
+  | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
+  | ToNormalMode(unit)
+  | SetEditingText({text: string})
+  | SetCurrentItem({id: string, initialCursorPosition: State.initialCursorPosition})
+
+type documents =
+  | ToAboveDocument(unit)
+  | ToBelowDocument(unit)
+  | ToDocumentItems(unit)
 
 type t =
   | KeyDown({event: Dom.keyboardEvent})
-  | FirestoreItem(firestore_item_action)
-  | FirestoreDocument(firestore_document_action)
 
-  | MoveCursorLeft(unit)
-  | MoveCursorDown(unit)
-  | MoveCursorUp(unit)
-  | MoveCursorRight(unit)
+  | FirestoreDocumentItems(firestoreDocumentItems)
+  | FirestoreDocuments(firestoreDocuments)
 
-  | ToInsertMode({initialCursorPosition: State.initialCursorPosition, itemId: option<string>})
-  | ToNormalMode(unit)
+  | Documents(documents)
+  | DocumentItems(documentItems)
 
-  | SetDocumentEditingText({text: string})
-  | SetDocumentItemEditingText({text: string})
-
-  | SetCurrentDocumentItem({id: string, initialCursorPosition: State.initialCursorPosition})
   | SetDocumentItemState({map: HashMap.String.t<State.Item.t>})
-  | SetDocumentState({map: HashMap.String.t<State.document>, rootId: string})
+  | SetDocumentState({map: HashMap.String.t<State.Document.t>, rootId: string})
 
   | DevToolUpdate({state: State.t})

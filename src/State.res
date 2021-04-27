@@ -69,15 +69,74 @@ module Item = {
   }
 }
 
-type document = {
-  id: string,
-  text: string,
-  rootItemId: string,
-  parentId: string,
-  prevId: string,
-  nextId: string,
-  firstChildId: string,
-  lastChildId: string,
+module Document = {
+  type t = {
+    id: string,
+    text: string,
+    rootItemId: string,
+    parentId: string,
+    prevId: string,
+    nextId: string,
+    firstChildId: string,
+    lastChildId: string,
+  }
+
+  exception DocumentNotFound(string)
+
+  let get = (map, id) => {
+    if id == "" {
+      None
+    } else {
+      switch map->HashMap.String.get(id) {
+      | Some(item) => Some(item)
+
+      | None => raise(DocumentNotFound(id))
+      }
+    }
+  }
+
+  let above = ({prevId, parentId}, map) => {
+    switch map->get(prevId) {
+    | Some(item) => {
+        let rec searchPrev = item => {
+          switch map->get(item.lastChildId) {
+          | Some(item) => searchPrev(item)
+
+          | None => item
+          }
+        }
+
+        Some(searchPrev(item))
+      }
+
+    | None => map->get(parentId)
+    }
+  }
+
+  let below = (item, map) => {
+    let {nextId, firstChildId} = item
+
+    switch map->get(firstChildId) {
+    | Some(item) => Some(item)
+
+    | None =>
+      switch map->get(nextId) {
+      | Some(item) => Some(item)
+
+      | None => {
+          let rec searchNext = ({nextId, parentId}) => {
+            switch map->get(nextId) {
+            | Some(item) => Some(item)
+
+            | None => map->get(parentId)->Option.flatMap(item => searchNext(item))
+            }
+          }
+
+          searchNext(item)
+        }
+      }
+    }
+  }
 }
 
 type initialCursorPosition = Start | End
@@ -94,7 +153,7 @@ type documentItemsState = {
 
 type documentsState = {
   currentId: string,
-  map: Belt.HashMap.String.t<document>,
+  map: Belt.HashMap.String.t<Document.t>,
   rootId: string,
   editingText: string,
 }

@@ -1,22 +1,7 @@
-%%private(
-  let preventDefault = ReactEvent.Synthetic.preventDefault
-  let button = ReactEvent.Mouse.button
-)
-
 @react.component
 let make = React.memo((~item: State.Item.t) => {
   let currentDocumentItemId = Redux.useSelector(State.currentDocumentItemId)
   let focus = Redux.useSelector(State.focus)
-  let dispatch = Redux.useDispatch()
-
-  let handleMouseDown = event => {
-    let button = event->button
-
-    if button == 0 {
-      dispatch(Action.ToInsertMode({initialCursorPosition: State.End, itemId: Some(item.id)}))
-      event->preventDefault
-    }
-  }
 
   let className = if item.id == currentDocumentItemId {
     switch focus {
@@ -28,7 +13,7 @@ let make = React.memo((~item: State.Item.t) => {
     ""
   }
 
-  <span className onMouseDown=handleMouseDown> {item.text->React.string} </span>
+  <span className> {item.text->React.string} </span>
 })
 
 React.setDisplayName(make, "Item")
