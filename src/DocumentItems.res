@@ -1,6 +1,6 @@
 @react.component
 let make = React.memo(() => {
-  let currentRootDocumentItem = Redux.useSelector(State.currentRootDocumentItem)
+  let currentRootDocumentItem = Redux.useSelector(State.Document.currentRootDocumentItem)
 
   switch currentRootDocumentItem {
   | Some(item) => <section className=Style.document> <Items item /> </section>

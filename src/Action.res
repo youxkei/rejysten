@@ -39,7 +39,7 @@ type t =
   | Documents(documents)
   | DocumentItems(documentItems)
 
-  | SetDocumentItemState({map: HashMap.String.t<State.Item.t>})
-  | SetDocumentState({map: HashMap.String.t<State.Document.t>, rootId: string})
+  | SetDocumentItemState({map: HashMap.String.t<State.documentItem>})
+  | SetDocumentState({map: HashMap.String.t<State.document>, rootId: string})
 
   | DevToolUpdate({state: State.t})

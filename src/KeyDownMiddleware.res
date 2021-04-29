@@ -94,12 +94,10 @@ module KeyDownHandler = {
           event->preventDefault
         }
 
-      | "Backspace" if !ctrlKey && !shiftKey =>
-        let {documentItems: {currentId, map, editingText}} = state
-
-        switch map->State.Item.get(currentId) {
-        | Some(currentItem) if editingText == "" =>
-          switch currentItem->State.Item.above(map) {
+      | "Backspace" if !ctrlKey && !shiftKey && state.documentItems.editingText == "" =>
+        switch state->State.DocumentItem.current {
+        | Some(currentItem) =>
+          switch state->State.DocumentItem.above(currentItem) {
           | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
               dispatch(
                 Action.FirestoreDocumentItems(
@@ -116,12 +114,10 @@ module KeyDownHandler = {
         | _ => ()
         }
 
-      | "Delete" if !ctrlKey && !shiftKey =>
-        let {documentItems: {currentId, map, editingText}} = state
-
-        switch map->State.Item.get(currentId) {
-        | Some(currentItem) if editingText == "" =>
-          switch currentItem->State.Item.below(map) {
+      | "Delete" if !ctrlKey && !shiftKey && state.documentItems.editingText == "" =>
+        switch state->State.DocumentItem.current {
+        | Some(currentItem) =>
+          switch state->State.DocumentItem.below(currentItem) {
           | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" => {
               dispatch(
                 Action.FirestoreDocumentItems(

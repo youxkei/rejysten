@@ -1,35 +1,72 @@
 open Belt
 
-module Item = {
-  type t = {
-    id: string,
-    text: string,
-    parentId: string,
-    prevId: string,
-    nextId: string,
-    firstChildId: string,
-    lastChildId: string,
+type documentItem = {
+  id: string,
+  text: string,
+  parentId: string,
+  prevId: string,
+  nextId: string,
+  firstChildId: string,
+  lastChildId: string,
+}
+
+type document = {
+  id: string,
+  text: string,
+  rootItemId: string,
+  parentId: string,
+  prevId: string,
+  nextId: string,
+  firstChildId: string,
+  lastChildId: string,
+}
+
+type initialCursorPosition = Start | End
+
+type mode = Normal | Insert({initialCursorPosition: initialCursorPosition})
+
+type focus = Documents | DocumentItems
+
+type documentItemsState = {
+  currentId: string,
+  map: Belt.HashMap.String.t<documentItem>,
+  editingText: string,
+}
+
+type documentsState = {
+  currentId: string,
+  map: Belt.HashMap.String.t<document>,
+  rootId: string,
+  editingText: string,
+}
+
+type t = {
+  mode: mode,
+  focus: focus,
+  documentItems: documentItemsState,
+  documents: documentsState,
+}
+
+module DocumentItem = {
+  let currentId = ({documentItems: {currentId}}) => currentId
+
+  let current = ({documentItems: {currentId, map}}) => {
+    map->HashMap.String.get(currentId)
   }
 
-  exception ItemNotFound(string)
+  let map = ({documentItems: {map}}) => map
 
-  let get = (map, id) => {
-    if id == "" {
-      None
-    } else {
-      switch map->HashMap.String.get(id) {
-      | Some(item) => Some(item)
+  let editingText = ({documentItems: {editingText}}) => editingText
 
-      | None => raise(ItemNotFound(id))
-      }
-    }
+  let get = ({documentItems: {map}}, id) => {
+    map->HashMap.String.get(id)
   }
 
-  let above = ({prevId, parentId}, map) => {
-    switch map->get(prevId) {
+  let above = (state, {prevId, parentId}: documentItem) => {
+    switch state->get(prevId) {
     | Some(item) => {
-        let rec searchPrev = item => {
-          switch map->get(item.lastChildId) {
+        let rec searchPrev = (item: documentItem) => {
+          switch state->get(item.lastChildId) {
           | Some(item) => searchPrev(item)
 
           | None => item
@@ -39,26 +76,26 @@ module Item = {
         Some(searchPrev(item))
       }
 
-    | None => map->get(parentId)
+    | None => state->get(parentId)
     }
   }
 
-  let below = (item, map) => {
+  let below = (state, item: documentItem) => {
     let {nextId, firstChildId} = item
 
-    switch map->get(firstChildId) {
+    switch state->get(firstChildId) {
     | Some(item) => Some(item)
 
     | None =>
-      switch map->get(nextId) {
+      switch state->get(nextId) {
       | Some(item) => Some(item)
 
       | None => {
-          let rec searchNext = ({nextId, parentId}) => {
-            switch map->get(nextId) {
+          let rec searchNext = ({nextId, parentId}: documentItem) => {
+            switch state->get(nextId) {
             | Some(item) => Some(item)
 
-            | None => map->get(parentId)->Option.flatMap(item => searchNext(item))
+            | None => state->get(parentId)->Option.flatMap(item => searchNext(item))
             }
           }
 
@@ -70,99 +107,75 @@ module Item = {
 }
 
 module Document = {
-  type t = {
-    id: string,
-    text: string,
-    rootItemId: string,
-    parentId: string,
-    prevId: string,
-    nextId: string,
-    firstChildId: string,
-    lastChildId: string,
+  let currentId = ({documents: {currentId}}) => currentId
+
+  let current = ({documents: {map, currentId}}) => map->HashMap.String.get(currentId)
+
+  let map = ({documents: {map}}) => map
+
+  let editingText = ({documents: {editingText}}) => editingText
+
+  let rootId = ({documents: {rootId}}) => rootId
+
+  let root = ({documents: {map, rootId}}) => map->HashMap.String.get(rootId)
+
+  let get = ({documents: {map}}, id) => {
+    map->HashMap.String.get(id)
   }
 
-  exception DocumentNotFound(string)
+  let currentRootDocumentItem = ({
+    documents: {map: documentMap, currentId: currentDocumentId},
+    documentItems: {map: documentItemMap},
+  }) => {
+    switch documentMap->HashMap.String.get(currentDocumentId) {
+    | Some({rootItemId}) => documentItemMap->HashMap.String.get(rootItemId)
 
-  let get = (map, id) => {
-    if id == "" {
-      None
-    } else {
-      switch map->HashMap.String.get(id) {
-      | Some(item) => Some(item)
-
-      | None => raise(DocumentNotFound(id))
-      }
+    | _ => None
     }
   }
 
-  let above = ({prevId, parentId}, map) => {
-    switch map->get(prevId) {
-    | Some(item) => {
-        let rec searchPrev = item => {
-          switch map->get(item.lastChildId) {
-          | Some(item) => searchPrev(item)
+  let above = (state, {prevId, parentId}: document) => {
+    switch state->get(prevId) {
+    | Some(document) => {
+        let rec searchPrev = (document: document) => {
+          switch state->get(document.lastChildId) {
+          | Some(document) => searchPrev(document)
 
-          | None => item
+          | None => document
           }
         }
 
-        Some(searchPrev(item))
+        Some(searchPrev(document))
       }
 
-    | None => map->get(parentId)
+    | None => state->get(parentId)
     }
   }
 
-  let below = (item, map) => {
-    let {nextId, firstChildId} = item
+  let below = (state, document) => {
+    let {nextId, firstChildId} = document
 
-    switch map->get(firstChildId) {
-    | Some(item) => Some(item)
+    switch state->get(firstChildId) {
+    | Some(document) => Some(document)
 
     | None =>
-      switch map->get(nextId) {
-      | Some(item) => Some(item)
+      switch state->get(nextId) {
+      | Some(document) => Some(document)
 
       | None => {
           let rec searchNext = ({nextId, parentId}) => {
-            switch map->get(nextId) {
-            | Some(item) => Some(item)
+            switch state->get(nextId) {
+            | Some(document) => Some(document)
 
-            | None => map->get(parentId)->Option.flatMap(item => searchNext(item))
+            | None => state->get(parentId)->Option.flatMap(document => searchNext(document))
             }
           }
 
-          searchNext(item)
+          searchNext(document)
         }
       }
     }
   }
-}
-
-type initialCursorPosition = Start | End
-
-type mode = Normal | Insert({initialCursorPosition: initialCursorPosition})
-
-type focus = Documents | DocumentItems
-
-type documentItemsState = {
-  currentId: string,
-  map: Belt.HashMap.String.t<Item.t>,
-  editingText: string,
-}
-
-type documentsState = {
-  currentId: string,
-  map: Belt.HashMap.String.t<Document.t>,
-  rootId: string,
-  editingText: string,
-}
-
-type t = {
-  mode: mode,
-  focus: focus,
-  documentItems: documentItemsState,
-  documents: documentsState,
 }
 
 let initialState: t = {
@@ -181,14 +194,14 @@ let initialState: t = {
   },
 }
 
+
+let state = state => state
+let mode = ({mode}) => mode
 let editing = ({mode}) =>
   switch mode {
   | Normal => false
   | Insert(_) => true
   }
-
-let state = state => state
-let mode = ({mode}) => mode
 let focus = ({focus}) => focus
 let editingText = ({
   focus,
@@ -208,24 +221,6 @@ let initialCursorPosition = ({mode}) =>
   | Insert({initialCursorPosition}) => initialCursorPosition
   }
 
-let documentMap = ({documents: {map}}) => map
-let currentDocumentId = ({documents: {currentId}}) => currentId
-let currentDocument = ({documents: {map, currentId}}) => map->HashMap.String.get(currentId)
-let rootDocument = ({documents: {map, rootId}}) => {
-  map->HashMap.String.get(rootId)
-}
 let editingDocumentText = ({documents: {editingText}}) => editingText
 
-let documentItemMap = ({documentItems: {map}}) => map
-let currentDocumentItemId = ({documentItems: {currentId}}) => currentId
-let currentRootDocumentItem = ({
-  documents: {map: documentMap, currentId: currentDocumentId},
-  documentItems: {map: documentItemMap},
-}) => {
-  switch documentMap->HashMap.String.get(currentDocumentId) {
-  | Some({rootItemId}) => documentItemMap->HashMap.String.get(rootItemId)
-
-  | _ => None
-  }
-}
 let editingDocumentItemText = ({documentItems: {editingText}}) => editingText

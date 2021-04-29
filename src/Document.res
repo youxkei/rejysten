@@ -1,6 +1,6 @@
 @react.component
-let make = React.memo((~document: State.Document.t) => {
-  let currentDocumentId = Redux.useSelector(State.currentDocumentId)
+let make = React.memo((~document: State.document) => {
+  let currentDocumentId = Redux.useSelector(State.Document.currentId)
   let focus = Redux.useSelector(State.focus)
 
   let className = if document.id == currentDocumentId {

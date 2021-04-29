@@ -8,7 +8,7 @@ open Belt
     let rootDocumentId = ref("")
 
     documents->Array.forEach(document => {
-      let document: State.Document.t = {
+      let document: State.document = {
         id: document["id"],
         text: document["text"],
         rootItemId: document["rootItemId"],

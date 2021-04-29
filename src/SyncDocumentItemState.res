@@ -9,7 +9,7 @@ open Belt
     items->Array.forEach(item => {
       let id = item["id"]
 
-      let item: State.Item.t = {
+      let item: State.documentItem = {
         id: id,
         text: item["text"],
         nextId: item["nextId"],
@@ -31,7 +31,7 @@ let make = React.memo(() => {
   open Firebase.Firestore
 
   let dispatch = Redux.useDispatch()
-  let currentDocumentId = Redux.useSelector(State.currentDocumentId)
+  let currentDocumentId = Redux.useSelector(State.Document.currentId)
 
   let (items, loading, error) = useCollectionData(
     Firebase.firestore()->collection("items")->where("documentId", "==", currentDocumentId),

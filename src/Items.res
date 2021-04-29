@@ -1,13 +1,13 @@
 open Belt
 
 %%private(
-  let makeChildren = (documentItemMap, item: State.Item.t) => {
+  let makeChildren = (documentItemMap, item: State.documentItem) => {
     let children = []
 
     let currentItem = ref(documentItemMap->HashMap.String.get(item.firstChildId))
 
     while Option.isSome(currentItem.contents) {
-      let item: State.Item.t = Option.getExn(currentItem.contents)
+      let item: State.documentItem = Option.getExn(currentItem.contents)
 
       let _ = children->Js.Array2.push(item)
       currentItem := documentItemMap->HashMap.String.get(item.nextId)
@@ -18,16 +18,16 @@ open Belt
 )
 
 module type ItemsInnerType = {
-  let make: {"item": State.Item.t} => ReasonReact.reactElement
-  let makeProps: (~item: State.Item.t, ~key: string=?, unit) => {"item": State.Item.t}
+  let make: {"item": State.documentItem} => ReasonReact.reactElement
+  let makeProps: (~item: State.documentItem, ~key: string=?, unit) => {"item": State.documentItem}
 }
 
 module rec ItemsInner: ItemsInnerType = {
   @react.component
-  let make = React.memo((~item: State.Item.t) => {
+  let make = React.memo((~item: State.documentItem) => {
     let mode = Redux.useSelector(State.mode)
-    let documentItemMap = Redux.useSelector(State.documentItemMap)
-    let currentDocumentItemId = Redux.useSelector(State.currentDocumentItemId)
+    let documentItemMap = Redux.useSelector(State.DocumentItem.map)
+    let currentDocumentItemId = Redux.useSelector(State.DocumentItem.currentId)
 
     let isCurrentItem = item.id == currentDocumentItemId
 
@@ -43,7 +43,7 @@ module rec ItemsInner: ItemsInnerType = {
       </li>
       <ul>
         {makeChildren(documentItemMap, item)
-        ->Array.map((item: State.Item.t) => {
+        ->Array.map((item: State.documentItem) => {
           <ItemsInner key=item.id item />
         })
         ->React.array}
@@ -55,8 +55,8 @@ module rec ItemsInner: ItemsInnerType = {
 }
 
 @react.component
-let make = React.memo((~item: State.Item.t) => {
-  let documentItemMap = Redux.useSelector(State.documentItemMap)
+let make = React.memo((~item: State.documentItem) => {
+  let documentItemMap = Redux.useSelector(State.DocumentItem.map)
 
   <ul>
     {makeChildren(documentItemMap, item)
