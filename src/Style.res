@@ -8,12 +8,12 @@ let app = style(. [
   height(100.0->pct),
 ])
 
-let documents = style(. [
+let documentPane = style(. [
   gridColumnStart(1),
   overflow(auto)
 ])
 
-let document = style(. [
+let documentItemPane = style(. [
   gridColumnStart(2),
   overflow(auto)
 ])

@@ -4,7 +4,7 @@
 @send external preventDefault: Dom.keyboardEvent => unit = "preventDefault"
 
 module KeyDownHandler = {
-  module DocumentItems = {
+  module DocumentItemPane = {
     let normal = (store, event) => {
       let dispatch = Reductive.Store.dispatch(store)
 
@@ -14,37 +14,37 @@ module KeyDownHandler = {
 
       switch code {
       | "Tab" if !ctrlKey && !shiftKey => {
-          dispatch(Action.FirestoreDocumentItems(Action.IndentItem()))
+          dispatch(Action.FirestoreDocumentItemPane(Action.IndentItem()))
           event->preventDefault
         }
 
       | "Tab" if !ctrlKey && shiftKey => {
-          dispatch(Action.FirestoreDocumentItems(Action.UnindentItem()))
+          dispatch(Action.FirestoreDocumentItemPane(Action.UnindentItem()))
           event->preventDefault
         }
 
       | "KeyH" if !ctrlKey && !shiftKey => {
-          dispatch(Action.DocumentItems(Action.ToDocuments()))
+          dispatch(Action.DocumentItemPane(Action.ToDocumentPane()))
           event->preventDefault
         }
 
       | "KeyJ" if !ctrlKey && !shiftKey => {
-          dispatch(Action.DocumentItems(Action.ToBelowItem()))
+          dispatch(Action.DocumentItemPane(Action.ToBelowItem()))
           event->preventDefault
         }
 
       | "KeyK" if !ctrlKey && !shiftKey => {
-          dispatch(Action.DocumentItems(Action.ToAboveItem()))
+          dispatch(Action.DocumentItemPane(Action.ToAboveItem()))
           event->preventDefault
         }
 
       | "KeyI" if !ctrlKey && !shiftKey => {
-          dispatch(Action.DocumentItems(Action.ToInsertMode({initialCursorPosition: State.Start})))
+          dispatch(Action.DocumentItemPane(Action.ToInsertMode({initialCursorPosition: State.Start})))
           event->preventDefault
         }
 
       | "KeyA" if !ctrlKey && !shiftKey => {
-          dispatch(Action.DocumentItems(Action.ToInsertMode({initialCursorPosition: State.End})))
+          dispatch(Action.DocumentItemPane(Action.ToInsertMode({initialCursorPosition: State.End})))
           event->preventDefault
         }
 
@@ -55,8 +55,8 @@ module KeyDownHandler = {
             Action.Next
           }
 
-          dispatch(Action.FirestoreDocumentItems(Action.AddItem({direction: direction})))
-          dispatch(Action.DocumentItems(Action.ToInsertMode({initialCursorPosition: State.Start})))
+          dispatch(Action.FirestoreDocumentItemPane(Action.AddItem({direction: direction})))
+          dispatch(Action.DocumentItemPane(Action.ToInsertMode({initialCursorPosition: State.Start})))
 
           event->preventDefault
         }
@@ -75,32 +75,32 @@ module KeyDownHandler = {
 
       switch code {
       | "Escape" if !ctrlKey && !shiftKey => {
-          dispatch(Action.FirestoreDocumentItems(Action.SaveItem()))
-          dispatch(Action.DocumentItems(Action.ToNormalMode()))
+          dispatch(Action.FirestoreDocumentItemPane(Action.SaveItem()))
+          dispatch(Action.DocumentItemPane(Action.ToNormalMode()))
         }
 
       | "Tab" if !ctrlKey && !shiftKey => {
-          dispatch(Action.FirestoreDocumentItems(Action.IndentItem()))
+          dispatch(Action.FirestoreDocumentItemPane(Action.IndentItem()))
           event->preventDefault
         }
 
       | "Tab" if !ctrlKey && shiftKey => {
-          dispatch(Action.FirestoreDocumentItems(Action.UnindentItem()))
+          dispatch(Action.FirestoreDocumentItemPane(Action.UnindentItem()))
           event->preventDefault
         }
 
       | "Enter" if !ctrlKey && !shiftKey => {
-          dispatch(Action.FirestoreDocumentItems(Action.AddItem({direction: Action.Next})))
+          dispatch(Action.FirestoreDocumentItemPane(Action.AddItem({direction: Action.Next})))
           event->preventDefault
         }
 
-      | "Backspace" if !ctrlKey && !shiftKey && state.documentItems.editingText == "" =>
-        switch state->State.DocumentItem.current {
+      | "Backspace" if !ctrlKey && !shiftKey && state.documentItemPane.editingText == "" =>
+        switch state->State.DocumentItemPane.current {
         | Some(currentItem) =>
-          switch state->State.DocumentItem.above(currentItem) {
+          switch state->State.DocumentItemPane.above(currentItem) {
           | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
               dispatch(
-                Action.FirestoreDocumentItems(
+                Action.FirestoreDocumentItemPane(
                   Action.DeleteItem({nextCurrentId: aboveId, initialCursorPosition: State.End}),
                 ),
               )
@@ -114,13 +114,13 @@ module KeyDownHandler = {
         | _ => ()
         }
 
-      | "Delete" if !ctrlKey && !shiftKey && state.documentItems.editingText == "" =>
-        switch state->State.DocumentItem.current {
+      | "Delete" if !ctrlKey && !shiftKey && state.documentItemPane.editingText == "" =>
+        switch state->State.DocumentItemPane.current {
         | Some(currentItem) =>
-          switch state->State.DocumentItem.below(currentItem) {
+          switch state->State.DocumentItemPane.below(currentItem) {
           | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" => {
               dispatch(
-                Action.FirestoreDocumentItems(
+                Action.FirestoreDocumentItemPane(
                   Action.DeleteItem({nextCurrentId: belowId, initialCursorPosition: State.Start}),
                 ),
               )
@@ -139,7 +139,7 @@ module KeyDownHandler = {
     }
   }
 
-  module Documents = {
+  module DocumentPane = {
     let normal = (store, event) => {
       let dispatch = Reductive.Store.dispatch(store)
 
@@ -149,17 +149,17 @@ module KeyDownHandler = {
 
       switch code {
       | "KeyJ" if !ctrlKey && !shiftKey => {
-          dispatch(Action.Documents(Action.ToBelowDocument()))
+          dispatch(Action.DocumentPane(Action.ToBelowDocument()))
           event->preventDefault
         }
 
       | "KeyK" if !ctrlKey && !shiftKey => {
-          dispatch(Action.Documents(Action.ToAboveDocument()))
+          dispatch(Action.DocumentPane(Action.ToAboveDocument()))
           event->preventDefault
         }
 
       | "KeyL" if !ctrlKey && !shiftKey => {
-          dispatch(Action.Documents(Action.ToDocumentItems()))
+          dispatch(Action.DocumentPane(Action.ToDocumentItemPane()))
           event->preventDefault
         }
 
@@ -179,11 +179,11 @@ let middleware = (store, next, action) => {
       let {focus, mode}: State.t = Reductive.Store.getState(store)
 
       switch (focus, mode) {
-      | (State.DocumentItems, State.Normal) => KeyDownHandler.DocumentItems.normal(store, event)
-      | (State.DocumentItems, State.Insert(_)) => KeyDownHandler.DocumentItems.insert(store, event)
+      | (State.DocumentPane, State.Normal) => KeyDownHandler.DocumentPane.normal(store, event)
+      | (State.DocumentPane, State.Insert(_)) => KeyDownHandler.DocumentPane.insert(store, event)
 
-      | (State.Documents, State.Normal) => KeyDownHandler.Documents.normal(store, event)
-      | (State.Documents, State.Insert(_)) => KeyDownHandler.Documents.insert(store, event)
+      | (State.DocumentItemPane, State.Normal) => KeyDownHandler.DocumentItemPane.normal(store, event)
+      | (State.DocumentItemPane, State.Insert(_)) => KeyDownHandler.DocumentItemPane.insert(store, event)
       }
     }
 

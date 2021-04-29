@@ -4,89 +4,87 @@ let size = HashMap.String.size
 
 @module("uuid") external uuidv4: unit => string = "v4"
 
-let middleware = (store, action: Action.firestoreDocumentItems) => {
+let middleware = (store, action: Action.firestoreDocumentItemPane) => {
   switch action {
-  | Action.SaveItem() => {
-      let {mode, documentItems: {currentId, map, editingText}}: State.t = Reductive.Store.getState(
-        store,
-      )
+  | Action.SaveItem() =>
+    let state: State.t = Reductive.Store.getState(store)
 
-      switch map->get(currentId) {
-      | Some({id}) =>
-        switch mode {
-        | State.Insert(_) => {
-            open Firebase.Firestore
+    switch state->State.DocumentItemPane.current {
+    | Some({id}) =>
+      switch state.mode {
+      | State.Insert(_) => {
+          open Firebase.Firestore
 
-            Firebase.firestore()->collection("items")->doc(id)->update({"text": editingText})
-          }
-
-        | _ => ()
+          Firebase.firestore()
+          ->collection("items")
+          ->doc(id)
+          ->update({"text": state.documentItemPane.editingText})
         }
 
       | _ => ()
       }
+
+    | _ => ()
     }
 
-  | Action.IndentItem() => {
-      let {mode, documentItems: {currentId, map, editingText}}: State.t = Reductive.Store.getState(
-        store,
-      )
+  | Action.IndentItem() =>
+    let state: State.t = Reductive.Store.getState(store)
 
-      switch map->get(currentId) {
-      | Some({id, parentId, prevId, nextId}) =>
-        open Firebase.Firestore
+    switch state->State.DocumentItemPane.current {
+    | Some({id, parentId, prevId, nextId}) =>
+      open Firebase.Firestore
 
-        let db = Firebase.firestore()
-        let batch = db->batch
-        let items = db->collection("items")
+      let db = Firebase.firestore()
+      let batch = db->batch
+      let items = db->collection("items")
 
-        switch mode {
-        | State.Insert(_) => batch->addUpdate(items->doc(id), {"text": editingText})
-
-        | _ => ()
-        }
-
-        switch map->get(prevId) {
-        | Some({lastChildId: prevLastChildId}) => {
-            if prevLastChildId == "" {
-              batch->addUpdate(items->doc(id), {"parentId": prevId, "prevId": "", "nextId": ""})
-              batch->addUpdate(
-                items->doc(prevId),
-                {"nextId": nextId, "firstChildId": id, "lastChildId": id},
-              )
-            } else {
-              batch->addUpdate(
-                items->doc(id),
-                {"parentId": prevId, "prevId": prevLastChildId, "nextId": ""},
-              )
-              batch->addUpdate(items->doc(prevId), {"nextId": nextId, "lastChildId": id})
-              batch->addUpdate(items->doc(prevLastChildId), {"nextId": id})
-            }
-
-            if nextId == "" {
-              if parentId != "" {
-                batch->addUpdate(items->doc(parentId), {"lastChildId": prevId})
-              }
-            } else {
-              batch->addUpdate(items->doc(nextId), {"prevId": prevId})
-            }
-          }
-
-        | _ => ()
-        }
-
-        batch->commit
+      switch state.mode {
+      | State.Insert(_) =>
+        batch->addUpdate(items->doc(id), {"text": state.documentItemPane.editingText})
 
       | _ => ()
       }
+
+      switch state->State.DocumentItemPane.get(prevId) {
+      | Some({lastChildId: prevLastChildId}) => {
+          if prevLastChildId == "" {
+            batch->addUpdate(items->doc(id), {"parentId": prevId, "prevId": "", "nextId": ""})
+            batch->addUpdate(
+              items->doc(prevId),
+              {"nextId": nextId, "firstChildId": id, "lastChildId": id},
+            )
+          } else {
+            batch->addUpdate(
+              items->doc(id),
+              {"parentId": prevId, "prevId": prevLastChildId, "nextId": ""},
+            )
+            batch->addUpdate(items->doc(prevId), {"nextId": nextId, "lastChildId": id})
+            batch->addUpdate(items->doc(prevLastChildId), {"nextId": id})
+          }
+
+          if nextId == "" {
+            if parentId != "" {
+              batch->addUpdate(items->doc(parentId), {"lastChildId": prevId})
+            }
+          } else {
+            batch->addUpdate(items->doc(nextId), {"prevId": prevId})
+          }
+        }
+
+      | _ => ()
+      }
+
+      batch->commit
+
+    | _ => ()
     }
 
   | Action.UnindentItem() => {
-      let {mode, documentItems: {currentId, map, editingText}}: State.t = Reductive.Store.getState(
+      let state: State.t = Reductive.Store.getState(
         store,
       )
 
-      switch map->get(currentId) {
+      switch state->State.DocumentItemPane.current {
       | Some({id, parentId, prevId, nextId}) =>
         open Firebase.Firestore
 
@@ -94,13 +92,13 @@ let middleware = (store, action: Action.firestoreDocumentItems) => {
         let batch = db->batch
         let items = db->collection("items")
 
-        switch mode {
-        | State.Insert(_) => batch->addUpdate(items->doc(id), {"text": editingText})
+        switch state.mode {
+        | State.Insert(_) => batch->addUpdate(items->doc(id), {"text": state.documentItemPane.editingText})
 
         | _ => ()
         }
 
-        switch map->get(parentId) {
+        switch state->State.DocumentItemPane.get(parentId) {
         | Some({parentId: parentParentId, nextId: parentNextId}) =>
           if parentParentId != "" {
             batch->addUpdate(
@@ -144,13 +142,9 @@ let middleware = (store, action: Action.firestoreDocumentItems) => {
     }
 
   | Action.AddItem({direction}) => {
-      let {
-        mode,
-        documentItems: {currentId, map, editingText},
-        documents: {currentId: currentDocumentId},
-      }: State.t = Reductive.Store.getState(store)
+      let state: State.t = Reductive.Store.getState(store)
 
-      switch map->get(currentId) {
+      switch state->State.DocumentItemPane.current {
       | Some({id, parentId, prevId, nextId}) => {
           open Firebase.Firestore
 
@@ -160,8 +154,8 @@ let middleware = (store, action: Action.firestoreDocumentItems) => {
 
           let addingItemId = uuidv4()
 
-          switch mode {
-          | State.Insert(_) => batch->addUpdate(items->doc(id), {"text": editingText})
+          switch state.mode {
+          | State.Insert(_) => batch->addUpdate(items->doc(id), {"text": state.documentItemPane.editingText})
 
           | _ => ()
           }
@@ -173,7 +167,7 @@ let middleware = (store, action: Action.firestoreDocumentItems) => {
               batch->addSet(
                 items->doc(addingItemId),
                 {
-                  "documentId": currentDocumentId,
+                  "documentId": state.documentPane.currentId,
                   "text": "",
                   "parentId": parentId,
                   "prevId": prevId,
@@ -198,7 +192,7 @@ let middleware = (store, action: Action.firestoreDocumentItems) => {
               batch->addSet(
                 items->doc(addingItemId),
                 {
-                  "documentId": currentDocumentId,
+                  "documentId": state.documentPane.currentId,
                   "text": "",
                   "parentId": parentId,
                   "prevId": id,
@@ -222,7 +216,9 @@ let middleware = (store, action: Action.firestoreDocumentItems) => {
 
           Reductive.Store.dispatch(
             store,
-            Action.DocumentItems(Action.SetCurrentItem({id: addingItemId, initialCursorPosition: State.Start})),
+            Action.DocumentItemPane(
+              Action.SetCurrentItem({id: addingItemId, initialCursorPosition: State.Start}),
+            ),
           )
         }
 
@@ -231,11 +227,9 @@ let middleware = (store, action: Action.firestoreDocumentItems) => {
     }
 
   | Action.DeleteItem({nextCurrentId, initialCursorPosition}) => {
-      let {documentItems: {currentId, map}}: State.t = Reductive.Store.getState(
-        store,
-      )
+      let state: State.t = Reductive.Store.getState(store)
 
-      switch map->get(currentId) {
+      switch state->State.DocumentItemPane.current {
       | Some(item) => {
           open Firebase.Firestore
 
@@ -265,10 +259,12 @@ let middleware = (store, action: Action.firestoreDocumentItems) => {
 
           Reductive.Store.dispatch(
             store,
-            Action.DocumentItems(Action.SetCurrentItem({
-              id: nextCurrentId,
-              initialCursorPosition: initialCursorPosition,
-            })),
+            Action.DocumentItemPane(
+              Action.SetCurrentItem({
+                id: nextCurrentId,
+                initialCursorPosition: initialCursorPosition,
+              }),
+            ),
           )
 
           batch->commit

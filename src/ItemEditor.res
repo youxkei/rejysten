@@ -6,17 +6,17 @@ open Belt
 
 @react.component
 let make = React.memo(() => {
-  let text = Redux.useSelector(State.editingDocumentItemText)
+  let text = Redux.useSelector(State.DocumentItemPane.editingText)
   let initialCursorPosition = Redux.useSelector(State.initialCursorPosition)
 
   let dispatch = Redux.useDispatch()
 
   let handleChange = React.useCallback1(event => {
-    dispatch(Action.DocumentItems(Action.SetEditingText({text: event->ReactEvent.Form.target->value})))
+    dispatch(Action.DocumentItemPane(Action.SetEditingText({text: event->ReactEvent.Form.target->value})))
   }, [])
 
   let handleFocusOut = React.useCallback1(_ => {
-    dispatch(Action.FirestoreDocumentItems(Action.SaveItem()))
+    dispatch(Action.FirestoreDocumentItemPane(Action.SaveItem()))
   }, [text])
 
   let textareaRef = React.useRef(Js.Nullable.null)

@@ -26,8 +26,8 @@ module rec ItemsInner: ItemsInnerType = {
   @react.component
   let make = React.memo((~item: State.documentItem) => {
     let mode = Redux.useSelector(State.mode)
-    let documentItemMap = Redux.useSelector(State.DocumentItem.map)
-    let currentDocumentItemId = Redux.useSelector(State.DocumentItem.currentId)
+    let documentItemMap = Redux.useSelector(State.DocumentItemPane.map)
+    let currentDocumentItemId = Redux.useSelector(State.DocumentItemPane.currentId)
 
     let isCurrentItem = item.id == currentDocumentItemId
 
@@ -56,7 +56,7 @@ module rec ItemsInner: ItemsInnerType = {
 
 @react.component
 let make = React.memo((~item: State.documentItem) => {
-  let documentItemMap = Redux.useSelector(State.DocumentItem.map)
+  let documentItemMap = Redux.useSelector(State.DocumentItemPane.map)
 
   <ul>
     {makeChildren(documentItemMap, item)

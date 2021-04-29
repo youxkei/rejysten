@@ -31,7 +31,7 @@ let make = React.memo(() => {
   open Firebase.Firestore
 
   let dispatch = Redux.useDispatch()
-  let currentDocumentId = Redux.useSelector(State.Document.currentId)
+  let currentDocumentId = Redux.useSelector(State.DocumentPane.currentId)
 
   let (items, loading, error) = useCollectionData(
     Firebase.firestore()->collection("items")->where("documentId", "==", currentDocumentId),
@@ -40,7 +40,7 @@ let make = React.memo(() => {
 
   React.useEffect(() => {
     switch error {
-    | None if !loading => dispatch(Action.SetDocumentItemState({map: makeItemMap(items)}))
+    | None if !loading => dispatch(Action.SetDocumentItemPaneState({map: makeItemMap(items)}))
 
     | _ => ()
     }

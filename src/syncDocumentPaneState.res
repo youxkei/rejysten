@@ -46,7 +46,7 @@ let make = React.memo(() => {
     | None if !loading => {
         let (documentMap, rootDocumentId) = makeDocumentMap(documents)
 
-        dispatch(Action.SetDocumentState({map: documentMap, rootId: rootDocumentId}))
+        dispatch(Action.SetDocumentPaneState({map: documentMap, rootId: rootDocumentId}))
       }
     | _ => ()
     }

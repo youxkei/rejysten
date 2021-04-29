@@ -25,7 +25,7 @@ module type DocumentsInnerType = {
 module rec DocumentsInner: DocumentsInnerType = {
   @react.component
   let make = React.memo((~document: State.document) => {
-    let documentMap = Redux.useSelector(State.Document.map)
+    let documentMap = Redux.useSelector(State.DocumentPane.map)
 
     <>
       <li> <Document document /> </li>
@@ -41,22 +41,14 @@ module rec DocumentsInner: DocumentsInnerType = {
 }
 
 @react.component
-let make = React.memo(() => {
-  let documentMap = Redux.useSelector(State.Document.map)
-  let rootDocument = Redux.useSelector(State.Document.root)
+let make = React.memo((~document: State.document) => {
+  let documentMap = Redux.useSelector(State.DocumentPane.map)
 
-  <section className=Style.documents>
-    {switch rootDocument {
-    | Some(rootDocument) =>
-      <ul>
-        {makeChildren(documentMap, rootDocument)
-        ->Array.map((document: State.document) => <DocumentsInner key=document.id document />)
-        ->React.array}
-      </ul>
-
-    | None => React.null
-    }}
-  </section>
+  <ul>
+    {makeChildren(documentMap, document)
+    ->Array.map((document: State.document) => <DocumentsInner key=document.id document />)
+    ->React.array}
+  </ul>
 })
 
 React.setDisplayName(make, "Documents")

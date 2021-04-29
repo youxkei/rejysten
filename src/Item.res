@@ -1,11 +1,11 @@
 @react.component
 let make = React.memo((~item: State.documentItem) => {
-  let currentDocumentItemId = Redux.useSelector(State.DocumentItem.currentId)
+  let currentDocumentItemId = Redux.useSelector(State.DocumentItemPane.currentId)
   let focus = Redux.useSelector(State.focus)
 
   let className = if item.id == currentDocumentItemId {
     switch focus {
-    | State.DocumentItems => Style.currentFocused
+    | State.DocumentItemPane => Style.currentFocused
 
     | _ => Style.currentUnfocused
     }

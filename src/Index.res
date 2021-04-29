@@ -97,7 +97,7 @@ module App = {
       | Some(error) => error->toString->React.string
       | None =>
         switch user {
-        | Some(_) => <main className=Style.app> <Documents /> <DocumentItems /> </main>
+        | Some(_) => <main className=Style.app> <DocumentPane /> <DocumentItemPane /> </main>
 
         | None => "logging in"->React.string
         }
@@ -110,7 +110,7 @@ switch ReactDOM.querySelector("#app") {
 | Some(app) =>
   ReactDOM.render(
     <Redux.Provider store>
-      {<> <App /> <SyncDocumentItemState /> <SyncDocumentState /> <KeyDownHandler /> </>}
+      {<> <App /> <SyncDocumentItemPaneState /> <SyncDocumentPaneState /> <KeyDownHandler /> </>}
     </Redux.Provider>,
     app,
   )
