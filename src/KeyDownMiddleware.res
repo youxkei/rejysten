@@ -39,7 +39,9 @@ module KeyDownHandler = {
         }
 
       | "KeyI" if !ctrlKey && !shiftKey => {
-          dispatch(Action.DocumentItemPane(Action.ToInsertMode({initialCursorPosition: State.Start})))
+          dispatch(
+            Action.DocumentItemPane(Action.ToInsertMode({initialCursorPosition: State.Start})),
+          )
           event->preventDefault
         }
 
@@ -56,7 +58,9 @@ module KeyDownHandler = {
           }
 
           dispatch(Action.FirestoreDocumentItemPane(Action.AddItem({direction: direction})))
-          dispatch(Action.DocumentItemPane(Action.ToInsertMode({initialCursorPosition: State.Start})))
+          dispatch(
+            Action.DocumentItemPane(Action.ToInsertMode({initialCursorPosition: State.Start})),
+          )
 
           event->preventDefault
         }
@@ -96,7 +100,7 @@ module KeyDownHandler = {
 
       | "Backspace" if !ctrlKey && !shiftKey && state.documentItemPane.editingText == "" =>
         switch state->State.DocumentItemPane.current {
-        | Some(currentItem) =>
+        | Some(currentItem) if currentItem.firstChildId == "" =>
           switch state->State.DocumentItemPane.above(currentItem) {
           | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
               dispatch(
@@ -116,7 +120,7 @@ module KeyDownHandler = {
 
       | "Delete" if !ctrlKey && !shiftKey && state.documentItemPane.editingText == "" =>
         switch state->State.DocumentItemPane.current {
-        | Some(currentItem) =>
+        | Some(currentItem) if currentItem.firstChildId == "" =>
           switch state->State.DocumentItemPane.below(currentItem) {
           | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" => {
               dispatch(
@@ -163,12 +167,112 @@ module KeyDownHandler = {
           event->preventDefault
         }
 
+      | "KeyO" if !ctrlKey => {
+          let direction = if shiftKey {
+            Action.Prev
+          } else {
+            Action.Next
+          }
+
+          dispatch(Action.FirestoreDocumentPane(Action.AddDocument({direction: direction})))
+          dispatch(Action.DocumentPane(Action.ToInsertMode({initialCursorPosition: State.Start})))
+        }
+
       | _ => ()
       }
     }
 
-    let insert = (_store, _event) => {
-      ()
+    let insert = (store, event) => {
+      let dispatch = Reductive.Store.dispatch(store)
+      let state: State.t = Reductive.Store.getState(store)
+
+      let code = event->code
+      let ctrlKey = event->ctrlKey
+      let shiftKey = event->shiftKey
+
+      switch code {
+      | "Escape" if !ctrlKey && !shiftKey =>
+        dispatch(Action.FirestoreDocumentPane(Action.SaveDocument()))
+        dispatch(Action.DocumentPane(Action.ToNormalMode()))
+
+      | "Tab" if !ctrlKey && !shiftKey =>
+        dispatch(Action.FirestoreDocumentPane(Action.IndentDocument()))
+        event->preventDefault
+
+      | "Tab" if !ctrlKey && shiftKey =>
+        dispatch(Action.FirestoreDocumentPane(Action.UnindentDocument()))
+        event->preventDefault
+
+      | "Enter" if !ctrlKey && !shiftKey =>
+        dispatch(Action.FirestoreDocumentPane(Action.AddDocument({direction: Action.Next})))
+        event->preventDefault
+
+      | "Backspace" if !ctrlKey && !shiftKey && state.documentPane.editingText == "" =>
+        switch state->State.DocumentPane.current {
+        | Some(currentDocument) if currentDocument.firstChildId == "" =>
+          switch state->State.DocumentPane.above(currentDocument) {
+          | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" =>
+            switch state->State.DocumentPane.currentRootDocumentItem {
+            | Some({firstChildId, lastChildId}) if firstChildId == lastChildId =>
+              switch state->State.DocumentItemPane.get(firstChildId) {
+              | Some({text}) if text == "" =>
+                dispatch(
+                  Action.FirestoreDocumentPane(
+                    Action.DeleteDocument({
+                      nextCurrentId: aboveId,
+                      initialCursorPosition: State.End,
+                    }),
+                  ),
+                )
+
+                event->preventDefault
+
+              | _ => ()
+              }
+
+            | _ => ()
+            }
+
+          | _ => ()
+          }
+
+        | _ => ()
+        }
+
+      | "Delete" if !ctrlKey && !shiftKey && state.documentPane.editingText == "" =>
+        switch state->State.DocumentPane.current {
+        | Some(currentDocument) if currentDocument.firstChildId == "" =>
+          switch state->State.DocumentPane.below(currentDocument) {
+          | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" =>
+            switch state->State.DocumentPane.currentRootDocumentItem {
+            | Some({firstChildId, lastChildId}) if firstChildId == lastChildId =>
+              switch state->State.DocumentItemPane.get(firstChildId) {
+              | Some({text}) if text == "" =>
+                dispatch(
+                  Action.FirestoreDocumentPane(
+                    Action.DeleteDocument({
+                      nextCurrentId: belowId,
+                      initialCursorPosition: State.End,
+                    }),
+                  ),
+                )
+
+                event->preventDefault
+
+              | _ => ()
+              }
+
+            | _ => ()
+            }
+
+          | _ => ()
+          }
+
+        | _ => ()
+        }
+
+      | _ => ()
+      }
     }
   }
 }
@@ -182,8 +286,10 @@ let middleware = (store, next, action) => {
       | (State.DocumentPane, State.Normal) => KeyDownHandler.DocumentPane.normal(store, event)
       | (State.DocumentPane, State.Insert(_)) => KeyDownHandler.DocumentPane.insert(store, event)
 
-      | (State.DocumentItemPane, State.Normal) => KeyDownHandler.DocumentItemPane.normal(store, event)
-      | (State.DocumentItemPane, State.Insert(_)) => KeyDownHandler.DocumentItemPane.insert(store, event)
+      | (State.DocumentItemPane, State.Normal) =>
+        KeyDownHandler.DocumentItemPane.normal(store, event)
+      | (State.DocumentItemPane, State.Insert(_)) =>
+        KeyDownHandler.DocumentItemPane.insert(store, event)
       }
     }
 

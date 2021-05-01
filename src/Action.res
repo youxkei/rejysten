@@ -10,11 +10,11 @@ type firestoreDocumentItemPane =
   | DeleteItem({nextCurrentId: string, initialCursorPosition: State.initialCursorPosition})
 
 type firestoreDocumentPane =
-  | Save(unit)
-  | Indent(unit)
-  | Unindent(unit)
-  | Add({direction: direction})
-  | Delete({direction: direction})
+  | SaveDocument(unit)
+  | IndentDocument(unit)
+  | UnindentDocument(unit)
+  | AddDocument({direction: direction})
+  | DeleteDocument({nextCurrentId: string, initialCursorPosition: State.initialCursorPosition})
 
 type documentItemPane =
   | ToAboveItem(unit)
@@ -28,6 +28,8 @@ type documentItemPane =
 type documentPane =
   | ToAboveDocument(unit)
   | ToBelowDocument(unit)
+  | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
+  | ToNormalMode(unit)
   | ToDocumentItemPane(unit)
 
 type t =

@@ -50,6 +50,27 @@ let documentPaneReducer = (state: State.t, action) => {
     | None => state
     }
 
+  | Action.ToInsertMode({initialCursorPosition}) =>
+    let editingText = switch state->State.DocumentPane.current {
+    | Some({text}) => text
+
+    | None => ""
+    }
+
+    {
+      ...state,
+      documentPane: {
+        ...state.documentPane,
+        editingText: editingText,
+      },
+      mode: State.Insert({initialCursorPosition: initialCursorPosition}),
+    }
+
+  | Action.ToNormalMode() => {
+      ...state,
+      mode: State.Normal,
+    }
+
   | Action.ToDocumentItemPane() =>
     if state.documentItemPane.currentId == "" {
       switch state->State.DocumentPane.currentRootDocumentItem {
@@ -146,7 +167,7 @@ let documentItemPaneReducer = (state: State.t, action) => {
       focus: State.DocumentPane,
     }
 
-  | ToInsertMode({initialCursorPosition}) =>
+  | Action.ToInsertMode({initialCursorPosition}) =>
     let editingText = switch state->State.DocumentItemPane.current {
     | Some({text}) => text
 
