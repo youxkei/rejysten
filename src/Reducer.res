@@ -99,6 +99,43 @@ let documentPaneReducer = (state: State.t, action) => {
         },
       }
     }
+
+  | Action.SetEditingText({text}) => {
+      ...state,
+      documentPane: {
+        ...state.documentPane,
+        editingText: text,
+      },
+    }
+
+  | Action.SetCurrentDocument({id, initialCursorPosition}) =>
+    switch state.mode {
+    | State.Normal => {
+        ...state,
+        documentPane: {
+          ...state.documentPane,
+          currentId: id,
+        },
+      }
+
+    | State.Insert(_) => {
+        let editingText = switch state->State.DocumentPane.get(id) {
+        | Some({text}) => text
+
+        | None => ""
+        }
+
+        {
+          ...state,
+          mode: State.Insert({initialCursorPosition: initialCursorPosition}),
+          documentPane: {
+            ...state.documentPane,
+            currentId: id,
+            editingText: editingText,
+          },
+        }
+      }
+    }
   }
 }
 
@@ -211,9 +248,7 @@ let documentItemPaneReducer = (state: State.t, action) => {
       }
 
     | State.Insert(_) => {
-        let {documentItemPane: {map: documentItemMap}} = state
-
-        let editingText = switch documentItemMap->get(id) {
+        let editingText = switch state->State.DocumentItemPane.get(id) {
         | Some({text}) => text
 
         | None => ""

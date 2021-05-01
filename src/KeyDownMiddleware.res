@@ -4,6 +4,174 @@
 @send external preventDefault: Dom.keyboardEvent => unit = "preventDefault"
 
 module KeyDownHandler = {
+  module DocumentPane = {
+    let normal = (store, event) => {
+      let dispatch = Reductive.Store.dispatch(store)
+
+      let code = event->code
+      let ctrlKey = event->ctrlKey
+      let shiftKey = event->shiftKey
+
+      switch code {
+      | "Tab" if !ctrlKey && !shiftKey => {
+          dispatch(Action.FirestoreDocumentPane(Action.IndentDocument()))
+          event->preventDefault
+        }
+
+      | "Tab" if !ctrlKey && shiftKey => {
+          dispatch(Action.FirestoreDocumentPane(Action.UnindentDocument()))
+          event->preventDefault
+        }
+
+      | "KeyJ" if !ctrlKey && !shiftKey => {
+          dispatch(Action.DocumentPane(Action.ToBelowDocument()))
+          event->preventDefault
+        }
+
+      | "KeyK" if !ctrlKey && !shiftKey => {
+          dispatch(Action.DocumentPane(Action.ToAboveDocument()))
+          event->preventDefault
+        }
+
+      | "KeyL" if !ctrlKey && !shiftKey => {
+          dispatch(Action.DocumentPane(Action.ToDocumentItemPane()))
+          event->preventDefault
+        }
+
+      | "KeyO" if !ctrlKey => {
+          let direction = if shiftKey {
+            Action.Prev
+          } else {
+            Action.Next
+          }
+
+          dispatch(Action.FirestoreDocumentPane(Action.AddDocument({direction: direction})))
+          dispatch(Action.DocumentPane(Action.ToInsertMode({initialCursorPosition: State.Start})))
+        }
+
+      | "KeyI" if !ctrlKey && !shiftKey => {
+          dispatch(Action.DocumentPane(Action.ToInsertMode({initialCursorPosition: State.Start})))
+          event->preventDefault
+        }
+
+      | "KeyA" if !ctrlKey && !shiftKey => {
+          dispatch(Action.DocumentPane(Action.ToInsertMode({initialCursorPosition: State.End})))
+          event->preventDefault
+        }
+
+      | "KeyO" if !ctrlKey => {
+          let direction = if shiftKey {
+            Action.Prev
+          } else {
+            Action.Next
+          }
+
+          dispatch(Action.FirestoreDocumentPane(Action.AddDocument({direction: direction})))
+          dispatch(Action.DocumentPane(Action.ToInsertMode({initialCursorPosition: State.Start})))
+
+          event->preventDefault
+        }
+
+      | _ => ()
+      }
+    }
+
+    let insert = (store, event) => {
+      let dispatch = Reductive.Store.dispatch(store)
+      let state: State.t = Reductive.Store.getState(store)
+
+      let code = event->code
+      let ctrlKey = event->ctrlKey
+      let shiftKey = event->shiftKey
+
+      switch code {
+      | "Escape" if !ctrlKey && !shiftKey =>
+        dispatch(Action.FirestoreDocumentPane(Action.SaveDocument()))
+        dispatch(Action.DocumentPane(Action.ToNormalMode()))
+
+      | "Tab" if !ctrlKey && !shiftKey =>
+        dispatch(Action.FirestoreDocumentPane(Action.IndentDocument()))
+        event->preventDefault
+
+      | "Tab" if !ctrlKey && shiftKey =>
+        dispatch(Action.FirestoreDocumentPane(Action.UnindentDocument()))
+        event->preventDefault
+
+      | "Enter" if !ctrlKey && !shiftKey =>
+        dispatch(Action.FirestoreDocumentPane(Action.AddDocument({direction: Action.Next})))
+        event->preventDefault
+
+      | "Backspace" if !ctrlKey && !shiftKey && state.documentPane.editingText == "" =>
+        switch state->State.DocumentPane.current {
+        | Some(currentDocument)
+          if currentDocument.firstChildId == "" && currentDocument.lastChildId == "" =>
+          switch state->State.DocumentPane.above(currentDocument) {
+          | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" =>
+            switch state->State.DocumentPane.currentRootDocumentItem {
+            | Some({firstChildId, lastChildId}) if firstChildId == lastChildId =>
+              switch state->State.DocumentItemPane.get(firstChildId) {
+              | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
+                dispatch(
+                  Action.FirestoreDocumentPane(
+                    Action.DeleteDocument({
+                      nextCurrentId: aboveId,
+                      initialCursorPosition: State.End,
+                    }),
+                  ),
+                )
+
+                event->preventDefault
+
+              | _ => ()
+              }
+
+            | _ => ()
+            }
+
+          | _ => ()
+          }
+
+        | _ => ()
+        }
+
+      | "Delete" if !ctrlKey && !shiftKey && state.documentPane.editingText == "" =>
+        switch state->State.DocumentPane.current {
+        | Some(currentDocument)
+          if currentDocument.firstChildId == "" && currentDocument.lastChildId == "" =>
+          switch state->State.DocumentPane.below(currentDocument) {
+          | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" =>
+            switch state->State.DocumentPane.currentRootDocumentItem {
+            | Some({firstChildId, lastChildId}) if firstChildId == lastChildId =>
+              switch state->State.DocumentItemPane.get(firstChildId) {
+              | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
+                dispatch(
+                  Action.FirestoreDocumentPane(
+                    Action.DeleteDocument({
+                      nextCurrentId: belowId,
+                      initialCursorPosition: State.Start,
+                    }),
+                  ),
+                )
+
+                event->preventDefault
+
+              | _ => ()
+              }
+
+            | _ => ()
+            }
+
+          | _ => ()
+          }
+
+        | _ => ()
+        }
+
+      | _ => ()
+      }
+    }
+  }
+
   module DocumentItemPane = {
     let normal = (store, event) => {
       let dispatch = Reductive.Store.dispatch(store)
@@ -100,7 +268,7 @@ module KeyDownHandler = {
 
       | "Backspace" if !ctrlKey && !shiftKey && state.documentItemPane.editingText == "" =>
         switch state->State.DocumentItemPane.current {
-        | Some(currentItem) if currentItem.firstChildId == "" =>
+        | Some(currentItem) if currentItem.firstChildId == "" && currentItem.lastChildId == "" =>
           switch state->State.DocumentItemPane.above(currentItem) {
           | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
               dispatch(
@@ -120,7 +288,7 @@ module KeyDownHandler = {
 
       | "Delete" if !ctrlKey && !shiftKey && state.documentItemPane.editingText == "" =>
         switch state->State.DocumentItemPane.current {
-        | Some(currentItem) if currentItem.firstChildId == "" =>
+        | Some(currentItem) if currentItem.firstChildId == "" && currentItem.lastChildId == "" =>
           switch state->State.DocumentItemPane.below(currentItem) {
           | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" => {
               dispatch(
@@ -130,139 +298,6 @@ module KeyDownHandler = {
               )
 
               event->preventDefault
-            }
-
-          | _ => ()
-          }
-
-        | _ => ()
-        }
-
-      | _ => ()
-      }
-    }
-  }
-
-  module DocumentPane = {
-    let normal = (store, event) => {
-      let dispatch = Reductive.Store.dispatch(store)
-
-      let code = event->code
-      let ctrlKey = event->ctrlKey
-      let shiftKey = event->shiftKey
-
-      switch code {
-      | "KeyJ" if !ctrlKey && !shiftKey => {
-          dispatch(Action.DocumentPane(Action.ToBelowDocument()))
-          event->preventDefault
-        }
-
-      | "KeyK" if !ctrlKey && !shiftKey => {
-          dispatch(Action.DocumentPane(Action.ToAboveDocument()))
-          event->preventDefault
-        }
-
-      | "KeyL" if !ctrlKey && !shiftKey => {
-          dispatch(Action.DocumentPane(Action.ToDocumentItemPane()))
-          event->preventDefault
-        }
-
-      | "KeyO" if !ctrlKey => {
-          let direction = if shiftKey {
-            Action.Prev
-          } else {
-            Action.Next
-          }
-
-          dispatch(Action.FirestoreDocumentPane(Action.AddDocument({direction: direction})))
-          dispatch(Action.DocumentPane(Action.ToInsertMode({initialCursorPosition: State.Start})))
-        }
-
-      | _ => ()
-      }
-    }
-
-    let insert = (store, event) => {
-      let dispatch = Reductive.Store.dispatch(store)
-      let state: State.t = Reductive.Store.getState(store)
-
-      let code = event->code
-      let ctrlKey = event->ctrlKey
-      let shiftKey = event->shiftKey
-
-      switch code {
-      | "Escape" if !ctrlKey && !shiftKey =>
-        dispatch(Action.FirestoreDocumentPane(Action.SaveDocument()))
-        dispatch(Action.DocumentPane(Action.ToNormalMode()))
-
-      | "Tab" if !ctrlKey && !shiftKey =>
-        dispatch(Action.FirestoreDocumentPane(Action.IndentDocument()))
-        event->preventDefault
-
-      | "Tab" if !ctrlKey && shiftKey =>
-        dispatch(Action.FirestoreDocumentPane(Action.UnindentDocument()))
-        event->preventDefault
-
-      | "Enter" if !ctrlKey && !shiftKey =>
-        dispatch(Action.FirestoreDocumentPane(Action.AddDocument({direction: Action.Next})))
-        event->preventDefault
-
-      | "Backspace" if !ctrlKey && !shiftKey && state.documentPane.editingText == "" =>
-        switch state->State.DocumentPane.current {
-        | Some(currentDocument) if currentDocument.firstChildId == "" =>
-          switch state->State.DocumentPane.above(currentDocument) {
-          | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" =>
-            switch state->State.DocumentPane.currentRootDocumentItem {
-            | Some({firstChildId, lastChildId}) if firstChildId == lastChildId =>
-              switch state->State.DocumentItemPane.get(firstChildId) {
-              | Some({text}) if text == "" =>
-                dispatch(
-                  Action.FirestoreDocumentPane(
-                    Action.DeleteDocument({
-                      nextCurrentId: aboveId,
-                      initialCursorPosition: State.End,
-                    }),
-                  ),
-                )
-
-                event->preventDefault
-
-              | _ => ()
-              }
-
-            | _ => ()
-            }
-
-          | _ => ()
-          }
-
-        | _ => ()
-        }
-
-      | "Delete" if !ctrlKey && !shiftKey && state.documentPane.editingText == "" =>
-        switch state->State.DocumentPane.current {
-        | Some(currentDocument) if currentDocument.firstChildId == "" =>
-          switch state->State.DocumentPane.below(currentDocument) {
-          | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" =>
-            switch state->State.DocumentPane.currentRootDocumentItem {
-            | Some({firstChildId, lastChildId}) if firstChildId == lastChildId =>
-              switch state->State.DocumentItemPane.get(firstChildId) {
-              | Some({text}) if text == "" =>
-                dispatch(
-                  Action.FirestoreDocumentPane(
-                    Action.DeleteDocument({
-                      nextCurrentId: belowId,
-                      initialCursorPosition: State.End,
-                    }),
-                  ),
-                )
-
-                event->preventDefault
-
-              | _ => ()
-              }
-
-            | _ => ()
             }
 
           | _ => ()

@@ -25,10 +25,21 @@ module type DocumentsInnerType = {
 module rec DocumentsInner: DocumentsInnerType = {
   @react.component
   let make = React.memo((~document: State.document) => {
+    let focus = Redux.useSelector(State.focus)
+    let mode = Redux.useSelector(State.mode)
     let documentMap = Redux.useSelector(State.DocumentPane.map)
+    let currentDocumentId = Redux.useSelector(State.DocumentPane.currentId)
+
+    let isCurrentItem = document.id == currentDocumentId
 
     <>
-      <li> <Document document /> </li>
+      <li>
+        {switch (focus, mode, isCurrentItem) {
+        | (State.DocumentPane, State.Insert(_), true) => <DocumentEditor />
+
+        | _ => <Document document />
+        }}
+      </li>
       <ul>
         {makeChildren(documentMap, document)
         ->Array.map((document: State.document) => {

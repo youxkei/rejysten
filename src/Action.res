@@ -16,6 +16,15 @@ type firestoreDocumentPane =
   | AddDocument({direction: direction})
   | DeleteDocument({nextCurrentId: string, initialCursorPosition: State.initialCursorPosition})
 
+type documentPane =
+  | ToAboveDocument(unit)
+  | ToBelowDocument(unit)
+  | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
+  | ToNormalMode(unit)
+  | ToDocumentItemPane(unit)
+  | SetEditingText({text: string})
+  | SetCurrentDocument({id: string, initialCursorPosition: State.initialCursorPosition})
+
 type documentItemPane =
   | ToAboveItem(unit)
   | ToBelowItem(unit)
@@ -24,13 +33,6 @@ type documentItemPane =
   | ToDocumentPane(unit)
   | SetEditingText({text: string})
   | SetCurrentItem({id: string, initialCursorPosition: State.initialCursorPosition})
-
-type documentPane =
-  | ToAboveDocument(unit)
-  | ToBelowDocument(unit)
-  | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
-  | ToNormalMode(unit)
-  | ToDocumentItemPane(unit)
 
 type t =
   | KeyDown({event: Dom.keyboardEvent})

@@ -25,6 +25,7 @@ module type ItemsInnerType = {
 module rec ItemsInner: ItemsInnerType = {
   @react.component
   let make = React.memo((~item: State.documentItem) => {
+    let focus = Redux.useSelector(State.focus)
     let mode = Redux.useSelector(State.mode)
     let documentItemMap = Redux.useSelector(State.DocumentItemPane.map)
     let currentDocumentItemId = Redux.useSelector(State.DocumentItemPane.currentId)
@@ -33,10 +34,8 @@ module rec ItemsInner: ItemsInnerType = {
 
     <>
       <li>
-        {switch mode {
-        | State.Insert(_) if isCurrentItem => {
-            <ItemEditor />
-          }
+        {switch (focus, mode, isCurrentItem) {
+        | (State.DocumentItemPane, State.Insert(_), true) => <ItemEditor />
 
         | _ => <Item item />
         }}
