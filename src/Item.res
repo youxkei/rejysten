@@ -5,7 +5,6 @@
 @react.component
 let make = React.memo((~item: State.documentItem) => {
   let currentDocumentItemId = Redux.useSelector(State.DocumentItemPane.currentId)
-  let focus = Redux.useSelector(State.focus)
   let spanRef = React.useRef(Js.Nullable.null)
 
   let isCurrentItem = item.id == currentDocumentItemId
@@ -29,17 +28,7 @@ let make = React.memo((~item: State.documentItem) => {
     None
   }, [isCurrentItem])
 
-  let className = if item.id == currentDocumentItemId {
-    switch focus {
-    | State.DocumentItemPane => Style.currentFocused
-
-    | _ => Style.currentUnfocused
-    }
-  } else {
-    ""
-  }
-
-  <span className ref={ReactDOM.Ref.domRef(spanRef)}> {item.text->React.string} </span>
+  <span ref={ReactDOM.Ref.domRef(spanRef)}> {item.text->React.string} </span>
 })
 
 React.setDisplayName(make, "Item")

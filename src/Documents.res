@@ -30,11 +30,21 @@ module rec DocumentsInner: DocumentsInnerType = {
     let documentMap = Redux.useSelector(State.DocumentPane.map)
     let currentDocumentId = Redux.useSelector(State.DocumentPane.currentId)
 
-    let isCurrentItem = document.id == currentDocumentId
+    let isCurrentDocument = document.id == currentDocumentId
+
+    let className = if isCurrentDocument {
+      switch focus {
+      | State.DocumentPane => Style.currentFocused
+
+      | _ => Style.currentUnfocused
+      }
+    } else {
+      ""
+    }
 
     <>
-      <li>
-        {switch (focus, mode, isCurrentItem) {
+      <li className>
+        {switch (focus, mode, isCurrentDocument) {
         | (State.DocumentPane, State.Insert(_), true) => <DocumentEditor />
 
         | _ => <Document document />

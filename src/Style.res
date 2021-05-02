@@ -23,9 +23,14 @@ let editor = style(. [
 ])
 
 let currentFocused = style(. [
-  backgroundColor(red)
+  backgroundColor(hex("434C5E"))
 ])
 
 let currentUnfocused = style(. [
-  backgroundColor(grey)
+  backgroundColor(hex("3B4252"))
+])
+
+global(. "body", [
+  color(hex("D8DEE9")),
+  backgroundColor(hex("2E3440"))
 ])

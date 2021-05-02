@@ -29,15 +29,5 @@ let make = React.memo((~document: State.document) => {
     None
   }, [isCurrentDocument])
 
-  let className = if document.id == currentDocumentId {
-    switch focus {
-    | State.DocumentPane => Style.currentFocused
-
-    | _ => Style.currentUnfocused
-    }
-  } else {
-    ""
-  }
-
-  <span className ref={ReactDOM.Ref.domRef(spanRef)}> {document.text->React.string} </span>
+  <span ref={ReactDOM.Ref.domRef(spanRef)}> {document.text->React.string} </span>
 })

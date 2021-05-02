@@ -32,8 +32,18 @@ module rec ItemsInner: ItemsInnerType = {
 
     let isCurrentItem = item.id == currentDocumentItemId
 
+    let className = if isCurrentItem {
+      switch focus {
+      | State.DocumentItemPane => Style.currentFocused
+
+      | _ => Style.currentUnfocused
+      }
+    } else {
+      ""
+    }
+
     <>
-      <li>
+      <li className>
         {switch (focus, mode, isCurrentItem) {
         | (State.DocumentItemPane, State.Insert(_), true) => <ItemEditor />
 
