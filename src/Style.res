@@ -1,36 +1,42 @@
 open CssJs
 
+%%private(
+  // from https://github.com/arcticicestudio/nord-vim/blob/develop/colors/nord.vim
+  let nord = [
+    hex("2E3440"),
+    hex("3B4252"),
+    hex("434C5E"),
+    hex("4C566A"),
+    hex("616E88"),
+    hex("D8DEE9"),
+    hex("E5E9F0"),
+    hex("ECEFF4"),
+    hex("8FBCBB"),
+    hex("88C0D0"),
+    hex("81A1C1"),
+    hex("5E81AC"),
+    hex("BF616A"),
+    hex("D08770"),
+    hex("EBCB8B"),
+    hex("A3BE8C"),
+    hex("B48EAD"),
+  ]
+)
+
 let app = style(. [
   display(grid),
   gridTemplateColumns([20.0->pct, 80.0->pct]),
-
   width(100.0->pct),
   height(100.0->pct),
 ])
 
-let documentPane = style(. [
-  gridColumnStart(1),
-  overflow(auto)
-])
+let documentPane = style(. [gridColumnStart(1), overflow(auto)])
 
-let documentItemPane = style(. [
-  gridColumnStart(2),
-  overflow(auto)
-])
+let documentItemPane = style(. [gridColumnStart(2), overflow(auto)])
 
-let editor = style(. [
-  width(100.0->pct)
-])
+let editor = style(. [color(nord[5]), backgroundColor(nord[0]), width(100.0->pct)])
 
-let currentFocused = style(. [
-  backgroundColor(hex("434C5E"))
-])
+let currentUnfocused = style(. [backgroundColor(nord[1])])
+let currentFocused = style(. [backgroundColor(nord[2])])
 
-let currentUnfocused = style(. [
-  backgroundColor(hex("3B4252"))
-])
-
-global(. "body", [
-  color(hex("D8DEE9")),
-  backgroundColor(hex("2E3440"))
-])
+global(. "body", [color(nord[5]), backgroundColor(nord[0])])
