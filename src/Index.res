@@ -41,7 +41,10 @@ let store = enhancer(Reductive.Store.create)(
   ~reducer=Reducer.reducer,
   ~preloadedState=State.initialState,
   ~enhancer=(store, next) =>
-    next->loggerMiddleware(store, _)->FirestoreMiddleware.middleware(store, _)->KeyDownMiddleware.middleware(store, _),
+    next
+    ->loggerMiddleware(store, _)
+    ->FirestoreMiddleware.middleware(store, _)
+    ->KeyDownMiddleware.middleware(store, _),
   (),
 )
 
@@ -79,16 +82,15 @@ module App = {
           switch user {
           | Some(_) => ()
 
-          | None => {
-              let provider = Firebase.Auth.googleAuthProvider()
-              Firebase.auth()->Firebase.Auth.signInWithPopup(provider)
-            }
+          | None =>
+            let provider = Firebase.Auth.googleAuthProvider()
+            Firebase.auth()->Firebase.Auth.signInWithPopup(provider)
           }
         }
       }
 
       None
-    }, [user])
+    }, [user, initializing])
 
     if initializing {
       "initializing"->React.string
