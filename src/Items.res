@@ -1,5 +1,9 @@
 open Belt
 
+@send external getBoundingClientRect: Dom.element => {"left": int, "right": int, "top": int, "bottom": int} = "getBoundingClientRect"
+@send external scrollIntoView: (Dom.element, {"behavior": string, "block": string, "inline": string}) => unit = "scrollIntoView"
+@val @bs.scope("window") external innerHeight: int = "innerHeight"
+
 %%private(
   let makeChildren = (documentItemMap, item: State.documentItem) => {
     let children = []
@@ -29,8 +33,29 @@ module rec ItemsInner: ItemsInnerType = {
     let mode = Redux.useSelector(State.mode)
     let documentItemMap = Redux.useSelector(State.DocumentItemPane.map)
     let currentDocumentItemId = Redux.useSelector(State.DocumentItemPane.currentId)
+    let liRef = React.useRef(Js.Nullable.null)
 
     let isCurrentItem = item.id == currentDocumentItemId
+
+    React.useEffect1(() => {
+      if isCurrentItem {
+        liRef.current
+        ->Js.Nullable.toOption
+        ->Option.forEach(li => {
+          let rect = li->getBoundingClientRect
+
+          if rect["top"] < 0 {
+            li->scrollIntoView({"behavior": "auto", "block": "start", "inline": "nearest"})
+          }
+
+          if rect["bottom"] > innerHeight {
+            li->scrollIntoView({"behavior": "auto", "block": "end", "inline": "nearest"})
+          }
+        })
+      }
+
+      None
+    }, [isCurrentItem])
 
     let className = if isCurrentItem {
       switch focus {
@@ -43,7 +68,7 @@ module rec ItemsInner: ItemsInnerType = {
     }
 
     <>
-      <li className>
+      <li className ref={ReactDOM.Ref.domRef(liRef)}>
         {switch (focus, mode, isCurrentItem) {
         | (State.DocumentItemPane, State.Insert(_), true) => <ItemEditor />
 

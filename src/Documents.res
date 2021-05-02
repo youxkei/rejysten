@@ -1,5 +1,9 @@
 open Belt
 
+@send external getBoundingClientRect: Dom.element => {"left": int, "right": int, "top": int, "bottom": int} = "getBoundingClientRect"
+@send external scrollIntoView: (Dom.element, {"behavior": string, "block": string, "inline": string}) => unit = "scrollIntoView"
+@val @bs.scope("window") external innerHeight: int = "innerHeight"
+
 %%private(
   let makeChildren = (documentMap, document: State.document) => {
     let children = []
@@ -29,8 +33,29 @@ module rec DocumentsInner: DocumentsInnerType = {
     let mode = Redux.useSelector(State.mode)
     let documentMap = Redux.useSelector(State.DocumentPane.map)
     let currentDocumentId = Redux.useSelector(State.DocumentPane.currentId)
+    let liRef = React.useRef(Js.Nullable.null)
 
     let isCurrentDocument = document.id == currentDocumentId
+
+    React.useEffect1(() => {
+      if isCurrentDocument {
+        liRef.current
+        ->Js.Nullable.toOption
+        ->Option.forEach(li => {
+          let rect = li->getBoundingClientRect
+
+          if rect["top"] < 0 {
+            li->scrollIntoView({"behavior": "auto", "block": "start", "inline": "nearest"})
+          }
+
+          if rect["bottom"] > innerHeight {
+            li->scrollIntoView({"behavior": "auto", "block": "end", "inline": "nearest"})
+          }
+        })
+      }
+
+      None
+    }, [isCurrentDocument])
 
     let className = if isCurrentDocument {
       switch focus {
@@ -43,7 +68,7 @@ module rec DocumentsInner: DocumentsInnerType = {
     }
 
     <>
-      <li className>
+      <li className ref={ReactDOM.Ref.domRef(liRef)}>
         {switch (focus, mode, isCurrentDocument) {
         | (State.DocumentPane, State.Insert(_), true) => <DocumentEditor />
 
