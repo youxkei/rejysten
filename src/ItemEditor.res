@@ -41,6 +41,7 @@ let make = React.memo(() => {
   }, [])
 
   <textarea
+    className={Style.editor}
     value=text
     ref={ReactDOM.Ref.domRef(textareaRef)}
     onChange=handleChange

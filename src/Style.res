@@ -18,6 +18,10 @@ let documentItemPane = style(. [
   overflow(auto)
 ])
 
+let editor = style(. [
+  width(100.0->pct)
+])
+
 let currentFocused = style(. [
   backgroundColor(red)
 ])
