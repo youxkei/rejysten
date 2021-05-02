@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "bsb -clean-world -make-world",
+    "build": "bsb -clean-world -make-world && NODE_ENV=production webpack",
+    "watch": "bsb -clean-world -make-world -w",
     "serve": "webpack serve",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

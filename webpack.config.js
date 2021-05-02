@@ -13,21 +13,19 @@ module.exports = {
 
   module: {
     rules: [
-      {
+      isDevelopment && {
         test: /\.js$/,
         exclude: /node_modules/,
         use: [
           {
             loader: require.resolve("babel-loader"),
             options: {
-              plugins: [
-                isDevelopment && require.resolve("react-refresh/babel"),
-              ].filter(Boolean),
+              plugins: [require.resolve("react-refresh/babel")],
             },
           },
         ],
       },
-    ],
+    ].filter(Boolean),
   },
 
   plugins: [
