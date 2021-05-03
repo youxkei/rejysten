@@ -45,5 +45,3 @@ type t =
 
   | SetDocumentItemPaneState({map: HashMap.String.t<State.documentItem>})
   | SetDocumentPaneState({map: HashMap.String.t<State.document>, rootId: string})
-
-  | DevToolUpdate({state: State.t})

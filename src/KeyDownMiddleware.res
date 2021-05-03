@@ -6,7 +6,7 @@
 module KeyDownHandler = {
   module DocumentPane = {
     let normal = (store, event) => {
-      let dispatch = Reductive.Store.dispatch(store)
+      let dispatch = Redux.Store.dispatch(store)
 
       let code = event->code
       let ctrlKey = event->ctrlKey
@@ -77,8 +77,8 @@ module KeyDownHandler = {
     }
 
     let insert = (store, event) => {
-      let dispatch = Reductive.Store.dispatch(store)
-      let state: State.t = Reductive.Store.getState(store)
+      let dispatch = Redux.Store.dispatch(store)
+      let state: State.t = Redux.Store.getState(store)
 
       let code = event->code
       let ctrlKey = event->ctrlKey
@@ -174,7 +174,7 @@ module KeyDownHandler = {
 
   module DocumentItemPane = {
     let normal = (store, event) => {
-      let dispatch = Reductive.Store.dispatch(store)
+      let dispatch = Redux.Store.dispatch(store)
 
       let code = event->code
       let ctrlKey = event->ctrlKey
@@ -238,8 +238,8 @@ module KeyDownHandler = {
     }
 
     let insert = (store, event) => {
-      let dispatch = Reductive.Store.dispatch(store)
-      let state: State.t = Reductive.Store.getState(store)
+      let dispatch = Redux.Store.dispatch(store)
+      let state: State.t = Redux.Store.getState(store)
 
       let code = event->code
       let ctrlKey = event->ctrlKey
@@ -315,7 +315,7 @@ module KeyDownHandler = {
 let middleware = (store, next, action) => {
   switch action {
   | Action.KeyDown({event}) => {
-      let {focus, mode}: State.t = Reductive.Store.getState(store)
+      let {focus, mode}: State.t = Redux.Store.getState(store)
 
       switch (focus, mode) {
       | (State.DocumentPane, State.Normal) => KeyDownHandler.DocumentPane.normal(store, event)

@@ -1,7 +1,7 @@
 @module("uuid") external uuidv4: unit => string = "v4"
 
 let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentPane) => {
-  let state = Reductive.Store.getState(store)
+  let state = Redux.Store.getState(store)
 
   switch action {
   | Action.SaveDocument() =>
@@ -230,7 +230,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentPane) =>
 
         batch->commit
 
-        Reductive.Store.dispatch(
+        Redux.Store.dispatch(
           store,
           Action.DocumentPane(
             Action.SetCurrentDocument({id: addingDocumentId, initialCursorPosition: State.Start}),
@@ -277,7 +277,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentPane) =>
             batch->addUpdate(documents->doc(nextId), {"prevId": prevId})
           }
 
-          Reductive.Store.dispatch(
+          Redux.Store.dispatch(
             store,
             Action.DocumentPane(
               Action.SetCurrentDocument({

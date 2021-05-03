@@ -25,27 +25,23 @@ let firebaseConfig = {
 Firebase.initializeApp(firebaseConfig)
 
 let loggerMiddleware = (store, next, action) => {
-  Js.log(Reductive.Store.getState(store))
+  Js.log(Redux.Store.getState(store))
   Js.log(action)
   next(action)
-  Js.log(Reductive.Store.getState(store))
+  Js.log(Redux.Store.getState(store))
 }
 
-let enhancer = ReductiveDevTools.Connectors.enhancer(
-  ~options=ReductiveDevTools.Extension.enhancerOptions(~name="rejysten", ()),
-  ~devToolsUpdateActionCreator=state => Action.DevToolUpdate({state: state}),
-  (),
-)
-
-let store = enhancer(Reductive.Store.create)(
-  ~reducer=Reducer.reducer,
-  ~preloadedState=State.initialState,
-  ~enhancer=(store, next) =>
-    next
-    ->loggerMiddleware(store, _)
-    ->FirestoreMiddleware.middleware(store, _)
-    ->KeyDownMiddleware.middleware(store, _),
-  (),
+let store = Redux.Store.create(
+  Reducer.reducer,
+  State.initialState,
+  Redux.curryMiddleware((store, next, action) =>
+    (
+      next
+      ->loggerMiddleware(store, _)
+      ->FirestoreMiddleware.middleware(store, _)
+      ->KeyDownMiddleware.middleware(store, _)
+    )(action)
+  ),
 )
 
 module KeyDownHandler = {

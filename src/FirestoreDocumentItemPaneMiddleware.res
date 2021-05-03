@@ -5,7 +5,7 @@ let size = HashMap.String.size
 @module("uuid") external uuidv4: unit => string = "v4"
 
 let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentItemPane) => {
-  let state = Reductive.Store.getState(store)
+  let state = Redux.Store.getState(store)
 
   switch action {
   | Action.SaveItem() =>
@@ -205,7 +205,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentItemPane
 
         batch->commit
 
-        Reductive.Store.dispatch(
+        Redux.Store.dispatch(
           store,
           Action.DocumentItemPane(
             Action.SetCurrentItem({id: addingItemId, initialCursorPosition: State.Start}),
@@ -245,7 +245,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentItemPane
           batch->addUpdate(items->doc(nextId), {"prevId": prevId})
         }
 
-        Reductive.Store.dispatch(
+        Redux.Store.dispatch(
           store,
           Action.DocumentItemPane(
             Action.SetCurrentItem({

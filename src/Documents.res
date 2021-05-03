@@ -1,8 +1,18 @@
 open Belt
 
-@send external getBoundingClientRect: Dom.element => {"left": int, "right": int, "top": int, "bottom": int} = "getBoundingClientRect"
-@send external scrollIntoView: (Dom.element, {"behavior": string, "block": string, "inline": string}) => unit = "scrollIntoView"
-@val @bs.scope("window") external innerHeight: int = "innerHeight"
+@send
+external getBoundingClientRect: Dom.element => {
+  "left": int,
+  "right": int,
+  "top": int,
+  "bottom": int,
+} = "getBoundingClientRect"
+@send
+external scrollIntoView: (
+  Dom.element,
+  {"behavior": string, "block": string, "inline": string},
+) => unit = "scrollIntoView"
+@val @scope("window") external innerHeight: int = "innerHeight"
 
 %%private(
   let makeChildren = (documentMap, document: State.document) => {
@@ -22,7 +32,7 @@ open Belt
 )
 
 module type DocumentsInnerType = {
-  let make: {"document": State.document} => ReasonReact.reactElement
+  let make: {"document": State.document} => React.element
   let makeProps: (~document: State.document, ~key: string=?, unit) => {"document": State.document}
 }
 

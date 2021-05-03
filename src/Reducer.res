@@ -295,6 +295,6 @@ let reducer = (state: State.t, action) => {
       },
     }
 
-  | Action.DevToolUpdate({state}) => state
+  | _ => state
   }
 }

@@ -12,11 +12,9 @@
   },
   "suffix": ".bs.js",
   "bs-dependencies": [
-    "reason-react",
-    "reductive",
+    "@rescript/react",
     "bs-css",
     "bs-css-emotion",
-    "reductive-dev-tools"
   ],
   "warnings": {
     "error" : "+101"
