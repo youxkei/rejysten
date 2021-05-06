@@ -116,6 +116,10 @@ let documentPaneReducer = (state: State.t, action) => {
           ...state.documentPane,
           currentId: id,
         },
+        documentItemPane: {
+          ...state.documentItemPane,
+          currentId: "",
+        },
       }
 
     | State.Insert(_) => {
@@ -132,6 +136,10 @@ let documentPaneReducer = (state: State.t, action) => {
             ...state.documentPane,
             currentId: id,
             editingText: editingText,
+          },
+          documentItemPane: {
+            ...state.documentItemPane,
+            currentId: "",
           },
         }
       }
