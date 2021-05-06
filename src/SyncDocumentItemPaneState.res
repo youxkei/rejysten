@@ -9,7 +9,7 @@ open Belt
     items->Array.forEach(item => {
       let id = item["id"]
 
-      let item: State.documentItem = {
+      let item: State.item = {
         id: id,
         text: item["text"],
         nextId: item["nextId"],
@@ -31,7 +31,7 @@ let make = React.memo(() => {
   open Firebase.Firestore
 
   let dispatch = Redux.useDispatch()
-  let currentDocumentId = Redux.useSelector(State.DocumentPane.currentId)
+  let currentDocumentId = Redux.useSelector(State.DocumentPane.currentDocumentId)
 
   let (items, loading, error) = useCollectionData(
     Firebase.firestore()->collection("items")->where("documentId", "==", currentDocumentId),
@@ -51,4 +51,4 @@ let make = React.memo(() => {
   React.null
 })
 
-React.setDisplayName(make, "SyncDocumentItemState")
+React.setDisplayName(make, "SyncDocumentItemPaneState")

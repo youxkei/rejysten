@@ -7,9 +7,9 @@ exception ActionShouldBeProcessedByMiddleware(Action.t)
 let documentPaneReducer = (state: State.t, action) => {
   switch action {
   | Action.ToAboveDocument() =>
-    switch state->State.DocumentPane.current {
+    switch state->State.DocumentPane.currentDocument {
     | Some(currentDocument) =>
-      switch state->State.DocumentPane.above(currentDocument) {
+      switch state->State.DocumentPane.aboveDocument(currentDocument) {
       | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
           ...state,
           documentPane: {
@@ -29,9 +29,9 @@ let documentPaneReducer = (state: State.t, action) => {
     }
 
   | Action.ToBelowDocument() =>
-    switch state->State.DocumentPane.current {
+    switch state->State.DocumentPane.currentDocument {
     | Some(currentDocument) =>
-      switch state->State.DocumentPane.below(currentDocument) {
+      switch state->State.DocumentPane.belowDocument(currentDocument) {
       | Some({id: belowId}) => {
           ...state,
           documentPane: {
@@ -51,7 +51,7 @@ let documentPaneReducer = (state: State.t, action) => {
     }
 
   | Action.ToInsertMode({initialCursorPosition}) =>
-    let editingText = switch state->State.DocumentPane.current {
+    let editingText = switch state->State.DocumentPane.currentDocument {
     | Some({text}) => text
 
     | None => ""
@@ -123,7 +123,7 @@ let documentPaneReducer = (state: State.t, action) => {
       }
 
     | State.Insert(_) => {
-        let editingText = switch state->State.DocumentPane.get(id) {
+        let editingText = switch state->State.DocumentPane.getDocument(id) {
         | Some({text}) => text
 
         | None => ""
@@ -152,9 +152,9 @@ let documentItemPaneReducer = (state: State.t, action) => {
 
   switch action {
   | Action.ToAboveItem() =>
-    switch state->State.DocumentItemPane.current {
+    switch state->State.DocumentItemPane.currentItem {
     | Some(item) =>
-      switch state->State.DocumentItemPane.above(item) {
+      switch state->State.DocumentItemPane.aboveItem(item) {
       | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
           ...state,
           documentItemPane: {
@@ -181,9 +181,9 @@ let documentItemPaneReducer = (state: State.t, action) => {
     }
 
   | Action.ToBelowItem() =>
-    switch state->State.DocumentItemPane.current {
+    switch state->State.DocumentItemPane.currentItem {
     | Some(item) =>
-      switch state->State.DocumentItemPane.below(item) {
+      switch state->State.DocumentItemPane.belowItem(item) {
       | Some({id: belowId}) => {
           ...state,
           documentItemPane: {
@@ -241,7 +241,7 @@ let documentItemPaneReducer = (state: State.t, action) => {
     }
 
   | Action.ToInsertMode({initialCursorPosition}) =>
-    let editingText = switch state->State.DocumentItemPane.current {
+    let editingText = switch state->State.DocumentItemPane.currentItem {
     | Some({text}) => text
 
     | None => ""
@@ -284,7 +284,7 @@ let documentItemPaneReducer = (state: State.t, action) => {
       }
 
     | State.Insert(_) => {
-        let editingText = switch state->State.DocumentItemPane.get(id) {
+        let editingText = switch state->State.DocumentItemPane.getItem(id) {
         | Some({text}) => text
 
         | None => ""

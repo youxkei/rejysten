@@ -1,6 +1,6 @@
 open Belt
 
-type documentItem = {
+type item = {
   id: string,
   text: string,
   parentId: string,
@@ -29,7 +29,7 @@ type focus = DocumentPane | DocumentItemPane
 
 type documentItemPaneState = {
   currentId: string,
-  map: Belt.HashMap.String.t<documentItem>,
+  map: Belt.HashMap.String.t<item>,
   editingText: string,
 }
 
@@ -48,23 +48,23 @@ type t = {
 }
 
 module DocumentPane = {
-  let currentId = ({documentPane: {currentId}}) => currentId
-  let map = ({documentPane: {map}}) => map
+  let currentDocumentId = ({documentPane: {currentId}}) => currentId
+  let documentMap = ({documentPane: {map}}) => map
   let editingText = ({documentPane: {editingText}}) => editingText
-  let rootId = ({documentPane: {rootId}}) => rootId
+  let rootDocumentId = ({documentPane: {rootId}}) => rootId
 
-  let get = ({documentPane: {map}}, id) => {
+  let getDocument = ({documentPane: {map}}, id) => {
     map->HashMap.String.get(id)
   }
 
-  let current = state => state->get(state->currentId)
-  let root = state => state->get(state->rootId)
+  let currentDocument = state => state->getDocument(state->currentDocumentId)
+  let rootDocument = state => state->getDocument(state->rootDocumentId)
 
-  let above = (state, {prevId, parentId}: document) => {
-    switch state->get(prevId) {
+  let aboveDocument = (state, {prevId, parentId}: document) => {
+    switch state->getDocument(prevId) {
     | Some(document) => {
         let rec searchPrev = (document: document) => {
-          switch state->get(document.lastChildId) {
+          switch state->getDocument(document.lastChildId) {
           | Some(document) => searchPrev(document)
 
           | None => document
@@ -74,26 +74,26 @@ module DocumentPane = {
         Some(searchPrev(document))
       }
 
-    | None => state->get(parentId)
+    | None => state->getDocument(parentId)
     }
   }
 
-  let below = (state, document) => {
+  let belowDocument = (state, document) => {
     let {nextId, firstChildId} = document
 
-    switch state->get(firstChildId) {
+    switch state->getDocument(firstChildId) {
     | Some(document) => Some(document)
 
     | None =>
-      switch state->get(nextId) {
+      switch state->getDocument(nextId) {
       | Some(document) => Some(document)
 
       | None => {
           let rec searchNext = ({nextId, parentId}) => {
-            switch state->get(nextId) {
+            switch state->getDocument(nextId) {
             | Some(document) => Some(document)
 
-            | None => state->get(parentId)->Option.flatMap(document => searchNext(document))
+            | None => state->getDocument(parentId)->Option.flatMap(document => searchNext(document))
             }
           }
 
@@ -105,19 +105,19 @@ module DocumentPane = {
 }
 
 module DocumentItemPane = {
-  let currentId = ({documentItemPane: {currentId}}) => currentId
-  let map = ({documentItemPane: {map}}) => map
+  let currentItemId = ({documentItemPane: {currentId}}) => currentId
+  let itemMap = ({documentItemPane: {map}}) => map
   let editingText = ({documentItemPane: {editingText}}) => editingText
 
-  let get = ({documentItemPane: {map}}, id) => {
+  let getItem = ({documentItemPane: {map}}, id) => {
     map->HashMap.String.get(id)
   }
 
-  let current = state => state->get(state->currentId)
+  let currentItem = state => state->getItem(state->currentItemId)
 
   let rootItem = state => {
-    switch state->DocumentPane.current {
-    | Some({rootItemId}) => state->get(rootItemId)
+    switch state->DocumentPane.currentDocument {
+    | Some({rootItemId}) => state->getItem(rootItemId)
 
     | _ => None
     }
@@ -125,7 +125,7 @@ module DocumentItemPane = {
 
   let topItem = state => {
     switch state->rootItem {
-    | Some({firstChildId}) => state->get(firstChildId)
+    | Some({firstChildId}) => state->getItem(firstChildId)
 
     | None => None
     }
@@ -134,10 +134,10 @@ module DocumentItemPane = {
   let bottomItem = state => {
     switch state->rootItem {
     | Some({lastChildId}) =>
-      switch state->get(lastChildId) {
+      switch state->getItem(lastChildId) {
       | Some(item) =>
-        let rec searchBottom = (item: documentItem) => {
-          switch state->get(item.lastChildId) {
+        let rec searchBottom = (item: item) => {
+          switch state->getItem(item.lastChildId) {
           | Some(item) => searchBottom(item)
 
           | None => item
@@ -153,11 +153,11 @@ module DocumentItemPane = {
     }
   }
 
-  let above = (state, {prevId, parentId}: documentItem) => {
-    switch state->get(prevId) {
+  let aboveItem = (state, {prevId, parentId}: item) => {
+    switch state->getItem(prevId) {
     | Some(item) => {
-        let rec searchPrev = (item: documentItem) => {
-          switch state->get(item.lastChildId) {
+        let rec searchPrev = (item: item) => {
+          switch state->getItem(item.lastChildId) {
           | Some(item) => searchPrev(item)
 
           | None => item
@@ -167,26 +167,26 @@ module DocumentItemPane = {
         Some(searchPrev(item))
       }
 
-    | None => state->get(parentId)
+    | None => state->getItem(parentId)
     }
   }
 
-  let below = (state, item: documentItem) => {
+  let belowItem = (state, item: item) => {
     let {nextId, firstChildId} = item
 
-    switch state->get(firstChildId) {
+    switch state->getItem(firstChildId) {
     | Some(item) => Some(item)
 
     | None =>
-      switch state->get(nextId) {
+      switch state->getItem(nextId) {
       | Some(item) => Some(item)
 
       | None => {
-          let rec searchNext = ({nextId, parentId}: documentItem) => {
-            switch state->get(nextId) {
+          let rec searchNext = ({nextId, parentId}: item) => {
+            switch state->getItem(nextId) {
             | Some(item) => Some(item)
 
-            | None => state->get(parentId)->Option.flatMap(item => searchNext(item))
+            | None => state->getItem(parentId)->Option.flatMap(item => searchNext(item))
             }
           }
 

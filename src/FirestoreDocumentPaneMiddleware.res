@@ -5,7 +5,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentPane) =>
 
   switch action {
   | Action.SaveDocument() =>
-    switch state->State.DocumentPane.current {
+    switch state->State.DocumentPane.currentDocument {
     | Some({id}) =>
       switch state.mode {
       | State.Insert(_) =>
@@ -23,7 +23,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentPane) =>
     }
 
   | Action.IndentDocument() =>
-    switch state->State.DocumentPane.current {
+    switch state->State.DocumentPane.currentDocument {
     | Some({id, parentId, prevId, nextId}) =>
       open Firebase.Firestore
 
@@ -38,7 +38,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentPane) =>
       | State.Normal => ()
       }
 
-      switch state->State.DocumentPane.get(prevId) {
+      switch state->State.DocumentPane.getDocument(prevId) {
       | Some({lastChildId: prevLastChildId}) =>
         if prevLastChildId == "" {
           batch->addUpdate(documents->doc(id), {"parentId": prevId, "prevId": "", "nextId": ""})
@@ -72,7 +72,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentPane) =>
     }
 
   | Action.UnindentDocument() =>
-    switch state->State.DocumentPane.current {
+    switch state->State.DocumentPane.currentDocument {
     | Some({id, parentId, prevId, nextId}) =>
       open Firebase.Firestore
 
@@ -87,7 +87,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentPane) =>
       | _ => ()
       }
 
-      switch state->State.DocumentPane.get(parentId) {
+      switch state->State.DocumentPane.getDocument(parentId) {
       | Some({parentId: parentParentId, nextId: parentNextId}) =>
         if parentParentId != "" {
           batch->addUpdate(
@@ -130,7 +130,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentPane) =>
     }
 
   | Action.AddDocument({direction}) =>
-    switch state->State.DocumentPane.current {
+    switch state->State.DocumentPane.currentDocument {
     | Some({id, parentId, prevId, nextId}) => {
         open Firebase.Firestore
 
@@ -242,11 +242,11 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentPane) =>
     }
 
   | Action.DeleteDocument({nextCurrentId, initialCursorPosition}) =>
-    switch state->State.DocumentPane.current {
+    switch state->State.DocumentPane.currentDocument {
     | Some(currentDocument) =>
       switch state->State.DocumentItemPane.rootItem {
       | Some({id: rootItemId, firstChildId}) =>
-        switch state->State.DocumentItemPane.get(firstChildId) {
+        switch state->State.DocumentItemPane.getItem(firstChildId) {
         | Some({id: firstChildItemId}) =>
           open Firebase.Firestore
 

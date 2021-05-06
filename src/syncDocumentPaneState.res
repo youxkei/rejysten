@@ -57,4 +57,4 @@ let make = React.memo(() => {
   React.null
 })
 
-React.setDisplayName(make, "SyncDocumentState")
+React.setDisplayName(make, "SyncDocumentPaneState")

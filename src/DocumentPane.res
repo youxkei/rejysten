@@ -1,6 +1,6 @@
 @react.component
 let make = React.memo(() => {
-  let rootDocument = Redux.useSelector(State.DocumentPane.root)
+  let rootDocument = Redux.useSelector(State.DocumentPane.rootDocument)
 
   switch rootDocument {
   | Some(document) => <section className=Style.documentPane> <Documents document /> </section>

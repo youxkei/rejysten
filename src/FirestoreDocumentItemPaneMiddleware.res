@@ -1,7 +1,3 @@
-open Belt
-let get = HashMap.String.get
-let size = HashMap.String.size
-
 @module("uuid") external uuidv4: unit => string = "v4"
 
 let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentItemPane) => {
@@ -9,7 +5,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentItemPane
 
   switch action {
   | Action.SaveItem() =>
-    switch state->State.DocumentItemPane.current {
+    switch state->State.DocumentItemPane.currentItem {
     | Some({id}) =>
       switch state.mode {
       | State.Insert(_) =>
@@ -27,7 +23,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentItemPane
     }
 
   | Action.IndentItem() =>
-    switch state->State.DocumentItemPane.current {
+    switch state->State.DocumentItemPane.currentItem {
     | Some({id, parentId, prevId, nextId}) =>
       open Firebase.Firestore
 
@@ -42,7 +38,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentItemPane
       | _ => ()
       }
 
-      switch state->State.DocumentItemPane.get(prevId) {
+      switch state->State.DocumentItemPane.getItem(prevId) {
       | Some({lastChildId: prevLastChildId}) =>
         if prevLastChildId == "" {
           batch->addUpdate(items->doc(id), {"parentId": prevId, "prevId": "", "nextId": ""})
@@ -76,7 +72,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentItemPane
     }
 
   | Action.UnindentItem() =>
-    switch state->State.DocumentItemPane.current {
+    switch state->State.DocumentItemPane.currentItem {
     | Some({id, parentId, prevId, nextId}) =>
       open Firebase.Firestore
 
@@ -91,7 +87,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentItemPane
       | _ => ()
       }
 
-      switch state->State.DocumentItemPane.get(parentId) {
+      switch state->State.DocumentItemPane.getItem(parentId) {
       | Some({parentId: parentParentId, nextId: parentNextId}) =>
         if parentParentId != "" {
           batch->addUpdate(
@@ -134,7 +130,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentItemPane
     }
 
   | Action.AddItem({direction}) =>
-    switch state->State.DocumentItemPane.current {
+    switch state->State.DocumentItemPane.currentItem {
     | Some({id, parentId, prevId, nextId}) => {
         open Firebase.Firestore
 
@@ -217,7 +213,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentItemPane
     }
 
   | Action.DeleteItem({nextCurrentId, initialCursorPosition}) =>
-    switch state->State.DocumentItemPane.current {
+    switch state->State.DocumentItemPane.currentItem {
     | Some(item) => {
         open Firebase.Firestore
 

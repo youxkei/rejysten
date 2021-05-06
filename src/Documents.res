@@ -1,8 +1,18 @@
 open Belt
 
-@send external getBoundingClientRect: Dom.element => {"left": int, "right": int, "top": int, "bottom": int} = "getBoundingClientRect"
-@send external scrollIntoView: (Dom.element, {"behavior": string, "block": string, "inline": string}) => unit = "scrollIntoView"
-@val @bs.scope("window") external innerHeight: int = "innerHeight"
+@send
+external getBoundingClientRect: Dom.element => {
+  "left": int,
+  "right": int,
+  "top": int,
+  "bottom": int,
+} = "getBoundingClientRect"
+@send
+external scrollIntoView: (
+  Dom.element,
+  {"behavior": string, "block": string, "inline": string},
+) => unit = "scrollIntoView"
+@val @scope("window") external innerHeight: int = "innerHeight"
 
 %%private(
   let makeChildren = (documentMap, document: State.document) => {
@@ -21,18 +31,16 @@ open Belt
   }
 )
 
-module type DocumentsInnerType = {
+module rec DocumentsInner: {
   let make: {"document": State.document} => ReasonReact.reactElement
   let makeProps: (~document: State.document, ~key: string=?, unit) => {"document": State.document}
-}
-
-module rec DocumentsInner: DocumentsInnerType = {
+} = {
   @react.component
   let make = React.memo((~document: State.document) => {
     let focus = Redux.useSelector(State.focus)
     let mode = Redux.useSelector(State.mode)
-    let documentMap = Redux.useSelector(State.DocumentPane.map)
-    let currentDocumentId = Redux.useSelector(State.DocumentPane.currentId)
+    let documentMap = Redux.useSelector(State.DocumentPane.documentMap)
+    let currentDocumentId = Redux.useSelector(State.DocumentPane.currentDocumentId)
     let liRef = React.useRef(Js.Nullable.null)
 
     let isCurrentDocument = document.id == currentDocumentId
@@ -88,7 +96,7 @@ module rec DocumentsInner: DocumentsInnerType = {
 
 @react.component
 let make = React.memo((~document: State.document) => {
-  let documentMap = Redux.useSelector(State.DocumentPane.map)
+  let documentMap = Redux.useSelector(State.DocumentPane.documentMap)
 
   <ul>
     {makeChildren(documentMap, document)

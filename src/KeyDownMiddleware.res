@@ -102,10 +102,10 @@ module KeyDownHandler = {
         event->preventDefault
 
       | "Backspace" if !ctrlKey && !shiftKey && state.documentPane.editingText == "" =>
-        switch state->State.DocumentPane.current {
+        switch state->State.DocumentPane.currentDocument {
         | Some(currentDocument)
           if currentDocument.firstChildId == "" && currentDocument.lastChildId == "" =>
-          switch state->State.DocumentPane.above(currentDocument) {
+          switch state->State.DocumentPane.aboveDocument(currentDocument) {
           | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" =>
             switch state->State.DocumentItemPane.topItem {
             | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
@@ -130,10 +130,10 @@ module KeyDownHandler = {
         }
 
       | "Delete" if !ctrlKey && !shiftKey && state.documentPane.editingText == "" =>
-        switch state->State.DocumentPane.current {
+        switch state->State.DocumentPane.currentDocument {
         | Some(currentDocument)
           if currentDocument.firstChildId == "" && currentDocument.lastChildId == "" =>
-          switch state->State.DocumentPane.below(currentDocument) {
+          switch state->State.DocumentPane.belowDocument(currentDocument) {
           | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" =>
             switch state->State.DocumentItemPane.topItem {
             | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
@@ -264,9 +264,9 @@ module KeyDownHandler = {
         }
 
       | "Backspace" if !ctrlKey && !shiftKey && state.documentItemPane.editingText == "" =>
-        switch state->State.DocumentItemPane.current {
+        switch state->State.DocumentItemPane.currentItem {
         | Some(currentItem) if currentItem.firstChildId == "" && currentItem.lastChildId == "" =>
-          switch state->State.DocumentItemPane.above(currentItem) {
+          switch state->State.DocumentItemPane.aboveItem(currentItem) {
           | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
               dispatch(
                 Action.FirestoreDocumentItemPane(
@@ -284,9 +284,9 @@ module KeyDownHandler = {
         }
 
       | "Delete" if !ctrlKey && !shiftKey && state.documentItemPane.editingText == "" =>
-        switch state->State.DocumentItemPane.current {
+        switch state->State.DocumentItemPane.currentItem {
         | Some(currentItem) if currentItem.firstChildId == "" && currentItem.lastChildId == "" =>
-          switch state->State.DocumentItemPane.below(currentItem) {
+          switch state->State.DocumentItemPane.belowItem(currentItem) {
           | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" => {
               dispatch(
                 Action.FirestoreDocumentItemPane(

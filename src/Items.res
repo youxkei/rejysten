@@ -1,41 +1,49 @@
 open Belt
 
-@send external getBoundingClientRect: Dom.element => {"left": int, "right": int, "top": int, "bottom": int} = "getBoundingClientRect"
-@send external scrollIntoView: (Dom.element, {"behavior": string, "block": string, "inline": string}) => unit = "scrollIntoView"
-@val @bs.scope("window") external innerHeight: int = "innerHeight"
+@send
+external getBoundingClientRect: Dom.element => {
+  "left": int,
+  "right": int,
+  "top": int,
+  "bottom": int,
+} = "getBoundingClientRect"
+@send
+external scrollIntoView: (
+  Dom.element,
+  {"behavior": string, "block": string, "inline": string},
+) => unit = "scrollIntoView"
+@val @scope("window") external innerHeight: int = "innerHeight"
 
 %%private(
-  let makeChildren = (documentItemMap, item: State.documentItem) => {
+  let makeChildren = (itemMap, item: State.item) => {
     let children = []
 
-    let currentItem = ref(documentItemMap->HashMap.String.get(item.firstChildId))
+    let currentItem = ref(itemMap->HashMap.String.get(item.firstChildId))
 
     while Option.isSome(currentItem.contents) {
-      let item: State.documentItem = Option.getExn(currentItem.contents)
+      let item: State.item = Option.getExn(currentItem.contents)
 
       let _ = children->Js.Array2.push(item)
-      currentItem := documentItemMap->HashMap.String.get(item.nextId)
+      currentItem := itemMap->HashMap.String.get(item.nextId)
     }
 
     children
   }
 )
 
-module type ItemsInnerType = {
-  let make: {"item": State.documentItem} => ReasonReact.reactElement
-  let makeProps: (~item: State.documentItem, ~key: string=?, unit) => {"item": State.documentItem}
-}
-
-module rec ItemsInner: ItemsInnerType = {
+module rec ItemsInner: {
+  let make: {"item": State.item} => ReasonReact.reactElement
+  let makeProps: (~item: State.item, ~key: string=?, unit) => {"item": State.item}
+} = {
   @react.component
-  let make = React.memo((~item: State.documentItem) => {
+  let make = React.memo((~item: State.item) => {
     let focus = Redux.useSelector(State.focus)
     let mode = Redux.useSelector(State.mode)
-    let documentItemMap = Redux.useSelector(State.DocumentItemPane.map)
-    let currentDocumentItemId = Redux.useSelector(State.DocumentItemPane.currentId)
+    let itemMap = Redux.useSelector(State.DocumentItemPane.itemMap)
+    let currentItemId = Redux.useSelector(State.DocumentItemPane.currentItemId)
     let liRef = React.useRef(Js.Nullable.null)
 
-    let isCurrentItem = item.id == currentDocumentItemId
+    let isCurrentItem = item.id == currentItemId
 
     React.useEffect1(() => {
       if isCurrentItem {
@@ -76,8 +84,8 @@ module rec ItemsInner: ItemsInnerType = {
         }}
       </li>
       <ul>
-        {makeChildren(documentItemMap, item)
-        ->Array.map((item: State.documentItem) => {
+        {makeChildren(itemMap, item)
+        ->Array.map((item: State.item) => {
           <ItemsInner key=item.id item />
         })
         ->React.array}
@@ -89,11 +97,11 @@ module rec ItemsInner: ItemsInnerType = {
 }
 
 @react.component
-let make = React.memo((~item: State.documentItem) => {
-  let documentItemMap = Redux.useSelector(State.DocumentItemPane.map)
+let make = React.memo((~item: State.item) => {
+  let itemMap = Redux.useSelector(State.DocumentItemPane.itemMap)
 
   <ul>
-    {makeChildren(documentItemMap, item)
+    {makeChildren(itemMap, item)
     ->Array.map(item => {
       <ItemsInner key=item.id item />
     })
