@@ -28,6 +28,8 @@ type documentPane =
 type documentItemPane =
   | ToAboveItem(unit)
   | ToBelowItem(unit)
+  | ToTopItem(unit)
+  | ToBottomItem(unit)
   | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
   | ToNormalMode(unit)
   | ToDocumentPane(unit)

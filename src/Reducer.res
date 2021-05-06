@@ -73,7 +73,7 @@ let documentPaneReducer = (state: State.t, action) => {
 
   | Action.ToDocumentItemPane() =>
     if state.documentItemPane.currentId == "" {
-      switch state->State.DocumentPane.currentRootDocumentItem {
+      switch state->State.DocumentItemPane.rootItem {
       | Some({firstChildId}) => {
           ...state,
           focus: State.DocumentItemPane,
@@ -148,6 +148,8 @@ let documentPaneReducer = (state: State.t, action) => {
 }
 
 let documentItemPaneReducer = (state: State.t, action) => {
+  Js.log(state)
+
   switch action {
   | Action.ToAboveItem() =>
     switch state->State.DocumentItemPane.current {
@@ -165,7 +167,7 @@ let documentItemPaneReducer = (state: State.t, action) => {
       }
 
     | None =>
-      switch state->State.DocumentPane.currentRootDocumentItem {
+      switch state->State.DocumentItemPane.rootItem {
       | Some({firstChildId}) => {
           ...state,
           documentItemPane: {
@@ -194,7 +196,7 @@ let documentItemPaneReducer = (state: State.t, action) => {
       }
 
     | None =>
-      switch state->State.DocumentPane.currentRootDocumentItem {
+      switch state->State.DocumentItemPane.rootItem {
       | Some({firstChildId}) => {
           ...state,
           documentItemPane: {
@@ -205,6 +207,32 @@ let documentItemPaneReducer = (state: State.t, action) => {
 
       | _ => state
       }
+    }
+
+  | Action.ToTopItem() =>
+    switch state->State.DocumentItemPane.topItem {
+    | Some(topItem) => {
+        ...state,
+        documentItemPane: {
+          ...state.documentItemPane,
+          currentId: topItem.id,
+        },
+      }
+
+    | None => state
+    }
+
+  | Action.ToBottomItem() =>
+    switch state->State.DocumentItemPane.bottomItem {
+    | Some(bottomItem) => {
+        ...state,
+        documentItemPane: {
+          ...state.documentItemPane,
+          currentId: bottomItem.id,
+        },
+      }
+
+    | None => state
     }
 
   | Action.ToDocumentPane() => {

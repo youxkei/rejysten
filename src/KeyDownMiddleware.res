@@ -107,23 +107,18 @@ module KeyDownHandler = {
           if currentDocument.firstChildId == "" && currentDocument.lastChildId == "" =>
           switch state->State.DocumentPane.above(currentDocument) {
           | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" =>
-            switch state->State.DocumentPane.currentRootDocumentItem {
-            | Some({firstChildId, lastChildId}) if firstChildId == lastChildId =>
-              switch state->State.DocumentItemPane.get(firstChildId) {
-              | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
-                dispatch(
-                  Action.FirestoreDocumentPane(
-                    Action.DeleteDocument({
-                      nextCurrentId: aboveId,
-                      initialCursorPosition: State.End,
-                    }),
-                  ),
-                )
+            switch state->State.DocumentItemPane.topItem {
+            | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
+              dispatch(
+                Action.FirestoreDocumentPane(
+                  Action.DeleteDocument({
+                    nextCurrentId: aboveId,
+                    initialCursorPosition: State.End,
+                  }),
+                ),
+              )
 
-                event->preventDefault
-
-              | _ => ()
-              }
+              event->preventDefault
 
             | _ => ()
             }
@@ -140,23 +135,18 @@ module KeyDownHandler = {
           if currentDocument.firstChildId == "" && currentDocument.lastChildId == "" =>
           switch state->State.DocumentPane.below(currentDocument) {
           | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" =>
-            switch state->State.DocumentPane.currentRootDocumentItem {
-            | Some({firstChildId, lastChildId}) if firstChildId == lastChildId =>
-              switch state->State.DocumentItemPane.get(firstChildId) {
-              | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
-                dispatch(
-                  Action.FirestoreDocumentPane(
-                    Action.DeleteDocument({
-                      nextCurrentId: belowId,
-                      initialCursorPosition: State.Start,
-                    }),
-                  ),
-                )
+            switch state->State.DocumentItemPane.topItem {
+            | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
+              dispatch(
+                Action.FirestoreDocumentPane(
+                  Action.DeleteDocument({
+                    nextCurrentId: belowId,
+                    initialCursorPosition: State.Start,
+                  }),
+                ),
+              )
 
-                event->preventDefault
-
-              | _ => ()
-              }
+              event->preventDefault
 
             | _ => ()
             }
@@ -231,6 +221,13 @@ module KeyDownHandler = {
           )
 
           event->preventDefault
+        }
+
+      | "KeyG" if !ctrlKey =>
+        if shiftKey {
+          dispatch(Action.DocumentItemPane(Action.ToBottomItem()))
+        } else {
+          dispatch(Action.DocumentItemPane(Action.ToTopItem()))
         }
 
       | _ => ()

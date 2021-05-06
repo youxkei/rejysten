@@ -49,31 +49,16 @@ type t = {
 
 module DocumentPane = {
   let currentId = ({documentPane: {currentId}}) => currentId
-
-  let current = ({documentPane: {map, currentId}}) => map->HashMap.String.get(currentId)
-
   let map = ({documentPane: {map}}) => map
-
   let editingText = ({documentPane: {editingText}}) => editingText
-
   let rootId = ({documentPane: {rootId}}) => rootId
-
-  let root = ({documentPane: {map, rootId}}) => map->HashMap.String.get(rootId)
 
   let get = ({documentPane: {map}}, id) => {
     map->HashMap.String.get(id)
   }
 
-  let currentRootDocumentItem = ({
-    documentPane: {map: documentMap, currentId: currentDocumentId},
-    documentItemPane: {map: documentItemMap},
-  }) => {
-    switch documentMap->HashMap.String.get(currentDocumentId) {
-    | Some({rootItemId}) => documentItemMap->HashMap.String.get(rootItemId)
-
-    | _ => None
-    }
-  }
+  let current = state => state->get(state->currentId)
+  let root = state => state->get(state->rootId)
 
   let above = (state, {prevId, parentId}: document) => {
     switch state->get(prevId) {
@@ -121,17 +106,51 @@ module DocumentPane = {
 
 module DocumentItemPane = {
   let currentId = ({documentItemPane: {currentId}}) => currentId
-
-  let current = ({documentItemPane: {currentId, map}}) => {
-    map->HashMap.String.get(currentId)
-  }
-
   let map = ({documentItemPane: {map}}) => map
-
   let editingText = ({documentItemPane: {editingText}}) => editingText
 
   let get = ({documentItemPane: {map}}, id) => {
     map->HashMap.String.get(id)
+  }
+
+  let current = state => state->get(state->currentId)
+
+  let rootItem = state => {
+    switch state->DocumentPane.current {
+    | Some({rootItemId}) => state->get(rootItemId)
+
+    | _ => None
+    }
+  }
+
+  let topItem = state => {
+    switch state->rootItem {
+    | Some({firstChildId}) => state->get(firstChildId)
+
+    | None => None
+    }
+  }
+
+  let bottomItem = state => {
+    switch state->rootItem {
+    | Some({lastChildId}) =>
+      switch state->get(lastChildId) {
+      | Some(item) =>
+        let rec searchBottom = (item: documentItem) => {
+          switch state->get(item.lastChildId) {
+          | Some(item) => searchBottom(item)
+
+          | None => item
+          }
+        }
+
+        Some(searchBottom(item))
+
+      | None => None
+      }
+
+    | None => None
+    }
   }
 
   let above = (state, {prevId, parentId}: documentItem) => {
@@ -193,7 +212,6 @@ let initialState: t = {
     editingText: "",
   },
 }
-
 
 let state = state => state
 let mode = ({mode}) => mode

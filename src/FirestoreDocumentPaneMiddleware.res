@@ -244,7 +244,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreDocumentPane) =>
   | Action.DeleteDocument({nextCurrentId, initialCursorPosition}) =>
     switch state->State.DocumentPane.current {
     | Some(currentDocument) =>
-      switch state->State.DocumentPane.currentRootDocumentItem {
+      switch state->State.DocumentItemPane.rootItem {
       | Some({id: rootItemId, firstChildId}) =>
         switch state->State.DocumentItemPane.get(firstChildId) {
         | Some({id: firstChildItemId}) =>

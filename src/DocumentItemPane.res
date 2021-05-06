@@ -1,8 +1,8 @@
 @react.component
 let make = React.memo(() => {
-  let currentRootDocumentItem = Redux.useSelector(State.DocumentPane.currentRootDocumentItem)
+  let rootItem = Redux.useSelector(State.DocumentItemPane.rootItem)
 
-  switch currentRootDocumentItem {
+  switch rootItem {
   | Some(item) => <section className=Style.documentItemPane> <Items item /> </section>
 
   | None => React.null
