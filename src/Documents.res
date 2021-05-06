@@ -66,11 +66,7 @@ module rec DocumentsInner: {
     }, [isCurrentDocument])
 
     let className = if isCurrentDocument {
-      switch focus {
-      | State.DocumentPane => Style.currentFocused
-
-      | _ => Style.currentUnfocused
-      }
+      Style.focused
     } else {
       ""
     }

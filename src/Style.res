@@ -34,9 +34,11 @@ let documentPane = style(. [gridColumnStart(1), overflow(auto)])
 
 let documentItemPane = style(. [gridColumnStart(2), overflow(auto)])
 
+let focusedPane = style(. [border(8->px, solid, nord[1])])
+let unfocusedPane = style(. [border(8->px, solid, nord[0])])
+
 let editor = style(. [color(nord[5]), backgroundColor(nord[0]), width(100.0->pct)])
 
-let currentUnfocused = style(. [backgroundColor(nord[1])])
-let currentFocused = style(. [backgroundColor(nord[2])])
+let focused = style(. [backgroundColor(nord[1])])
 
 global(. "body", [color(nord[5]), backgroundColor(nord[0])])
