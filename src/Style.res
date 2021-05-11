@@ -41,4 +41,7 @@ let editor = style(. [color(nord[5]), backgroundColor(nord[0]), width(100.0->pct
 
 let focused = style(. [backgroundColor(nord[1])])
 
-global(. "body", [color(nord[5]), backgroundColor(nord[0])])
+global(. "body", [color(nord[5]), backgroundColor(nord[0]), fontSize(16->px)])
+global(. "p", [margin(0->px)])
+global(. "a:link", [color(nord[8])])
+global(. "a:visited", [color(nord[8])])

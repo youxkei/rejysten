@@ -1,6 +1,6 @@
 @react.component
 let make = React.memo((~item: State.item) => {
-  <span> {item.text->React.string} </span>
+  <ReactMarkdown> {item.text} </ReactMarkdown>
 })
 
 React.setDisplayName(make, "Item")
