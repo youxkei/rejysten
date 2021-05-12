@@ -45,6 +45,7 @@
     "reason-react": "^0.9.1",
     "reductive": "^2.1.1",
     "remark-gfm": "^1.0.0",
+    "remark-highlight.js": "^6.0.0",
     "uuid": "^8.3.2"
   }
 }

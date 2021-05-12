@@ -7,3 +7,6 @@ external makeProps: (~children: string, ~remarkPlugins: array<remarkPlugin>, uni
 
 @module("remark-gfm") @val
 external gfm: remarkPlugin = "default"
+
+@module("remark-highlight.js") @val
+external highlight: remarkPlugin = "default"
