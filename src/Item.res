@@ -1,6 +1,6 @@
 @react.component
 let make = React.memo((~item: State.item) => {
-  <ReactMarkdown> {item.text} </ReactMarkdown>
+  <ReactMarkdown remarkPlugins={[ReactMarkdown.gfm]}> {item.text} </ReactMarkdown>
 })
 
 React.setDisplayName(make, "Item")
