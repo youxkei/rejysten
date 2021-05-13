@@ -1,13 +1,12 @@
 open CssJs
 
 %%private(
-  // from https://github.com/arcticicestudio/nord-vim/blob/develop/colors/nord.vim
+  // from https://www.nordtheme.com/docs/colors-and-palettes
   let nord = [
     hex("2E3440"),
     hex("3B4252"),
     hex("434C5E"),
     hex("4C566A"),
-    hex("616E88"),
     hex("D8DEE9"),
     hex("E5E9F0"),
     hex("ECEFF4"),
@@ -44,6 +43,6 @@ let focused = style(. [backgroundColor(nord[1])])
 global(. "body", [color(nord[5]), backgroundColor(nord[0]), fontSize(16->px)])
 global(. "p", [margin(0->px)])
 global(. "pre", [margin(0->px)])
-global(. "a:link", [color(nord[8])])
-global(. "a:visited", [color(nord[8])])
+global(. "a:link", [color(nord[7])])
+global(. "a:visited", [color(nord[7])])
 global(. ".hljs", [backgroundColor(transparent)])
