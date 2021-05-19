@@ -10,3 +10,6 @@ external gfm: remarkPlugin = "default"
 
 @module("remark-highlight.js") @val
 external highlight: remarkPlugin = "default"
+
+@module("remark-external-links") @val
+external externalLinks: remarkPlugin = "default"
