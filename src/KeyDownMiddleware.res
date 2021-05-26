@@ -1,6 +1,7 @@
 @get external code: Dom.keyboardEvent => string = "code"
 @get external shiftKey: Dom.keyboardEvent => bool = "shiftKey"
 @get external ctrlKey: Dom.keyboardEvent => bool = "ctrlKey"
+@get external isComposing: Dom.keyboardEvent => bool = "isComposing"
 @send external preventDefault: Dom.keyboardEvent => unit = "preventDefault"
 
 module KeyDownHandler = {
@@ -83,25 +84,27 @@ module KeyDownHandler = {
       let code = event->code
       let ctrlKey = event->ctrlKey
       let shiftKey = event->shiftKey
+      let isComposing = event->isComposing
+      let isNeutral = !ctrlKey && !isComposing
 
       switch code {
-      | "Escape" if !ctrlKey && !shiftKey =>
+      | "Escape" if isNeutral && !shiftKey =>
         dispatch(Action.FirestoreDocumentPane(Action.SaveDocument()))
         dispatch(Action.DocumentPane(Action.ToNormalMode()))
 
-      | "Tab" if !ctrlKey && !shiftKey =>
+      | "Tab" if isNeutral && !shiftKey =>
         dispatch(Action.FirestoreDocumentPane(Action.IndentDocument()))
         event->preventDefault
 
-      | "Tab" if !ctrlKey && shiftKey =>
+      | "Tab" if isNeutral && shiftKey =>
         dispatch(Action.FirestoreDocumentPane(Action.UnindentDocument()))
         event->preventDefault
 
-      | "Enter" if !ctrlKey && !shiftKey =>
+      | "Enter" if isNeutral && !shiftKey =>
         dispatch(Action.FirestoreDocumentPane(Action.AddDocument({direction: Action.Next})))
         event->preventDefault
 
-      | "Backspace" if !ctrlKey && !shiftKey && state.documentPane.editingText == "" =>
+      | "Backspace" if isNeutral && !shiftKey && state.documentPane.editingText == "" =>
         switch state->State.DocumentPane.currentDocument {
         | Some(currentDocument)
           if currentDocument.firstChildId == "" && currentDocument.lastChildId == "" =>
@@ -129,7 +132,7 @@ module KeyDownHandler = {
         | _ => ()
         }
 
-      | "Delete" if !ctrlKey && !shiftKey && state.documentPane.editingText == "" =>
+      | "Delete" if isNeutral && !shiftKey && state.documentPane.editingText == "" =>
         switch state->State.DocumentPane.currentDocument {
         | Some(currentDocument)
           if currentDocument.firstChildId == "" && currentDocument.lastChildId == "" =>
@@ -241,29 +244,31 @@ module KeyDownHandler = {
       let code = event->code
       let ctrlKey = event->ctrlKey
       let shiftKey = event->shiftKey
+      let isComposing = event->isComposing
+      let isNeutral = !ctrlKey && !isComposing
 
       switch code {
-      | "Escape" if !ctrlKey && !shiftKey => {
+      | "Escape" if isNeutral && !shiftKey => {
           dispatch(Action.FirestoreDocumentItemPane(Action.SaveItem()))
           dispatch(Action.DocumentItemPane(Action.ToNormalMode()))
         }
 
-      | "Tab" if !ctrlKey && !shiftKey => {
+      | "Tab" if isNeutral && !shiftKey => {
           dispatch(Action.FirestoreDocumentItemPane(Action.IndentItem()))
           event->preventDefault
         }
 
-      | "Tab" if !ctrlKey && shiftKey => {
+      | "Tab" if isNeutral && shiftKey => {
           dispatch(Action.FirestoreDocumentItemPane(Action.UnindentItem()))
           event->preventDefault
         }
 
-      | "Enter" if !ctrlKey && !shiftKey => {
+      | "Enter" if isNeutral && !shiftKey => {
           dispatch(Action.FirestoreDocumentItemPane(Action.AddItem({direction: Action.Next})))
           event->preventDefault
         }
 
-      | "Backspace" if !ctrlKey && !shiftKey && state.documentItemPane.editingText == "" =>
+      | "Backspace" if isNeutral && !shiftKey && state.documentItemPane.editingText == "" =>
         switch state->State.DocumentItemPane.currentItem {
         | Some(currentItem) if currentItem.firstChildId == "" && currentItem.lastChildId == "" =>
           switch state->State.DocumentItemPane.aboveItem(currentItem) {
@@ -283,7 +288,7 @@ module KeyDownHandler = {
         | _ => ()
         }
 
-      | "Delete" if !ctrlKey && !shiftKey && state.documentItemPane.editingText == "" =>
+      | "Delete" if isNeutral && !shiftKey && state.documentItemPane.editingText == "" =>
         switch state->State.DocumentItemPane.currentItem {
         | Some(currentItem) if currentItem.firstChildId == "" && currentItem.lastChildId == "" =>
           switch state->State.DocumentItemPane.belowItem(currentItem) {
