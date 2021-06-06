@@ -206,7 +206,7 @@ let initialState: t = {
     editingText: "",
   },
   documentPane: {
-    currentId: "a87b54e5-46ef-4f71-9a5d-f7df33b9dd51",
+    currentId: "",
     rootId: "629ca8ea-56e5-491f-b5ee-455ff9d3c358",
     map: Belt.HashMap.String.make(~hintSize=0),
     editingText: "",

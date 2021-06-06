@@ -25,7 +25,18 @@ let documentPaneReducer = (state: State.t, action) => {
       | _ => state
       }
 
-    | None => state
+    | None =>
+      switch state->State.DocumentPane.rootDocument {
+      | Some({firstChildId}) => {
+          ...state,
+          documentPane: {
+            ...state.documentPane,
+            currentId: firstChildId,
+          },
+        }
+
+      | None => state
+      }
     }
 
   | Action.ToBelowDocument() =>
@@ -47,7 +58,18 @@ let documentPaneReducer = (state: State.t, action) => {
       | None => state
       }
 
-    | None => state
+    | None =>
+      switch state->State.DocumentPane.rootDocument {
+      | Some({firstChildId}) => {
+          ...state,
+          documentPane: {
+            ...state.documentPane,
+            currentId: firstChildId,
+          },
+        }
+
+      | None => state
+      }
     }
 
   | Action.ToInsertMode({initialCursorPosition}) =>
