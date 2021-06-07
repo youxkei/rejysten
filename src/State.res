@@ -25,7 +25,7 @@ type initialCursorPosition = Start | End
 
 type mode = Normal | Insert({initialCursorPosition: initialCursorPosition})
 
-type focus = DocumentPane | DocumentItemPane
+type focus = DocumentPane | DocumentItemPane | SearchPane
 
 type documentItemPaneState = {
   currentId: string,

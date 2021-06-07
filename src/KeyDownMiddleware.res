@@ -312,6 +312,16 @@ module KeyDownHandler = {
       }
     }
   }
+
+  module SearchPane = {
+    let normal = (_store, _event) => {
+      ()
+    }
+
+    let insert = (_store, _event) => {
+      ()
+    }
+  }
 }
 
 let middleware = (store, next, action) => {
@@ -327,6 +337,9 @@ let middleware = (store, next, action) => {
         KeyDownHandler.DocumentItemPane.normal(store, event)
       | (State.DocumentItemPane, State.Insert(_)) =>
         KeyDownHandler.DocumentItemPane.insert(store, event)
+
+      | (State.SearchPane, State.Normal) => KeyDownHandler.SearchPane.normal(store, event)
+      | (State.SearchPane, State.Insert(_)) => KeyDownHandler.SearchPane.insert(store, event)
       }
     }
 
