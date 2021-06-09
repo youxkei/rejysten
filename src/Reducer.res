@@ -93,35 +93,6 @@ let documentPaneReducer = (state: State.t, action) => {
       mode: State.Normal,
     }
 
-  | Action.ToDocumentItemPane() =>
-    if state.documentItemPane.currentId == "" {
-      switch state->State.DocumentItemPane.rootItem {
-      | Some({firstChildId}) => {
-          ...state,
-          focus: State.DocumentItemPane,
-          documentPane: {
-            ...state.documentPane,
-            editingText: "",
-          },
-          documentItemPane: {
-            ...state.documentItemPane,
-            currentId: firstChildId,
-          },
-        }
-
-      | None => state
-      }
-    } else {
-      {
-        ...state,
-        focus: State.DocumentItemPane,
-        documentPane: {
-          ...state.documentPane,
-          editingText: "",
-        },
-      }
-    }
-
   | Action.SetEditingText({text}) => {
       ...state,
       documentPane: {
@@ -257,11 +228,6 @@ let documentItemPaneReducer = (state: State.t, action) => {
     | None => state
     }
 
-  | Action.ToDocumentPane() => {
-      ...state,
-      focus: State.DocumentPane,
-    }
-
   | Action.ToInsertMode({initialCursorPosition}) =>
     let editingText = switch state->State.DocumentItemPane.currentItem {
     | Some({text}) => text
@@ -335,6 +301,40 @@ let reducer = (state: State.t, action) => {
 
   | Action.DocumentPane(action) => documentPaneReducer(state, action)
   | Action.DocumentItemPane(action) => documentItemPaneReducer(state, action)
+
+  | Action.FocusDocumentPane() => {
+      ...state,
+      focus: State.DocumentPane,
+    }
+
+  | Action.FocusDocumentItemPane() =>
+    if state.documentItemPane.currentId == "" {
+      switch state->State.DocumentItemPane.rootItem {
+      | Some({firstChildId}) => {
+          ...state,
+          focus: State.DocumentItemPane,
+          documentPane: {
+            ...state.documentPane,
+            editingText: "",
+          },
+          documentItemPane: {
+            ...state.documentItemPane,
+            currentId: firstChildId,
+          },
+        }
+
+      | None => state
+      }
+    } else {
+      {
+        ...state,
+        focus: State.DocumentItemPane,
+        documentPane: {
+          ...state.documentPane,
+          editingText: "",
+        },
+      }
+    }
 
   | Action.SetDocumentItemPaneState({map}) => {
       ...state,

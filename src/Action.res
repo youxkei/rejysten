@@ -21,7 +21,6 @@ type documentPane =
   | ToBelowDocument(unit)
   | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
   | ToNormalMode(unit)
-  | ToDocumentItemPane(unit)
   | SetEditingText({text: string})
   | SetCurrentDocument({id: string, initialCursorPosition: State.initialCursorPosition})
 
@@ -32,7 +31,6 @@ type documentItemPane =
   | ToBottomItem(unit)
   | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
   | ToNormalMode(unit)
-  | ToDocumentPane(unit)
   | SetEditingText({text: string})
   | SetCurrentItem({id: string, initialCursorPosition: State.initialCursorPosition})
 
@@ -44,6 +42,9 @@ type t =
 
   | DocumentPane(documentPane)
   | DocumentItemPane(documentItemPane)
+
+  | FocusDocumentPane(unit)
+  | FocusDocumentItemPane(unit)
 
   | SetDocumentItemPaneState({map: HashMap.String.t<State.item>})
   | SetDocumentPaneState({map: HashMap.String.t<State.document>, rootId: string})

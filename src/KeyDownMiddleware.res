@@ -35,7 +35,7 @@ module KeyDownHandler = {
         }
 
       | "KeyL" if !ctrlKey && !shiftKey => {
-          dispatch(Action.DocumentPane(Action.ToDocumentItemPane()))
+          dispatch(Action.FocusDocumentItemPane())
           event->preventDefault
         }
 
@@ -185,7 +185,7 @@ module KeyDownHandler = {
         }
 
       | "KeyH" if !ctrlKey && !shiftKey => {
-          dispatch(Action.DocumentItemPane(Action.ToDocumentPane()))
+          dispatch(Action.FocusDocumentPane())
           event->preventDefault
         }
 
