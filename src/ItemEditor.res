@@ -42,8 +42,8 @@ let make = React.memo(() => {
     None
   }, [])
 
-  <textarea
-    className={Style.editor} value=text ref={ReactDOM.Ref.domRef(textareaRef)} onChange onBlur
+  <ReactTextareaAutosize
+    className={Style.editor} ref={ReactDOM.Ref.domRef(textareaRef)} value=text onChange onBlur
   />
 })
 

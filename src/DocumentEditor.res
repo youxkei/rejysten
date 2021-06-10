@@ -11,11 +11,13 @@ let make = React.memo(() => {
 
   let dispatch = Redux.useDispatch()
 
-  let handleChange = React.useCallback1(event => {
-    dispatch(Action.DocumentPane(Action.SetEditingText({text: event->ReactEvent.Form.target->value})))
+  let onChange = React.useCallback1(event => {
+    dispatch(
+      Action.DocumentPane(Action.SetEditingText({text: event->ReactEvent.Form.target->value})),
+    )
   }, [])
 
-  let handleFocusOut = React.useCallback1(_ => {
+  let onBlur = React.useCallback1(_ => {
     dispatch(Action.FirestoreDocumentPane(Action.SaveDocument()))
   }, [])
 
@@ -40,12 +42,8 @@ let make = React.memo(() => {
     None
   }, [])
 
-  <textarea
-    className={Style.editor}
-    value=text
-    ref={ReactDOM.Ref.domRef(textareaRef)}
-    onChange=handleChange
-    onBlur=handleFocusOut
+  <ReactTextareaAutosize
+    className={Style.editor} ref={ReactDOM.Ref.domRef(textareaRef)} value=text onChange onBlur
   />
 })
 
