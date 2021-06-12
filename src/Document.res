@@ -1,25 +1,23 @@
+@send external preventDefault: ReactEvent.Mouse.t => unit = "preventDefault"
+
 @react.component
 let make = React.memo((~document: State.document) => {
   let dispatch = Redux.useDispatch()
 
-  let onClick = React.useCallback1(_ => {
-    dispatch(Action.FocusDocumentPane())
-    dispatch(
-      Action.DocumentPane(
-        Action.SetCurrentDocument({id: document.id, initialCursorPosition: State.End}),
-      ),
-    )
-  }, [document.id])
+  let onClick = Hook.useDoubleClick(React.useCallback1((event, isDouble) => {
+      dispatch(Action.FocusDocumentPane())
+      dispatch(
+        Action.DocumentPane(
+          Action.SetCurrentDocument({id: document.id, initialCursorPosition: State.End}),
+        ),
+      )
 
-  let onDoubleClick = React.useCallback1(_ => {
-    dispatch(Action.FocusDocumentPane())
-    dispatch(
-      Action.DocumentPane(
-        Action.SetCurrentDocument({id: document.id, initialCursorPosition: State.End}),
-      ),
-    )
-    dispatch(Action.DocumentPane(Action.ToInsertMode({initialCursorPosition: State.End})))
-  }, [document.id])
+      if isDouble {
+        dispatch(Action.DocumentPane(Action.ToInsertMode({initialCursorPosition: State.End})))
+      }
 
-  <span onClick onDoubleClick> {document.text->React.string} </span>
+      event->preventDefault
+    }, [document.id]))
+
+  <span onClick> {document.text->React.string} </span>
 })

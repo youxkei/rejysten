@@ -1,27 +1,25 @@
+@send external preventDefault: ReactEvent.Mouse.t => unit = "preventDefault"
+
 @react.component
 let make = React.memo((~item: State.item) => {
   let dispatch = Redux.useDispatch()
 
-  let onClick = React.useCallback1(_ => {
-    dispatch(Action.FocusDocumentItemPane())
-    dispatch(
-      Action.DocumentItemPane(
-        Action.SetCurrentItem({id: item.id, initialCursorPosition: State.End}),
-      ),
-    )
-  }, [item.id])
+  let onClick = Hook.useDoubleClick(React.useCallback1((event, isDouble) => {
+      dispatch(Action.FocusDocumentItemPane())
+      dispatch(
+        Action.DocumentItemPane(
+          Action.SetCurrentItem({id: item.id, initialCursorPosition: State.End}),
+        ),
+      )
 
-  let onDoubleClick = React.useCallback1(_ => {
-    dispatch(Action.FocusDocumentItemPane())
-    dispatch(
-      Action.DocumentItemPane(
-        Action.SetCurrentItem({id: item.id, initialCursorPosition: State.End}),
-      ),
-    )
-    dispatch(Action.DocumentItemPane(Action.ToInsertMode({initialCursorPosition: State.End})))
-  }, [item.id])
+      if isDouble {
+        dispatch(Action.DocumentItemPane(Action.ToInsertMode({initialCursorPosition: State.End})))
+      }
 
-  <div onClick onDoubleClick>
+      event->preventDefault
+    }, [item.id]))
+
+  <div onClick>
     <ReactMarkdown
       remarkPlugins={[ReactMarkdown.gfm, ReactMarkdown.externalLinks, ReactMarkdown.highlight]}>
       {item.text}
