@@ -39,7 +39,7 @@ let make = React.memo((~item: State.item) => {
   <div onClick onTouchEnd>
     <ReactMarkdown
       remarkPlugins={[ReactMarkdown.gfm, ReactMarkdown.externalLinks, ReactMarkdown.highlight]}>
-      {item.text}
+      {`${item.text}　`}
     </ReactMarkdown>
   </div>
 })

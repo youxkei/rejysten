@@ -36,5 +36,5 @@ let make = React.memo((~document: State.document) => {
       }
     }, [document.id]))
 
-  <span onClick onTouchEnd> {document.text->React.string} </span>
+  <div onClick onTouchEnd> {`${document.text}　`->React.string} </div>
 })
