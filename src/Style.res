@@ -47,3 +47,18 @@ global(. "pre", [margin(0->px)])
 global(. "a:link", [color(nord[7])])
 global(. "a:visited", [color(nord[7])])
 global(. ".hljs", [backgroundColor(transparent)])
+global(.
+  "code",
+  [
+    backgroundColor(nord[2]),
+    border(1->px, solid, nord[10]),
+    borderRadius(3->px),
+    padding(3->px),
+    margin2(~v=0->px, ~h=3->px),
+    verticalAlign(8.0->pct),
+  ],
+)
+global(.
+  "code.hljs",
+  [backgroundColor(nord[2]), border(1->px, solid, nord[10]), borderRadius(3->px), padding(3->px)],
+)
