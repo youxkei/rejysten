@@ -30,7 +30,8 @@ module Firestore = {
   @send external addDelete: (batch, document) => unit = "delete"
   @send external commit: batch => unit = "commit"
 
-  @module("firebase/app") @scope(("default", "firestore")) external setLogLevel: string => unit = "setLogLevel"
+  @module("firebase/app") @scope(("default", "firestore"))
+  external setLogLevel: string => unit = "setLogLevel"
 }
 
 @module("firebase/app") @scope("default") external firestore: unit => Firestore.t = "firestore"
