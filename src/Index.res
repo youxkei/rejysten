@@ -100,15 +100,18 @@ module App = {
       | Some(error) => error->toString->React.string
       | None =>
         switch user {
-        | Some(_) =>
-          <main className=Style.app>
-            {switch focus {
-            | State.DocumentPane
-            | State.DocumentItemPane => <> <DocumentPane /> <DocumentItemPane /> </>
+        | Some(_) => <>
+            <main className=Style.app>
+              {switch focus {
+              | State.DocumentPane
+              | State.DocumentItemPane => <> <DocumentPane /> <DocumentItemPane /> </>
 
-            | State.SearchPane => <SearchPane />
-            }}
-          </main>
+              | State.SearchPane => <SearchPane />
+              }}
+            </main>
+            <SyncDocumentItemPaneState />
+            <SyncDocumentPaneState />
+          </>
 
         | None => "logging in"->React.string
         }
@@ -119,12 +122,7 @@ module App = {
 
 switch ReactDOM.querySelector("#app") {
 | Some(app) =>
-  ReactDOM.render(
-    <Redux.Provider store>
-      {<> <App /> <SyncDocumentItemPaneState /> <SyncDocumentPaneState /> <KeyDownHandler /> </>}
-    </Redux.Provider>,
-    app,
-  )
+  ReactDOM.render(<Redux.Provider store> {<> <App /> <KeyDownHandler /> </>} </Redux.Provider>, app)
 
 | None => ()
 }
