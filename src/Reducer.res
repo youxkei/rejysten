@@ -141,8 +141,6 @@ let documentPaneReducer = (state: State.t, action) => {
 }
 
 let documentItemPaneReducer = (state: State.t, action) => {
-  Js.log(state)
-
   switch action {
   | Action.ToAboveItem() =>
     switch state->State.DocumentItemPane.currentItem {

@@ -6,7 +6,7 @@
   "scripts": {
     "build": "bsb -clean-world -make-world && NODE_ENV=production webpack",
     "watch": "bsb -clean-world -make-world -w",
-    "serve": "webpack serve",
+    "serve": "webpack serve --host 0.0.0.0",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
