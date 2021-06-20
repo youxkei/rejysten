@@ -73,6 +73,8 @@ module KeyDownHandler = {
           event->preventDefault
         }
 
+      | "Slash" if !ctrlKey && !shiftKey => dispatch(Action.FocusSearchPane())
+
       | _ => ()
       }
     }
@@ -233,6 +235,8 @@ module KeyDownHandler = {
           dispatch(Action.DocumentItemPane(Action.ToTopItem()))
         }
 
+      | "Slash" if !ctrlKey && !shiftKey => dispatch(Action.FocusSearchPane())
+
       | _ => ()
       }
     }
@@ -314,8 +318,16 @@ module KeyDownHandler = {
   }
 
   module SearchPane = {
-    let normal = (_store, _event) => {
-      ()
+    let normal = (store, event) => {
+      let dispatch = Reductive.Store.dispatch(store)
+
+      let code = event->code
+
+      switch code {
+      | "Escape" => dispatch(Action.FocusDocumentItemPane())
+
+      | _ => ()
+      }
     }
 
     let insert = (_store, _event) => {

@@ -334,6 +334,11 @@ let reducer = (state: State.t, action) => {
       }
     }
 
+  | Action.FocusSearchPane() => {
+      ...state,
+      focus: State.SearchPane,
+    }
+
   | Action.SetDocumentItemPaneState({map}) => {
       ...state,
       documentItemPane: {

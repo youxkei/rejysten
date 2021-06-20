@@ -67,12 +67,27 @@ module KeyDownHandler = {
   React.setDisplayName(make, "KeyDownHandler")
 }
 
+module Main = {
+  @react.component
+  let make = () => {
+    let focus = Redux.useSelector(State.focus)
+
+    <main className=Style.app>
+      {switch focus {
+      | State.DocumentPane
+      | State.DocumentItemPane => <> <DocumentPane /> <DocumentItemPane /> </>
+
+      | State.SearchPane => <SearchPane />
+      }}
+    </main>
+  }
+}
+
 module App = {
   @react.component
   let make = () => {
     let (user, initializing, error) = useAuthState(Firebase.auth())
     let user = user->Js.toOption
-    let focus = Redux.useSelector(State.focus)
 
     React.useEffect1(() => {
       if !initializing {
@@ -100,18 +115,7 @@ module App = {
       | Some(error) => error->toString->React.string
       | None =>
         switch user {
-        | Some(_) => <>
-            <main className=Style.app>
-              {switch focus {
-              | State.DocumentPane
-              | State.DocumentItemPane => <> <DocumentPane /> <DocumentItemPane /> </>
-
-              | State.SearchPane => <SearchPane />
-              }}
-            </main>
-            <SyncDocumentItemPaneState />
-            <SyncDocumentPaneState />
-          </>
+        | Some(_) => <> <Main /> <SyncDocumentItemPaneState /> <SyncDocumentPaneState /> </>
 
         | None => "logging in"->React.string
         }

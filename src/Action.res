@@ -45,6 +45,7 @@ type t =
 
   | FocusDocumentPane(unit)
   | FocusDocumentItemPane(unit)
+  | FocusSearchPane(unit)
 
   | SetDocumentItemPaneState({map: HashMap.String.t<State.item>})
   | SetDocumentPaneState({map: HashMap.String.t<State.document>, rootId: string})
