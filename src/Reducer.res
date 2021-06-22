@@ -290,6 +290,17 @@ let documentItemPaneReducer = (state: State.t, action) => {
   }
 }
 
+let searchPaneReducer = (state: State.t, action) => {
+  switch action {
+  | Action.SetSearchingText({text}) => {
+      ...state,
+      searchPane: {
+        searchingText: text,
+      },
+    }
+  }
+}
+
 let reducer = (state: State.t, action) => {
   switch action {
   | Action.KeyDown(_)
@@ -299,6 +310,7 @@ let reducer = (state: State.t, action) => {
 
   | Action.DocumentPane(action) => documentPaneReducer(state, action)
   | Action.DocumentItemPane(action) => documentItemPaneReducer(state, action)
+  | Action.SearchPane(action) => searchPaneReducer(state, action)
 
   | Action.FocusDocumentPane() => {
       ...state,

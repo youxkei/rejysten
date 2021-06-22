@@ -34,6 +34,8 @@ type documentItemPane =
   | SetEditingText({text: string})
   | SetCurrentItem({id: string, initialCursorPosition: State.initialCursorPosition})
 
+type searchPane = SetSearchingText({text: string})
+
 type t =
   | KeyDown({event: Dom.keyboardEvent})
 
@@ -42,6 +44,7 @@ type t =
 
   | DocumentPane(documentPane)
   | DocumentItemPane(documentItemPane)
+  | SearchPane(searchPane)
 
   | FocusDocumentPane(unit)
   | FocusDocumentItemPane(unit)

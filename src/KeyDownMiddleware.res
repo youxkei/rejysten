@@ -73,7 +73,10 @@ module KeyDownHandler = {
           event->preventDefault
         }
 
-      | "Slash" if !ctrlKey && !shiftKey => dispatch(Action.FocusSearchPane())
+      | "Slash" if !ctrlKey && !shiftKey => {
+          dispatch(Action.FocusSearchPane())
+          event->preventDefault
+        }
 
       | _ => ()
       }
@@ -235,7 +238,10 @@ module KeyDownHandler = {
           dispatch(Action.DocumentItemPane(Action.ToTopItem()))
         }
 
-      | "Slash" if !ctrlKey && !shiftKey => dispatch(Action.FocusSearchPane())
+      | "Slash" if !ctrlKey && !shiftKey => {
+          dispatch(Action.FocusSearchPane())
+          event->preventDefault
+        }
 
       | _ => ()
       }

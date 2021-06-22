@@ -72,14 +72,13 @@ module Main = {
   let make = () => {
     let focus = Redux.useSelector(State.focus)
 
-    <main className=Style.app>
-      {switch focus {
-      | State.DocumentPane
-      | State.DocumentItemPane => <> <DocumentPane /> <DocumentItemPane /> </>
+    switch focus {
+    | State.DocumentPane
+    | State.DocumentItemPane =>
+      <main className=Style.app> <DocumentPane /> <DocumentItemPane /> </main>
 
-      | State.SearchPane => <SearchPane />
-      }}
-    </main>
+    | State.SearchPane => <SearchPane />
+    }
   }
 }
 

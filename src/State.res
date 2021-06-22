@@ -40,11 +40,14 @@ type documentPaneState = {
   editingText: string,
 }
 
+type searchPaneState = {searchingText: string}
+
 type t = {
   mode: mode,
   focus: focus,
   documentItemPane: documentItemPaneState,
   documentPane: documentPaneState,
+  searchPane: searchPaneState,
 }
 
 module DocumentPane = {
@@ -197,6 +200,10 @@ module DocumentItemPane = {
   }
 }
 
+module SearchPane = {
+  let searchingText = state => state.searchPane.searchingText
+}
+
 let initialState: t = {
   mode: Normal,
   focus: DocumentPane,
@@ -210,6 +217,9 @@ let initialState: t = {
     rootId: "629ca8ea-56e5-491f-b5ee-455ff9d3c358",
     map: Belt.HashMap.String.make(~hintSize=0),
     editingText: "",
+  },
+  searchPane: {
+    searchingText: "",
   },
 }
 
