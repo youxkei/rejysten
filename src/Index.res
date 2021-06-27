@@ -74,10 +74,16 @@ module Main = {
 
     switch focus {
     | State.DocumentPane
-    | State.DocumentItemPane =>
-      <main className=Style.app> <DocumentPane /> <DocumentItemPane /> </main>
+    | State.DocumentItemPane => <>
+        <main className=Style.app>
+          <DocumentPane />
+          <DocumentItemPane />
+          <SyncDocumentItemPaneState />
+          <SyncDocumentPaneState />
+        </main>
+      </>
 
-    | State.SearchPane => <SearchPane />
+    | State.SearchPane => <> <SearchPane /> <SyncSearchPaneState /> </>
     }
   }
 }
@@ -114,7 +120,7 @@ module App = {
       | Some(error) => error->toString->React.string
       | None =>
         switch user {
-        | Some(_) => <> <Main /> <SyncDocumentItemPaneState /> <SyncDocumentPaneState /> </>
+        | Some(_) => <Main />
 
         | None => "logging in"->React.string
         }
