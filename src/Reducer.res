@@ -295,6 +295,7 @@ let searchPaneReducer = (state: State.t, action) => {
   | Action.SetSearchingText({text}) => {
       ...state,
       searchPane: {
+        ...state.searchPane,
         searchingText: text,
       },
     }
@@ -365,6 +366,14 @@ let reducer = (state: State.t, action) => {
         ...state.documentPane,
         map: map,
         rootId: rootId,
+      },
+    }
+
+  | Action.SetSearchPaneState({items}) => {
+      ...state,
+      searchPane: {
+        ...state.searchPane,
+        items: items,
       },
     }
 

@@ -40,7 +40,7 @@ type documentPaneState = {
   editingText: string,
 }
 
-type searchPaneState = {searchingText: string}
+type searchPaneState = {searchingText: string, items: Js.Array.t<item>}
 
 type t = {
   mode: mode,
@@ -220,6 +220,7 @@ let initialState: t = {
   },
   searchPane: {
     searchingText: "",
+    items: [],
   },
 }
 

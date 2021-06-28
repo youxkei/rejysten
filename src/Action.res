@@ -52,5 +52,6 @@ type t =
 
   | SetDocumentItemPaneState({map: HashMap.String.t<State.item>})
   | SetDocumentPaneState({map: HashMap.String.t<State.document>, rootId: string})
+  | SetSearchPaneState({items: Js.Array.t<State.item>})
 
   | DevToolUpdate({state: State.t})
