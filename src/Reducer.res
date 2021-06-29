@@ -377,6 +377,14 @@ let reducer = (state: State.t, action) => {
       },
     }
 
+  | Action.SetFirestoreState({items, documents}) => {
+      ...state,
+      firestore: {
+        documents: documents,
+        items: items,
+      },
+    }
+
   | Action.DevToolUpdate({state}) => state
   }
 }

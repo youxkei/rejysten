@@ -52,6 +52,7 @@ type t =
 
   | SetDocumentItemPaneState({map: HashMap.String.t<State.item>})
   | SetDocumentPaneState({map: HashMap.String.t<State.document>, rootId: string})
-  | SetSearchPaneState({items: Js.Array.t<State.item>})
+  | SetSearchPaneState({items: array<State.item>})
+  | SetFirestoreState({documents: array<State.document>, items: array<State.item>})
 
   | DevToolUpdate({state: State.t})

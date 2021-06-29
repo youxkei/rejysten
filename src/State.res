@@ -3,6 +3,7 @@ open Belt
 type item = {
   id: string,
   text: string,
+  documentId: string,
   parentId: string,
   prevId: string,
   nextId: string,
@@ -40,7 +41,9 @@ type documentPaneState = {
   editingText: string,
 }
 
-type searchPaneState = {searchingText: string, items: Js.Array.t<item>}
+type searchPaneState = {searchingText: string, items: array<item>}
+
+type firestoreState = {documents: array<document>, items: array<item>}
 
 type t = {
   mode: mode,
@@ -48,6 +51,7 @@ type t = {
   documentItemPane: documentItemPaneState,
   documentPane: documentPaneState,
   searchPane: searchPaneState,
+  firestore: firestoreState,
 }
 
 module DocumentPane = {
@@ -204,6 +208,11 @@ module SearchPane = {
   let searchingText = state => state.searchPane.searchingText
 }
 
+module Firestore = {
+  let documents = state => state.firestore.documents
+  let items = state => state.firestore.items
+}
+
 let initialState: t = {
   mode: Normal,
   focus: DocumentPane,
@@ -220,6 +229,10 @@ let initialState: t = {
   },
   searchPane: {
     searchingText: "",
+    items: [],
+  },
+  firestore: {
+    documents: [],
     items: [],
   },
 }

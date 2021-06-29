@@ -77,9 +77,9 @@ module Main = {
     | State.DocumentItemPane => <>
         <main className=Style.app>
           <DocumentPane />
+          <SyncDocumentPaneState />
           <DocumentItemPane />
           <SyncDocumentItemPaneState />
-          <SyncDocumentPaneState />
         </main>
       </>
 
@@ -120,7 +120,7 @@ module App = {
       | Some(error) => error->toString->React.string
       | None =>
         switch user {
-        | Some(_) => <Main />
+        | Some(_) => <> <Main /> <SyncFirestoreState /> </>
 
         | None => "logging in"->React.string
         }
