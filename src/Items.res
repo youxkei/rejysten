@@ -18,13 +18,13 @@ external scrollIntoView: (
   let makeChildren = (itemMap, item: State.item) => {
     let children = []
 
-    let currentItem = ref(itemMap->HashMap.String.get(item.firstChildId))
+    let currentItem = ref(itemMap->Map.String.get(item.firstChildId))
 
     while Option.isSome(currentItem.contents) {
       let item: State.item = Option.getExn(currentItem.contents)
 
       let _ = children->Js.Array2.push(item)
-      currentItem := itemMap->HashMap.String.get(item.nextId)
+      currentItem := itemMap->Map.String.get(item.nextId)
     }
 
     children

@@ -1,5 +1,3 @@
-open Belt
-
 type item = {
   id: string,
   text: string,
@@ -30,20 +28,20 @@ type focus = DocumentPane | DocumentItemPane | SearchPane
 
 type documentItemPaneState = {
   currentId: string,
-  map: Belt.HashMap.String.t<item>,
+  map: Belt.Map.String.t<item>,
   editingText: string,
 }
 
 type documentPaneState = {
   currentId: string,
-  map: Belt.HashMap.String.t<document>,
+  map: Belt.Map.String.t<document>,
   rootId: string,
   editingText: string,
 }
 
 type searchPaneState = {searchingText: string, items: array<item>}
 
-type firestoreState = {documents: array<document>, items: array<item>}
+type firestoreState = {documentMap: Belt.Map.String.t<document>, itemMap: Belt.Map.String.t<item>}
 
 type t = {
   mode: mode,
@@ -61,7 +59,7 @@ module DocumentPane = {
   let rootDocumentId = ({documentPane: {rootId}}) => rootId
 
   let getDocument = ({documentPane: {map}}, id) => {
-    map->HashMap.String.get(id)
+    map->Belt.Map.String.get(id)
   }
 
   let currentDocument = state => state->getDocument(state->currentDocumentId)
@@ -100,7 +98,8 @@ module DocumentPane = {
             switch state->getDocument(nextId) {
             | Some(document) => Some(document)
 
-            | None => state->getDocument(parentId)->Option.flatMap(document => searchNext(document))
+            | None =>
+              state->getDocument(parentId)->Belt.Option.flatMap(document => searchNext(document))
             }
           }
 
@@ -117,7 +116,7 @@ module DocumentItemPane = {
   let editingText = ({documentItemPane: {editingText}}) => editingText
 
   let getItem = ({documentItemPane: {map}}, id) => {
-    map->HashMap.String.get(id)
+    map->Belt.Map.String.get(id)
   }
 
   let currentItem = state => state->getItem(state->currentItemId)
@@ -193,7 +192,7 @@ module DocumentItemPane = {
             switch state->getItem(nextId) {
             | Some(item) => Some(item)
 
-            | None => state->getItem(parentId)->Option.flatMap(item => searchNext(item))
+            | None => state->getItem(parentId)->Belt.Option.flatMap(item => searchNext(item))
             }
           }
 
@@ -209,8 +208,8 @@ module SearchPane = {
 }
 
 module Firestore = {
-  let documents = state => state.firestore.documents
-  let items = state => state.firestore.items
+  let documentMap = state => state.firestore.documentMap
+  let itemMap = state => state.firestore.itemMap
 }
 
 let initialState: t = {
@@ -218,13 +217,13 @@ let initialState: t = {
   focus: DocumentPane,
   documentItemPane: {
     currentId: "",
-    map: Belt.HashMap.String.make(~hintSize=0),
+    map: Belt.Map.String.empty,
     editingText: "",
   },
   documentPane: {
     currentId: "",
     rootId: "629ca8ea-56e5-491f-b5ee-455ff9d3c358",
-    map: Belt.HashMap.String.make(~hintSize=0),
+    map: Belt.Map.String.empty,
     editingText: "",
   },
   searchPane: {
@@ -232,8 +231,8 @@ let initialState: t = {
     items: [],
   },
   firestore: {
-    documents: [],
-    items: [],
+    documentMap: Belt.Map.String.empty,
+    itemMap: Belt.Map.String.empty,
   },
 }
 

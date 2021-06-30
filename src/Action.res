@@ -50,9 +50,12 @@ type t =
   | FocusDocumentItemPane(unit)
   | FocusSearchPane(unit)
 
-  | SetDocumentItemPaneState({map: HashMap.String.t<State.item>})
-  | SetDocumentPaneState({map: HashMap.String.t<State.document>, rootId: string})
+  | SetDocumentItemPaneState({map: Map.String.t<State.item>})
+  | SetDocumentPaneState({map: Map.String.t<State.document>, rootId: string})
   | SetSearchPaneState({items: array<State.item>})
-  | SetFirestoreState({documents: array<State.document>, items: array<State.item>})
+  | SetFirestoreState({
+      documentMap: Map.String.t<State.document>,
+      itemMap: Map.String.t<State.item>,
+    })
 
   | DevToolUpdate({state: State.t})

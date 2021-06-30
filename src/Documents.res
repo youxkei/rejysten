@@ -18,13 +18,13 @@ external scrollIntoView: (
   let makeChildren = (documentMap, document: State.document) => {
     let children = []
 
-    let currentDocument = ref(documentMap->HashMap.String.get(document.firstChildId))
+    let currentDocument = ref(documentMap->Map.String.get(document.firstChildId))
 
-    while Option.isSome(currentDocument.contents) {
+    while Belt.Option.isSome(currentDocument.contents) {
       let document: State.document = Option.getExn(currentDocument.contents)
 
       let _ = children->Js.Array2.push(document)
-      currentDocument := documentMap->HashMap.String.get(document.nextId)
+      currentDocument := documentMap->Map.String.get(document.nextId)
     }
 
     children
