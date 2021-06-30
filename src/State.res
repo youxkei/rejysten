@@ -205,6 +205,7 @@ module DocumentItemPane = {
 
 module SearchPane = {
   let searchingText = state => state.searchPane.searchingText
+  let items = state => state.searchPane.items
 }
 
 module Firestore = {

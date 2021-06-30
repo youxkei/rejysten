@@ -33,7 +33,11 @@ let make = React.memo(() => {
   <>
     {"/"->React.string}
     <textarea ref={ReactDOM.Ref.domRef(textareaRef)} value=text onChange autoFocus=true />
-    <SearchItems />
+    {if text == "" {
+      React.null
+    } else {
+      <SearchItems />
+    }}
   </>
 })
 
