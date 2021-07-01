@@ -32,6 +32,11 @@ module Firestore = {
 
   @module("firebase/app") @scope(("default", "firestore"))
   external setLogLevel: string => unit = "setLogLevel"
+
+  type enablePersistenceResult
+  type enablePersistenceError = {code: string}
+  @send external enablePersistence: t => enablePersistenceResult = "enablePersistence"
+  @send external catch: (enablePersistenceResult, enablePersistenceError => unit) => unit = "catch"
 }
 
 @module("firebase/app") @scope("default") external firestore: unit => Firestore.t = "firestore"

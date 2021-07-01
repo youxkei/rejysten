@@ -22,7 +22,18 @@ let firebaseConfig = {
   "measurementId": "G-64RW992RRF",
 }
 
+exception PersistenceNotSupported
+
 Firebase.initializeApp(firebaseConfig)
+Firebase.firestore()
+->Firebase.Firestore.enablePersistence
+->Firebase.Firestore.catch(err => {
+  if err.code == "failed-precondition" {
+    Js.log("Multiple tabs open, persistence can only be enabled in one tab at a a time.")
+  } else if err.code == "unimplemented" {
+    raise(PersistenceNotSupported)
+  }
+})
 
 let loggerMiddleware = (store, next, action) => {
   Js.log(Reductive.Store.getState(store))
