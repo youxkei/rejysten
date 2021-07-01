@@ -50,6 +50,7 @@
     "remark-external-links": "^8.0.0",
     "remark-gfm": "^1.0.0",
     "remark-highlight.js": "^6.0.0",
+    "use-debounce": "^7.0.0",
     "uuid": "^8.3.2"
   }
 }

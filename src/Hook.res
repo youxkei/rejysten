@@ -5,6 +5,8 @@ external removeEventListener: (string, Dom.keyboardEvent => unit) => unit = "rem
 @val external setTimeout: (unit => unit, int) => float = "setTimeout"
 @val external clearTimeout: float => unit = "clearTimeout"
 
+@module("use-debounce") @val external useDebounce: ('a, int) => ('a, unit) = "useDebounce"
+
 let useKeyDown = (handler, dependencies) => {
   React.useEffect1(() => {
     addEventListener("keypress", handler)

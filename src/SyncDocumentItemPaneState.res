@@ -15,12 +15,13 @@ let make = React.memo(() => {
   let dispatch = Redux.useDispatch()
   let itemMap = Redux.useSelector(State.Firestore.itemMap)
   let currentDocumentId = Redux.useSelector(State.DocumentPane.currentDocumentId)
+  let (currentDocumentId, ()) = Hook.useDebounce(currentDocumentId, 50)
 
-  React.useEffect(() => {
+  React.useEffect2(() => {
     dispatch(Action.SetDocumentItemPaneState({map: makeItemMap(itemMap, currentDocumentId)}))
 
     None
-  })
+  }, (itemMap, currentDocumentId))
 
   React.null
 })
