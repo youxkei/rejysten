@@ -19,23 +19,43 @@ let useKeyDown = (handler, dependencies) => {
   }, dependencies)
 }
 
-let useDoubleClick = callback => {
-  let timerRef = React.useRef(Js.Nullable.null)
+let useDouble = callback => {
+  let timerRef = React.useRef(None)
 
   React.useCallback1(event => {
-    switch timerRef.current->Js.Nullable.toOption {
+    switch timerRef.current {
     | Some(timer) =>
       clearTimeout(timer)
-      timerRef.current = Js.Nullable.null
+      timerRef.current = None
 
       callback(event, true)
 
     | None =>
       callback(event, false)
 
-      timerRef.current = Js.Nullable.return(
-        setTimeout(() => {timerRef.current = Js.Nullable.null}, 300),
-      )
+      timerRef.current = Some(setTimeout(() => {timerRef.current = None}, 300))
     }
   }, [callback])
+}
+
+let useTouch = callback => {
+  let noTouchMoveRef = React.useRef(true)
+
+  let onTouchMove = React.useCallback(_ => {
+    noTouchMoveRef.current = false
+  })
+
+  let onTouchCancel = React.useCallback(_ => {
+    noTouchMoveRef.current = true
+  })
+
+  let onTouchEnd = React.useCallback1(event => {
+    if noTouchMoveRef.current {
+      callback(event)
+    }
+
+    noTouchMoveRef.current = true
+  }, [callback])
+
+  (onTouchMove, onTouchEnd, onTouchCancel)
 }

@@ -2,7 +2,7 @@
 let make = React.memo((~item: State.item) => {
   let dispatch = Redux.useDispatch()
 
-  let onClick = Hook.useDoubleClick(React.useCallback1((event, isDouble) => {
+  let onClick = Hook.useDouble(React.useCallback1((event, isDouble) => {
       dispatch(
         Action.Event(
           Event.Click({
@@ -14,19 +14,21 @@ let make = React.memo((~item: State.item) => {
       )
     }, [item.id]))
 
-  let onTouchEnd = Hook.useDoubleClick(React.useCallback1((event, isDouble) => {
-      dispatch(
-        Action.Event(
-          Event.Click({
-            event: Event.Touch(event),
-            isDouble: isDouble,
-            target: Event.Item(item.id),
-          }),
-        ),
-      )
-    }, [item.id]))
+  let (onTouchMove, onTouchEnd, onTouchCancel) = Hook.useTouch(
+    Hook.useDouble(React.useCallback1((event, isDouble) => {
+        dispatch(
+          Action.Event(
+            Event.Click({
+              event: Event.Touch(event),
+              isDouble: isDouble,
+              target: Event.Item(item.id),
+            }),
+          ),
+        )
+      }, [item.id])),
+  )
 
-  <div onClick onTouchEnd>
+  <div onClick onTouchMove onTouchEnd onTouchCancel>
     <ReactMarkdown
       remarkPlugins={[ReactMarkdown.gfm, ReactMarkdown.externalLinks, ReactMarkdown.highlight]}>
       {`${item.text}　`}

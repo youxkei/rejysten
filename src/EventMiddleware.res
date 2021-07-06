@@ -372,10 +372,11 @@ module Click = {
 
         if isDouble {
           dispatch(Action.DocumentPane(Action.ToInsertMode({initialCursorPosition: State.End})))
-          event->Event.preventDefault
         } else {
           dispatch(Action.DocumentPane(Action.ToNormalMode()))
         }
+
+        event->Event.preventDefault
 
       | Event.Item(itemId) =>
         dispatch(Action.FocusDocumentItemPane())
@@ -387,10 +388,11 @@ module Click = {
 
         if isDouble {
           dispatch(Action.DocumentItemPane(Action.ToInsertMode({initialCursorPosition: State.End})))
-          event->Event.preventDefault
         } else {
           dispatch(Action.DocumentItemPane(Action.ToNormalMode()))
         }
+
+        event->Event.preventDefault
       }
     }
   }
