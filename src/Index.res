@@ -55,7 +55,7 @@ let store = enhancer(Reductive.Store.create)(
     next
     ->loggerMiddleware(store, _)
     ->FirestoreMiddleware.middleware(store, _)
-    ->KeyDownMiddleware.middleware(store, _),
+    ->EventMiddleware.middleware(store, _),
   (),
 )
 
@@ -65,7 +65,7 @@ module KeyDownHandler = {
     let dispatch = Redux.useDispatch()
 
     React.useEffect1(() => {
-      let listener = event => dispatch(Action.KeyDown({event: event}))
+      let listener = event => dispatch(Action.Event(Event.KeyDown({event: event})))
 
       window->addEventListener("keydown", listener)
 

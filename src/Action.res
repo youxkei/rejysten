@@ -37,7 +37,7 @@ type documentItemPane =
 type searchPane = SetSearchingText({text: string})
 
 type t =
-  | KeyDown({event: Dom.keyboardEvent})
+  | Event(Event.t)
 
   | FirestoreDocumentItemPane(firestoreDocumentItemPane)
   | FirestoreDocumentPane(firestoreDocumentPane)

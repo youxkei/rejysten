@@ -304,7 +304,7 @@ let searchPaneReducer = (state: State.t, action) => {
 
 let reducer = (state: State.t, action) => {
   switch action {
-  | Action.KeyDown(_)
+  | Action.Event(_)
   | Action.FirestoreDocumentItemPane(_)
   | Action.FirestoreDocumentPane(_) =>
     raise(ActionShouldBeProcessedByMiddleware(action))

@@ -3,37 +3,27 @@ let make = React.memo((~item: State.item) => {
   let dispatch = Redux.useDispatch()
 
   let onClick = Hook.useDoubleClick(React.useCallback1((event, isDouble) => {
-      dispatch(Action.FocusDocumentItemPane())
       dispatch(
-        Action.DocumentItemPane(
-          Action.SetCurrentItem({id: item.id, initialCursorPosition: State.End}),
+        Action.Event(
+          Event.Click({
+            event: Event.Mouse(event),
+            isDouble: isDouble,
+            target: Event.Item(item.id),
+          }),
         ),
       )
-
-      if isDouble {
-        dispatch(Action.DocumentItemPane(Action.ToInsertMode({initialCursorPosition: State.End})))
-        event->ReactEvent.Mouse.preventDefault
-      } else {
-        dispatch(Action.DocumentItemPane(Action.ToNormalMode()))
-      }
     }, [item.id]))
 
   let onTouchEnd = Hook.useDoubleClick(React.useCallback1((event, isDouble) => {
-      if event->ReactEvent.Touch.cancelable {
-        dispatch(Action.FocusDocumentItemPane())
-        dispatch(
-          Action.DocumentItemPane(
-            Action.SetCurrentItem({id: item.id, initialCursorPosition: State.End}),
-          ),
-        )
-
-        if isDouble {
-          dispatch(Action.DocumentItemPane(Action.ToInsertMode({initialCursorPosition: State.End})))
-          event->ReactEvent.Touch.preventDefault
-        } else {
-          dispatch(Action.DocumentItemPane(Action.ToNormalMode()))
-        }
-      }
+      dispatch(
+        Action.Event(
+          Event.Click({
+            event: Event.Touch(event),
+            isDouble: isDouble,
+            target: Event.Item(item.id),
+          }),
+        ),
+      )
     }, [item.id]))
 
   <div onClick onTouchEnd>
