@@ -4,7 +4,7 @@ open Belt
 let make = React.memo(() => {
   let items = Redux.useSelector(State.SearchPane.items)
 
-  React.array(items->Array.map(item => <p key={item.id}> {item.text->React.string} </p>))
+  <ul> {React.array(items->Array.map(item => <li key={item.id}> <Item item /> </li>))} </ul>
 })
 
 React.setDisplayName(make, "SearchItems")
