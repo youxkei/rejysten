@@ -4,12 +4,16 @@ open Belt
 
 %%private(
   let searchItems = (itemMap, searchingText) => {
-    itemMap
-    ->Map.String.keep((_, item: State.item) => {
-      item.text->Js.String2.includes(searchingText)
-    })
-    ->Map.String.toArray
-    ->Array.map(((_, item)) => item)
+    if searchingText == "" {
+      []
+    } else {
+      itemMap
+      ->Map.String.keep((_, item: State.item) => {
+        item.text->Js.String2.includes(searchingText)
+      })
+      ->Map.String.toArray
+      ->Array.map(((_, item)) => item)
+    }
   }
 )
 
@@ -18,12 +22,13 @@ let make = () => {
   let dispatch = Redux.useDispatch()
   let itemMap = Redux.useSelector(State.Firestore.itemMap)
   let searchingText = Redux.useSelector(State.SearchPane.searchingText)
+  let (searchingText, ()) = Hook.useDebounce(searchingText, 500)
 
-  React.useEffect(() => {
+  React.useEffect2(() => {
     dispatch(Action.SetSearchPaneState({items: searchItems(itemMap, searchingText)}))
 
     None
-  })
+  }, (itemMap, searchingText))
 
   React.null
 }
