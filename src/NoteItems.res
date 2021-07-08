@@ -72,20 +72,19 @@ module rec ItemsInner: {
     }
 
     <>
-      <li className ref={ReactDOM.Ref.domRef(liRef)}>
+      <p className ref={ReactDOM.Ref.domRef(liRef)}>
+        {React.string("-")}
         {switch (focus, mode, isCurrentItem) {
         | (State.Note(State.ItemPane()), State.Insert(_), true) => <NoteItemEditor />
 
         | _ => <Item item />
         }}
-      </li>
-      <ul>
-        {makeChildren(itemMap, item)
-        ->Array.map((item: State.item) => {
-          <ItemsInner key=item.id item />
-        })
-        ->React.array}
-      </ul>
+      </p>
+      {makeChildren(itemMap, item)
+      ->Array.map((item: State.item) => {
+        <ItemsInner key=item.id item />
+      })
+      ->React.array}
     </>
   })
 
@@ -96,13 +95,11 @@ module rec ItemsInner: {
 let make = React.memo((~item: State.item) => {
   let itemMap = Redux.useSelector(State.Note.ItemPane.itemMap)
 
-  <ul>
-    {makeChildren(itemMap, item)
-    ->Array.map(item => {
-      <ItemsInner key=item.id item />
-    })
-    ->React.array}
-  </ul>
+  makeChildren(itemMap, item)
+  ->Array.map(item => {
+    <ItemsInner key=item.id item />
+  })
+  ->React.array
 })
 
 React.setDisplayName(make, "Items")
