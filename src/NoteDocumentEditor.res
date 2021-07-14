@@ -6,19 +6,21 @@ open Belt
 
 @react.component
 let make = React.memo(() => {
-  let text = Redux.useSelector(State.DocumentPane.editingText)
+  let text = Redux.useSelector(State.Note.DocumentPane.editingText)
   let initialCursorPosition = Redux.useSelector(State.initialCursorPosition)
 
   let dispatch = Redux.useDispatch()
 
   let onChange = React.useCallback1(event => {
     dispatch(
-      Action.DocumentPane(Action.SetEditingText({text: event->ReactEvent.Form.target->value})),
+      Action.Note(
+        Action.DocumentPane(Action.SetEditingText({text: event->ReactEvent.Form.target->value})),
+      ),
     )
   }, [])
 
   let onBlur = React.useCallback1(_ => {
-    dispatch(Action.FirestoreDocumentPane(Action.SaveDocument()))
+    dispatch(Action.FirestoreNote(Action.DocumentPane(Action.SaveDocument())))
   }, [])
 
   let textareaRef = React.useRef(Js.Nullable.null)
@@ -30,9 +32,9 @@ let make = React.memo(() => {
       textarea->focus
 
       switch initialCursorPosition {
-      | State.Start => textarea->setSelectionRange(0, 0)
+      | State.Start() => textarea->setSelectionRange(0, 0)
 
-      | State.End => {
+      | State.End() => {
           let length = text->Js.String.length
           textarea->setSelectionRange(length, length)
         }

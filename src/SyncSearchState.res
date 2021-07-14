@@ -21,11 +21,11 @@ open Belt
 let make = () => {
   let dispatch = Redux.useDispatch()
   let itemMap = Redux.useSelector(State.Firestore.itemMap)
-  let searchingText = Redux.useSelector(State.SearchPane.searchingText)
+  let searchingText = Redux.useSelector(State.Search.searchingText)
   let (searchingText, ()) = Hook.useDebounce(searchingText, 500)
 
   React.useEffect2(() => {
-    dispatch(Action.SetSearchPaneState({items: searchItems(itemMap, searchingText)}))
+    dispatch(Action.SetSearchState({items: searchItems(itemMap, searchingText)}))
 
     None
   }, (itemMap, searchingText))

@@ -1,22 +1,25 @@
 open Belt
 
-type direction = Prev | Next
+type direction = Prev(unit) | Next(unit)
+type focusNotePane = DocumentPane(unit) | ItemPane(unit)
 
-type firestoreDocumentItemPane =
-  | SaveItem(unit)
-  | IndentItem(unit)
-  | UnindentItem(unit)
-  | AddItem({direction: direction})
-  | DeleteItem({nextCurrentId: string, initialCursorPosition: State.initialCursorPosition})
-
-type firestoreDocumentPane =
+type firestoreNoteDocumentPane =
   | SaveDocument(unit)
   | IndentDocument(unit)
   | UnindentDocument(unit)
   | AddDocument({direction: direction})
   | DeleteDocument({nextCurrentId: string, initialCursorPosition: State.initialCursorPosition})
 
-type documentPane =
+type firestoreNoteItemPane =
+  | SaveItem(unit)
+  | IndentItem(unit)
+  | UnindentItem(unit)
+  | AddItem({direction: direction})
+  | DeleteItem({nextCurrentId: string, initialCursorPosition: State.initialCursorPosition})
+
+type firestoreNote = DocumentPane(firestoreNoteDocumentPane) | ItemPane(firestoreNoteItemPane)
+
+type noteDocumentPane =
   | ToAboveDocument(unit)
   | ToBelowDocument(unit)
   | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
@@ -24,7 +27,7 @@ type documentPane =
   | SetEditingText({text: string})
   | SetCurrentDocument({id: string, initialCursorPosition: State.initialCursorPosition})
 
-type documentItemPane =
+type noteItemPane =
   | ToAboveItem(unit)
   | ToBelowItem(unit)
   | ToTopItem(unit)
@@ -34,25 +37,26 @@ type documentItemPane =
   | SetEditingText({text: string})
   | SetCurrentItem({id: string, initialCursorPosition: State.initialCursorPosition})
 
-type searchPane = SetSearchingText({text: string})
+type note =
+  | DocumentPane(noteDocumentPane)
+  | ItemPane(noteItemPane)
+
+type search = SetSearchingText({text: string})
 
 type t =
   | Event(Event.t)
 
-  | FirestoreDocumentItemPane(firestoreDocumentItemPane)
-  | FirestoreDocumentPane(firestoreDocumentPane)
+  | FirestoreNote(firestoreNote)
 
-  | DocumentPane(documentPane)
-  | DocumentItemPane(documentItemPane)
-  | SearchPane(searchPane)
+  | Note(note)
+  | Search(search)
 
-  | FocusDocumentPane(unit)
-  | FocusDocumentItemPane(unit)
-  | FocusSearchPane(unit)
+  | FocusNote(focusNotePane)
+  | FocusSearch(unit)
 
-  | SetDocumentItemPaneState({map: Map.String.t<State.item>})
-  | SetDocumentPaneState({map: Map.String.t<State.document>, rootId: string})
-  | SetSearchPaneState({items: array<State.item>})
+  | SetNoteDocumentPaneState({map: Map.String.t<State.document>, rootId: string})
+  | SetNoteItemPaneState({map: Map.String.t<State.item>})
+  | SetSearchState({items: array<State.item>})
   | SetFirestoreState({
       documentMap: Map.String.t<State.document>,
       itemMap: Map.String.t<State.item>,

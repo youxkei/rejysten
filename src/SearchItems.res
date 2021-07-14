@@ -2,7 +2,7 @@ open Belt
 
 @react.component
 let make = React.memo(() => {
-  let items = Redux.useSelector(State.SearchPane.items)
+  let items = Redux.useSelector(State.Search.items)
 
   if items->Array.length == 0 {
     <p> {React.string("Not Available")} </p>

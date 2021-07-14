@@ -22,16 +22,22 @@ open CssJs
   ]
 )
 
-let app = style(. [
-  display(grid),
-  gridTemplateColumns([20.0->pct, 80.0->pct]),
-  width(100.0->pct),
-  height(100.0->pct),
-])
+module Note = {
+  let s = style(. [
+    display(grid),
+    gridTemplateColumns([20.0->pct, 80.0->pct]),
+    width(100.0->pct),
+    height(100.0->pct),
+  ])
 
-let documentPane = style(. [gridColumnStart(1), overflow(auto)])
+  module DocumentPane = {
+    let s = style(. [gridColumnStart(1), overflow(auto)])
+  }
 
-let documentItemPane = style(. [gridColumnStart(2), overflow(auto)])
+  module ItemPane = {
+    let s = style(. [gridColumnStart(2), overflow(auto)])
+  }
+}
 
 let focusedPane = style(. [border(8->px, solid, nord[1])])
 let unfocusedPane = style(. [border(8->px, solid, nord[0])])

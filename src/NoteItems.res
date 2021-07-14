@@ -39,8 +39,8 @@ module rec ItemsInner: {
   let make = React.memo((~item: State.item) => {
     let focus = Redux.useSelector(State.focus)
     let mode = Redux.useSelector(State.mode)
-    let itemMap = Redux.useSelector(State.DocumentItemPane.itemMap)
-    let currentItemId = Redux.useSelector(State.DocumentItemPane.currentItemId)
+    let itemMap = Redux.useSelector(State.Note.ItemPane.itemMap)
+    let currentItemId = Redux.useSelector(State.Note.ItemPane.currentItemId)
     let liRef = React.useRef(Js.Nullable.null)
 
     let isCurrentItem = item.id == currentItemId
@@ -74,7 +74,7 @@ module rec ItemsInner: {
     <>
       <li className ref={ReactDOM.Ref.domRef(liRef)}>
         {switch (focus, mode, isCurrentItem) {
-        | (State.DocumentItemPane, State.Insert(_), true) => <ItemEditor />
+        | (State.Note(State.ItemPane()), State.Insert(_), true) => <NoteItemEditor />
 
         | _ => <Item item />
         }}
@@ -94,7 +94,7 @@ module rec ItemsInner: {
 
 @react.component
 let make = React.memo((~item: State.item) => {
-  let itemMap = Redux.useSelector(State.DocumentItemPane.itemMap)
+  let itemMap = Redux.useSelector(State.Note.ItemPane.itemMap)
 
   <ul>
     {makeChildren(itemMap, item)

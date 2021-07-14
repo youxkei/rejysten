@@ -39,8 +39,8 @@ module rec DocumentsInner: {
   let make = React.memo((~document: State.document) => {
     let focus = Redux.useSelector(State.focus)
     let mode = Redux.useSelector(State.mode)
-    let documentMap = Redux.useSelector(State.DocumentPane.documentMap)
-    let currentDocumentId = Redux.useSelector(State.DocumentPane.currentDocumentId)
+    let documentMap = Redux.useSelector(State.Note.DocumentPane.documentMap)
+    let currentDocumentId = Redux.useSelector(State.Note.DocumentPane.currentDocumentId)
     let liRef = React.useRef(Js.Nullable.null)
 
     let isCurrentDocument = document.id == currentDocumentId
@@ -74,9 +74,9 @@ module rec DocumentsInner: {
     <>
       <li className ref={ReactDOM.Ref.domRef(liRef)}>
         {switch (focus, mode, isCurrentDocument) {
-        | (State.DocumentPane, State.Insert(_), true) => <DocumentEditor />
+        | (State.Note(State.DocumentPane()), State.Insert(_), true) => <NoteDocumentEditor />
 
-        | _ => <Document document />
+        | _ => <NoteDocument document />
         }}
       </li>
       <ul>
@@ -92,7 +92,7 @@ module rec DocumentsInner: {
 
 @react.component
 let make = React.memo((~document: State.document) => {
-  let documentMap = Redux.useSelector(State.DocumentPane.documentMap)
+  let documentMap = Redux.useSelector(State.Note.DocumentPane.documentMap)
 
   <ul>
     {makeChildren(documentMap, document)

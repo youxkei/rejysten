@@ -1,8 +1,10 @@
 let middleware = (store, next, action) => {
   switch action {
-  | Action.FirestoreDocumentItemPane(firestoreItemAction) => FirestoreDocumentItemPaneMiddleware.middleware(store, firestoreItemAction)
+  | Action.FirestoreNote(Action.DocumentPane(firestoreDocumentAction)) =>
+    FirestoreNoteDocumentPaneMiddleware.middleware(store, firestoreDocumentAction)
 
-  | Action.FirestoreDocumentPane(firestoreDocumentAction) => FirestoreDocumentPaneMiddleware.middleware(store, firestoreDocumentAction)
+  | Action.FirestoreNote(Action.ItemPane(firestoreItemAction)) =>
+    FirestoreNoteItemPaneMiddleware.middleware(store, firestoreItemAction)
 
   | _ => next(action)
   }

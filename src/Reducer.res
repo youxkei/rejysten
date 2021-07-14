@@ -7,18 +7,20 @@ exception ActionShouldBeProcessedByMiddleware(Action.t)
 let documentPaneReducer = (state: State.t, action) => {
   switch action {
   | Action.ToAboveDocument() =>
-    switch state->State.DocumentPane.currentDocument {
+    switch state->State.Note.DocumentPane.currentDocument {
     | Some(currentDocument) =>
-      switch state->State.DocumentPane.aboveDocument(currentDocument) {
+      switch state->State.Note.DocumentPane.aboveDocument(currentDocument) {
       | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
           ...state,
-          documentPane: {
-            ...state.documentPane,
-            currentId: aboveId,
-          },
-          documentItemPane: {
-            ...state.documentItemPane,
-            currentId: "",
+          note: {
+            documentPane: {
+              ...state.note.documentPane,
+              currentId: aboveId,
+            },
+            itemPane: {
+              ...state.note.itemPane,
+              currentId: "",
+            },
           },
         }
 
@@ -26,12 +28,15 @@ let documentPaneReducer = (state: State.t, action) => {
       }
 
     | None =>
-      switch state->State.DocumentPane.rootDocument {
+      switch state->State.Note.DocumentPane.rootDocument {
       | Some({firstChildId}) => {
           ...state,
-          documentPane: {
-            ...state.documentPane,
-            currentId: firstChildId,
+          note: {
+            ...state.note,
+            documentPane: {
+              ...state.note.documentPane,
+              currentId: firstChildId,
+            },
           },
         }
 
@@ -40,18 +45,20 @@ let documentPaneReducer = (state: State.t, action) => {
     }
 
   | Action.ToBelowDocument() =>
-    switch state->State.DocumentPane.currentDocument {
+    switch state->State.Note.DocumentPane.currentDocument {
     | Some(currentDocument) =>
-      switch state->State.DocumentPane.belowDocument(currentDocument) {
+      switch state->State.Note.DocumentPane.belowDocument(currentDocument) {
       | Some({id: belowId}) => {
           ...state,
-          documentPane: {
-            ...state.documentPane,
-            currentId: belowId,
-          },
-          documentItemPane: {
-            ...state.documentItemPane,
-            currentId: "",
+          note: {
+            documentPane: {
+              ...state.note.documentPane,
+              currentId: belowId,
+            },
+            itemPane: {
+              ...state.note.itemPane,
+              currentId: "",
+            },
           },
         }
 
@@ -59,12 +66,15 @@ let documentPaneReducer = (state: State.t, action) => {
       }
 
     | None =>
-      switch state->State.DocumentPane.rootDocument {
+      switch state->State.Note.DocumentPane.rootDocument {
       | Some({firstChildId}) => {
           ...state,
-          documentPane: {
-            ...state.documentPane,
-            currentId: firstChildId,
+          note: {
+            ...state.note,
+            documentPane: {
+              ...state.note.documentPane,
+              currentId: firstChildId,
+            },
           },
         }
 
@@ -73,7 +83,7 @@ let documentPaneReducer = (state: State.t, action) => {
     }
 
   | Action.ToInsertMode({initialCursorPosition}) =>
-    let editingText = switch state->State.DocumentPane.currentDocument {
+    let editingText = switch state->State.Note.DocumentPane.currentDocument {
     | Some({text}) => text
 
     | None => ""
@@ -81,42 +91,50 @@ let documentPaneReducer = (state: State.t, action) => {
 
     {
       ...state,
-      documentPane: {
-        ...state.documentPane,
-        editingText: editingText,
+      note: {
+        ...state.note,
+        documentPane: {
+          ...state.note.documentPane,
+          editingText: editingText,
+        },
       },
       mode: State.Insert({initialCursorPosition: initialCursorPosition}),
     }
 
   | Action.ToNormalMode() => {
       ...state,
-      mode: State.Normal,
+      mode: State.Normal(),
     }
 
   | Action.SetEditingText({text}) => {
       ...state,
-      documentPane: {
-        ...state.documentPane,
-        editingText: text,
+      note: {
+        ...state.note,
+        documentPane: {
+          ...state.note.documentPane,
+          editingText: text,
+        },
       },
     }
 
   | Action.SetCurrentDocument({id, initialCursorPosition}) =>
     switch state.mode {
-    | State.Normal => {
+    | State.Normal() => {
         ...state,
-        documentPane: {
-          ...state.documentPane,
-          currentId: id,
-        },
-        documentItemPane: {
-          ...state.documentItemPane,
-          currentId: "",
+        note: {
+          documentPane: {
+            ...state.note.documentPane,
+            currentId: id,
+          },
+          itemPane: {
+            ...state.note.itemPane,
+            currentId: "",
+          },
         },
       }
 
     | State.Insert(_) => {
-        let editingText = switch state->State.DocumentPane.getDocument(id) {
+        let editingText = switch state->State.Note.DocumentPane.getDocument(id) {
         | Some({text}) => text
 
         | None => ""
@@ -125,14 +143,16 @@ let documentPaneReducer = (state: State.t, action) => {
         {
           ...state,
           mode: State.Insert({initialCursorPosition: initialCursorPosition}),
-          documentPane: {
-            ...state.documentPane,
-            currentId: id,
-            editingText: editingText,
-          },
-          documentItemPane: {
-            ...state.documentItemPane,
-            currentId: "",
+          note: {
+            documentPane: {
+              ...state.note.documentPane,
+              currentId: id,
+              editingText: editingText,
+            },
+            itemPane: {
+              ...state.note.itemPane,
+              currentId: "",
+            },
           },
         }
       }
@@ -143,14 +163,17 @@ let documentPaneReducer = (state: State.t, action) => {
 let documentItemPaneReducer = (state: State.t, action) => {
   switch action {
   | Action.ToAboveItem() =>
-    switch state->State.DocumentItemPane.currentItem {
+    switch state->State.Note.ItemPane.currentItem {
     | Some(item) =>
-      switch state->State.DocumentItemPane.aboveItem(item) {
+      switch state->State.Note.ItemPane.aboveItem(item) {
       | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
           ...state,
-          documentItemPane: {
-            ...state.documentItemPane,
-            currentId: aboveId,
+          note: {
+            ...state.note,
+            itemPane: {
+              ...state.note.itemPane,
+              currentId: aboveId,
+            },
           },
         }
 
@@ -158,12 +181,15 @@ let documentItemPaneReducer = (state: State.t, action) => {
       }
 
     | None =>
-      switch state->State.DocumentItemPane.rootItem {
+      switch state->State.Note.ItemPane.rootItem {
       | Some({firstChildId}) => {
           ...state,
-          documentItemPane: {
-            ...state.documentItemPane,
-            currentId: firstChildId,
+          note: {
+            ...state.note,
+            itemPane: {
+              ...state.note.itemPane,
+              currentId: firstChildId,
+            },
           },
         }
 
@@ -172,14 +198,17 @@ let documentItemPaneReducer = (state: State.t, action) => {
     }
 
   | Action.ToBelowItem() =>
-    switch state->State.DocumentItemPane.currentItem {
+    switch state->State.Note.ItemPane.currentItem {
     | Some(item) =>
-      switch state->State.DocumentItemPane.belowItem(item) {
+      switch state->State.Note.ItemPane.belowItem(item) {
       | Some({id: belowId}) => {
           ...state,
-          documentItemPane: {
-            ...state.documentItemPane,
-            currentId: belowId,
+          note: {
+            ...state.note,
+            itemPane: {
+              ...state.note.itemPane,
+              currentId: belowId,
+            },
           },
         }
 
@@ -187,12 +216,15 @@ let documentItemPaneReducer = (state: State.t, action) => {
       }
 
     | None =>
-      switch state->State.DocumentItemPane.rootItem {
+      switch state->State.Note.ItemPane.rootItem {
       | Some({firstChildId}) => {
           ...state,
-          documentItemPane: {
-            ...state.documentItemPane,
-            currentId: firstChildId,
+          note: {
+            ...state.note,
+            itemPane: {
+              ...state.note.itemPane,
+              currentId: firstChildId,
+            },
           },
         }
 
@@ -201,12 +233,15 @@ let documentItemPaneReducer = (state: State.t, action) => {
     }
 
   | Action.ToTopItem() =>
-    switch state->State.DocumentItemPane.topItem {
+    switch state->State.Note.ItemPane.topItem {
     | Some(topItem) => {
         ...state,
-        documentItemPane: {
-          ...state.documentItemPane,
-          currentId: topItem.id,
+        note: {
+          ...state.note,
+          itemPane: {
+            ...state.note.itemPane,
+            currentId: topItem.id,
+          },
         },
       }
 
@@ -214,12 +249,15 @@ let documentItemPaneReducer = (state: State.t, action) => {
     }
 
   | Action.ToBottomItem() =>
-    switch state->State.DocumentItemPane.bottomItem {
+    switch state->State.Note.ItemPane.bottomItem {
     | Some(bottomItem) => {
         ...state,
-        documentItemPane: {
-          ...state.documentItemPane,
-          currentId: bottomItem.id,
+        note: {
+          ...state.note,
+          itemPane: {
+            ...state.note.itemPane,
+            currentId: bottomItem.id,
+          },
         },
       }
 
@@ -227,7 +265,7 @@ let documentItemPaneReducer = (state: State.t, action) => {
     }
 
   | Action.ToInsertMode({initialCursorPosition}) =>
-    let editingText = switch state->State.DocumentItemPane.currentItem {
+    let editingText = switch state->State.Note.ItemPane.currentItem {
     | Some({text}) => text
 
     | None => ""
@@ -235,42 +273,54 @@ let documentItemPaneReducer = (state: State.t, action) => {
 
     {
       ...state,
-      documentItemPane: {
-        ...state.documentItemPane,
-        editingText: editingText,
+      note: {
+        ...state.note,
+        itemPane: {
+          ...state.note.itemPane,
+          editingText: editingText,
+        },
       },
       mode: State.Insert({initialCursorPosition: initialCursorPosition}),
     }
 
   | Action.ToNormalMode() => {
       ...state,
-      mode: State.Normal,
-      documentItemPane: {
-        ...state.documentItemPane,
-        editingText: "",
+      mode: State.Normal(),
+      note: {
+        ...state.note,
+        itemPane: {
+          ...state.note.itemPane,
+          editingText: "",
+        },
       },
     }
 
   | Action.SetEditingText({text}) => {
       ...state,
-      documentItemPane: {
-        ...state.documentItemPane,
-        editingText: text,
+      note: {
+        ...state.note,
+        itemPane: {
+          ...state.note.itemPane,
+          editingText: text,
+        },
       },
     }
 
   | Action.SetCurrentItem({id, initialCursorPosition}) =>
     switch state.mode {
-    | State.Normal => {
+    | State.Normal() => {
         ...state,
-        documentItemPane: {
-          ...state.documentItemPane,
-          currentId: id,
+        note: {
+          ...state.note,
+          itemPane: {
+            ...state.note.itemPane,
+            currentId: id,
+          },
         },
       }
 
     | State.Insert(_) => {
-        let editingText = switch state->State.DocumentItemPane.getItem(id) {
+        let editingText = switch state->State.Note.ItemPane.getItem(id) {
         | Some({text}) => text
 
         | None => ""
@@ -279,10 +329,13 @@ let documentItemPaneReducer = (state: State.t, action) => {
         {
           ...state,
           mode: State.Insert({initialCursorPosition: initialCursorPosition}),
-          documentItemPane: {
-            ...state.documentItemPane,
-            currentId: id,
-            editingText: editingText,
+          note: {
+            ...state.note,
+            itemPane: {
+              ...state.note.itemPane,
+              currentId: id,
+              editingText: editingText,
+            },
           },
         }
       }
@@ -294,8 +347,8 @@ let searchPaneReducer = (state: State.t, action) => {
   switch action {
   | Action.SetSearchingText({text}) => {
       ...state,
-      searchPane: {
-        ...state.searchPane,
+      search: {
+        ...state.search,
         searchingText: text,
       },
     }
@@ -305,32 +358,33 @@ let searchPaneReducer = (state: State.t, action) => {
 let reducer = (state: State.t, action) => {
   switch action {
   | Action.Event(_)
-  | Action.FirestoreDocumentItemPane(_)
-  | Action.FirestoreDocumentPane(_) =>
+  | Action.FirestoreNote(_) =>
     raise(ActionShouldBeProcessedByMiddleware(action))
 
-  | Action.DocumentPane(action) => documentPaneReducer(state, action)
-  | Action.DocumentItemPane(action) => documentItemPaneReducer(state, action)
-  | Action.SearchPane(action) => searchPaneReducer(state, action)
+  | Action.Note(Action.DocumentPane(action)) => documentPaneReducer(state, action)
+  | Action.Note(Action.ItemPane(action)) => documentItemPaneReducer(state, action)
+  | Action.Search(action) => searchPaneReducer(state, action)
 
-  | Action.FocusDocumentPane() => {
+  | Action.FocusNote(Action.DocumentPane()) => {
       ...state,
-      focus: State.DocumentPane,
+      focus: State.Note(State.DocumentPane()),
     }
 
-  | Action.FocusDocumentItemPane() =>
-    if state.documentItemPane.currentId == "" {
-      switch state->State.DocumentItemPane.rootItem {
+  | Action.FocusNote(Action.ItemPane()) =>
+    if state.note.itemPane.currentId == "" {
+      switch state->State.Note.ItemPane.rootItem {
       | Some({firstChildId}) => {
           ...state,
-          focus: State.DocumentItemPane,
-          documentPane: {
-            ...state.documentPane,
-            editingText: "",
-          },
-          documentItemPane: {
-            ...state.documentItemPane,
-            currentId: firstChildId,
+          focus: State.Note(State.ItemPane()),
+          note: {
+            documentPane: {
+              ...state.note.documentPane,
+              editingText: "",
+            },
+            itemPane: {
+              ...state.note.itemPane,
+              currentId: firstChildId,
+            },
           },
         }
 
@@ -339,40 +393,49 @@ let reducer = (state: State.t, action) => {
     } else {
       {
         ...state,
-        focus: State.DocumentItemPane,
-        documentPane: {
-          ...state.documentPane,
-          editingText: "",
+        focus: State.Note(State.ItemPane()),
+        note: {
+          ...state.note,
+          documentPane: {
+            ...state.note.documentPane,
+            editingText: "",
+          },
         },
       }
     }
 
-  | Action.FocusSearchPane() => {
+  | Action.FocusSearch() => {
       ...state,
-      focus: State.SearchPane,
+      focus: State.Search(),
     }
 
-  | Action.SetDocumentItemPaneState({map}) => {
+  | Action.SetNoteDocumentPaneState({map, rootId}) => {
       ...state,
-      documentItemPane: {
-        ...state.documentItemPane,
-        map: map,
+      note: {
+        ...state.note,
+        documentPane: {
+          ...state.note.documentPane,
+          map: map,
+          rootId: rootId,
+        },
       },
     }
 
-  | Action.SetDocumentPaneState({map, rootId}) => {
+  | Action.SetNoteItemPaneState({map}) => {
       ...state,
-      documentPane: {
-        ...state.documentPane,
-        map: map,
-        rootId: rootId,
+      note: {
+        ...state.note,
+        itemPane: {
+          ...state.note.itemPane,
+          map: map,
+        },
       },
     }
 
-  | Action.SetSearchPaneState({items}) => {
+  | Action.SetSearchState({items}) => {
       ...state,
-      searchPane: {
-        ...state.searchPane,
+      search: {
+        ...state.search,
         items: items,
       },
     }

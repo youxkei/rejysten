@@ -8,13 +8,11 @@ open Belt
 let make = React.memo(() => {
   let dispatch = Redux.useDispatch()
 
-  let text = Redux.useSelector(State.SearchPane.searchingText)
+  let text = Redux.useSelector(State.Search.searchingText)
   let textareaRef = React.useRef(Js.Nullable.null)
 
   let onChange = React.useCallback1(event => {
-    dispatch(
-      Action.SearchPane(Action.SetSearchingText({text: event->ReactEvent.Form.target->value})),
-    )
+    dispatch(Action.Search(Action.SetSearchingText({text: event->ReactEvent.Form.target->value})))
   }, [])
 
   React.useEffect1(() => {

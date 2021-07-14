@@ -84,17 +84,9 @@ module Main = {
     let focus = Redux.useSelector(State.focus)
 
     switch focus {
-    | State.DocumentPane
-    | State.DocumentItemPane => <>
-        <main className=Style.app>
-          <DocumentPane />
-          <SyncDocumentPaneState />
-          <DocumentItemPane />
-          <SyncDocumentItemPaneState />
-        </main>
-      </>
+    | State.Note(_) => <> <Note /> <SyncNoteState /> </>
 
-    | State.SearchPane => <> <SearchPane /> <SyncSearchPaneState /> </>
+    | State.Search() => <> <Search /> <SyncSearchState /> </>
     }
   }
 }
