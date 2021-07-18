@@ -1,5 +1,9 @@
 open Belt
 
+@val external window: Dom.window = "window"
+@get
+external outerHeight: Dom.window => float = "outerHeight"
+
 @react.component
 let make = React.memo(() => {
   let items = Redux.useSelector(State.Search.items)
@@ -7,7 +11,15 @@ let make = React.memo(() => {
   if items->Array.length == 0 {
     <p> {React.string("Not Available")} </p>
   } else {
-    <ul> {React.array(items->Array.map(item => <li key={item.id}> <Item item /> </li>))} </ul>
+    <ul>
+      {React.array(
+        items->Array.map(item =>
+          <RenderIfVisible defaultHeight={window->outerHeight}>
+            <li key={item.id}> <Item item /> </li>
+          </RenderIfVisible>
+        ),
+      )}
+    </ul>
   }
 })
 

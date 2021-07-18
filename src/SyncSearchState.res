@@ -22,7 +22,7 @@ let make = () => {
   let dispatch = Redux.useDispatch()
   let itemMap = Redux.useSelector(State.Firestore.itemMap)
   let searchingText = Redux.useSelector(State.Search.searchingText)
-  let (searchingText, ()) = Hook.useDebounce(searchingText, 500)
+  let (searchingText, ()) = Hook.useDebounce(searchingText, 200)
 
   React.useEffect2(() => {
     dispatch(Action.SetSearchState({items: searchItems(itemMap, searchingText)}))
