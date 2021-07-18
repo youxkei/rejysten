@@ -46,8 +46,11 @@ let editor = style(. [color(nord[5]), backgroundColor(nord[0]), width(100.0->pct
 
 let focused = style(. [backgroundColor(nord[1])])
 
-global(. "body", [color(nord[5]), backgroundColor(nord[0]), fontSize(16->px)])
 global(. "textarea", [fontSize(16->px)])
+global(.
+  "body",
+  [color(nord[5]), backgroundColor(nord[0]), fontFamily(#sansSerif), fontSize(16->px)],
+)
 global(. "p", [margin(0->px)])
 global(. "pre", [margin(0->px)])
 global(. "a:link", [color(nord[7])])
