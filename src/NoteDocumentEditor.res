@@ -21,6 +21,7 @@ let make = React.memo(() => {
 
   let onBlur = React.useCallback1(_ => {
     dispatch(Action.FirestoreNote(Action.DocumentPane(Action.SaveDocument())))
+    dispatch(Action.Note(Action.DocumentPane(Action.ToNormalMode())))
   }, [])
 
   let textareaRef = React.useRef(Js.Nullable.null)
