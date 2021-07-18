@@ -30,7 +30,13 @@ let make = React.memo(() => {
 
   <>
     {"/"->React.string}
-    <textarea ref={ReactDOM.Ref.domRef(textareaRef)} value=text onChange autoFocus=true />
+    <input
+      className=Style.searchEditor
+      ref={ReactDOM.Ref.domRef(textareaRef)}
+      value=text
+      onChange
+      autoFocus=true
+    />
     <SearchItems />
   </>
 })

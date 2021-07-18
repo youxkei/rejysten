@@ -43,6 +43,7 @@ let focusedPane = style(. [border(8->px, solid, nord[1])])
 let unfocusedPane = style(. [border(8->px, solid, nord[0])])
 
 let editor = style(. [width(100.0->pct), borderStyle(none), outlineStyle(none), padding(0->px)])
+let searchEditor = style(. [borderStyle(none), outlineStyle(none), padding(0->px)])
 
 let focused = style(. [backgroundColor(nord[1])])
 
@@ -52,6 +53,10 @@ global(.
 )
 global(.
   "textarea",
+  [color(nord[5]), backgroundColor(transparent), fontFamily(#sansSerif), fontSize(16->px)],
+)
+global(.
+  "input",
   [color(nord[5]), backgroundColor(transparent), fontFamily(#sansSerif), fontSize(16->px)],
 )
 global(. "p", [margin(0->px)])
