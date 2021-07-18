@@ -42,14 +42,17 @@ module Note = {
 let focusedPane = style(. [border(8->px, solid, nord[1])])
 let unfocusedPane = style(. [border(8->px, solid, nord[0])])
 
-let editor = style(. [color(nord[5]), backgroundColor(nord[0]), width(100.0->pct)])
+let editor = style(. [width(100.0->pct), borderStyle(none), outlineStyle(none), padding(0->px)])
 
 let focused = style(. [backgroundColor(nord[1])])
 
-global(. "textarea", [fontSize(16->px)])
 global(.
   "body",
   [color(nord[5]), backgroundColor(nord[0]), fontFamily(#sansSerif), fontSize(16->px)],
+)
+global(.
+  "textarea",
+  [color(nord[5]), backgroundColor(transparent), fontFamily(#sansSerif), fontSize(16->px)],
 )
 global(. "p", [margin(0->px)])
 global(. "pre", [margin(0->px)])
