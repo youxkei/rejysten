@@ -15,7 +15,7 @@ let make = React.memo(() => {
       {React.array(
         items->Array.map(item =>
           <RenderIfVisible defaultHeight={window->outerHeight}>
-            <li key={item.id}> <Item item /> </li>
+            <li key={item.id}> <Item item isCurrentItem=false /> </li>
           </RenderIfVisible>
         ),
       )}

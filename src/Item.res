@@ -1,7 +1,6 @@
 @react.component
-let make = React.memo((~item: State.item) => {
+let make = React.memo((~item: State.item, ~isCurrentItem) => {
   let dispatch = Redux.useDispatch()
-  let isCurrentItem = Redux.useSelector(State.Note.ItemPane.currentItemId) == item.id
 
   let className = if isCurrentItem {
     Style.focused

@@ -71,7 +71,7 @@ module rec ItemsInner: {
         {switch (focus, mode, isCurrentItem) {
         | (State.Note(State.ItemPane()), State.Insert(_), true) => <NoteItemEditor />
 
-        | _ => <Item item />
+        | _ => <Item item isCurrentItem />
         }}
         <div className=Style.Note.List.child>
           {makeChildren(itemMap, item)
