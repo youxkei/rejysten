@@ -37,12 +37,31 @@ module Note = {
   module ItemPane = {
     let s = style(. [gridColumnStart(2), overflow(auto)])
   }
+
+  let focusedPane = style(. [border(8->px, solid, nord[1])])
+  let unfocusedPane = style(. [border(8->px, solid, nord[0])])
+
+  module List = {
+    let container = style(. [
+      display(grid),
+      gridTemplateColumns([32->px, 4->px, auto]),
+      gridTemplateRows([auto, auto]),
+      width(100.0->pct),
+    ])
+
+    let bullet = style(. [gridColumnStart(1), textAlign(#right)])
+    let item = style(. [gridColumnStart(3), width(100.0->pct)])
+    let child = style(. [gridColumnStart(3), gridRowStart(2), width(100.0->pct)])
+  }
 }
 
-let focusedPane = style(. [border(8->px, solid, nord[1])])
-let unfocusedPane = style(. [border(8->px, solid, nord[0])])
-
-let editor = style(. [width(100.0->pct), borderStyle(none), outlineStyle(none), padding(0->px)])
+let editor = style(. [
+  backgroundColor(nord[1]),
+  width(100.0->pct),
+  borderStyle(none),
+  outlineStyle(none),
+  padding(0->px),
+])
 let searchEditor = style(. [borderStyle(none), outlineStyle(none), padding(0->px)])
 
 let focused = style(. [backgroundColor(nord[1])])

@@ -1,6 +1,13 @@
 @react.component
 let make = React.memo((~item: State.item) => {
   let dispatch = Redux.useDispatch()
+  let isCurrentItem = Redux.useSelector(State.Note.ItemPane.currentItemId) == item.id
+
+  let className = if isCurrentItem {
+    Style.focused
+  } else {
+    ""
+  }
 
   let onClick = Hook.useDouble(React.useCallback1((event, isDouble) => {
       dispatch(
@@ -28,10 +35,11 @@ let make = React.memo((~item: State.item) => {
       }, [item.id])),
   )
 
-  <div onClick onTouchMove onTouchEnd onTouchCancel>
+  <div
+    className={`${Style.Note.List.item} ${className}`} onClick onTouchMove onTouchEnd onTouchCancel>
     <ReactMarkdown
       remarkPlugins={[ReactMarkdown.gfm, ReactMarkdown.externalLinks, ReactMarkdown.highlight]}>
-      {`${item.text}　`}
+      {item.text}
     </ReactMarkdown>
   </div>
 })

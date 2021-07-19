@@ -65,26 +65,22 @@ module rec ItemsInner: {
       None
     }, [isCurrentItem])
 
-    let className = if isCurrentItem {
-      Style.focused
-    } else {
-      ""
-    }
-
     <>
-      <p className ref={ReactDOM.Ref.domRef(liRef)}>
-        {React.string("-")}
+      <div className=Style.Note.List.container ref={ReactDOM.Ref.domRef(liRef)}>
+        <div className=Style.Note.List.bullet> {React.string(`・`)} </div>
         {switch (focus, mode, isCurrentItem) {
         | (State.Note(State.ItemPane()), State.Insert(_), true) => <NoteItemEditor />
 
         | _ => <Item item />
         }}
-      </p>
-      {makeChildren(itemMap, item)
-      ->Array.map((item: State.item) => {
-        <ItemsInner key=item.id item />
-      })
-      ->React.array}
+        <div className=Style.Note.List.child>
+          {makeChildren(itemMap, item)
+          ->Array.map((item: State.item) => {
+            <ItemsInner key=item.id item />
+          })
+          ->React.array}
+        </div>
+      </div>
     </>
   })
 
