@@ -42,6 +42,7 @@ module Note = {
   let unfocusedPane = style(. [border(8->px, solid, nord[0])])
 
   let item = style(. [width(100.0->pct), height(100.0->pct)])
+
   module List = {
     let container = style(. [
       display(grid),
@@ -88,11 +89,12 @@ global(.
   "code",
   [
     backgroundColor(nord[2]),
+    fontSize(14->px),
     border(1->px, solid, nord[10]),
     borderRadius(3->px),
-    padding(3->px),
+    padding(2->px),
     margin2(~v=0->px, ~h=3->px),
-    verticalAlign(8.0->pct),
+    verticalAlign(10.0->pct),
   ],
 )
 global(.
