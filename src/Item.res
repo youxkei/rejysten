@@ -1,12 +1,6 @@
 @react.component
-let make = React.memo((~item: State.item, ~isCurrentItem) => {
+let make = React.memo((~item: State.item) => {
   let dispatch = Redux.useDispatch()
-
-  let className = if isCurrentItem {
-    Style.focused
-  } else {
-    ""
-  }
 
   let onClick = Hook.useDouble(React.useCallback1((event, isDouble) => {
       dispatch(
@@ -34,8 +28,7 @@ let make = React.memo((~item: State.item, ~isCurrentItem) => {
       }, [item.id])),
   )
 
-  <div
-    className={`${Style.Note.List.item} ${className}`} onClick onTouchMove onTouchEnd onTouchCancel>
+  <div className=Style.Note.item onClick onTouchMove onTouchEnd onTouchCancel>
     <ReactMarkdown
       remarkPlugins={[ReactMarkdown.gfm, ReactMarkdown.externalLinks, ReactMarkdown.highlight]}>
       {item.text}
