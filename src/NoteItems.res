@@ -41,7 +41,7 @@ module rec ItemsInner: {
     let mode = Redux.useSelector(State.mode)
     let itemMap = Redux.useSelector(State.Note.ItemPane.itemMap)
     let currentItemId = Redux.useSelector(State.Note.ItemPane.currentItemId)
-    let liRef = React.useRef(Js.Nullable.null)
+    let listItemRef = React.useRef(Js.Nullable.null)
 
     let isCurrentItem = item.id == currentItemId
 
@@ -53,17 +53,17 @@ module rec ItemsInner: {
 
     React.useEffect1(() => {
       if isCurrentItem {
-        liRef.current
+        listItemRef.current
         ->Js.Nullable.toOption
-        ->Option.forEach(li => {
-          let rect = li->getBoundingClientRect
+        ->Option.forEach(listItem => {
+          let rect = listItem->getBoundingClientRect
 
           if rect["top"] < 0 {
-            li->scrollIntoView({"behavior": "auto", "block": "start", "inline": "nearest"})
+            listItem->scrollIntoView({"behavior": "auto", "block": "start", "inline": "nearest"})
           }
 
           if rect["bottom"] > innerHeight {
-            li->scrollIntoView({"behavior": "auto", "block": "end", "inline": "nearest"})
+            listItem->scrollIntoView({"behavior": "auto", "block": "end", "inline": "nearest"})
           }
         })
       }
@@ -72,9 +72,10 @@ module rec ItemsInner: {
     }, [isCurrentItem])
 
     <>
-      <div className=Style.Note.List.container ref={ReactDOM.Ref.domRef(liRef)}>
+      <div className=Style.Note.List.container>
         <div className=Style.Note.List.bullet> {React.string(`・`)} </div>
-        <div className={`${Style.Note.List.item} ${focused}`}>
+        <div
+          className={`${Style.Note.List.item} ${focused}`} ref={ReactDOM.Ref.domRef(listItemRef)}>
           {switch (focus, mode, isCurrentItem) {
           | (State.Note(State.ItemPane()), State.Insert(_), true) => <NoteItemEditor />
 

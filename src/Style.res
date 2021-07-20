@@ -41,6 +41,7 @@ module Note = {
   let focusedPane = style(. [border(8->px, solid, nord[1])])
   let unfocusedPane = style(. [border(8->px, solid, nord[0])])
 
+  let document = style(. [width(100.0->pct), height(100.0->pct)])
   let item = style(. [width(100.0->pct), height(100.0->pct)])
 
   module List = {

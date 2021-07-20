@@ -41,23 +41,29 @@ module rec DocumentsInner: {
     let mode = Redux.useSelector(State.mode)
     let documentMap = Redux.useSelector(State.Note.DocumentPane.documentMap)
     let currentDocumentId = Redux.useSelector(State.Note.DocumentPane.currentDocumentId)
-    let liRef = React.useRef(Js.Nullable.null)
+    let listItemRef = React.useRef(Js.Nullable.null)
 
     let isCurrentDocument = document.id == currentDocumentId
 
+    let focused = if isCurrentDocument {
+      Style.focused
+    } else {
+      ""
+    }
+
     React.useEffect1(() => {
       if isCurrentDocument {
-        liRef.current
+        listItemRef.current
         ->Js.Nullable.toOption
-        ->Option.forEach(li => {
-          let rect = li->getBoundingClientRect
+        ->Option.forEach(listItem => {
+          let rect = listItem->getBoundingClientRect
 
           if rect["top"] < 0 {
-            li->scrollIntoView({"behavior": "auto", "block": "start", "inline": "nearest"})
+            listItem->scrollIntoView({"behavior": "auto", "block": "start", "inline": "nearest"})
           }
 
           if rect["bottom"] > innerHeight {
-            li->scrollIntoView({"behavior": "auto", "block": "end", "inline": "nearest"})
+            listItem->scrollIntoView({"behavior": "auto", "block": "end", "inline": "nearest"})
           }
         })
       }
@@ -65,27 +71,25 @@ module rec DocumentsInner: {
       None
     }, [isCurrentDocument])
 
-    let className = if isCurrentDocument {
-      Style.focused
-    } else {
-      ""
-    }
-
     <>
-      <li className ref={ReactDOM.Ref.domRef(liRef)}>
-        {switch (focus, mode, isCurrentDocument) {
-        | (State.Note(State.DocumentPane()), State.Insert(_), true) => <NoteDocumentEditor />
+      <div className=Style.Note.List.container>
+        <div className=Style.Note.List.bullet> {React.string(`・`)} </div>
+        <div
+          className={`${Style.Note.List.item} ${focused}`} ref={ReactDOM.Ref.domRef(listItemRef)}>
+          {switch (focus, mode, isCurrentDocument) {
+          | (State.Note(State.DocumentPane()), State.Insert(_), true) => <NoteDocumentEditor />
 
-        | _ => <NoteDocument document />
-        }}
-      </li>
-      <ul>
-        {makeChildren(documentMap, document)
-        ->Array.map((document: State.document) => {
-          <DocumentsInner key=document.id document />
-        })
-        ->React.array}
-      </ul>
+          | _ => <NoteDocument document />
+          }}
+        </div>
+        <div className=Style.Note.List.child>
+          {makeChildren(documentMap, document)
+          ->Array.map((document: State.document) => {
+            <DocumentsInner key=document.id document />
+          })
+          ->React.array}
+        </div>
+      </div>
     </>
   })
 }
@@ -94,11 +98,9 @@ module rec DocumentsInner: {
 let make = React.memo((~document: State.document) => {
   let documentMap = Redux.useSelector(State.Note.DocumentPane.documentMap)
 
-  <ul>
-    {makeChildren(documentMap, document)
-    ->Array.map((document: State.document) => <DocumentsInner key=document.id document />)
-    ->React.array}
-  </ul>
+  makeChildren(documentMap, document)
+  ->Array.map((document: State.document) => <DocumentsInner key=document.id document />)
+  ->React.array
 })
 
 React.setDisplayName(make, "Documents")
