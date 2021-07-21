@@ -72,17 +72,16 @@ module rec ItemsInner: {
     }, [isCurrentItem])
 
     <>
-      <div className=Style.Note.List.container>
-        <div className=Style.Note.List.bullet> {React.string(`・`)} </div>
-        <div
-          className={`${Style.Note.List.item} ${focused}`} ref={ReactDOM.Ref.domRef(listItemRef)}>
+      <div className=Style.List.container>
+        <div className=Style.List.bullet> <Bullet /> </div>
+        <div className={`${Style.List.item} ${focused}`} ref={ReactDOM.Ref.domRef(listItemRef)}>
           {switch (focus, mode, isCurrentItem) {
           | (State.Note(State.ItemPane()), State.Insert(_), true) => <NoteItemEditor />
 
           | _ => <Item item />
           }}
         </div>
-        <div className=Style.Note.List.child>
+        <div className=Style.List.child>
           {makeChildren(itemMap, item)
           ->Array.map((item: State.item) => {
             <ItemsInner key=item.id item />

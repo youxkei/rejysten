@@ -4,9 +4,9 @@ let make = React.memo(() => {
   let rootItem = Redux.useSelector(State.Note.ItemPane.rootItem)
 
   let className = switch focus {
-  | State.Note(State.ItemPane()) => `${Style.Note.ItemPane.s} ${Style.Note.focusedPane}`
+  | State.Note(State.ItemPane()) => `${Style.Note.itemPane} ${Style.Note.focusedPane}`
 
-  | _ => `${Style.Note.ItemPane.s} ${Style.Note.unfocusedPane}`
+  | _ => `${Style.Note.itemPane} ${Style.Note.unfocusedPane}`
   }
 
   switch rootItem {

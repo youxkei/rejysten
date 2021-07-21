@@ -22,6 +22,19 @@ open CssJs
   ]
 )
 
+module List = {
+  let container = style(. [
+    display(grid),
+    gridTemplateColumns([32->px, 8->px, auto]),
+    gridTemplateRows([auto, auto]),
+    width(100.0->pct),
+  ])
+
+  let bullet = style(. [gridColumnStart(1), textAlign(#right)])
+  let item = style(. [gridColumnStart(3), width(100.0->pct)])
+  let child = style(. [gridColumnStart(3), gridRowStart(2), width(100.0->pct)])
+}
+
 module Note = {
   let s = style(. [
     display(grid),
@@ -30,43 +43,28 @@ module Note = {
     height(100.0->pct),
   ])
 
-  module DocumentPane = {
-    let s = style(. [gridColumnStart(1), overflow(auto)])
-  }
-
-  module ItemPane = {
-    let s = style(. [gridColumnStart(2), overflow(auto)])
-  }
+  let documentPane = style(. [gridColumnStart(1), overflow(auto)])
+  let itemPane = style(. [gridColumnStart(2), overflow(auto)])
 
   let focusedPane = style(. [border(8->px, solid, nord[1])])
   let unfocusedPane = style(. [border(8->px, solid, nord[0])])
 
   let document = style(. [width(100.0->pct), height(100.0->pct)])
-  let item = style(. [width(100.0->pct), height(100.0->pct)])
 
-  module List = {
-    let container = style(. [
-      display(grid),
-      gridTemplateColumns([32->px, 4->px, auto]),
-      gridTemplateRows([auto, auto]),
-      width(100.0->pct),
-    ])
-
-    let bullet = style(. [gridColumnStart(1), textAlign(#right)])
-    let item = style(. [gridColumnStart(3), width(100.0->pct)])
-    let child = style(. [gridColumnStart(3), gridRowStart(2), width(100.0->pct)])
-  }
+  let editor = style(. [
+    backgroundColor(nord[1]),
+    width(100.0->pct),
+    borderStyle(none),
+    outlineStyle(none),
+    padding(0->px),
+  ])
 }
 
-let editor = style(. [
-  backgroundColor(nord[1]),
-  width(100.0->pct),
-  borderStyle(none),
-  outlineStyle(none),
-  padding(0->px),
-])
-let searchEditor = style(. [borderStyle(none), outlineStyle(none), padding(0->px)])
+module Search = {
+  let editor = style(. [borderStyle(none), outlineStyle(none), padding(0->px)])
+}
 
+let item = style(. [width(100.0->pct), height(100.0->pct)])
 let focused = style(. [backgroundColor(nord[1])])
 
 global(.

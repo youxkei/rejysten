@@ -11,15 +11,16 @@ let make = React.memo(() => {
   if items->Array.length == 0 {
     <p> {React.string("Not Available")} </p>
   } else {
-    <ul>
-      {React.array(
-        items->Array.map(item =>
-          <RenderIfVisible defaultHeight={window->outerHeight}>
-            <li key={item.id}> <Item item /> </li>
-          </RenderIfVisible>
-        ),
-      )}
-    </ul>
+    React.array(
+      items->Array.map(item =>
+        <RenderIfVisible key={item.id} defaultHeight={window->outerHeight}>
+          <div className=Style.List.container>
+            <div className=Style.List.bullet> <Bullet /> </div>
+            <div className=Style.List.item> <Item item /> </div>
+          </div>
+        </RenderIfVisible>
+      ),
+    )
   }
 })
 

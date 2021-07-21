@@ -31,7 +31,7 @@ let make = React.memo(() => {
   <>
     {"/"->React.string}
     <input
-      className=Style.searchEditor
+      className=Style.Search.editor
       ref={ReactDOM.Ref.domRef(textareaRef)}
       value=text
       onChange

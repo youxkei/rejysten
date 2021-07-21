@@ -28,7 +28,7 @@ let make = React.memo((~item: State.item) => {
       }, [item.id])),
   )
 
-  <div className=Style.Note.item onClick onTouchMove onTouchEnd onTouchCancel>
+  <div className=Style.item onClick onTouchMove onTouchEnd onTouchCancel>
     <ReactMarkdown
       remarkPlugins={[ReactMarkdown.gfm, ReactMarkdown.externalLinks, ReactMarkdown.highlight]}>
       {item.text}

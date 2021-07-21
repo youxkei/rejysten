@@ -72,17 +72,16 @@ module rec DocumentsInner: {
     }, [isCurrentDocument])
 
     <>
-      <div className=Style.Note.List.container>
-        <div className=Style.Note.List.bullet> {React.string(`・`)} </div>
-        <div
-          className={`${Style.Note.List.item} ${focused}`} ref={ReactDOM.Ref.domRef(listItemRef)}>
+      <div className=Style.List.container>
+        <div className=Style.List.bullet> <Bullet /> </div>
+        <div className={`${Style.List.item} ${focused}`} ref={ReactDOM.Ref.domRef(listItemRef)}>
           {switch (focus, mode, isCurrentDocument) {
           | (State.Note(State.DocumentPane()), State.Insert(_), true) => <NoteDocumentEditor />
 
           | _ => <NoteDocument document />
           }}
         </div>
-        <div className=Style.Note.List.child>
+        <div className=Style.List.child>
           {makeChildren(documentMap, document)
           ->Array.map((document: State.document) => {
             <DocumentsInner key=document.id document />
