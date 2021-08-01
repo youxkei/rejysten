@@ -23,9 +23,15 @@ module DocumentPane = {
   let make = () => {
     let dispatch = Redux.useDispatch()
     let documentMap = Redux.useSelector(State.Firestore.documentMap)
+    let rootDocumentId = Redux.useSelector(State.Note.DocumentPane.rootDocumentId)
 
     React.useEffect(() => {
-      let rootDocumentId = findRootDocumentId(documentMap)
+      let rootDocumentId = if rootDocumentId == "" {
+        findRootDocumentId(documentMap)
+      } else {
+        Some(rootDocumentId)
+      }
+
       switch rootDocumentId {
       | Some(rootDocumentId) =>
         dispatch(Action.SetNoteDocumentPaneState({map: documentMap, rootId: rootDocumentId}))

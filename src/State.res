@@ -227,7 +227,7 @@ let initialState: t = {
   note: {
     documentPane: {
       currentId: "",
-      rootId: "629ca8ea-56e5-491f-b5ee-455ff9d3c358",
+      rootId: "",
       map: Belt.Map.String.empty,
       editingText: "",
     },
