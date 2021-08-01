@@ -409,16 +409,30 @@ let reducer = (state: State.t, action) => {
       focus: State.Search(),
     }
 
-  | Action.SetNoteDocumentPaneState({map, rootId}) => {
-      ...state,
-      note: {
-        ...state.note,
-        documentPane: {
-          ...state.note.documentPane,
-          map: map,
-          rootId: rootId,
+  | Action.SetNoteDocumentPaneState({map, currentId, rootId}) =>
+    switch (currentId, rootId) {
+    | (Some(currentId), Some(rootId)) => {
+        ...state,
+        note: {
+          ...state.note,
+          documentPane: {
+            ...state.note.documentPane,
+            map: map,
+            currentId: currentId,
+            rootId: rootId,
+          },
         },
-      },
+      }
+    | _ => {
+        ...state,
+        note: {
+          ...state.note,
+          documentPane: {
+            ...state.note.documentPane,
+            map: map,
+          },
+        },
+      }
     }
 
   | Action.SetNoteItemPaneState({map}) => {

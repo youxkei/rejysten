@@ -11,6 +11,12 @@ open Belt
     ->Option.map(((rootDocumentId, _)) => rootDocumentId)
   }
 
+  let getInitialCurrentDocumentId = (documentMap, rootDocumentId) => {
+    documentMap
+    ->Map.String.get(rootDocumentId)
+    ->Option.map((rootDocument: State.document) => rootDocument.firstChildId)
+  }
+
   let makeItemMap = (itemMap, currentDocumentId) => {
     itemMap->Map.String.keep((_, item: State.item) => {
       item.documentId == currentDocumentId
@@ -23,20 +29,31 @@ module DocumentPane = {
   let make = () => {
     let dispatch = Redux.useDispatch()
     let documentMap = Redux.useSelector(State.Firestore.documentMap)
-    let rootDocumentId = Redux.useSelector(State.Note.DocumentPane.rootDocumentId)
+    let isInitial = Redux.useSelector(State.Note.DocumentPane.isInitial)
 
     React.useEffect(() => {
-      let rootDocumentId = if rootDocumentId == "" {
-        findRootDocumentId(documentMap)
+      if isInitial {
+        let rootDocumentId = findRootDocumentId(documentMap)
+
+        switch rootDocumentId {
+        | Some(rootDocumentId) =>
+          switch documentMap->getInitialCurrentDocumentId(rootDocumentId) {
+          | Some(initialCurrentDocumentId) =>
+            dispatch(
+              Action.SetNoteDocumentPaneState({
+                map: documentMap,
+                currentId: Some(initialCurrentDocumentId),
+                rootId: Some(rootDocumentId),
+              }),
+            )
+
+          | None => ()
+          }
+
+        | None => ()
+        }
       } else {
-        Some(rootDocumentId)
-      }
-
-      switch rootDocumentId {
-      | Some(rootDocumentId) =>
-        dispatch(Action.SetNoteDocumentPaneState({map: documentMap, rootId: rootDocumentId}))
-
-      | None => ()
+        dispatch(Action.SetNoteDocumentPaneState({map: documentMap, currentId: None, rootId: None}))
       }
 
       None

@@ -1,3 +1,5 @@
+open Belt
+
 type item = {
   id: string,
   text: string,
@@ -115,6 +117,8 @@ module Note = {
         }
       }
     }
+
+    let isInitial = ({note: {documentPane: {currentId, rootId}}}) => currentId == "" && rootId == ""
   }
 
   module ItemPane = {
