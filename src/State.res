@@ -32,13 +32,13 @@ type focus = Note(noteFocus) | Search(unit)
 
 type noteItemPaneState = {
   currentId: string,
-  map: Belt.Map.String.t<item>,
+  map: Map.String.t<item>,
   editingText: string,
 }
 
 type noteDocumentPaneState = {
   currentId: string,
-  map: Belt.Map.String.t<document>,
+  map: Map.String.t<document>,
   rootId: string,
   editingText: string,
 }
@@ -50,7 +50,7 @@ type noteState = {
 
 type searchState = {searchingText: string, items: array<item>}
 
-type firestoreState = {documentMap: Belt.Map.String.t<document>, itemMap: Belt.Map.String.t<item>}
+type firestoreState = {documentMap: Map.String.t<document>, itemMap: Map.String.t<item>}
 
 type t = {
   mode: mode,
@@ -68,7 +68,7 @@ module Note = {
     let rootDocumentId = ({note: {documentPane: {rootId}}}) => rootId
 
     let getDocument = ({note: {documentPane: {map}}}, id) => {
-      map->Belt.Map.String.get(id)
+      map->Map.String.get(id)
     }
 
     let currentDocument = state => state->getDocument(state->currentDocumentId)
@@ -108,7 +108,7 @@ module Note = {
               | Some(document) => Some(document)
 
               | None =>
-                state->getDocument(parentId)->Belt.Option.flatMap(document => searchNext(document))
+                state->getDocument(parentId)->Option.flatMap(document => searchNext(document))
               }
             }
 
@@ -127,7 +127,7 @@ module Note = {
     let editingText = ({note: {itemPane: {editingText}}}) => editingText
 
     let getItem = ({note: {itemPane: {map}}}, id) => {
-      map->Belt.Map.String.get(id)
+      map->Map.String.get(id)
     }
 
     let currentItem = state => state->getItem(state->currentItemId)
@@ -203,7 +203,7 @@ module Note = {
               switch state->getItem(nextId) {
               | Some(item) => Some(item)
 
-              | None => state->getItem(parentId)->Belt.Option.flatMap(item => searchNext(item))
+              | None => state->getItem(parentId)->Option.flatMap(item => searchNext(item))
               }
             }
 
@@ -232,12 +232,12 @@ let initialState: t = {
     documentPane: {
       currentId: "",
       rootId: "",
-      map: Belt.Map.String.empty,
+      map: Map.String.empty,
       editingText: "",
     },
     itemPane: {
       currentId: "",
-      map: Belt.Map.String.empty,
+      map: Map.String.empty,
       editingText: "",
     },
   },
@@ -246,8 +246,8 @@ let initialState: t = {
     items: [],
   },
   firestore: {
-    documentMap: Belt.Map.String.empty,
-    itemMap: Belt.Map.String.empty,
+    documentMap: Map.String.empty,
+    itemMap: Map.String.empty,
   },
 }
 
