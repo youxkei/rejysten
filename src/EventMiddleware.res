@@ -428,8 +428,6 @@ module Click = {
           dispatch(Action.Note(Action.DocumentPane(Action.ToNormalMode())))
         }
 
-        event->Event.preventDefault
-
       | Event.Item(itemId) =>
         dispatch(Action.FocusNote(Action.ItemPane()))
         dispatch(
@@ -447,8 +445,6 @@ module Click = {
         } else {
           dispatch(Action.Note(Action.ItemPane(Action.ToNormalMode())))
         }
-
-        event->Event.preventDefault
       }
     }
   }
