@@ -1,7 +1,7 @@
 @react.component
 let make = React.memo(() => {
   let focus = Redux.useSelector(State.focus)
-  let rootDocument = Redux.useSelector(State.Note.DocumentPane.rootDocument)
+  let rootDocument = Redux.useSelector(State.Firestore.rootDocument)
 
   let className = switch focus {
   | State.Note(State.DocumentPane()) => `${Style.Note.documentPane} ${Style.Note.focusedPane}`

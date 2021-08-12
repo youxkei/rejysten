@@ -65,6 +65,16 @@ module Firestore = {
   let documentMap = state => state.firestore.documentMap
   let itemMap = state => state.firestore.itemMap
   let rootDocumentId = state => state.firestore.rootDocumentId
+
+  let getDocument = ({firestore: {documentMap}}, id) => {
+    documentMap->Map.String.get(id)
+  }
+
+  let rootDocument = state => state->getDocument(state->rootDocumentId)
+
+  let getItem = ({firestore: {itemMap}}, id) => {
+    itemMap->Map.String.get(id)
+  }
 }
 
 module Note = {
@@ -72,18 +82,13 @@ module Note = {
     let currentDocumentId = ({note: {documentPane: {currentId}}}) => currentId
     let editingText = ({note: {documentPane: {editingText}}}) => editingText
 
-    let getDocument = ({firestore: {documentMap}}, id) => {
-      documentMap->Map.String.get(id)
-    }
-
-    let currentDocument = state => state->getDocument(state->currentDocumentId)
-    let rootDocument = state => state->getDocument(state->Firestore.rootDocumentId)
+    let currentDocument = state => state->Firestore.getDocument(state->currentDocumentId)
 
     let aboveDocument = (state, {prevId, parentId}: document) => {
-      switch state->getDocument(prevId) {
+      switch state->Firestore.getDocument(prevId) {
       | Some(document) => {
           let rec searchPrev = (document: document) => {
-            switch state->getDocument(document.lastChildId) {
+            switch state->Firestore.getDocument(document.lastChildId) {
             | Some(document) => searchPrev(document)
 
             | None => document
@@ -93,27 +98,29 @@ module Note = {
           Some(searchPrev(document))
         }
 
-      | None => state->getDocument(parentId)
+      | None => state->Firestore.getDocument(parentId)
       }
     }
 
     let belowDocument = (state, document) => {
       let {nextId, firstChildId} = document
 
-      switch state->getDocument(firstChildId) {
+      switch state->Firestore.getDocument(firstChildId) {
       | Some(document) => Some(document)
 
       | None =>
-        switch state->getDocument(nextId) {
+        switch state->Firestore.getDocument(nextId) {
         | Some(document) => Some(document)
 
         | None => {
             let rec searchNext = ({nextId, parentId}) => {
-              switch state->getDocument(nextId) {
+              switch state->Firestore.getDocument(nextId) {
               | Some(document) => Some(document)
 
               | None =>
-                state->getDocument(parentId)->Option.flatMap(document => searchNext(document))
+                state
+                ->Firestore.getDocument(parentId)
+                ->Option.flatMap(document => searchNext(document))
               }
             }
 
@@ -130,15 +137,11 @@ module Note = {
     let currentItemId = ({note: {itemPane: {currentId}}}) => currentId
     let editingText = ({note: {itemPane: {editingText}}}) => editingText
 
-    let getItem = ({firestore: {itemMap}}, id) => {
-      itemMap->Map.String.get(id)
-    }
-
-    let currentItem = state => state->getItem(state->currentItemId)
+    let currentItem = state => state->Firestore.getItem(state->currentItemId)
 
     let rootItem = state => {
       switch state->DocumentPane.currentDocument {
-      | Some({rootItemId}) => state->getItem(rootItemId)
+      | Some({rootItemId}) => state->Firestore.getItem(rootItemId)
 
       | _ => None
       }
@@ -146,7 +149,7 @@ module Note = {
 
     let topItem = state => {
       switch state->rootItem {
-      | Some({firstChildId}) => state->getItem(firstChildId)
+      | Some({firstChildId}) => state->Firestore.getItem(firstChildId)
 
       | None => None
       }
@@ -155,10 +158,10 @@ module Note = {
     let bottomItem = state => {
       switch state->rootItem {
       | Some({lastChildId}) =>
-        switch state->getItem(lastChildId) {
+        switch state->Firestore.getItem(lastChildId) {
         | Some(item) =>
           let rec searchBottom = (item: item) => {
-            switch state->getItem(item.lastChildId) {
+            switch state->Firestore.getItem(item.lastChildId) {
             | Some(item) => searchBottom(item)
 
             | None => item
@@ -175,10 +178,10 @@ module Note = {
     }
 
     let aboveItem = (state, {prevId, parentId}: item) => {
-      switch state->getItem(prevId) {
+      switch state->Firestore.getItem(prevId) {
       | Some(item) => {
           let rec searchPrev = (item: item) => {
-            switch state->getItem(item.lastChildId) {
+            switch state->Firestore.getItem(item.lastChildId) {
             | Some(item) => searchPrev(item)
 
             | None => item
@@ -188,26 +191,26 @@ module Note = {
           Some(searchPrev(item))
         }
 
-      | None => state->getItem(parentId)
+      | None => state->Firestore.getItem(parentId)
       }
     }
 
     let belowItem = (state, item: item) => {
       let {nextId, firstChildId} = item
 
-      switch state->getItem(firstChildId) {
+      switch state->Firestore.getItem(firstChildId) {
       | Some(item) => Some(item)
 
       | None =>
-        switch state->getItem(nextId) {
+        switch state->Firestore.getItem(nextId) {
         | Some(item) => Some(item)
 
         | None => {
             let rec searchNext = ({nextId, parentId}: item) => {
-              switch state->getItem(nextId) {
+              switch state->Firestore.getItem(nextId) {
               | Some(item) => Some(item)
 
-              | None => state->getItem(parentId)->Option.flatMap(item => searchNext(item))
+              | None => state->Firestore.getItem(parentId)->Option.flatMap(item => searchNext(item))
               }
             }
 

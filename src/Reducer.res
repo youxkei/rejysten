@@ -28,7 +28,7 @@ let documentPaneReducer = (state: State.t, action) => {
       }
 
     | None =>
-      switch state->State.Note.DocumentPane.rootDocument {
+      switch state->State.Firestore.rootDocument {
       | Some({firstChildId}) => {
           ...state,
           note: {
@@ -66,7 +66,7 @@ let documentPaneReducer = (state: State.t, action) => {
       }
 
     | None =>
-      switch state->State.Note.DocumentPane.rootDocument {
+      switch state->State.Firestore.rootDocument {
       | Some({firstChildId}) => {
           ...state,
           note: {
@@ -134,7 +134,7 @@ let documentPaneReducer = (state: State.t, action) => {
       }
 
     | State.Insert(_) => {
-        let editingText = switch state->State.Note.DocumentPane.getDocument(id) {
+        let editingText = switch state->State.Firestore.getDocument(id) {
         | Some({text}) => text
 
         | None => ""
@@ -319,7 +319,7 @@ let documentItemPaneReducer = (state: State.t, action) => {
       }
 
     | State.Insert(_) => {
-        let editingText = switch state->State.Note.ItemPane.getItem(id) {
+        let editingText = switch state->State.Firestore.getItem(id) {
         | Some({text}) => text
 
         | None => ""
@@ -407,6 +407,15 @@ let reducer = (state: State.t, action) => {
       focus: State.Search(),
     }
 
+  | Action.SetFirestoreState({itemMap, documentMap, rootDocumentId}) => {
+      ...state,
+      firestore: {
+        documentMap: documentMap,
+        itemMap: itemMap,
+        rootDocumentId: rootDocumentId,
+      },
+    }
+
   | Action.SetNoteDocumentPaneState({currentId}) => {
       ...state,
       note: {
@@ -423,15 +432,6 @@ let reducer = (state: State.t, action) => {
       search: {
         ...state.search,
         items: items,
-      },
-    }
-
-  | Action.SetFirestoreState({itemMap, documentMap, rootDocumentId}) => {
-      ...state,
-      firestore: {
-        documentMap: documentMap,
-        itemMap: itemMap,
-        rootDocumentId: rootDocumentId,
       },
     }
 

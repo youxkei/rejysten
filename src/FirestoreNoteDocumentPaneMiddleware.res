@@ -38,7 +38,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
       | State.Normal() => ()
       }
 
-      switch state->State.Note.DocumentPane.getDocument(prevId) {
+      switch state->State.Firestore.getDocument(prevId) {
       | Some({lastChildId: prevLastChildId}) =>
         if prevLastChildId == "" {
           batch->addUpdate(documents->doc(id), {"parentId": prevId, "prevId": "", "nextId": ""})
@@ -87,7 +87,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
       | _ => ()
       }
 
-      switch state->State.Note.DocumentPane.getDocument(parentId) {
+      switch state->State.Firestore.getDocument(parentId) {
       | Some({parentId: parentParentId, nextId: parentNextId}) =>
         if parentParentId != "" {
           batch->addUpdate(
@@ -251,7 +251,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
     | Some(currentDocument) =>
       switch state->State.Note.ItemPane.rootItem {
       | Some({id: rootItemId, firstChildId}) =>
-        switch state->State.Note.ItemPane.getItem(firstChildId) {
+        switch state->State.Firestore.getItem(firstChildId) {
         | Some({id: firstChildItemId}) =>
           open Firebase.Firestore
 

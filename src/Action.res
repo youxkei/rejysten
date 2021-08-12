@@ -54,12 +54,12 @@ type t =
   | FocusNote(focusNotePane)
   | FocusSearch(unit)
 
-  | SetNoteDocumentPaneState({currentId: string})
-  | SetSearchState({items: array<State.item>})
   | SetFirestoreState({
       documentMap: Map.String.t<State.document>,
       itemMap: Map.String.t<State.item>,
       rootDocumentId: string,
     })
+  | SetNoteDocumentPaneState({currentId: string})
+  | SetSearchState({items: array<State.item>})
 
   | DevToolUpdate({state: State.t})
