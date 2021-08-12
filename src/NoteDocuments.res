@@ -39,7 +39,7 @@ module rec DocumentsInner: {
   let make = React.memo((~document: State.document) => {
     let focus = Redux.useSelector(State.focus)
     let mode = Redux.useSelector(State.mode)
-    let documentMap = Redux.useSelector(State.Note.DocumentPane.documentMap)
+    let documentMap = Redux.useSelector(State.Firestore.documentMap)
     let currentDocumentId = Redux.useSelector(State.Note.DocumentPane.currentDocumentId)
     let listItemRef = React.useRef(Js.Nullable.null)
 
@@ -95,7 +95,7 @@ module rec DocumentsInner: {
 
 @react.component
 let make = React.memo((~document: State.document) => {
-  let documentMap = Redux.useSelector(State.Note.DocumentPane.documentMap)
+  let documentMap = Redux.useSelector(State.Firestore.documentMap)
 
   makeChildren(documentMap, document)
   ->Array.map((document: State.document) => <DocumentsInner key=document.id document />)

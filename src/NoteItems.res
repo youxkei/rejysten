@@ -39,7 +39,7 @@ module rec ItemsInner: {
   let make = React.memo((~item: State.item) => {
     let focus = Redux.useSelector(State.focus)
     let mode = Redux.useSelector(State.mode)
-    let itemMap = Redux.useSelector(State.Note.ItemPane.itemMap)
+    let itemMap = Redux.useSelector(State.Firestore.itemMap)
     let currentItemId = Redux.useSelector(State.Note.ItemPane.currentItemId)
     let listItemRef = React.useRef(Js.Nullable.null)
 
@@ -97,7 +97,7 @@ module rec ItemsInner: {
 
 @react.component
 let make = React.memo((~item: State.item) => {
-  let itemMap = Redux.useSelector(State.Note.ItemPane.itemMap)
+  let itemMap = Redux.useSelector(State.Firestore.itemMap)
 
   makeChildren(itemMap, item)
   ->Array.map(item => {

@@ -2,6 +2,7 @@
 let make = React.memo(() => {
   let focus = Redux.useSelector(State.focus)
   let rootItem = Redux.useSelector(State.Note.ItemPane.rootItem)
+  let (rootItem, ()) = Hook.useDebounce(rootItem, 50)
 
   let className = switch focus {
   | State.Note(State.ItemPane()) => `${Style.Note.itemPane} ${Style.Note.focusedPane}`

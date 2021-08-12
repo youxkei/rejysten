@@ -145,7 +145,6 @@ let documentPaneReducer = (state: State.t, action) => {
           mode: State.Insert({initialCursorPosition: initialCursorPosition}),
           note: {
             documentPane: {
-              ...state.note.documentPane,
               currentId: id,
               editingText: editingText,
             },
@@ -332,7 +331,6 @@ let documentItemPaneReducer = (state: State.t, action) => {
           note: {
             ...state.note,
             itemPane: {
-              ...state.note.itemPane,
               currentId: id,
               editingText: editingText,
             },
@@ -409,41 +407,19 @@ let reducer = (state: State.t, action) => {
       focus: State.Search(),
     }
 
-  | Action.SetNoteDocumentPaneState({map, currentId, rootId}) =>
-    switch (currentId, rootId) {
-    | (Some(currentId), Some(rootId)) => {
+  | Action.SetNoteDocumentPaneState({currentId}) =>
+    switch currentId {
+    | Some(currentId) => {
         ...state,
         note: {
           ...state.note,
           documentPane: {
             ...state.note.documentPane,
-            map: map,
             currentId: currentId,
-            rootId: rootId,
           },
         },
       }
-    | _ => {
-        ...state,
-        note: {
-          ...state.note,
-          documentPane: {
-            ...state.note.documentPane,
-            map: map,
-          },
-        },
-      }
-    }
-
-  | Action.SetNoteItemPaneState({map}) => {
-      ...state,
-      note: {
-        ...state.note,
-        itemPane: {
-          ...state.note.itemPane,
-          map: map,
-        },
-      },
+    | _ => state
     }
 
   | Action.SetSearchState({items}) => {
@@ -454,11 +430,12 @@ let reducer = (state: State.t, action) => {
       },
     }
 
-  | Action.SetFirestoreState({itemMap, documentMap}) => {
+  | Action.SetFirestoreState({itemMap, documentMap, rootDocumentId}) => {
       ...state,
       firestore: {
         documentMap: documentMap,
         itemMap: itemMap,
+        rootDocumentId: rootDocumentId,
       },
     }
 

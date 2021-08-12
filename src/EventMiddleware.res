@@ -404,7 +404,7 @@ module KeyDown = {
 
 module Click = {
   module DocumentPaneAndDocumentItemPane = {
-    let handler = (store, event, isDouble, target) => {
+    let handler = (store, _event, isDouble, target) => {
       let dispatch = Reductive.Store.dispatch(store)
 
       switch target {

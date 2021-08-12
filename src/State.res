@@ -32,14 +32,11 @@ type focus = Note(noteFocus) | Search(unit)
 
 type noteItemPaneState = {
   currentId: string,
-  map: Map.String.t<item>,
   editingText: string,
 }
 
 type noteDocumentPaneState = {
   currentId: string,
-  map: Map.String.t<document>,
-  rootId: string,
   editingText: string,
 }
 
@@ -50,29 +47,37 @@ type noteState = {
 
 type searchState = {searchingText: string, items: array<item>}
 
-type firestoreState = {documentMap: Map.String.t<document>, itemMap: Map.String.t<item>}
+type firestoreState = {
+  documentMap: Map.String.t<document>,
+  itemMap: Map.String.t<item>,
+  rootDocumentId: string,
+}
 
 type t = {
   mode: mode,
   focus: focus,
+  firestore: firestoreState,
   note: noteState,
   search: searchState,
-  firestore: firestoreState,
+}
+
+module Firestore = {
+  let documentMap = state => state.firestore.documentMap
+  let itemMap = state => state.firestore.itemMap
+  let rootDocumentId = state => state.firestore.rootDocumentId
 }
 
 module Note = {
   module DocumentPane = {
     let currentDocumentId = ({note: {documentPane: {currentId}}}) => currentId
-    let documentMap = ({note: {documentPane: {map}}}) => map
     let editingText = ({note: {documentPane: {editingText}}}) => editingText
-    let rootDocumentId = ({note: {documentPane: {rootId}}}) => rootId
 
-    let getDocument = ({note: {documentPane: {map}}}, id) => {
-      map->Map.String.get(id)
+    let getDocument = ({firestore: {documentMap}}, id) => {
+      documentMap->Map.String.get(id)
     }
 
     let currentDocument = state => state->getDocument(state->currentDocumentId)
-    let rootDocument = state => state->getDocument(state->rootDocumentId)
+    let rootDocument = state => state->getDocument(state->Firestore.rootDocumentId)
 
     let aboveDocument = (state, {prevId, parentId}: document) => {
       switch state->getDocument(prevId) {
@@ -118,16 +123,15 @@ module Note = {
       }
     }
 
-    let isInitial = ({note: {documentPane: {currentId, rootId}}}) => currentId == "" && rootId == ""
+    let isInitial = ({note: {documentPane: {currentId}}}) => currentId == ""
   }
 
   module ItemPane = {
     let currentItemId = ({note: {itemPane: {currentId}}}) => currentId
-    let itemMap = ({note: {itemPane: {map}}}) => map
     let editingText = ({note: {itemPane: {editingText}}}) => editingText
 
-    let getItem = ({note: {itemPane: {map}}}, id) => {
-      map->Map.String.get(id)
+    let getItem = ({firestore: {itemMap}}, id) => {
+      itemMap->Map.String.get(id)
     }
 
     let currentItem = state => state->getItem(state->currentItemId)
@@ -220,34 +224,27 @@ module Search = {
   let items = state => state.search.items
 }
 
-module Firestore = {
-  let documentMap = state => state.firestore.documentMap
-  let itemMap = state => state.firestore.itemMap
-}
-
 let initialState: t = {
   mode: Normal(),
   focus: Note(DocumentPane()),
+  firestore: {
+    documentMap: Map.String.empty,
+    itemMap: Map.String.empty,
+    rootDocumentId: "",
+  },
   note: {
     documentPane: {
       currentId: "",
-      rootId: "",
-      map: Map.String.empty,
       editingText: "",
     },
     itemPane: {
       currentId: "",
-      map: Map.String.empty,
       editingText: "",
     },
   },
   search: {
     searchingText: "",
     items: [],
-  },
-  firestore: {
-    documentMap: Map.String.empty,
-    itemMap: Map.String.empty,
   },
 }
 

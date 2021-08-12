@@ -44,6 +44,15 @@ open Belt
         ),
       )
     })
+
+  let findRootDocumentId = documentMap => {
+    documentMap
+    ->Map.String.findFirstBy((_, document: State.document) => {
+      document.parentId == ""
+    })
+    ->Option.map(((rootDocumentId, _)) => rootDocumentId)
+    ->Option.getWithDefault("")
+  }
 )
 
 @react.component
@@ -65,10 +74,15 @@ let make = () => {
   React.useEffect(() => {
     switch (documentsError, itemsError) {
     | (None, None) if !documentsLoading && !itemsLoading =>
+      let documentMap = documents->toDocumentMap
+      let itemMap = items->toItemMap
+      let rootDocumentId = documentMap->findRootDocumentId
+
       dispatch(
         Action.SetFirestoreState({
-          documentMap: toDocumentMap(documents),
-          itemMap: toItemMap(items),
+          documentMap: documentMap,
+          itemMap: itemMap,
+          rootDocumentId: rootDocumentId,
         }),
       )
 
