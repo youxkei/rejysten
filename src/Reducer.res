@@ -427,11 +427,13 @@ let reducer = (state: State.t, action) => {
       },
     }
 
-  | Action.SetSearchState({items}) => {
+  | Action.SetSearchState({ancestorDocuments, searchedDocuments, searchedItems}) => {
       ...state,
       search: {
         ...state.search,
-        items: items,
+        ancestorDocuments: ancestorDocuments,
+        searchedDocuments: searchedDocuments,
+        searchedItems: searchedItems,
       },
     }
 

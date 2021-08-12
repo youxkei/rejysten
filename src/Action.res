@@ -60,6 +60,10 @@ type t =
       rootDocumentId: string,
     })
   | SetNoteDocumentPaneState({currentId: string})
-  | SetSearchState({items: array<State.item>})
+  | SetSearchState({
+      ancestorDocuments: Set.String.t,
+      searchedDocuments: Set.String.t,
+      searchedItems: Set.String.t,
+    })
 
   | DevToolUpdate({state: State.t})

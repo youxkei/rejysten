@@ -45,7 +45,12 @@ type noteState = {
   itemPane: noteItemPaneState,
 }
 
-type searchState = {searchingText: string, items: array<item>}
+type searchState = {
+  searchingText: string,
+  ancestorDocuments: Set.String.t,
+  searchedDocuments: Set.String.t,
+  searchedItems: Set.String.t,
+}
 
 type firestoreState = {
   documentMap: Map.String.t<document>,
@@ -224,7 +229,9 @@ module Note = {
 
 module Search = {
   let searchingText = state => state.search.searchingText
-  let items = state => state.search.items
+  let ancestorDocuments = state => state.search.ancestorDocuments
+  let searchedDocuments = state => state.search.searchedDocuments
+  let searchedItems = state => state.search.searchedItems
 }
 
 let initialState: t = {
@@ -247,7 +254,9 @@ let initialState: t = {
   },
   search: {
     searchingText: "",
-    items: [],
+    ancestorDocuments: Set.String.empty,
+    searchedDocuments: Set.String.empty,
+    searchedItems: Set.String.empty,
   },
 }
 
