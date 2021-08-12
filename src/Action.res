@@ -54,7 +54,7 @@ type t =
   | FocusNote(focusNotePane)
   | FocusSearch(unit)
 
-  | SetNoteDocumentPaneState({currentId: option<string>})
+  | SetNoteDocumentPaneState({currentId: string})
   | SetSearchState({items: array<State.item>})
   | SetFirestoreState({
       documentMap: Map.String.t<State.document>,

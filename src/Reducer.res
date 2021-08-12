@@ -407,19 +407,15 @@ let reducer = (state: State.t, action) => {
       focus: State.Search(),
     }
 
-  | Action.SetNoteDocumentPaneState({currentId}) =>
-    switch currentId {
-    | Some(currentId) => {
-        ...state,
-        note: {
-          ...state.note,
-          documentPane: {
-            ...state.note.documentPane,
-            currentId: currentId,
-          },
+  | Action.SetNoteDocumentPaneState({currentId}) => {
+      ...state,
+      note: {
+        ...state.note,
+        documentPane: {
+          ...state.note.documentPane,
+          currentId: currentId,
         },
-      }
-    | _ => state
+      },
     }
 
   | Action.SetSearchState({items}) => {

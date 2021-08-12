@@ -19,23 +19,17 @@ module DocumentPane = {
     let isInitial = Redux.useSelector(State.Note.DocumentPane.isInitial)
 
     React.useEffect(() => {
-      if isInitial {
-        if rootDocumentId != "" {
-          switch documentMap->getInitialCurrentDocumentId(rootDocumentId) {
-          | Some(initialCurrentDocumentId) =>
-            dispatch(
-              Action.SetNoteDocumentPaneState({
-                currentId: Some(initialCurrentDocumentId),
-              }),
-            )
+      if isInitial && rootDocumentId != "" {
+        switch documentMap->getInitialCurrentDocumentId(rootDocumentId) {
+        | Some(initialCurrentDocumentId) =>
+          dispatch(
+            Action.SetNoteDocumentPaneState({
+              currentId: initialCurrentDocumentId,
+            }),
+          )
 
-          | None => ()
-          }
-        } else {
-          ()
+        | None => ()
         }
-      } else {
-        dispatch(Action.SetNoteDocumentPaneState({currentId: None}))
       }
 
       None
