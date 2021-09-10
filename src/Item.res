@@ -14,21 +14,7 @@ let make = React.memo((~item: State.item) => {
       )
     }, [item.id]))
 
-  let (onTouchMove, onTouchEnd, onTouchCancel) = Hook.useTouch(
-    Hook.useDouble(React.useCallback1((event, isDouble) => {
-        dispatch(
-          Action.Event(
-            Event.Click({
-              event: Event.Touch(event),
-              isDouble: isDouble,
-              target: Event.Item(item.id),
-            }),
-          ),
-        )
-      }, [item.id])),
-  )
-
-  <div className=Style.item onClick onTouchMove onTouchEnd onTouchCancel>
+  <div className=Style.item onClick>
     <ReactMarkdown
       remarkPlugins={[ReactMarkdown.gfm, ReactMarkdown.externalLinks, ReactMarkdown.highlight]}>
       {item.text}
