@@ -14,5 +14,5 @@ let make = React.memo((~document: State.document) => {
       )
     }, [document.id]))
 
-  <div onClick> {`${document.text}　`->React.string} </div>
+  <p className=Style.Note.document onClick> {document.text->React.string} </p>
 })
