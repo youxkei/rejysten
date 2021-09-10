@@ -69,7 +69,13 @@ let focused = style(. [backgroundColor(nord[1])])
 
 global(.
   "body",
-  [color(nord[5]), backgroundColor(nord[0]), fontFamily(#sansSerif), fontSize(16->px)],
+  [
+    color(nord[5]),
+    backgroundColor(nord[0]),
+    fontFamily(#sansSerif),
+    fontSize(16->px),
+    unsafe("touch-action", "manipulation"),
+  ],
 )
 global(.
   "textarea",
