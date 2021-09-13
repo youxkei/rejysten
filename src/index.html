@@ -3,14 +3,11 @@
     <title>rejysten</title>
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="https://unpkg.com/nord-highlightjs@0.1.0/dist/nord.css">
-    <link rel="manifest" href="manifest.json">
   </head>
   <body>
     <div id="app" style="width: 100%; height: 100%"></div>
     <script>
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/service-worker.js");
-      }
+      if ("serviceWorker" in navigator) navigator.serviceWorker.register("/service-worker.js");
     </script>
   </body>
 </html>

@@ -37,7 +37,6 @@ module.exports = {
     new WebpackPwaManifest({
       name: "rejysten",
       publicPath: ".",
-      fingerprints: false,
       icons: [
         {
           src: path.resolve("src/rejysten.png"),
