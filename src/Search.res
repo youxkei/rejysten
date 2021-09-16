@@ -5,7 +5,7 @@ open Belt
 @get external value: Js.t<'a> => string = "value"
 
 @react.component
-let make = React.memo(() => {
+let make = () => {
   let dispatch = Redux.useDispatch()
 
   let text = Redux.useSelector(State.Search.searchingText)
@@ -39,6 +39,4 @@ let make = React.memo(() => {
     />
     <SearchItems />
   </>
-})
-
-React.setDisplayName(make, "SearchPane")
+}

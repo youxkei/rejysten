@@ -352,6 +352,16 @@ let searchReducer = (state: State.t, action) => {
         searchingText: text,
       },
     }
+
+  | Action.ToInsertMode({initialCursorPosition}) => {
+      ...state,
+      mode: State.Insert({initialCursorPosition: initialCursorPosition}),
+    }
+
+  | Action.ToNormalMode() => {
+      ...state,
+      mode: State.Normal(),
+    }
   }
 }
 

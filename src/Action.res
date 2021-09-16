@@ -41,7 +41,10 @@ type note =
   | DocumentPane(noteDocumentPane)
   | ItemPane(noteItemPane)
 
-type search = SetSearchingText({text: string})
+type search =
+  | SetSearchingText({text: string})
+  | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
+  | ToNormalMode(unit)
 
 type t =
   | Event(Event.t)
