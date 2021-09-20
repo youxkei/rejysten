@@ -87,6 +87,8 @@ module Main = {
     | State.Note(_) => <> <Note /> <SyncNoteState /> </>
 
     | State.Search() => <> <Search /> <SyncSearchState /> </>
+
+    | State.ActionLog(_) => <> <ActionLog /> <SyncActionLogState /> </>
     }
   }
 }

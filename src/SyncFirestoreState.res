@@ -19,7 +19,7 @@ open Belt
             nextId: document["nextId"],
             firstChildId: document["firstChildId"],
             lastChildId: document["lastChildId"],
-          }: State.document
+          }: State.noteDocument
         ),
       )
     })
@@ -40,14 +40,14 @@ open Belt
             parentId: item["parentId"],
             firstChildId: item["firstChildId"],
             lastChildId: item["lastChildId"],
-          }: State.item
+          }: State.noteItem
         ),
       )
     })
 
   let findRootDocumentId = documentMap => {
     documentMap
-    ->Map.String.findFirstBy((_, document: State.document) => {
+    ->Map.String.findFirstBy((_, document: State.noteDocument) => {
       document.parentId == ""
     })
     ->Option.map(((rootDocumentId, _)) => rootDocumentId)
@@ -55,42 +55,72 @@ open Belt
   }
 )
 
-@react.component
-let make = () => {
-  open Firebase.Firestore
+module Document = {
+  @react.component
+  let make = () => {
+    open Firebase.Firestore
 
-  let dispatch = Redux.useDispatch()
+    let dispatch = Redux.useDispatch()
 
-  let documentsCollection = React.useMemo(() => Firebase.firestore()->collection("documents"))
-  let itemsCollection = React.useMemo(() => Firebase.firestore()->collection("items"))
+    let documentsCollection = React.useMemo(() => Firebase.firestore()->collection("documents"))
 
-  let (documents, documentsLoading, documentsError) = useCollectionData(
-    documentsCollection,
-    {"idField": "id"},
-  )
+    let (documents, documentsLoading, documentsError) = useCollectionData(
+      documentsCollection,
+      {"idField": "id"},
+    )
 
-  let (items, itemsLoading, itemsError) = useCollectionData(itemsCollection, {"idField": "id"})
+    React.useEffect(() => {
+      switch documentsError {
+      | None if !documentsLoading =>
+        let documentMap = documents->toDocumentMap
+        let rootDocumentId = documentMap->findRootDocumentId
 
-  React.useEffect(() => {
-    switch (documentsError, itemsError) {
-    | (None, None) if !documentsLoading && !itemsLoading =>
-      let documentMap = documents->toDocumentMap
-      let itemMap = items->toItemMap
-      let rootDocumentId = documentMap->findRootDocumentId
+        dispatch(
+          Action.SetFirestoreDocumentState({
+            documentMap: documentMap,
+            rootDocumentId: rootDocumentId,
+          }),
+        )
 
-      dispatch(
-        Action.SetFirestoreState({
-          documentMap: documentMap,
-          itemMap: itemMap,
-          rootDocumentId: rootDocumentId,
-        }),
-      )
+      | _ => ()
+      }
 
-    | _ => ()
-    }
+      None
+    })
 
-    None
-  })
-
-  React.null
+    React.null
+  }
 }
+
+module Item = {
+  @react.component
+  let make = () => {
+    open Firebase.Firestore
+
+    let dispatch = Redux.useDispatch()
+
+    let itemsCollection = React.useMemo(() => Firebase.firestore()->collection("items"))
+
+    let (items, itemsLoading, itemsError) = useCollectionData(itemsCollection, {"idField": "id"})
+
+    React.useEffect(() => {
+      switch itemsError {
+      | None if !itemsLoading =>
+        dispatch(
+          Action.SetFirestoreItemState({
+            itemMap: items->toItemMap,
+          }),
+        )
+
+      | _ => ()
+      }
+
+      None
+    })
+
+    React.null
+  }
+}
+
+@react.component
+let make = () => <> <Document /> <Item /> </>

@@ -15,13 +15,13 @@ external scrollIntoView: (
 @val @scope("window") external innerHeight: int = "innerHeight"
 
 %%private(
-  let makeChildren = (documentMap, document: State.document) => {
+  let makeChildren = (documentMap, document: State.noteDocument) => {
     let children = []
 
     let currentDocument = ref(documentMap->Map.String.get(document.firstChildId))
 
     while Belt.Option.isSome(currentDocument.contents) {
-      let document: State.document = Option.getExn(currentDocument.contents)
+      let document: State.noteDocument = Option.getExn(currentDocument.contents)
 
       let _ = children->Js.Array2.push(document)
       currentDocument := documentMap->Map.String.get(document.nextId)
@@ -32,11 +32,15 @@ external scrollIntoView: (
 )
 
 module rec DocumentsInner: {
-  let make: {"document": State.document} => ReasonReact.reactElement
-  let makeProps: (~document: State.document, ~key: string=?, unit) => {"document": State.document}
+  let make: {"document": State.noteDocument} => ReasonReact.reactElement
+  let makeProps: (
+    ~document: State.noteDocument,
+    ~key: string=?,
+    unit,
+  ) => {"document": State.noteDocument}
 } = {
   @react.component
-  let make = React.memo((~document: State.document) => {
+  let make = React.memo((~document: State.noteDocument) => {
     let focus = Redux.useSelector(State.focus)
     let mode = Redux.useSelector(State.mode)
     let documentMap = Redux.useSelector(State.Firestore.documentMap)
@@ -83,7 +87,7 @@ module rec DocumentsInner: {
         </div>
         <div className=Style.List.child>
           {makeChildren(documentMap, document)
-          ->Array.map((document: State.document) => {
+          ->Array.map((document: State.noteDocument) => {
             <DocumentsInner key=document.id document />
           })
           ->React.array}
@@ -94,11 +98,11 @@ module rec DocumentsInner: {
 }
 
 @react.component
-let make = React.memo((~document: State.document) => {
+let make = React.memo((~document: State.noteDocument) => {
   let documentMap = Redux.useSelector(State.Firestore.documentMap)
 
   makeChildren(documentMap, document)
-  ->Array.map((document: State.document) => <DocumentsInner key=document.id document />)
+  ->Array.map((document: State.noteDocument) => <DocumentsInner key=document.id document />)
   ->React.array
 })
 

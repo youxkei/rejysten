@@ -6,7 +6,7 @@ open Belt
   let getInitialCurrentDocumentId = (documentMap, rootDocumentId) => {
     documentMap
     ->Map.String.get(rootDocumentId)
-    ->Option.map((rootDocument: State.document) => rootDocument.firstChildId)
+    ->Option.map((rootDocument: State.noteDocument) => rootDocument.firstChildId)
   }
 )
 

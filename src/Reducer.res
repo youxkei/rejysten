@@ -419,12 +419,29 @@ let reducer = (state: State.t, action) => {
       focus: State.Search(),
     }
 
-  | Action.SetFirestoreState({itemMap, documentMap, rootDocumentId}) => {
+  | Action.SetFirestoreDocumentState({documentMap, rootDocumentId}) => {
       ...state,
       firestore: {
+        ...state.firestore,
         documentMap: documentMap,
-        itemMap: itemMap,
         rootDocumentId: rootDocumentId,
+      },
+    }
+
+  | Action.SetFirestoreItemState({itemMap}) => {
+      ...state,
+      firestore: {
+        ...state.firestore,
+        itemMap: itemMap,
+      },
+    }
+
+  | Action.SetFirestoreDateActionLogState({dateActionLogMap, latestDateActionLogId}) => {
+      ...state,
+      firestore: {
+        ...state.firestore,
+        dateActionLogMap: dateActionLogMap,
+        latestDateActionLogId: latestDateActionLogId,
       },
     }
 

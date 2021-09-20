@@ -1,5 +1,5 @@
 @react.component
-let make = React.memo((~document: State.document) => {
+let make = React.memo((~document: State.noteDocument) => {
   let dispatch = Redux.useDispatch()
 
   let onClick = Hook.useDouble(React.useCallback1((event, isDouble) => {

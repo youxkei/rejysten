@@ -5,13 +5,13 @@ open Belt
 external outerHeight: Dom.window => float = "outerHeight"
 
 %%private(
-  let makeDocumentChildren = (documentMap, ancestorDocuments, document: State.document) => {
+  let makeDocumentChildren = (documentMap, ancestorDocuments, document: State.noteDocument) => {
     let children = []
 
     let currentDocument = ref(documentMap->Map.String.get(document.firstChildId))
 
     while Belt.Option.isSome(currentDocument.contents) {
-      let document: State.document = Option.getExn(currentDocument.contents)
+      let document: State.noteDocument = Option.getExn(currentDocument.contents)
 
       if ancestorDocuments->Set.String.has(document.id) {
         let _ = children->Js.Array2.push(document)
@@ -22,13 +22,13 @@ external outerHeight: Dom.window => float = "outerHeight"
     children
   }
 
-  let makeItemChildren = (itemMap, searchedItems, item: State.item) => {
+  let makeItemChildren = (itemMap, searchedItems, item: State.noteItem) => {
     let children = []
 
     let currentItem = ref(itemMap->Map.String.get(item.firstChildId))
 
     while Option.isSome(currentItem.contents) {
-      let item: State.item = Option.getExn(currentItem.contents)
+      let item: State.noteItem = Option.getExn(currentItem.contents)
 
       if searchedItems->Set.String.has(item.id) {
         let _ = children->Js.Array2.push(item)
@@ -41,11 +41,11 @@ external outerHeight: Dom.window => float = "outerHeight"
 )
 
 module rec ItemsInner: {
-  let make: {"item": State.item} => ReasonReact.reactElement
-  let makeProps: (~item: State.item, ~key: string=?, unit) => {"item": State.item}
+  let make: {"item": State.noteItem} => ReasonReact.reactElement
+  let makeProps: (~item: State.noteItem, ~key: string=?, unit) => {"item": State.noteItem}
 } = {
   @react.component
-  let make = (~item: State.item) => {
+  let make = (~item: State.noteItem) => {
     let itemMap = Redux.useSelector(State.Firestore.itemMap)
     let searchedItems = Redux.useSelector(State.Search.searchedItems)
 
@@ -54,7 +54,7 @@ module rec ItemsInner: {
       <div className=Style.List.item> <Item item /> </div>
       <div className=Style.List.child>
         {makeItemChildren(itemMap, searchedItems, item)
-        ->Array.map((item: State.item) => {
+        ->Array.map((item: State.noteItem) => {
           <ItemsInner key=item.id item />
         })
         ->React.array}
@@ -64,11 +64,15 @@ module rec ItemsInner: {
 }
 
 module rec DocumentsInner: {
-  let make: {"document": State.document} => ReasonReact.reactElement
-  let makeProps: (~document: State.document, ~key: string=?, unit) => {"document": State.document}
+  let make: {"document": State.noteDocument} => ReasonReact.reactElement
+  let makeProps: (
+    ~document: State.noteDocument,
+    ~key: string=?,
+    unit,
+  ) => {"document": State.noteDocument}
 } = {
   @react.component
-  let make = (~document: State.document) => {
+  let make = (~document: State.noteDocument) => {
     let documentMap = Redux.useSelector(State.Firestore.documentMap)
     let itemMap = Redux.useSelector(State.Firestore.itemMap)
     let ancestorDocuments = Redux.useSelector(State.Search.ancestorDocuments)
@@ -83,7 +87,7 @@ module rec DocumentsInner: {
           switch itemMap->Map.String.get(document.rootItemId) {
           | Some(rootItem) =>
             makeItemChildren(itemMap, searchedItems, rootItem)
-            ->Array.map((item: State.item) => {
+            ->Array.map((item: State.noteItem) => {
               <RenderIfVisible key=item.id defaultHeight={window->outerHeight}>
                 <ItemsInner key=item.id item />
               </RenderIfVisible>
@@ -96,7 +100,7 @@ module rec DocumentsInner: {
           React.null
         }}
         {makeDocumentChildren(documentMap, ancestorDocuments, document)
-        ->Array.map((document: State.document) => {
+        ->Array.map((document: State.noteDocument) => {
           <DocumentsInner key=document.id document />
         })
         ->React.array}
@@ -118,7 +122,7 @@ let make = () => {
       <p> {React.string("Not Available")} </p>
     } else {
       makeDocumentChildren(documentMap, ancestorDocuments, rootDocument)
-      ->Array.map((document: State.document) => <DocumentsInner key={document.id} document />)
+      ->Array.map((document: State.noteDocument) => <DocumentsInner key={document.id} document />)
       ->React.array
     }
 

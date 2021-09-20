@@ -57,11 +57,18 @@ type t =
   | FocusNote(focusNotePane)
   | FocusSearch(unit)
 
-  | SetFirestoreState({
-      documentMap: Map.String.t<State.document>,
-      itemMap: Map.String.t<State.item>,
+  | SetFirestoreItemState({itemMap: Map.String.t<State.noteItem>})
+
+  | SetFirestoreDocumentState({
+      documentMap: Map.String.t<State.noteDocument>,
       rootDocumentId: string,
     })
+
+  | SetFirestoreDateActionLogState({
+      dateActionLogMap: Map.String.t<State.dateActionLog>,
+      latestDateActionLogId: string,
+    })
+
   | SetNoteDocumentPaneState({currentId: string})
   | SetSearchState({
       ancestorDocuments: Set.String.t,

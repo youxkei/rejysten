@@ -15,13 +15,13 @@ external scrollIntoView: (
 @val @scope("window") external innerHeight: int = "innerHeight"
 
 %%private(
-  let makeChildren = (itemMap, item: State.item) => {
+  let makeChildren = (itemMap, item: State.noteItem) => {
     let children = []
 
     let currentItem = ref(itemMap->Map.String.get(item.firstChildId))
 
     while Option.isSome(currentItem.contents) {
-      let item: State.item = Option.getExn(currentItem.contents)
+      let item: State.noteItem = Option.getExn(currentItem.contents)
 
       let _ = children->Js.Array2.push(item)
       currentItem := itemMap->Map.String.get(item.nextId)
@@ -32,11 +32,11 @@ external scrollIntoView: (
 )
 
 module rec ItemsInner: {
-  let make: {"item": State.item} => ReasonReact.reactElement
-  let makeProps: (~item: State.item, ~key: string=?, unit) => {"item": State.item}
+  let make: {"item": State.noteItem} => ReasonReact.reactElement
+  let makeProps: (~item: State.noteItem, ~key: string=?, unit) => {"item": State.noteItem}
 } = {
   @react.component
-  let make = React.memo((~item: State.item) => {
+  let make = React.memo((~item: State.noteItem) => {
     let focus = Redux.useSelector(State.focus)
     let mode = Redux.useSelector(State.mode)
     let itemMap = Redux.useSelector(State.Firestore.itemMap)
@@ -83,7 +83,7 @@ module rec ItemsInner: {
         </div>
         <div className=Style.List.child>
           {makeChildren(itemMap, item)
-          ->Array.map((item: State.item) => {
+          ->Array.map((item: State.noteItem) => {
             <ItemsInner key=item.id item />
           })
           ->React.array}
@@ -96,7 +96,7 @@ module rec ItemsInner: {
 }
 
 @react.component
-let make = React.memo((~item: State.item) => {
+let make = React.memo((~item: State.noteItem) => {
   let itemMap = Redux.useSelector(State.Firestore.itemMap)
 
   makeChildren(itemMap, item)

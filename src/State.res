@@ -1,6 +1,6 @@
 open Belt
 
-type item = {
+type noteItem = {
   id: string,
   text: string,
   documentId: string,
@@ -11,7 +11,7 @@ type item = {
   lastChildId: string,
 }
 
-type document = {
+type noteDocument = {
   id: string,
   text: string,
   rootItemId: string,
@@ -22,13 +22,41 @@ type document = {
   lastChildId: string,
 }
 
+type actionLogItem = {
+  id: string,
+  text: string,
+  parentId: string,
+  prevId: string,
+  nextId: string,
+  firstChildId: string,
+  lastChildId: string,
+}
+
+type actionLog = {
+  id: string,
+  begin: int,
+  end: int,
+  prevId: string,
+  nextId: string,
+  text: string,
+  items: Map.String.t<actionLogItem>,
+}
+
+type dateActionLog = {
+  id: string,
+  date: string,
+  prevId: string,
+  nextId: string,
+  actionLogMap: Map.String.t<actionLog>,
+}
+
 type initialCursorPosition = Start(unit) | End(unit)
 
 type mode = Normal(unit) | Insert({initialCursorPosition: initialCursorPosition})
 
 type noteFocus = DocumentPane(unit) | ItemPane(unit)
 
-type focus = Note(noteFocus) | Search(unit)
+type focus = Note(noteFocus) | Search(unit) | ActionLog(unit)
 
 type noteItemPaneState = {
   currentId: string,
@@ -53,9 +81,11 @@ type searchState = {
 }
 
 type firestoreState = {
-  documentMap: Map.String.t<document>,
-  itemMap: Map.String.t<item>,
+  documentMap: Map.String.t<noteDocument>,
+  itemMap: Map.String.t<noteItem>,
+  dateActionLogMap: Map.String.t<dateActionLog>,
   rootDocumentId: string,
+  latestDateActionLogId: string,
 }
 
 type t = {
@@ -89,10 +119,10 @@ module Note = {
 
     let currentDocument = state => state->Firestore.getDocument(state->currentDocumentId)
 
-    let aboveDocument = (state, {prevId, parentId}: document) => {
+    let aboveDocument = (state, {prevId, parentId}: noteDocument) => {
       switch state->Firestore.getDocument(prevId) {
       | Some(document) => {
-          let rec searchPrev = (document: document) => {
+          let rec searchPrev = (document: noteDocument) => {
             switch state->Firestore.getDocument(document.lastChildId) {
             | Some(document) => searchPrev(document)
 
@@ -107,7 +137,7 @@ module Note = {
       }
     }
 
-    let belowDocument = (state, document) => {
+    let belowDocument = (state, document: noteDocument) => {
       let {nextId, firstChildId} = document
 
       switch state->Firestore.getDocument(firstChildId) {
@@ -118,7 +148,7 @@ module Note = {
         | Some(document) => Some(document)
 
         | None => {
-            let rec searchNext = ({nextId, parentId}) => {
+            let rec searchNext = ({nextId, parentId}: noteDocument) => {
               switch state->Firestore.getDocument(nextId) {
               | Some(document) => Some(document)
 
@@ -165,7 +195,7 @@ module Note = {
       | Some({lastChildId}) =>
         switch state->Firestore.getItem(lastChildId) {
         | Some(item) =>
-          let rec searchBottom = (item: item) => {
+          let rec searchBottom = (item: noteItem) => {
             switch state->Firestore.getItem(item.lastChildId) {
             | Some(item) => searchBottom(item)
 
@@ -182,10 +212,10 @@ module Note = {
       }
     }
 
-    let aboveItem = (state, {prevId, parentId}: item) => {
+    let aboveItem = (state, {prevId, parentId}: noteItem) => {
       switch state->Firestore.getItem(prevId) {
       | Some(item) => {
-          let rec searchPrev = (item: item) => {
+          let rec searchPrev = (item: noteItem) => {
             switch state->Firestore.getItem(item.lastChildId) {
             | Some(item) => searchPrev(item)
 
@@ -200,7 +230,7 @@ module Note = {
       }
     }
 
-    let belowItem = (state, item: item) => {
+    let belowItem = (state, item: noteItem) => {
       let {nextId, firstChildId} = item
 
       switch state->Firestore.getItem(firstChildId) {
@@ -211,7 +241,7 @@ module Note = {
         | Some(item) => Some(item)
 
         | None => {
-            let rec searchNext = ({nextId, parentId}: item) => {
+            let rec searchNext = ({nextId, parentId}: noteItem) => {
               switch state->Firestore.getItem(nextId) {
               | Some(item) => Some(item)
 
@@ -240,7 +270,9 @@ let initialState: t = {
   firestore: {
     documentMap: Map.String.empty,
     itemMap: Map.String.empty,
+    dateActionLogMap: Map.String.empty,
     rootDocumentId: "",
+    latestDateActionLogId: "",
   },
   note: {
     documentPane: {
