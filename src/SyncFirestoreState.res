@@ -6,28 +6,39 @@ open Belt
 external entries: 'a => array<(string, 'b)> = "entries"
 
 %%private(
-  let toDocumentMap = documents =>
-    Belt.Array.reduce(documents, Map.String.empty, (documentMap, document) => {
+  let toNoteDocumentMap = documents =>
+    Belt.Array.reduce(documents, (Map.String.empty, ""), (
+      (documentMap, currentRootDocumentId),
+      document,
+    ) => {
       let id = document["id"]
+      let parentId = document["parentId"]
 
-      documentMap->Map.String.set(
-        id,
-        (
-          {
-            id: id,
-            text: document["text"],
-            rootItemId: document["rootItemId"],
-            parentId: document["parentId"],
-            prevId: document["prevId"],
-            nextId: document["nextId"],
-            firstChildId: document["firstChildId"],
-            lastChildId: document["lastChildId"],
-          }: State.noteDocument
+      (
+        documentMap->Map.String.set(
+          id,
+          (
+            {
+              id: id,
+              text: document["text"],
+              rootItemId: document["rootItemId"],
+              parentId: parentId,
+              prevId: document["prevId"],
+              nextId: document["nextId"],
+              firstChildId: document["firstChildId"],
+              lastChildId: document["lastChildId"],
+            }: State.noteDocument
+          ),
         ),
+        if parentId == "" {
+          id
+        } else {
+          currentRootDocumentId
+        },
       )
     })
 
-  let toItemMap = items =>
+  let toNoteItemMap = items =>
     Belt.Array.reduce(items, Map.String.empty, (itemMap, item) => {
       let id = item["id"]
 
@@ -48,18 +59,9 @@ external entries: 'a => array<(string, 'b)> = "entries"
       )
     })
 
-  let findRootDocumentId = documentMap => {
-    documentMap
-    ->Map.String.findFirstBy((_, document: State.noteDocument) => {
-      document.parentId == ""
-    })
-    ->Option.map(((rootDocumentId, _)) => rootDocumentId)
-    ->Option.getWithDefault("")
-  }
-
   let toActionLogItem = (actionLogItems, dateActionLogId, actionLogId) =>
     Belt.Array.reduce(actionLogItems->entries, (Map.String.empty, ""), (
-      (actionLogItemMap, _),
+      (actionLogItemMap, currentRootActionLogItemId),
       (id, actionLogItem),
     ) => {
       let parentId = actionLogItem["parentId"]
@@ -84,7 +86,7 @@ external entries: 'a => array<(string, 'b)> = "entries"
         if parentId == "" {
           id
         } else {
-          ""
+          currentRootActionLogItemId
         },
       )
     })
@@ -131,7 +133,7 @@ external entries: 'a => array<(string, 'b)> = "entries"
 
   let toDateActionLogMap = dateActionLogs =>
     Belt.Array.reduce(dateActionLogs, (Map.String.empty, ""), (
-      (dateActionLogMap, _),
+      (dateActionLogMap, currentLatestDateActionLogId),
       dateActionLog,
     ) => {
       let id = dateActionLog["id"]
@@ -155,7 +157,7 @@ external entries: 'a => array<(string, 'b)> = "entries"
         if nextId == "" {
           id
         } else {
-          ""
+          currentLatestDateActionLogId
         },
       )
     })
@@ -178,8 +180,7 @@ module Document = {
     React.useEffect(() => {
       switch documentsError {
       | None if !documentsLoading =>
-        let documentMap = documents->toDocumentMap
-        let rootDocumentId = documentMap->findRootDocumentId
+        let (documentMap, rootDocumentId) = documents->toNoteDocumentMap
 
         dispatch(
           Action.SetFirestoreDocumentState({
@@ -214,7 +215,7 @@ module Item = {
       | None if !itemsLoading =>
         dispatch(
           Action.SetFirestoreItemState({
-            itemMap: items->toItemMap,
+            itemMap: items->toNoteItemMap,
           }),
         )
 
