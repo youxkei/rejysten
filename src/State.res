@@ -24,6 +24,8 @@ type noteDocument = {
 
 type actionLogItem = {
   id: string,
+  dateActionLogId: string,
+  actionLogId: string,
   text: string,
   parentId: string,
   prevId: string,
@@ -34,12 +36,14 @@ type actionLogItem = {
 
 type actionLog = {
   id: string,
+  dateActionLogId: string,
   begin: int,
   end: int,
   prevId: string,
   nextId: string,
   text: string,
-  items: Map.String.t<actionLogItem>,
+  itemMap: Map.String.t<actionLogItem>,
+  rootItemId: string,
 }
 
 type dateActionLog = {
@@ -48,6 +52,7 @@ type dateActionLog = {
   prevId: string,
   nextId: string,
   actionLogMap: Map.String.t<actionLog>,
+  oldestActionLogId: string,
 }
 
 type initialCursorPosition = Start(unit) | End(unit)
