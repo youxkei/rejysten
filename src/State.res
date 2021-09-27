@@ -63,6 +63,14 @@ type noteFocus = DocumentPane(unit) | ItemPane(unit)
 
 type focus = Note(noteFocus) | Search(unit) | ActionLog(unit)
 
+type firestoreState = {
+  documentMap: Map.String.t<noteDocument>,
+  itemMap: Map.String.t<noteItem>,
+  dateActionLogMap: Map.String.t<dateActionLog>,
+  rootDocumentId: string,
+  latestDateActionLogId: string,
+}
+
 type noteItemPaneState = {
   currentId: string,
   editingText: string,
@@ -85,12 +93,9 @@ type searchState = {
   searchedItems: Set.String.t,
 }
 
-type firestoreState = {
-  documentMap: Map.String.t<noteDocument>,
-  itemMap: Map.String.t<noteItem>,
+type actionLogState = {
+  currentId: string,
   dateActionLogMap: Map.String.t<dateActionLog>,
-  rootDocumentId: string,
-  latestDateActionLogId: string,
 }
 
 type t = {
@@ -99,11 +104,13 @@ type t = {
   firestore: firestoreState,
   note: noteState,
   search: searchState,
+  actionLog: actionLogState,
 }
 
 module Firestore = {
   let documentMap = state => state.firestore.documentMap
   let itemMap = state => state.firestore.itemMap
+  let dateActionLogMap = state => state.firestore.dateActionLogMap
   let rootDocumentId = state => state.firestore.rootDocumentId
 
   let getDocument = ({firestore: {documentMap}}, id) => {
@@ -294,6 +301,10 @@ let initialState: t = {
     ancestorDocuments: Set.String.empty,
     searchedDocuments: Set.String.empty,
     searchedItems: Set.String.empty,
+  },
+  actionLog: {
+    currentId: "",
+    dateActionLogMap: Map.String.empty,
   },
 }
 

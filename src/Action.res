@@ -56,6 +56,7 @@ type t =
 
   | FocusNote(focusNotePane)
   | FocusSearch(unit)
+  | FocusActionLog(unit)
 
   | SetFirestoreItemState({itemMap: Map.String.t<State.noteItem>})
 
@@ -75,5 +76,6 @@ type t =
       searchedDocuments: Set.String.t,
       searchedItems: Set.String.t,
     })
+  | SetActionLogState({dateActionLogMap: Map.String.t<State.dateActionLog>})
 
   | DevToolUpdate({state: State.t})

@@ -419,6 +419,11 @@ let reducer = (state: State.t, action) => {
       focus: State.Search(),
     }
 
+  | Action.FocusActionLog() => {
+      ...state,
+      focus: State.ActionLog(),
+    }
+
   | Action.SetFirestoreDocumentState({documentMap, rootDocumentId}) => {
       ...state,
       firestore: {
@@ -463,6 +468,14 @@ let reducer = (state: State.t, action) => {
         ancestorDocuments: ancestorDocuments,
         searchedDocuments: searchedDocuments,
         searchedItems: searchedItems,
+      },
+    }
+
+  | Action.SetActionLogState({dateActionLogMap}) => {
+      ...state,
+      actionLog: {
+        ...state.actionLog,
+        dateActionLogMap: dateActionLogMap,
       },
     }
 

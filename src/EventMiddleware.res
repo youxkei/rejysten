@@ -99,6 +99,11 @@ module KeyDown = {
               event->preventDefault
             }
 
+          | "KeyL" if !ctrlKey && shiftKey => {
+              dispatch(Action.FocusActionLog())
+              event->preventDefault
+            }
+
           | "Slash" if !ctrlKey && !shiftKey => {
               dispatch(Action.FocusSearch())
               event->preventDefault
@@ -286,6 +291,11 @@ module KeyDown = {
               dispatch(Action.Note(Action.ItemPane(Action.ToTopItem())))
             }
 
+          | "KeyL" if !ctrlKey && shiftKey => {
+              dispatch(Action.FocusActionLog())
+              event->preventDefault
+            }
+
           | "Slash" if !ctrlKey && !shiftKey => {
               dispatch(Action.FocusSearch())
               event->preventDefault
@@ -410,6 +420,30 @@ module KeyDown = {
       }
     }
   }
+
+  module ActionLog = {
+    module Normal = {
+      let handler = (store, event) => {
+        let dispatch = Reductive.Store.dispatch(store)
+
+        let code = event->code
+        let ctrlKey = event->ctrlKey
+        let shiftKey = event->shiftKey
+
+        switch code {
+        | "KeyN" if !ctrlKey && shiftKey =>
+          dispatch(Action.FocusNote(Action.ItemPane()))
+          event->preventDefault
+
+        | _ => ()
+        }
+      }
+    }
+
+    module Insert = {
+      let handler = (store, event) => ()
+    }
+  }
 }
 
 module Click = {
@@ -464,6 +498,12 @@ module Click = {
       ()
     }
   }
+
+  module ActionLog = {
+    let handler = (store, event, isDouble, target) => {
+      ()
+    }
+  }
 }
 
 let middleware = (store, next, action) => {
@@ -487,12 +527,19 @@ let middleware = (store, next, action) => {
       | (Event.KeyDown({event}), State.Search(), State.Insert(_)) =>
         KeyDown.Search.Insert.handler(store, event)
 
+      | (Event.KeyDown({event}), State.ActionLog(), State.Normal()) =>
+        KeyDown.ActionLog.Normal.handler(store, event)
+      | (Event.KeyDown({event}), State.ActionLog(), State.Insert(_)) =>
+        KeyDown.ActionLog.Insert.handler(store, event)
+
       | (Event.Click({event, isDouble, target}), State.Note(State.DocumentPane()), _) =>
         Click.Note.handler(store, event, isDouble, target)
       | (Event.Click({event, isDouble, target}), State.Note(State.ItemPane()), _) =>
         Click.Note.handler(store, event, isDouble, target)
       | (Event.Click({event, isDouble, target}), State.Search(), _) =>
         Click.Search.handler(store, event, isDouble, target)
+      | (Event.Click({event, isDouble, target}), State.ActionLog(), _) =>
+        Click.ActionLog.handler(store, event, isDouble, target)
       }
     }
 
