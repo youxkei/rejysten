@@ -1,9 +1,13 @@
 open Belt
 
-type noteItem = {
+type itemContainer =
+  | Note({documentId: string})
+  | ActionLog({dateActionLogId: string, actionLogId: string})
+
+type item = {
   id: string,
   text: string,
-  documentId: string,
+  container: itemContainer,
   parentId: string,
   prevId: string,
   nextId: string,
@@ -42,7 +46,7 @@ type actionLog = {
   prevId: string,
   nextId: string,
   text: string,
-  itemMap: Map.String.t<actionLogItem>,
+  itemMap: Map.String.t<item>,
   rootItemId: string,
 }
 
@@ -65,7 +69,7 @@ type focus = Note(noteFocus) | Search(unit) | ActionLog(unit)
 
 type firestoreState = {
   documentMap: Map.String.t<noteDocument>,
-  itemMap: Map.String.t<noteItem>,
+  itemMap: Map.String.t<item>,
   dateActionLogMap: Map.String.t<dateActionLog>,
   rootDocumentId: string,
   latestDateActionLogId: string,
@@ -207,7 +211,7 @@ module Note = {
       | Some({lastChildId}) =>
         switch state->Firestore.getItem(lastChildId) {
         | Some(item) =>
-          let rec searchBottom = (item: noteItem) => {
+          let rec searchBottom = (item: item) => {
             switch state->Firestore.getItem(item.lastChildId) {
             | Some(item) => searchBottom(item)
 
@@ -224,10 +228,10 @@ module Note = {
       }
     }
 
-    let aboveItem = (state, {prevId, parentId}: noteItem) => {
+    let aboveItem = (state, {prevId, parentId}: item) => {
       switch state->Firestore.getItem(prevId) {
       | Some(item) => {
-          let rec searchPrev = (item: noteItem) => {
+          let rec searchPrev = (item: item) => {
             switch state->Firestore.getItem(item.lastChildId) {
             | Some(item) => searchPrev(item)
 
@@ -242,7 +246,7 @@ module Note = {
       }
     }
 
-    let belowItem = (state, item: noteItem) => {
+    let belowItem = (state, item: item) => {
       let {nextId, firstChildId} = item
 
       switch state->Firestore.getItem(firstChildId) {
@@ -253,7 +257,7 @@ module Note = {
         | Some(item) => Some(item)
 
         | None => {
-            let rec searchNext = ({nextId, parentId}: noteItem) => {
+            let rec searchNext = ({nextId, parentId}: item) => {
               switch state->Firestore.getItem(nextId) {
               | Some(item) => Some(item)
 

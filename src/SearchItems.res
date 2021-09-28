@@ -22,13 +22,13 @@ external outerHeight: Dom.window => float = "outerHeight"
     children
   }
 
-  let makeItemChildren = (itemMap, searchedItems, item: State.noteItem) => {
+  let makeItemChildren = (itemMap, searchedItems, item: State.item) => {
     let children = []
 
     let currentItem = ref(itemMap->Map.String.get(item.firstChildId))
 
     while Option.isSome(currentItem.contents) {
-      let item: State.noteItem = Option.getExn(currentItem.contents)
+      let item: State.item = Option.getExn(currentItem.contents)
 
       if searchedItems->Set.String.has(item.id) {
         let _ = children->Js.Array2.push(item)
@@ -41,11 +41,11 @@ external outerHeight: Dom.window => float = "outerHeight"
 )
 
 module rec ItemsInner: {
-  let make: {"item": State.noteItem} => ReasonReact.reactElement
-  let makeProps: (~item: State.noteItem, ~key: string=?, unit) => {"item": State.noteItem}
+  let make: {"item": State.item} => ReasonReact.reactElement
+  let makeProps: (~item: State.item, ~key: string=?, unit) => {"item": State.item}
 } = {
   @react.component
-  let make = (~item: State.noteItem) => {
+  let make = (~item: State.item) => {
     let itemMap = Redux.useSelector(State.Firestore.itemMap)
     let searchedItems = Redux.useSelector(State.Search.searchedItems)
 
@@ -54,7 +54,7 @@ module rec ItemsInner: {
       <div className=Style.List.item> <Item item /> </div>
       <div className=Style.List.child>
         {makeItemChildren(itemMap, searchedItems, item)
-        ->Array.map((item: State.noteItem) => {
+        ->Array.map((item: State.item) => {
           <ItemsInner key=item.id item />
         })
         ->React.array}
@@ -87,7 +87,7 @@ module rec DocumentsInner: {
           switch itemMap->Map.String.get(document.rootItemId) {
           | Some(rootItem) =>
             makeItemChildren(itemMap, searchedItems, rootItem)
-            ->Array.map((item: State.noteItem) => {
+            ->Array.map((item: State.item) => {
               <RenderIfVisible key=item.id defaultHeight={window->outerHeight}>
                 <ItemsInner key=item.id item />
               </RenderIfVisible>

@@ -3,7 +3,7 @@ open Belt
 @module("react-firebase-hooks/firestore") external useCollectionData: 'any = "useCollectionData"
 
 %%private(
-  let rec addItemAncestors = (set, itemMap, item: State.noteItem) => {
+  let rec addItemAncestors = (set, itemMap, item: State.item) => {
     switch itemMap->Map.String.get(item.parentId) {
     | Some(parent) => set->Set.String.add(item.id)->addItemAncestors(itemMap, parent)
     | None => set->Set.String.add(item.id)
@@ -23,11 +23,16 @@ open Belt
     } else {
       let (documentSet, itemSet) = itemMap->Map.String.reduce(
         (Set.String.empty, Set.String.empty),
-        ((documentSet, itemSet), _, item: State.noteItem) => {
-          if item.text->Js.String2.includes(searchingText) {
-            (documentSet->Set.String.add(item.documentId), itemSet->addItemAncestors(itemMap, item))
-          } else {
-            (documentSet, itemSet)
+        ((documentSet, itemSet), _, item: State.item) => {
+          switch item.container {
+          | State.Note({documentId}) =>
+            if item.text->Js.String2.includes(searchingText) {
+              (documentSet->Set.String.add(documentId), itemSet->addItemAncestors(itemMap, item))
+            } else {
+              (documentSet, itemSet)
+            }
+
+          | _ => (documentSet, itemSet)
           }
         },
       )

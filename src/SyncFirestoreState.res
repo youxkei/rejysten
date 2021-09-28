@@ -48,45 +48,47 @@ external entries: 'a => array<(string, 'b)> = "entries"
           {
             id: id,
             text: item["text"],
-            documentId: item["documentId"],
+            container: item["documentId"],
             nextId: item["nextId"],
             prevId: item["prevId"],
             parentId: item["parentId"],
             firstChildId: item["firstChildId"],
             lastChildId: item["lastChildId"],
-          }: State.noteItem
+          }: State.item
         ),
       )
     })
 
-  let toActionLogItem = (actionLogItems, dateActionLogId, actionLogId) =>
-    Belt.Array.reduce(actionLogItems->entries, (Map.String.empty, ""), (
-      (actionLogItemMap, currentRootActionLogItemId),
-      (id, actionLogItem),
+  let toItemMap = (items, dateActionLogId, actionLogId) =>
+    Belt.Array.reduce(items->entries, (Map.String.empty, ""), (
+      (itemMap, currentRootItemId),
+      (id, item),
     ) => {
-      let parentId = actionLogItem["parentId"]
+      let parentId = item["parentId"]
 
       (
-        actionLogItemMap->Map.String.set(
+        itemMap->Map.String.set(
           id,
           (
             {
               id: id,
-              dateActionLogId: dateActionLogId,
-              actionLogId: actionLogId,
-              text: actionLogItem["text"],
+              container: State.ActionLog({
+                dateActionLogId: dateActionLogId,
+                actionLogId: actionLogId,
+              }),
+              text: item["text"],
               parentId: parentId,
-              prevId: actionLogItem["prevId"],
-              nextId: actionLogItem["nextId"],
-              firstChildId: actionLogItem["firstChildId"],
-              lastChildId: actionLogItem["lastChildId"],
-            }: State.actionLogItem
+              prevId: item["prevId"],
+              nextId: item["nextId"],
+              firstChildId: item["firstChildId"],
+              lastChildId: item["lastChildId"],
+            }: State.item
           ),
         ),
         if parentId == "" {
           id
         } else {
-          currentRootActionLogItemId
+          currentRootItemId
         },
       )
     })
@@ -100,7 +102,7 @@ external entries: 'a => array<(string, 'b)> = "entries"
         (id, actionLog),
       ) => {
         let begin = actionLog["begin"]
-        let (itemMap, rootItemId) = actionLog["items"]->toActionLogItem(dateActionLogId, id)
+        let (itemMap, rootItemId) = actionLog["items"]->toItemMap(dateActionLogId, id)
 
         (
           actionLogMap->Map.String.set(

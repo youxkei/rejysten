@@ -58,7 +58,7 @@ type t =
   | FocusSearch(unit)
   | FocusActionLog(unit)
 
-  | SetFirestoreItemState({itemMap: Map.String.t<State.noteItem>})
+  | SetFirestoreItemState({itemMap: Map.String.t<State.item>})
 
   | SetFirestoreDocumentState({
       documentMap: Map.String.t<State.noteDocument>,
