@@ -6,17 +6,13 @@ open Belt
 
 @react.component
 let make = React.memo(() => {
-  let text = Redux.useSelector(State.Note.ItemPane.editingText)
+  let text = Redux.useSelector(State.ItemEditor.editingText)
   let initialCursorPosition = Redux.useSelector(State.initialCursorPosition)
 
   let dispatch = Redux.useDispatch()
 
   let onChange = React.useCallback1(event => {
-    dispatch(
-      Action.Note(
-        Action.ItemPane(Action.SetEditingText({text: event->ReactEvent.Form.target->value})),
-      ),
-    )
+    dispatch(Action.ItemEditor(Action.SetEditingText({text: event->ReactEvent.Form.target->value})))
   }, [])
 
   let onBlur = React.useCallback1(_ => {

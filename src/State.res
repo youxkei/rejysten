@@ -67,18 +67,9 @@ type noteFocus = DocumentPane(unit) | ItemPane(unit)
 
 type focus = Note(noteFocus) | Search(unit) | ActionLog(unit)
 
-type firestoreState = {
-  documentMap: Map.String.t<noteDocument>,
-  itemMap: Map.String.t<item>,
-  dateActionLogMap: Map.String.t<dateActionLog>,
-  rootDocumentId: string,
-  latestDateActionLogId: string,
-}
+type itemEditor = {editingText: string}
 
-type noteItemPaneState = {
-  currentId: string,
-  editingText: string,
-}
+type noteItemPaneState = {currentId: string}
 
 type noteDocumentPaneState = {
   currentId: string,
@@ -102,13 +93,30 @@ type actionLogState = {
   dateActionLogMap: Map.String.t<dateActionLog>,
 }
 
+type firestoreState = {
+  documentMap: Map.String.t<noteDocument>,
+  itemMap: Map.String.t<item>,
+  dateActionLogMap: Map.String.t<dateActionLog>,
+  rootDocumentId: string,
+  latestDateActionLogId: string,
+}
+
 type t = {
+  // global state
   mode: mode,
   focus: focus,
-  firestore: firestoreState,
+  // per element state
+  itemEditor: itemEditor,
+  // per tab state
   note: noteState,
   search: searchState,
   actionLog: actionLogState,
+  // firestore state
+  firestore: firestoreState,
+}
+
+module ItemEditor = {
+  let editingText = state => state.itemEditor.editingText
 }
 
 module Firestore = {
@@ -186,7 +194,6 @@ module Note = {
 
   module ItemPane = {
     let currentItemId = ({note: {itemPane: {currentId}}}) => currentId
-    let editingText = ({note: {itemPane: {editingText}}}) => editingText
 
     let currentItem = state => state->Firestore.getItem(state->currentItemId)
 
@@ -283,12 +290,8 @@ module Search = {
 let initialState: t = {
   mode: Normal(),
   focus: Note(DocumentPane()),
-  firestore: {
-    documentMap: Map.String.empty,
-    itemMap: Map.String.empty,
-    dateActionLogMap: Map.String.empty,
-    rootDocumentId: "",
-    latestDateActionLogId: "",
+  itemEditor: {
+    editingText: "",
   },
   note: {
     documentPane: {
@@ -297,7 +300,6 @@ let initialState: t = {
     },
     itemPane: {
       currentId: "",
-      editingText: "",
     },
   },
   search: {
@@ -309,6 +311,13 @@ let initialState: t = {
   actionLog: {
     currentId: "",
     dateActionLogMap: Map.String.empty,
+  },
+  firestore: {
+    documentMap: Map.String.empty,
+    itemMap: Map.String.empty,
+    dateActionLogMap: Map.String.empty,
+    rootDocumentId: "",
+    latestDateActionLogId: "",
   },
 }
 

@@ -340,7 +340,7 @@ module KeyDown = {
               event->preventDefault
             }
 
-          | "Backspace" if isNeutral && !shiftKey && state.note.itemPane.editingText == "" =>
+          | "Backspace" if isNeutral && !shiftKey && state.itemEditor.editingText == "" =>
             switch state->State.Note.ItemPane.currentItem {
             | Some(currentItem)
               if currentItem.firstChildId == "" && currentItem.lastChildId == "" =>
@@ -366,7 +366,7 @@ module KeyDown = {
             | _ => ()
             }
 
-          | "Delete" if isNeutral && !shiftKey && state.note.itemPane.editingText == "" =>
+          | "Delete" if isNeutral && !shiftKey && state.itemEditor.editingText == "" =>
             switch state->State.Note.ItemPane.currentItem {
             | Some(currentItem)
               if currentItem.firstChildId == "" && currentItem.lastChildId == "" =>

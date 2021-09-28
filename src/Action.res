@@ -19,6 +19,8 @@ type firestoreNoteItemPane =
 
 type firestoreNote = DocumentPane(firestoreNoteDocumentPane) | ItemPane(firestoreNoteItemPane)
 
+type itemEditor = SetEditingText({text: string})
+
 type noteDocumentPane =
   | ToAboveDocument(unit)
   | ToBelowDocument(unit)
@@ -34,7 +36,6 @@ type noteItemPane =
   | ToBottomItem(unit)
   | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
   | ToNormalMode(unit)
-  | SetEditingText({text: string})
   | SetCurrentItem({id: string, initialCursorPosition: State.initialCursorPosition})
 
 type note =
@@ -47,29 +48,36 @@ type search =
   | ToNormalMode(unit)
 
 type t =
+  // event action handled in EventMiddleware
   | Event(Event.t)
 
+  // firestore actions handled in FirestoreMiddleware
   | FirestoreNote(firestoreNote)
 
+  // per element actions
+  | ItemEditor(itemEditor)
+
+  // per tab actions
   | Note(note)
   | Search(search)
 
+  // focus change actions
   | FocusNote(focusNotePane)
   | FocusSearch(unit)
   | FocusActionLog(unit)
 
+  // actions for syncing state.firestore and firestore
   | SetFirestoreItemState({itemMap: Map.String.t<State.item>})
-
   | SetFirestoreDocumentState({
       documentMap: Map.String.t<State.noteDocument>,
       rootDocumentId: string,
     })
-
   | SetFirestoreDateActionLogState({
       dateActionLogMap: Map.String.t<State.dateActionLog>,
       latestDateActionLogId: string,
     })
 
+  // actions for data manipulation from state.firestore to each tab states
   | SetNoteDocumentPaneState({currentId: string})
   | SetSearchState({
       ancestorDocuments: Set.String.t,
@@ -78,4 +86,5 @@ type t =
     })
   | SetActionLogState({dateActionLogMap: Map.String.t<State.dateActionLog>})
 
+  // action for Redux DevTool
   | DevToolUpdate({state: State.t})

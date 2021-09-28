@@ -4,6 +4,19 @@ let get = HashMap.String.get
 
 exception ActionShouldBeProcessedByMiddleware(Action.t)
 
+module ItemEditor = {
+  let reducer = (state: State.t, action: Action.itemEditor) => {
+    switch action {
+    | Action.SetEditingText({text}) => {
+        ...state,
+        itemEditor: {
+          editingText: text,
+        },
+      }
+    }
+  }
+}
+
 module Note = {
   let documentPaneReducer = (state: State.t, action) => {
     switch action {
@@ -19,7 +32,6 @@ module Note = {
                 currentId: aboveId,
               },
               itemPane: {
-                ...state.note.itemPane,
                 currentId: "",
               },
             },
@@ -57,7 +69,6 @@ module Note = {
                 currentId: belowId,
               },
               itemPane: {
-                ...state.note.itemPane,
                 currentId: "",
               },
             },
@@ -128,7 +139,6 @@ module Note = {
               currentId: id,
             },
             itemPane: {
-              ...state.note.itemPane,
               currentId: "",
             },
           },
@@ -150,7 +160,6 @@ module Note = {
                 editingText: editingText,
               },
               itemPane: {
-                ...state.note.itemPane,
                 currentId: "",
               },
             },
@@ -171,7 +180,6 @@ module Note = {
             note: {
               ...state.note,
               itemPane: {
-                ...state.note.itemPane,
                 currentId: aboveId,
               },
             },
@@ -187,7 +195,6 @@ module Note = {
             note: {
               ...state.note,
               itemPane: {
-                ...state.note.itemPane,
                 currentId: firstChildId,
               },
             },
@@ -206,7 +213,6 @@ module Note = {
             note: {
               ...state.note,
               itemPane: {
-                ...state.note.itemPane,
                 currentId: belowId,
               },
             },
@@ -222,7 +228,6 @@ module Note = {
             note: {
               ...state.note,
               itemPane: {
-                ...state.note.itemPane,
                 currentId: firstChildId,
               },
             },
@@ -239,7 +244,6 @@ module Note = {
           note: {
             ...state.note,
             itemPane: {
-              ...state.note.itemPane,
               currentId: topItem.id,
             },
           },
@@ -255,7 +259,6 @@ module Note = {
           note: {
             ...state.note,
             itemPane: {
-              ...state.note.itemPane,
               currentId: bottomItem.id,
             },
           },
@@ -273,12 +276,8 @@ module Note = {
 
       {
         ...state,
-        note: {
-          ...state.note,
-          itemPane: {
-            ...state.note.itemPane,
-            editingText: editingText,
-          },
+        itemEditor: {
+          editingText: editingText,
         },
         mode: State.Insert({initialCursorPosition: initialCursorPosition}),
       }
@@ -286,23 +285,8 @@ module Note = {
     | Action.ToNormalMode() => {
         ...state,
         mode: State.Normal(),
-        note: {
-          ...state.note,
-          itemPane: {
-            ...state.note.itemPane,
-            editingText: "",
-          },
-        },
-      }
-
-    | Action.SetEditingText({text}) => {
-        ...state,
-        note: {
-          ...state.note,
-          itemPane: {
-            ...state.note.itemPane,
-            editingText: text,
-          },
+        itemEditor: {
+          editingText: "",
         },
       }
 
@@ -313,7 +297,6 @@ module Note = {
           note: {
             ...state.note,
             itemPane: {
-              ...state.note.itemPane,
               currentId: id,
             },
           },
@@ -329,11 +312,13 @@ module Note = {
           {
             ...state,
             mode: State.Insert({initialCursorPosition: initialCursorPosition}),
+            itemEditor: {
+              editingText: editingText,
+            },
             note: {
               ...state.note,
               itemPane: {
                 currentId: id,
-                editingText: editingText,
               },
             },
           }
@@ -375,6 +360,8 @@ let reducer = (state: State.t, action) => {
   | Action.Note(Action.ItemPane(action)) => Note.documentItemPaneReducer(state, action)
   | Action.Search(action) => searchReducer(state, action)
 
+  | Action.ItemEditor(action) => ItemEditor.reducer(state, action)
+
   | Action.FocusNote(Action.DocumentPane()) => {
       ...state,
       focus: State.Note(State.DocumentPane()),
@@ -392,7 +379,6 @@ let reducer = (state: State.t, action) => {
               editingText: "",
             },
             itemPane: {
-              ...state.note.itemPane,
               currentId: firstChildId,
             },
           },
