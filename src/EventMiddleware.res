@@ -147,7 +147,7 @@ module KeyDown = {
             event->preventDefault
 
           | "Backspace" if isNeutral && !shiftKey && state.note.documentPane.editingText == "" =>
-            switch state->State.Note.DocumentPane.currentDocument {
+            switch state->State.Note.DocumentPane.selectedDocument {
             | Some(currentDocument)
               if currentDocument.firstChildId == "" && currentDocument.lastChildId == "" =>
               switch state->State.Note.DocumentPane.aboveDocument(currentDocument) {
@@ -177,7 +177,7 @@ module KeyDown = {
             }
 
           | "Delete" if isNeutral && !shiftKey && state.note.documentPane.editingText == "" =>
-            switch state->State.Note.DocumentPane.currentDocument {
+            switch state->State.Note.DocumentPane.selectedDocument {
             | Some(currentDocument)
               if currentDocument.firstChildId == "" && currentDocument.lastChildId == "" =>
               switch state->State.Note.DocumentPane.belowDocument(currentDocument) {
@@ -341,7 +341,7 @@ module KeyDown = {
             }
 
           | "Backspace" if isNeutral && !shiftKey && state.itemEditor.editingText == "" =>
-            switch state->State.Note.ItemPane.currentItem {
+            switch state->State.Note.ItemPane.selectedItem {
             | Some(currentItem)
               if currentItem.firstChildId == "" && currentItem.lastChildId == "" =>
               switch state->State.Note.ItemPane.aboveItem(currentItem) {
@@ -367,7 +367,7 @@ module KeyDown = {
             }
 
           | "Delete" if isNeutral && !shiftKey && state.itemEditor.editingText == "" =>
-            switch state->State.Note.ItemPane.currentItem {
+            switch state->State.Note.ItemPane.selectedItem {
             | Some(currentItem)
               if currentItem.firstChildId == "" && currentItem.lastChildId == "" =>
               switch state->State.Note.ItemPane.belowItem(currentItem) {

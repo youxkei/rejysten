@@ -5,7 +5,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
 
   switch action {
   | Action.SaveDocument() =>
-    switch state->State.Note.DocumentPane.currentDocument {
+    switch state->State.Note.DocumentPane.selectedDocument {
     | Some({id}) =>
       switch state.mode {
       | State.Insert(_) =>
@@ -23,7 +23,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
     }
 
   | Action.IndentDocument() =>
-    switch state->State.Note.DocumentPane.currentDocument {
+    switch state->State.Note.DocumentPane.selectedDocument {
     | Some({id, parentId, prevId, nextId}) =>
       open Firebase.Firestore
 
@@ -72,7 +72,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
     }
 
   | Action.UnindentDocument() =>
-    switch state->State.Note.DocumentPane.currentDocument {
+    switch state->State.Note.DocumentPane.selectedDocument {
     | Some({id, parentId, prevId, nextId}) =>
       open Firebase.Firestore
 
@@ -130,7 +130,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
     }
 
   | Action.AddDocument({direction}) =>
-    switch state->State.Note.DocumentPane.currentDocument {
+    switch state->State.Note.DocumentPane.selectedDocument {
     | Some({id, parentId, prevId, nextId}) => {
         open Firebase.Firestore
 
@@ -247,7 +247,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
     }
 
   | Action.DeleteDocument({nextCurrentId, initialCursorPosition}) =>
-    switch state->State.Note.DocumentPane.currentDocument {
+    switch state->State.Note.DocumentPane.selectedDocument {
     | Some(currentDocument) =>
       switch state->State.Note.ItemPane.rootItem {
       | Some({id: rootItemId, firstChildId}) =>

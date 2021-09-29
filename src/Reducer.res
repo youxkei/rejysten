@@ -21,7 +21,7 @@ module Note = {
   let documentPaneReducer = (state: State.t, action) => {
     switch action {
     | Action.ToAboveDocument() =>
-      switch state->State.Note.DocumentPane.currentDocument {
+      switch state->State.Note.DocumentPane.selectedDocument {
       | Some(currentDocument) =>
         switch state->State.Note.DocumentPane.aboveDocument(currentDocument) {
         | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
@@ -58,7 +58,7 @@ module Note = {
       }
 
     | Action.ToBelowDocument() =>
-      switch state->State.Note.DocumentPane.currentDocument {
+      switch state->State.Note.DocumentPane.selectedDocument {
       | Some(currentDocument) =>
         switch state->State.Note.DocumentPane.belowDocument(currentDocument) {
         | Some({id: belowId}) => {
@@ -95,7 +95,7 @@ module Note = {
       }
 
     | Action.ToInsertMode({initialCursorPosition}) =>
-      let editingText = switch state->State.Note.DocumentPane.currentDocument {
+      let editingText = switch state->State.Note.DocumentPane.selectedDocument {
       | Some({text}) => text
 
       | None => ""
@@ -172,7 +172,7 @@ module Note = {
   let documentItemPaneReducer = (state: State.t, action) => {
     switch action {
     | Action.ToAboveItem() =>
-      switch state->State.Note.ItemPane.currentItem {
+      switch state->State.Note.ItemPane.selectedItem {
       | Some(item) =>
         switch state->State.Note.ItemPane.aboveItem(item) {
         | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
@@ -205,7 +205,7 @@ module Note = {
       }
 
     | Action.ToBelowItem() =>
-      switch state->State.Note.ItemPane.currentItem {
+      switch state->State.Note.ItemPane.selectedItem {
       | Some(item) =>
         switch state->State.Note.ItemPane.belowItem(item) {
         | Some({id: belowId}) => {
@@ -268,7 +268,7 @@ module Note = {
       }
 
     | Action.ToInsertMode({initialCursorPosition}) =>
-      let editingText = switch state->State.Note.ItemPane.currentItem {
+      let editingText = switch state->State.Note.ItemPane.selectedItem {
       | Some({text}) => text
 
       | None => ""

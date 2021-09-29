@@ -67,13 +67,10 @@ type t =
   | FocusActionLog(unit)
 
   // actions for syncing state.firestore and firestore
-  | SetFirestoreItemState({itemMap: Map.String.t<State.item>})
-  | SetFirestoreDocumentState({
-      documentMap: Map.String.t<State.noteDocument>,
-      rootDocumentId: string,
-    })
+  | SetFirestoreItemState({itemMap: State.itemMap})
+  | SetFirestoreDocumentState({documentMap: State.noteDocumentMap, rootDocumentId: string})
   | SetFirestoreDateActionLogState({
-      dateActionLogMap: Map.String.t<State.dateActionLog>,
+      dateActionLogMap: State.dateActionLogMap,
       latestDateActionLogId: string,
     })
 
@@ -84,7 +81,7 @@ type t =
       searchedDocuments: Set.String.t,
       searchedItems: Set.String.t,
     })
-  | SetActionLogState({dateActionLogMap: Map.String.t<State.dateActionLog>})
+  | SetActionLogState({dateActionLogMap: State.dateActionLogMap})
 
   // action for Redux DevTool
   | DevToolUpdate({state: State.t})

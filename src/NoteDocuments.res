@@ -44,13 +44,13 @@ module rec DocumentsInner: {
     let focus = Redux.useSelector(State.focus)
     let mode = Redux.useSelector(State.mode)
     let documentMap = Redux.useSelector(State.Firestore.documentMap)
-    let currentDocumentId = Redux.useSelector(State.Note.DocumentPane.currentDocumentId)
+    let currentDocumentId = Redux.useSelector(State.Note.DocumentPane.selectedDocumentId)
     let listItemRef = React.useRef(Js.Nullable.null)
 
     let isCurrentDocument = document.id == currentDocumentId
 
     let focused = if isCurrentDocument {
-      Style.focused
+      Style.List.selectedItem
     } else {
       ""
     }

@@ -15,6 +15,8 @@ type item = {
   lastChildId: string,
 }
 
+type itemMap = Map.String.t<item>
+
 type noteDocument = {
   id: string,
   text: string,
@@ -25,6 +27,8 @@ type noteDocument = {
   firstChildId: string,
   lastChildId: string,
 }
+
+type noteDocumentMap = Map.String.t<noteDocument>
 
 type actionLogItem = {
   id: string,
@@ -46,18 +50,22 @@ type actionLog = {
   prevId: string,
   nextId: string,
   text: string,
-  itemMap: Map.String.t<item>,
+  itemMap: itemMap,
   rootItemId: string,
 }
+
+type actionLogMap = Map.String.t<actionLog>
 
 type dateActionLog = {
   id: string,
   date: string,
   prevId: string,
   nextId: string,
-  actionLogMap: Map.String.t<actionLog>,
+  actionLogMap: actionLogMap,
   oldestActionLogId: string,
 }
+
+type dateActionLogMap = Map.String.t<dateActionLog>
 
 type initialCursorPosition = Start(unit) | End(unit)
 
@@ -90,13 +98,13 @@ type searchState = {
 
 type actionLogState = {
   currentId: string,
-  dateActionLogMap: Map.String.t<dateActionLog>,
+  dateActionLogMap: dateActionLogMap,
 }
 
 type firestoreState = {
-  documentMap: Map.String.t<noteDocument>,
-  itemMap: Map.String.t<item>,
-  dateActionLogMap: Map.String.t<dateActionLog>,
+  documentMap: noteDocumentMap,
+  itemMap: itemMap,
+  dateActionLogMap: dateActionLogMap,
   rootDocumentId: string,
   latestDateActionLogId: string,
 }
@@ -138,10 +146,10 @@ module Firestore = {
 
 module Note = {
   module DocumentPane = {
-    let currentDocumentId = ({note: {documentPane: {currentId}}}) => currentId
+    let selectedDocumentId = ({note: {documentPane: {currentId}}}) => currentId
     let editingText = ({note: {documentPane: {editingText}}}) => editingText
 
-    let currentDocument = state => state->Firestore.getDocument(state->currentDocumentId)
+    let selectedDocument = state => state->Firestore.getDocument(state->selectedDocumentId)
 
     let aboveDocument = (state, {prevId, parentId}: noteDocument) => {
       switch state->Firestore.getDocument(prevId) {
@@ -193,12 +201,12 @@ module Note = {
   }
 
   module ItemPane = {
-    let currentItemId = ({note: {itemPane: {currentId}}}) => currentId
+    let selectedItemId = ({note: {itemPane: {currentId}}}) => currentId
 
-    let currentItem = state => state->Firestore.getItem(state->currentItemId)
+    let selectedItem = state => state->Firestore.getItem(state->selectedItemId)
 
     let rootItem = state => {
-      switch state->DocumentPane.currentDocument {
+      switch state->DocumentPane.selectedDocument {
       | Some({rootItemId}) => state->Firestore.getItem(rootItemId)
 
       | _ => None

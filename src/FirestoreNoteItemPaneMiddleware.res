@@ -5,7 +5,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteItemPane) =>
 
   switch action {
   | Action.SaveItem() =>
-    switch state->State.Note.ItemPane.currentItem {
+    switch state->State.Note.ItemPane.selectedItem {
     | Some({id}) =>
       switch state.mode {
       | State.Insert(_) =>
@@ -23,7 +23,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteItemPane) =>
     }
 
   | Action.IndentItem() =>
-    switch state->State.Note.ItemPane.currentItem {
+    switch state->State.Note.ItemPane.selectedItem {
     | Some({id, parentId, prevId, nextId}) =>
       open Firebase.Firestore
 
@@ -71,7 +71,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteItemPane) =>
     }
 
   | Action.UnindentItem() =>
-    switch state->State.Note.ItemPane.currentItem {
+    switch state->State.Note.ItemPane.selectedItem {
     | Some({id, parentId, prevId, nextId}) =>
       open Firebase.Firestore
 
@@ -128,7 +128,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteItemPane) =>
     }
 
   | Action.AddItem({direction}) =>
-    switch state->State.Note.ItemPane.currentItem {
+    switch state->State.Note.ItemPane.selectedItem {
     | Some({id, parentId, prevId, nextId}) => {
         open Firebase.Firestore
 
@@ -213,7 +213,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteItemPane) =>
     }
 
   | Action.DeleteItem({nextCurrentId, initialCursorPosition}) =>
-    switch state->State.Note.ItemPane.currentItem {
+    switch state->State.Note.ItemPane.selectedItem {
     | Some(item) => {
         open Firebase.Firestore
 

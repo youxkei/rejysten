@@ -32,6 +32,7 @@ module List = {
 
   let bullet = style(. [gridColumnStart(1), textAlign(#right)])
   let item = style(. [gridColumnStart(3), width(100.0->pct)])
+  let selectedItem = merge(. [item, style(. [backgroundColor(nord[1])])])
   let child = style(. [gridColumnStart(3), gridRowStart(2), width(100.0->pct)])
 }
 
@@ -65,7 +66,6 @@ module Search = {
 }
 
 let item = style(. [width(100.0->pct), height(100.0->pct)])
-let focused = style(. [backgroundColor(nord[1])])
 
 global(.
   "body",
