@@ -441,7 +441,7 @@ module KeyDown = {
     }
 
     module Insert = {
-      let handler = (store, event) => ()
+      let handler = (_store, _event) => ()
     }
   }
 }
@@ -494,13 +494,13 @@ module Click = {
   }
 
   module Search = {
-    let handler = (store, event, isDouble, target) => {
+    let handler = (_store, _event, _isDouble, _target) => {
       ()
     }
   }
 
   module ActionLog = {
-    let handler = (store, event, isDouble, target) => {
+    let handler = (_store, _event, _isDouble, _target) => {
       ()
     }
   }
