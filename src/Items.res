@@ -91,7 +91,7 @@ module rec ItemsInner: {
         <div className=Style.List.bullet> <Bullet /> </div>
         <div className=itemStyle ref={ReactDOM.Ref.domRef(listItemRef)}>
           {switch (isFocused, editable, mode, isSelectedItem) {
-          | (true, true, State.Insert(_), true) => <NoteItemEditor />
+          | (true, true, State.Insert(_), true) => <ItemEditor />
 
           | _ => <Item item />
           }}

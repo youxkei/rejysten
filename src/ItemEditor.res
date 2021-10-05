@@ -5,20 +5,19 @@ open Belt
 @get external value: Js.t<'a> => string = "value"
 
 @react.component
-let make = React.memo(() => {
+let make = () => {
   let text = Redux.useSelector(State.ItemEditor.editingText)
   let initialCursorPosition = Redux.useSelector(State.initialCursorPosition)
 
   let dispatch = Redux.useDispatch()
 
-  let onChange = React.useCallback1(event => {
+  let onChange = event => {
     dispatch(Action.ItemEditor(Action.SetEditingText({text: event->ReactEvent.Form.target->value})))
-  }, [])
+  }
 
-  let onBlur = React.useCallback1(_ => {
-    dispatch(Action.FirestoreNote(Action.ItemPane(Action.SaveItem())))
-    dispatch(Action.Note(Action.ItemPane(Action.ToNormalMode())))
-  }, [])
+  let onBlur = event => {
+    dispatch(Action.Event(Event.Blur({event: event})))
+  }
 
   let textareaRef = React.useRef(Js.Nullable.null)
 
@@ -44,6 +43,4 @@ let make = React.memo(() => {
   <ReactTextareaAutosize
     className=Style.Note.editor ref={ReactDOM.Ref.domRef(textareaRef)} value=text onChange onBlur
   />
-})
-
-React.setDisplayName(make, "ItemEditor")
+}

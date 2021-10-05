@@ -506,6 +506,19 @@ module Click = {
   }
 }
 
+module Blur = {
+  module Note = {
+    module ItemPane = {
+      let handler = (store, _event) => {
+        let dispatch = Reductive.Store.dispatch(store)
+
+        dispatch(Action.FirestoreNote(Action.ItemPane(Action.SaveItem())))
+        dispatch(Action.Note(Action.ItemPane(Action.ToNormalMode())))
+      }
+    }
+  }
+}
+
 let middleware = (store, next, action) => {
   switch action {
   | Action.Event(event) => {
@@ -540,6 +553,12 @@ let middleware = (store, next, action) => {
         Click.Search.handler(store, event, isDouble, target)
       | (Event.Click({event, isDouble, target}), State.ActionLog(), _) =>
         Click.ActionLog.handler(store, event, isDouble, target)
+
+      | (Event.Blur({event}), State.Note(State.ItemPane()), _) =>
+        Blur.Note.ItemPane.handler(store, event)
+      | (Event.Blur(_), State.Note(State.DocumentPane()), _) => ()
+      | (Event.Blur(_), State.Search(), _) => ()
+      | (Event.Blur(_), State.ActionLog(), _) => ()
       }
     }
 
