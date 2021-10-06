@@ -96,10 +96,7 @@ type searchState = {
   searchedItems: Set.String.t,
 }
 
-type actionLogState = {
-  currentId: string,
-  dateActionLogMap: dateActionLogMap,
-}
+type actionLogState = {currentId: string}
 
 type firestoreState = {
   documentMap: noteDocumentMap,
@@ -318,7 +315,6 @@ let initialState: t = {
   },
   actionLog: {
     currentId: "",
-    dateActionLogMap: Map.String.empty,
   },
   firestore: {
     documentMap: Map.String.empty,

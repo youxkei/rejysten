@@ -457,11 +457,10 @@ let reducer = (state: State.t, action) => {
       },
     }
 
-  | Action.SetActionLogState({dateActionLogMap}) => {
+  | Action.SetActionLogState({currentId}) => {
       ...state,
       actionLog: {
-        ...state.actionLog,
-        dateActionLogMap: dateActionLogMap,
+        currentId: currentId,
       },
     }
 

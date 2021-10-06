@@ -1,17 +1,10 @@
 @react.component
 let make = () => {
-  let dispatch = Redux.useDispatch()
-  let dateActionLogMap = Redux.useSelector(State.Firestore.dateActionLogMap)
+  let _dispatch = Redux.useDispatch()
 
   React.useEffect1(() => {
-    dispatch(
-      Action.SetActionLogState({
-        dateActionLogMap: dateActionLogMap,
-      }),
-    )
-
     None
-  }, [dateActionLogMap])
+  }, [])
 
   React.null
 }

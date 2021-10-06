@@ -81,7 +81,7 @@ type t =
       searchedDocuments: Set.String.t,
       searchedItems: Set.String.t,
     })
-  | SetActionLogState({dateActionLogMap: State.dateActionLogMap})
+  | SetActionLogState({currentId: string})
 
   // action for Redux DevTool
   | DevToolUpdate({state: State.t})
