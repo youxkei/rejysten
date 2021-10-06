@@ -129,6 +129,7 @@ module Firestore = {
   let itemMap = state => state.firestore.itemMap
   let dateActionLogMap = state => state.firestore.dateActionLogMap
   let rootDocumentId = state => state.firestore.rootDocumentId
+  let latestDateActionLogId = state => state.firestore.latestDateActionLogId
 
   let getDocument = ({firestore: {documentMap}}, id) => {
     documentMap->Map.String.get(id)
@@ -138,6 +139,10 @@ module Firestore = {
 
   let getItem = ({firestore: {itemMap}}, id) => {
     itemMap->Map.String.get(id)
+  }
+
+  let getDateActitonLog = (state, id) => {
+    state.firestore.dateActionLogMap->Map.String.get(id)
   }
 }
 
