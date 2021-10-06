@@ -84,11 +84,9 @@ module Main = {
     let focus = Redux.useSelector(State.focus)
 
     switch focus {
-    | State.Note(_) => <> <Note /> <SyncNoteState /> </>
-
-    | State.Search() => <> <Search /> <SyncSearchState /> </>
-
-    | State.ActionLog(_) => <> <ActionLog /> <SyncActionLogState /> </>
+    | State.Note(_) => <Note />
+    | State.Search() => <Search />
+    | State.ActionLog(_) => <ActionLog />
     }
   }
 }
