@@ -48,7 +48,7 @@ external entries: 'a => array<(string, 'b)> = "entries"
           {
             id: id,
             text: item["text"],
-            container: item["documentId"],
+            container: State.Note({documentId: item["documentId"]}),
             nextId: item["nextId"],
             prevId: item["prevId"],
             parentId: item["parentId"],
