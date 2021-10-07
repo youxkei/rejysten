@@ -14,22 +14,19 @@ external scrollIntoView: (
 ) => unit = "scrollIntoView"
 @val @scope("window") external innerHeight: int = "innerHeight"
 
-%%private(
-  let makeChildren = (documentMap, document: State.noteDocument) => {
-    let children = []
-
-    let currentDocument = ref(documentMap->Map.String.get(document.firstChildId))
-
-    while Belt.Option.isSome(currentDocument.contents) {
-      let document: State.noteDocument = Option.getExn(currentDocument.contents)
-
+let makeChildren = (documentMap, document: State.noteDocument) => {
+  let rec makeChildren = (documentId, children) => {
+    switch documentMap->Map.String.get(documentId) {
+    | Some(document: State.noteDocument) =>
       let _ = children->Js.Array2.push(document)
-      currentDocument := documentMap->Map.String.get(document.nextId)
-    }
+      makeChildren(document.nextId, children)
 
-    children
+    | None => children
+    }
   }
-)
+
+  makeChildren(document.firstChildId, [])
+}
 
 module rec DocumentsInner: {
   let make: {"document": State.noteDocument} => ReasonReact.reactElement

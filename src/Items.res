@@ -15,18 +15,17 @@ external scrollIntoView: (
 @val @scope("window") external innerHeight: int = "innerHeight"
 
 let makeChildren = (itemMap, item: State.item) => {
-  let children = []
+  let rec makeChildren = (itemId, children) => {
+    switch itemMap->Map.String.get(itemId) {
+    | Some(item: State.item) =>
+      let _ = children->Js.Array2.push(item)
+      makeChildren(item.nextId, children)
 
-  let currentItem = ref(itemMap->Map.String.get(item.firstChildId))
-
-  while Option.isSome(currentItem.contents) {
-    let item: State.item = Option.getExn(currentItem.contents)
-
-    let _ = children->Js.Array2.push(item)
-    currentItem := itemMap->Map.String.get(item.nextId)
+    | None => children
+    }
   }
 
-  children
+  makeChildren(item.firstChildId, [])
 }
 
 module rec ItemsInner: {

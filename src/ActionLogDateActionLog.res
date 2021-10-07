@@ -1,10 +1,10 @@
 open Belt
 
-let rec getActionLogs = (actionLogMap, currentId, actionLogs) => {
+let rec makeActionLogs = (actionLogMap, currentId, actionLogs) => {
   switch actionLogMap->Map.String.get(currentId) {
   | Some(actionLog: State.actionLog) =>
     let _ = actionLogs->Js.Array2.push(actionLog)
-    actionLogMap->getActionLogs(actionLog.nextId, actionLogs)
+    actionLogMap->makeActionLogs(actionLog.nextId, actionLogs)
 
   | None => actionLogs
   }
@@ -13,7 +13,7 @@ let rec getActionLogs = (actionLogMap, currentId, actionLogs) => {
 @react.component
 let make = (~dateActionLog: State.dateActionLog, ()) => {
   dateActionLog.actionLogMap
-  ->getActionLogs(dateActionLog.oldestActionLogId, [])
+  ->makeActionLogs(dateActionLog.oldestActionLogId, [])
   ->Array.map(actionLog => <ActionLogActionLog actionLog />)
   ->React.array
 }
