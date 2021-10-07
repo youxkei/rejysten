@@ -4,17 +4,14 @@ let recentDateActionLogsNum = 2
 
 let rec getRecentDateActionLogs = (dateActionLogMap, currentId, n, recentDateActionLogs) => {
   if n == recentDateActionLogsNum {
-    List.reverse(recentDateActionLogs)
+    recentDateActionLogs
   } else {
     switch dateActionLogMap->Map.String.get(currentId) {
     | Some(dateActionLog: State.dateActionLog) =>
-      dateActionLogMap->getRecentDateActionLogs(
-        dateActionLog.prevId,
-        n + 1,
-        list{dateActionLog, ...recentDateActionLogs},
-      )
+      let _ = recentDateActionLogs->Js.Array2.push(dateActionLog)
+      dateActionLogMap->getRecentDateActionLogs(dateActionLog.prevId, n + 1, recentDateActionLogs)
 
-    | None => List.reverse(recentDateActionLogs)
+    | None => recentDateActionLogs
     }
   }
 }
@@ -24,13 +21,11 @@ let make = () => {
   let dateActionLogMap = Redux.useSelector(State.Firestore.dateActionLogMap)
   let latestDateActionLogId = Redux.useSelector(State.Firestore.latestDateActionLogId)
 
-  let recentDateActionLogs =
-    dateActionLogMap->getRecentDateActionLogs(latestDateActionLogId, 0, list{})
+  let recentDateActionLogs = dateActionLogMap->getRecentDateActionLogs(latestDateActionLogId, 0, [])
 
   recentDateActionLogs
-  ->List.map((dateActionLog: State.dateActionLog) => {
+  ->Array.map((dateActionLog: State.dateActionLog) => {
     <ActionLogDateActionLog dateActionLog />
   })
-  ->List.toArray
   ->React.array
 }
