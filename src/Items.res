@@ -60,7 +60,7 @@ module rec ItemsInner: {
     let isSelectedItem = item.id == selectedItemId
 
     let itemStyle = if isSelectedItem {
-      `${Style.List.item} ${Style.List.selectedItem}`
+      Style.List.selectedItem
     } else {
       Style.List.item
     }
