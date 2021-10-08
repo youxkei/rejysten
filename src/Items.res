@@ -85,25 +85,23 @@ module rec ItemsInner: {
       None
     }, [isSelectedItem])
 
-    <>
-      <div className=Style.List.container>
-        <div className=Style.List.bullet> <Bullet /> </div>
-        <div className=itemStyle ref={ReactDOM.Ref.domRef(listItemRef)}>
-          {switch (isFocused, editable, mode, isSelectedItem) {
-          | (true, true, State.Insert(_), true) => <ItemEditor />
+    <div className=Style.List.container>
+      <div className=Style.List.bullet> <Bullet /> </div>
+      <div className=itemStyle ref={ReactDOM.Ref.domRef(listItemRef)}>
+        {switch (isFocused, editable, mode, isSelectedItem) {
+        | (true, true, State.Insert(_), true) => <ItemEditor />
 
-          | _ => <Item item />
-          }}
-        </div>
-        <div className=Style.List.child>
-          {makeChildren(itemMap, item)
-          ->Array.map((item: State.item) => {
-            <ItemsInner key=item.id editable isFocused item selectedItemId itemMap />
-          })
-          ->React.array}
-        </div>
+        | _ => <Item item />
+        }}
       </div>
-    </>
+      <div className=Style.List.child>
+        {makeChildren(itemMap, item)
+        ->Array.map((item: State.item) => {
+          <ItemsInner key=item.id editable isFocused item selectedItemId itemMap />
+        })
+        ->React.array}
+      </div>
+    </div>
   }
 }
 
