@@ -7,33 +7,9 @@ external addEventListener: (Dom.window, string, Dom.keyboardEvent => unit) => un
 @send external toString: Js.t<'a> => string = "toString"
 
 %%raw(`
-  import "firebase/firestore";
-  import "firebase/auth";
+  import "firebase/compat/app";
+  import "firebase/compat/firestore";
 `)
-
-let firebaseConfig = {
-  "apiKey": "AIzaSyBibda14rl7kYHvJJPyqxXYkL-FnnbpIKk",
-  "authDomain": "rejysten.firebaseapp.com",
-  "databaseURL": "https://rejysten.firebaseio.com",
-  "projectId": "rejysten",
-  "storageBucket": "rejysten.appspot.com",
-  "messagingSenderId": "720104133648",
-  "appId": "1:720104133648:web:5f1f29ef3ae4916cdae695",
-  "measurementId": "G-64RW992RRF",
-}
-
-exception PersistenceNotSupported
-
-Firebase.initializeApp(firebaseConfig)
-Firebase.firestore()
-->Firebase.Firestore.enablePersistence
-->Firebase.Firestore.catch(err => {
-  if err.code == "failed-precondition" {
-    Js.log("Multiple tabs open, persistence can only be enabled in one tab at a a time.")
-  } else if err.code == "unimplemented" {
-    raise(PersistenceNotSupported)
-  }
-})
 
 let loggerMiddleware = (store, next, action) => {
   Js.log(Reductive.Store.getState(store))
@@ -94,7 +70,7 @@ module Main = {
 module App = {
   @react.component
   let make = () => {
-    let (user, initializing, error) = useAuthState(Firebase.auth())
+    let (user, initializing, error) = useAuthState(Firebase.auth)
     let user = user->Js.toOption
 
     React.useEffect1(() => {
@@ -108,7 +84,7 @@ module App = {
 
           | None =>
             let provider = Firebase.Auth.googleAuthProvider()
-            Firebase.auth()->Firebase.Auth.signInWithPopup(provider)
+            Firebase.auth->Firebase.Auth.signInWithPopup(provider)
           }
         }
       }

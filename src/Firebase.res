@@ -1,47 +1,48 @@
-type auth
-
 module Auth = {
   type t
   type provider
 
-  @send external signInWithPopup: (t, provider) => unit = "signInWithPopup"
+  @module("firebase/auth")
+  external signInWithPopup: (t, provider) => unit = "signInWithPopup"
+  @module("firebase/auth")
+  external signInWithRedirect: (t, provider) => unit = "signInWithRedirect"
 
-  @module("firebase/app") @new @scope(("default", "auth"))
+  @module("firebase/auth") @new
   external googleAuthProvider: unit => provider = "GoogleAuthProvider"
 }
-
-@module("firebase/app") @scope("default") external auth: unit => Auth.t = "auth"
 
 module Firestore = {
   type t
   type collection
   type document
 
-  @send external collection: (t, string) => collection = "collection"
-  @send external where: (collection, string, string, string) => collection = "where"
-  @send external doc: (collection, string) => document = "doc"
+  @module("firebase/firestore") external collection: (t, string) => collection = "collection"
+  @module("firebase/firestore") external doc: (collection, string) => document = "doc"
 
-  @send external update: (document, Js.t<'a>) => unit = "update"
+  @module("firebase/firestore") external update: (document, Js.t<'a>) => unit = "updateDoc"
 
-  type batch
-  @send external batch: t => batch = "batch"
-  @send external addUpdate: (batch, document, Js.t<'a>) => unit = "update"
-  @send external addSet: (batch, document, Js.t<'a>) => unit = "set"
-  @send external addDelete: (batch, document) => unit = "delete"
-  @send external commit: batch => unit = "commit"
+  type writeBatch
+  @module("firebase/firestore") external writeBatch: t => writeBatch = "writeBatch"
+  @send external addUpdate: (writeBatch, document, Js.t<'a>) => unit = "update"
+  @send external addSet: (writeBatch, document, Js.t<'a>) => unit = "set"
+  @send external addDelete: (writeBatch, document) => unit = "delete"
+  @send external commit: writeBatch => unit = "commit"
 
-  @module("firebase/app") @scope(("default", "firestore"))
-  external setLogLevel: string => unit = "setLogLevel"
-
-  type enablePersistenceResult
-  type enablePersistenceError = {code: string}
-  @send external enablePersistence: t => enablePersistenceResult = "enablePersistence"
-  @send external catch: (enablePersistenceResult, enablePersistenceError => unit) => unit = "catch"
+  type enableMultiTabIndexedDbPersistenceResult
+  type enableMultiTabIndexedDbPersistenceError = {code: string}
+  @module("firebase/firestore")
+  external enableMultiTabIndexedDbPersistence: t => enableMultiTabIndexedDbPersistenceResult =
+    "enableMultiTabIndexedDbPersistence"
+  @send
+  external catch: (
+    enableMultiTabIndexedDbPersistenceResult,
+    enableMultiTabIndexedDbPersistenceError => unit,
+  ) => unit = "catch"
 }
 
-@module("firebase/app") @scope("default") external firestore: unit => Firestore.t = "firestore"
+type t
 
-@module("firebase/app") @scope("default")
+@module("firebase/app")
 external initializeApp: {
   "apiKey": string,
   "authDomain": string,
@@ -51,4 +52,32 @@ external initializeApp: {
   "messagingSenderId": string,
   "appId": string,
   "measurementId": string,
-} => unit = "initializeApp"
+} => t = "initializeApp"
+
+@module("firebase/auth") external getAuth: t => Auth.t = "getAuth"
+@module("firebase/firestore") external getFirestore: t => Firestore.t = "getFirestore"
+
+let firebaseApp = initializeApp({
+  "apiKey": "AIzaSyBibda14rl7kYHvJJPyqxXYkL-FnnbpIKk",
+  "authDomain": "rejysten.firebaseapp.com",
+  "databaseURL": "https://rejysten.firebaseio.com",
+  "projectId": "rejysten",
+  "storageBucket": "rejysten.appspot.com",
+  "messagingSenderId": "720104133648",
+  "appId": "1:720104133648:web:5f1f29ef3ae4916cdae695",
+  "measurementId": "G-64RW992RRF",
+})
+
+let auth = firebaseApp->getAuth
+let firestore = firebaseApp->getFirestore
+
+exception PersistenceNotSupported
+firestore
+->Firestore.enableMultiTabIndexedDbPersistence
+->Firestore.catch(err => {
+  if err.code == "failed-precondition" {
+    Js.log("The app is already open in another browser tab and multi-tab is not enabled.")
+  } else if err.code == "unimplemented" {
+    raise(PersistenceNotSupported)
+  }
+})

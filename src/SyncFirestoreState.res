@@ -172,7 +172,7 @@ module Document = {
 
     let dispatch = Redux.useDispatch()
 
-    let documentsCollection = React.useMemo(() => Firebase.firestore()->collection("documents"))
+    let documentsCollection = React.useMemo(() => Firebase.firestore->collection("documents"))
 
     let (documents, documentsLoading, documentsError) = useCollectionData(
       documentsCollection,
@@ -208,7 +208,7 @@ module Item = {
 
     let dispatch = Redux.useDispatch()
 
-    let itemsCollection = React.useMemo(() => Firebase.firestore()->collection("items"))
+    let itemsCollection = React.useMemo(() => Firebase.firestore->collection("items"))
 
     let (items, itemsLoading, itemsError) = useCollectionData(itemsCollection, {"idField": "id"})
 
@@ -239,7 +239,7 @@ module DateActionLog = {
     let dispatch = Redux.useDispatch()
 
     let dateActionLogCollection = React.useMemo(() =>
-      Firebase.firestore()->collection("dateActionLogs")
+      Firebase.firestore->collection("dateActionLogs")
     )
 
     let (dateActionLogs, loading, error) = useCollectionData(

@@ -11,7 +11,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
       | State.Insert(_) =>
         open Firebase.Firestore
 
-        Firebase.firestore()
+        Firebase.firestore
         ->collection("documents")
         ->doc(id)
         ->update({"text": state.note.documentPane.editingText})
@@ -27,13 +27,13 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
     | Some({id, parentId, prevId, nextId}) =>
       open Firebase.Firestore
 
-      let db = Firebase.firestore()
-      let batch = db->batch
+      let db = Firebase.firestore
+      let writeBatch = db->writeBatch
       let documents = db->collection("documents")
 
       switch state.mode {
       | State.Insert(_) =>
-        batch->addUpdate(documents->doc(id), {"text": state.note.documentPane.editingText})
+        writeBatch->addUpdate(documents->doc(id), {"text": state.note.documentPane.editingText})
 
       | State.Normal() => ()
       }
@@ -41,32 +41,35 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
       switch state->State.Firestore.getDocument(prevId) {
       | Some({lastChildId: prevLastChildId}) =>
         if prevLastChildId == "" {
-          batch->addUpdate(documents->doc(id), {"parentId": prevId, "prevId": "", "nextId": ""})
-          batch->addUpdate(
+          writeBatch->addUpdate(
+            documents->doc(id),
+            {"parentId": prevId, "prevId": "", "nextId": ""},
+          )
+          writeBatch->addUpdate(
             documents->doc(prevId),
             {"nextId": nextId, "firstChildId": id, "lastChildId": id},
           )
         } else {
-          batch->addUpdate(
+          writeBatch->addUpdate(
             documents->doc(id),
             {"parentId": prevId, "prevId": prevLastChildId, "nextId": ""},
           )
-          batch->addUpdate(documents->doc(prevId), {"nextId": nextId, "lastChildId": id})
-          batch->addUpdate(documents->doc(prevLastChildId), {"nextId": id})
+          writeBatch->addUpdate(documents->doc(prevId), {"nextId": nextId, "lastChildId": id})
+          writeBatch->addUpdate(documents->doc(prevLastChildId), {"nextId": id})
         }
 
         if nextId == "" {
           if parentId != "" {
-            batch->addUpdate(documents->doc(parentId), {"lastChildId": prevId})
+            writeBatch->addUpdate(documents->doc(parentId), {"lastChildId": prevId})
           }
         } else {
-          batch->addUpdate(documents->doc(nextId), {"prevId": prevId})
+          writeBatch->addUpdate(documents->doc(nextId), {"prevId": prevId})
         }
 
       | _ => ()
       }
 
-      batch->commit
+      writeBatch->commit
 
     | None => ()
     }
@@ -76,13 +79,13 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
     | Some({id, parentId, prevId, nextId}) =>
       open Firebase.Firestore
 
-      let db = Firebase.firestore()
-      let batch = db->batch
+      let db = Firebase.firestore
+      let writeBatch = db->writeBatch
       let documents = db->collection("documents")
 
       switch state.mode {
       | State.Insert(_) =>
-        batch->addUpdate(documents->doc(id), {"text": state.note.documentPane.editingText})
+        writeBatch->addUpdate(documents->doc(id), {"text": state.note.documentPane.editingText})
 
       | _ => ()
       }
@@ -90,7 +93,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
       switch state->State.Firestore.getDocument(parentId) {
       | Some({parentId: parentParentId, nextId: parentNextId}) =>
         if parentParentId != "" {
-          batch->addUpdate(
+          writeBatch->addUpdate(
             documents->doc(id),
             {
               "parentId": parentParentId,
@@ -98,33 +101,33 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
               "nextId": parentNextId,
             },
           )
-          batch->addUpdate(documents->doc(parentId), {"nextId": id})
+          writeBatch->addUpdate(documents->doc(parentId), {"nextId": id})
 
           if nextId == "" {
-            batch->addUpdate(documents->doc(parentId), {"lastChildId": prevId})
+            writeBatch->addUpdate(documents->doc(parentId), {"lastChildId": prevId})
           } else {
-            batch->addUpdate(documents->doc(nextId), {"prevId": prevId})
+            writeBatch->addUpdate(documents->doc(nextId), {"prevId": prevId})
           }
 
           if prevId == "" {
-            batch->addUpdate(documents->doc(parentId), {"firstChildId": nextId})
+            writeBatch->addUpdate(documents->doc(parentId), {"firstChildId": nextId})
           } else {
-            batch->addUpdate(documents->doc(prevId), {"nextId": nextId})
+            writeBatch->addUpdate(documents->doc(prevId), {"nextId": nextId})
           }
 
           if parentNextId == "" {
             if parentParentId != "" {
-              batch->addUpdate(documents->doc(parentParentId), {"lastChildId": id})
+              writeBatch->addUpdate(documents->doc(parentParentId), {"lastChildId": id})
             }
           } else {
-            batch->addUpdate(documents->doc(parentNextId), {"prevId": id})
+            writeBatch->addUpdate(documents->doc(parentNextId), {"prevId": id})
           }
         }
 
       | _ => ()
       }
 
-      batch->commit
+      writeBatch->commit
 
     | _ => ()
     }
@@ -134,8 +137,8 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
     | Some({id, parentId, prevId, nextId}) => {
         open Firebase.Firestore
 
-        let db = Firebase.firestore()
-        let batch = db->batch
+        let db = Firebase.firestore
+        let writeBatch = db->writeBatch
         let items = db->collection("items")
         let documents = db->collection("documents")
 
@@ -145,16 +148,16 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
 
         switch state.mode {
         | State.Insert(_) =>
-          batch->addUpdate(documents->doc(id), {"text": state.note.documentPane.editingText})
+          writeBatch->addUpdate(documents->doc(id), {"text": state.note.documentPane.editingText})
 
         | _ => ()
         }
 
         switch direction {
         | Action.Prev() => {
-            batch->addUpdate(documents->doc(id), {"prevId": addingDocumentId})
+            writeBatch->addUpdate(documents->doc(id), {"prevId": addingDocumentId})
 
-            batch->addSet(
+            writeBatch->addSet(
               documents->doc(addingDocumentId),
               {
                 "rootItemId": addingRootItemId,
@@ -169,17 +172,17 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
 
             if prevId == "" {
               if parentId != "" {
-                batch->addUpdate(documents->doc(parentId), {"firstChildId": addingDocumentId})
+                writeBatch->addUpdate(documents->doc(parentId), {"firstChildId": addingDocumentId})
               }
             } else {
-              batch->addUpdate(documents->doc(prevId), {"nextId": addingDocumentId})
+              writeBatch->addUpdate(documents->doc(prevId), {"nextId": addingDocumentId})
             }
           }
 
         | Action.Next() => {
-            batch->addUpdate(documents->doc(id), {"nextId": addingDocumentId})
+            writeBatch->addUpdate(documents->doc(id), {"nextId": addingDocumentId})
 
-            batch->addSet(
+            writeBatch->addSet(
               documents->doc(addingDocumentId),
               {
                 "rootItemId": addingRootItemId,
@@ -194,15 +197,15 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
 
             if nextId == "" {
               if parentId != "" {
-                batch->addUpdate(documents->doc(parentId), {"lastChildId": addingDocumentId})
+                writeBatch->addUpdate(documents->doc(parentId), {"lastChildId": addingDocumentId})
               }
             } else {
-              batch->addUpdate(documents->doc(nextId), {"prevId": addingDocumentId})
+              writeBatch->addUpdate(documents->doc(nextId), {"prevId": addingDocumentId})
             }
           }
         }
 
-        batch->addSet(
+        writeBatch->addSet(
           items->doc(addingRootItemId),
           {
             "documentId": addingDocumentId,
@@ -215,7 +218,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
           },
         )
 
-        batch->addSet(
+        writeBatch->addSet(
           items->doc(addingItemId),
           {
             "documentId": addingDocumentId,
@@ -228,7 +231,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
           },
         )
 
-        batch->commit
+        writeBatch->commit
 
         Reductive.Store.dispatch(
           store,
@@ -257,29 +260,29 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
 
           let {id, parentId, prevId, nextId} = currentDocument
 
-          let db = Firebase.firestore()
-          let batch = db->batch
+          let db = Firebase.firestore
+          let writeBatch = db->writeBatch
           let documents = db->collection("documents")
           let items = db->collection("items")
 
-          batch->addDelete(documents->doc(id))
-          batch->addDelete(items->doc(rootItemId))
-          batch->addDelete(items->doc(firstChildItemId))
+          writeBatch->addDelete(documents->doc(id))
+          writeBatch->addDelete(items->doc(rootItemId))
+          writeBatch->addDelete(items->doc(firstChildItemId))
 
           if prevId == "" {
             if parentId != "" {
-              batch->addUpdate(documents->doc(parentId), {"firstChildId": nextId})
+              writeBatch->addUpdate(documents->doc(parentId), {"firstChildId": nextId})
             }
           } else {
-            batch->addUpdate(documents->doc(prevId), {"nextId": nextId})
+            writeBatch->addUpdate(documents->doc(prevId), {"nextId": nextId})
           }
 
           if nextId == "" {
             if parentId != "" {
-              batch->addUpdate(documents->doc(parentId), {"lastChildId": prevId})
+              writeBatch->addUpdate(documents->doc(parentId), {"lastChildId": prevId})
             }
           } else {
-            batch->addUpdate(documents->doc(nextId), {"prevId": prevId})
+            writeBatch->addUpdate(documents->doc(nextId), {"prevId": prevId})
           }
 
           Reductive.Store.dispatch(
@@ -294,7 +297,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
             ),
           )
 
-          batch->commit
+          writeBatch->commit
 
         | None => ()
         }
