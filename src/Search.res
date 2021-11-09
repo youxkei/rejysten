@@ -60,7 +60,6 @@ module Sync = {
     let (searchingText, ()) = Hook.useDebounce(searchingText, 200)
 
     React.useEffect2(() => {
-      Js.log(searchingText)
       let (ancestorDocuments, searchedDocuments, searchedItems) = search(
         documentMap,
         itemMap,
