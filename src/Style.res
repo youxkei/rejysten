@@ -47,8 +47,8 @@ module Note = {
   let documentPane = style(. [gridColumnStart(1), overflow(auto)])
   let itemPane = style(. [gridColumnStart(2), overflow(auto)])
 
-  let focusedPane = style(. [border(8->px, solid, nord[1])])
-  let unfocusedPane = style(. [border(8->px, solid, nord[0])])
+  let focusedPane = style(. [])
+  let unfocusedPane = style(. [filter([#brightness(60.0)])])
 
   let document = style(. [width(100.0->pct), height(100.0->pct)])
 
