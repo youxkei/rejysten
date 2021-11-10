@@ -4,6 +4,7 @@ external addEventListener: (string, Dom.keyboardEvent => unit) => unit = "addEve
 external removeEventListener: (string, Dom.keyboardEvent => unit) => unit = "removeEventListener"
 @val external setTimeout: (unit => unit, int) => float = "setTimeout"
 @val external clearTimeout: float => unit = "clearTimeout"
+@val @scope("window") external innerHeight: int = "innerHeight"
 
 @module("use-debounce") @val external useDebounce: ('a, int) => ('a, unit) = "useDebounce"
 
@@ -58,4 +59,24 @@ let useTouch = callback => {
   }, [callback])
 
   (onTouchMove, onTouchEnd, onTouchCancel)
+}
+
+let useInnerHeight = () => {
+  let (currentInnerHeight, setCurrentInnerHeight) = React.useState(() => innerHeight)
+
+  React.useEffect1(() => {
+    let onResize = _ => {
+      setCurrentInnerHeight(_ => innerHeight)
+    }
+
+    addEventListener("resize", onResize)
+
+    Some(
+      () => {
+        removeEventListener("resize", onResize)
+      },
+    )
+  }, [])
+
+  currentInnerHeight
 }

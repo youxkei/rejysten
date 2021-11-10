@@ -22,6 +22,8 @@ open CssJs
   ]
 )
 
+let globalMargin = 8
+
 module List = {
   let container = style(. [
     display(grid),
@@ -74,6 +76,7 @@ global(.
     backgroundColor(nord[0]),
     fontFamily(#sansSerif),
     fontSize(16->px),
+    margin(globalMargin->px),
     unsafe("touch-action", "manipulation"),
   ],
 )

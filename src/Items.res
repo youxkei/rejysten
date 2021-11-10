@@ -12,7 +12,6 @@ external scrollIntoView: (
   Dom.element,
   {"behavior": string, "block": string, "inline": string},
 ) => unit = "scrollIntoView"
-@val @scope("window") external innerHeight: int = "innerHeight"
 
 let makeChildren = (itemMap, item: State.item) => {
   let rec makeChildren = (itemId, children) => {
@@ -56,6 +55,8 @@ module rec ItemsInner: {
   let make = (~editable, ~isFocused, ~item: State.item, ~selectedItemId, ~itemMap) => {
     let mode = Redux.useSelector(State.mode)
     let listItemRef = React.useRef(Js.Nullable.null)
+    let innerHeight = Hook.useInnerHeight()
+    Js.log(innerHeight)
 
     let isSelectedItem = item.id == selectedItemId
 
@@ -65,25 +66,25 @@ module rec ItemsInner: {
       Style.List.item
     }
 
-    React.useEffect1(() => {
+    React.useEffect2(() => {
       if isSelectedItem {
         listItemRef.current
         ->Js.Nullable.toOption
         ->Option.forEach(listItem => {
           let rect = listItem->getBoundingClientRect
 
-          if rect["top"] < 0 {
+          if rect["top"] < Style.globalMargin {
             listItem->scrollIntoView({"behavior": "auto", "block": "start", "inline": "nearest"})
           }
 
-          if rect["bottom"] > innerHeight {
+          if rect["bottom"] > innerHeight - Style.globalMargin {
             listItem->scrollIntoView({"behavior": "auto", "block": "end", "inline": "nearest"})
           }
         })
       }
 
       None
-    }, [isSelectedItem])
+    }, (isSelectedItem, innerHeight))
 
     <div className=Style.List.container>
       <div className=Style.List.bullet> <Bullet /> </div>
