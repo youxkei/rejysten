@@ -8,18 +8,6 @@ external removeEventListener: (string, Dom.keyboardEvent => unit) => unit = "rem
 
 @module("use-debounce") @val external useDebounce: ('a, int) => ('a, unit) = "useDebounce"
 
-let useKeyDown = (handler, dependencies) => {
-  React.useEffect1(() => {
-    addEventListener("keypress", handler)
-
-    Some(
-      () => {
-        removeEventListener("keypress", handler)
-      },
-    )
-  }, dependencies)
-}
-
 let useDouble = callback => {
   let timerRef = React.useRef(None)
 
@@ -37,28 +25,6 @@ let useDouble = callback => {
       timerRef.current = Some(setTimeout(() => {timerRef.current = None}, 300))
     }
   }, [callback])
-}
-
-let useTouch = callback => {
-  let noTouchMoveRef = React.useRef(true)
-
-  let onTouchMove = React.useCallback(_ => {
-    noTouchMoveRef.current = false
-  })
-
-  let onTouchCancel = React.useCallback(_ => {
-    noTouchMoveRef.current = true
-  })
-
-  let onTouchEnd = React.useCallback1(event => {
-    if noTouchMoveRef.current {
-      callback(event)
-    }
-
-    noTouchMoveRef.current = true
-  }, [callback])
-
-  (onTouchMove, onTouchEnd, onTouchCancel)
 }
 
 let useInnerHeight = () => {
