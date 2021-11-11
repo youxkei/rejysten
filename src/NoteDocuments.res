@@ -12,7 +12,6 @@ external scrollIntoView: (
   Dom.element,
   {"behavior": string, "block": string, "inline": string},
 ) => unit = "scrollIntoView"
-@val @scope("window") external innerHeight: int = "innerHeight"
 
 let makeChildren = (documentMap, document: State.noteDocument) => {
   let rec makeChildren = (documentId, children) => {
@@ -43,34 +42,29 @@ module rec DocumentsInner: {
     let documentMap = Redux.useSelector(State.Firestore.documentMap)
     let currentDocumentId = Redux.useSelector(State.Note.DocumentPane.selectedDocumentId)
     let listItemRef = React.useRef(Js.Nullable.null)
+    let innerHeight = Hook.useInnerHeight()
 
     let isCurrentDocument = document.id == currentDocumentId
 
-    let focused = if isCurrentDocument {
-      Style.List.selectedItem
-    } else {
-      ""
-    }
-
-    React.useEffect1(() => {
+    React.useEffect2(() => {
       if isCurrentDocument {
         listItemRef.current
         ->Js.Nullable.toOption
         ->Option.forEach(listItem => {
           let rect = listItem->getBoundingClientRect
 
-          if rect["top"] < 0 {
+          if rect["top"] < Style.globalMargin {
             listItem->scrollIntoView({"behavior": "auto", "block": "start", "inline": "nearest"})
           }
 
-          if rect["bottom"] > innerHeight {
+          if rect["bottom"] > innerHeight - Style.globalMargin {
             listItem->scrollIntoView({"behavior": "auto", "block": "end", "inline": "nearest"})
           }
         })
       }
 
       None
-    }, [isCurrentDocument])
+    }, (isCurrentDocument, innerHeight))
 
     <BulletList
       bullet={<Bullet />}
