@@ -24,7 +24,7 @@ open CssJs
 
 let globalMargin = 8
 
-module List = {
+module BulletList = {
   let container = style(. [
     display(grid),
     gridTemplateColumns([32->px, 8->px, auto]),

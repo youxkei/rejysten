@@ -72,25 +72,21 @@ module rec DocumentsInner: {
       None
     }, [isCurrentDocument])
 
-    <>
-      <div className=Style.List.container>
-        <div className=Style.List.bullet> <Bullet /> </div>
-        <div className={`${Style.List.item} ${focused}`} ref={ReactDOM.Ref.domRef(listItemRef)}>
-          {switch (focus, mode, isCurrentDocument) {
-          | (State.Note(State.DocumentPane()), State.Insert(_), true) => <NoteDocumentEditor />
+    <BulletList
+      bullet={<Bullet />}
+      item={switch (focus, mode, isCurrentDocument) {
+      | (State.Note(State.DocumentPane()), State.Insert(_), true) => <NoteDocumentEditor />
 
-          | _ => <NoteDocument document />
-          }}
-        </div>
-        <div className=Style.List.child>
-          {makeChildren(documentMap, document)
-          ->Array.map((document: State.noteDocument) => {
-            <DocumentsInner key=document.id document />
-          })
-          ->React.array}
-        </div>
-      </div>
-    </>
+      | _ => <NoteDocument document />
+      }}
+      isSelectedItem=isCurrentDocument
+      itemRef={ReactDOM.Ref.domRef(listItemRef)}
+      child={makeChildren(documentMap, document)
+      ->Array.map((document: State.noteDocument) => {
+        <DocumentsInner key=document.id document />
+      })
+      ->React.array}
+    />
   })
 }
 

@@ -56,15 +56,8 @@ module rec ItemsInner: {
     let mode = Redux.useSelector(State.mode)
     let listItemRef = React.useRef(Js.Nullable.null)
     let innerHeight = Hook.useInnerHeight()
-    Js.log(innerHeight)
 
     let isSelectedItem = item.id == selectedItemId
-
-    let itemStyle = if isSelectedItem {
-      Style.List.selectedItem
-    } else {
-      Style.List.item
-    }
 
     React.useEffect2(() => {
       if isSelectedItem {
@@ -86,23 +79,21 @@ module rec ItemsInner: {
       None
     }, (isSelectedItem, innerHeight))
 
-    <div className=Style.List.container>
-      <div className=Style.List.bullet> <Bullet /> </div>
-      <div className=itemStyle ref={ReactDOM.Ref.domRef(listItemRef)}>
-        {switch (isFocused, editable, mode, isSelectedItem) {
-        | (true, true, State.Insert(_), true) => <ItemEditor />
+    <BulletList
+      bullet={<Bullet />}
+      item={switch (isFocused, editable, mode, isSelectedItem) {
+      | (true, true, State.Insert(_), true) => <ItemEditor />
 
-        | _ => <Item item />
-        }}
-      </div>
-      <div className=Style.List.child>
-        {makeChildren(itemMap, item)
-        ->Array.map((item: State.item) => {
-          <ItemsInner key=item.id editable isFocused item selectedItemId itemMap />
-        })
-        ->React.array}
-      </div>
-    </div>
+      | _ => <Item item />
+      }}
+      isSelectedItem
+      itemRef={ReactDOM.Ref.domRef(listItemRef)}
+      child={makeChildren(itemMap, item)
+      ->Array.map((item: State.item) => {
+        <ItemsInner key=item.id editable isFocused item selectedItemId itemMap />
+      })
+      ->React.array}
+    />
   }
 }
 

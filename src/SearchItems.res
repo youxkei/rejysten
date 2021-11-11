@@ -49,17 +49,15 @@ module rec ItemsInner: {
     let itemMap = Redux.useSelector(State.Firestore.itemMap)
     let searchedItems = Redux.useSelector(State.Search.searchedItems)
 
-    <div className=Style.List.container>
-      <div className=Style.List.bullet> <Bullet /> </div>
-      <div className=Style.List.item> <Item item /> </div>
-      <div className=Style.List.child>
-        {makeItemChildren(itemMap, searchedItems, item)
-        ->Array.map((item: State.item) => {
-          <ItemsInner key=item.id item />
-        })
-        ->React.array}
-      </div>
-    </div>
+    <BulletList
+      bullet={<Bullet />}
+      item={<Item item />}
+      child={makeItemChildren(itemMap, searchedItems, item)
+      ->Array.map((item: State.item) => {
+        <ItemsInner key=item.id item />
+      })
+      ->React.array}
+    />
   }
 }
 
@@ -79,10 +77,10 @@ module rec DocumentsInner: {
     let searchedDocuments = Redux.useSelector(State.Search.searchedDocuments)
     let searchedItems = Redux.useSelector(State.Search.searchedItems)
 
-    <div className=Style.List.container>
-      <div className=Style.List.bullet> <Bullet /> </div>
-      <div className=Style.List.item> <NoteDocument document /> </div>
-      <div className=Style.List.child>
+    <BulletList
+      bullet={<Bullet />}
+      item={<NoteDocument document />}
+      child={<>
         {if searchedDocuments->Set.String.has(document.id) {
           switch itemMap->Map.String.get(document.rootItemId) {
           | Some(rootItem) =>
@@ -104,8 +102,8 @@ module rec DocumentsInner: {
           <DocumentsInner key=document.id document />
         })
         ->React.array}
-      </div>
-    </div>
+      </>}
+    />
   }
 }
 
