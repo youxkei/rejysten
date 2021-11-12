@@ -457,10 +457,10 @@ let reducer = (state: State.t, action) => {
       },
     }
 
-  | Action.SetActionLogState({currentId}) => {
+  | Action.SetActionLogState({selectedId}) => {
       ...state,
       actionLog: {
-        currentId: currentId,
+        selectedId: selectedId,
       },
     }
 

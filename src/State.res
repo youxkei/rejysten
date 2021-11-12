@@ -62,7 +62,7 @@ type dateActionLog = {
   prevId: string,
   nextId: string,
   actionLogMap: actionLogMap,
-  oldestActionLogId: string,
+  latestActionLogId: string,
 }
 
 type dateActionLogMap = Map.String.t<dateActionLog>
@@ -96,7 +96,7 @@ type searchState = {
   searchedItems: Set.String.t,
 }
 
-type actionLogState = {currentId: string}
+type actionLogState = {selectedId: string}
 
 type firestoreState = {
   documentMap: noteDocumentMap,
@@ -112,7 +112,7 @@ type t = {
   focus: focus,
   // per element state
   itemEditor: itemEditor,
-  // per tab state
+  // per page state
   note: noteState,
   search: searchState,
   actionLog: actionLogState,
@@ -144,6 +144,8 @@ module Firestore = {
   let getDateActitonLog = (state, id) => {
     state.firestore.dateActionLogMap->Map.String.get(id)
   }
+
+  let latestDateActionLog = state => state->getDateActitonLog(state->latestDateActionLogId)
 }
 
 module Note = {
@@ -297,6 +299,11 @@ module Search = {
   let searchedItems = state => state.search.searchedItems
 }
 
+module ActionLog = {
+  let selectedId = state => state.actionLog.selectedId
+  let isInitial = state => state->selectedId == ""
+}
+
 let initialState: t = {
   mode: Normal(),
   focus: Note(DocumentPane()),
@@ -319,7 +326,7 @@ let initialState: t = {
     searchedItems: Set.String.empty,
   },
   actionLog: {
-    currentId: "",
+    selectedId: "",
   },
   firestore: {
     documentMap: Map.String.empty,

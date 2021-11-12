@@ -94,7 +94,7 @@ external entries: 'a => array<(string, 'b)> = "entries"
     })
 
   let toActionLogMap = (actionLogs, dateActionLogId) => {
-    let (actionLogMap, (oldestActionLogId, _)) = Belt.Array.reduce(
+    let (actionLogMap, (latestActionLogId, _)) = Belt.Array.reduce(
       actionLogs->entries,
       (Map.String.empty, ("", -1)),
       (
@@ -130,7 +130,7 @@ external entries: 'a => array<(string, 'b)> = "entries"
       },
     )
 
-    (actionLogMap, oldestActionLogId)
+    (actionLogMap, latestActionLogId)
   }
 
   let toDateActionLogMap = dateActionLogs =>
@@ -140,7 +140,7 @@ external entries: 'a => array<(string, 'b)> = "entries"
     ) => {
       let id = dateActionLog["id"]
       let nextId = dateActionLog["nextId"]
-      let (actionLogMap, oldestActionLogId) = dateActionLog["actionLogs"]->toActionLogMap(id)
+      let (actionLogMap, latestActionLogId) = dateActionLog["actionLogs"]->toActionLogMap(id)
 
       (
         dateActionLogMap->Map.String.set(
@@ -152,7 +152,7 @@ external entries: 'a => array<(string, 'b)> = "entries"
               prevId: dateActionLog["prevId"],
               nextId: nextId,
               actionLogMap: actionLogMap,
-              oldestActionLogId: oldestActionLogId,
+              latestActionLogId: latestActionLogId,
             }: State.dateActionLog
           ),
         ),

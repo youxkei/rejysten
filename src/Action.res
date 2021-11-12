@@ -57,7 +57,7 @@ type t =
   // per element actions
   | ItemEditor(itemEditor)
 
-  // per tab actions
+  // per page actions
   | Note(note)
   | Search(search)
 
@@ -81,7 +81,7 @@ type t =
       searchedDocuments: Set.String.t,
       searchedItems: Set.String.t,
     })
-  | SetActionLogState({currentId: string})
+  | SetActionLogState({selectedId: string})
 
   // action for Redux DevTool
   | DevToolUpdate({state: State.t})
