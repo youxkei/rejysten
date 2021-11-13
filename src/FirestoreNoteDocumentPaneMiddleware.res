@@ -237,7 +237,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
           store,
           Action.Note(
             Action.DocumentPane(
-              Action.SetCurrentDocument({
+              Action.SetSelectedDocument({
                 id: addingDocumentId,
                 initialCursorPosition: State.Start(),
               }),
@@ -249,16 +249,16 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
     | _ => ()
     }
 
-  | Action.DeleteDocument({nextCurrentId, initialCursorPosition}) =>
+  | Action.DeleteDocument({nextSelectedId, initialCursorPosition}) =>
     switch state->State.Note.DocumentPane.selectedDocument {
-    | Some(currentDocument) =>
+    | Some(selectedDocument) =>
       switch state->State.Note.ItemPane.rootItem {
       | Some({id: rootItemId, firstChildId}) =>
         switch state->State.Firestore.getItem(firstChildId) {
         | Some({id: firstChildItemId}) =>
           open Firebase.Firestore
 
-          let {id, parentId, prevId, nextId} = currentDocument
+          let {id, parentId, prevId, nextId} = selectedDocument
 
           let db = Firebase.firestore
           let writeBatch = db->writeBatch
@@ -289,8 +289,8 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
             store,
             Action.Note(
               Action.DocumentPane(
-                Action.SetCurrentDocument({
-                  id: nextCurrentId,
+                Action.SetSelectedDocument({
+                  id: nextSelectedId,
                   initialCursorPosition: initialCursorPosition,
                 }),
               ),

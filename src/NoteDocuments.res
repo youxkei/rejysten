@@ -40,14 +40,14 @@ module rec DocumentsInner: {
     let focus = Redux.useSelector(State.focus)
     let mode = Redux.useSelector(State.mode)
     let documentMap = Redux.useSelector(State.Firestore.documentMap)
-    let currentDocumentId = Redux.useSelector(State.Note.DocumentPane.selectedDocumentId)
+    let selectedDocumentId = Redux.useSelector(State.Note.DocumentPane.selectedDocumentId)
     let listItemRef = React.useRef(Js.Nullable.null)
     let innerHeight = Hook.useInnerHeight()
 
-    let isCurrentDocument = document.id == currentDocumentId
+    let isSelectedDocument = document.id == selectedDocumentId
 
     React.useEffect2(() => {
-      if isCurrentDocument {
+      if isSelectedDocument {
         listItemRef.current
         ->Js.Nullable.toOption
         ->Option.forEach(listItem => {
@@ -64,16 +64,16 @@ module rec DocumentsInner: {
       }
 
       None
-    }, (isCurrentDocument, innerHeight))
+    }, (isSelectedDocument, innerHeight))
 
     <BulletList
       bullet={<Bullet />}
-      item={switch (focus, mode, isCurrentDocument) {
+      item={switch (focus, mode, isSelectedDocument) {
       | (State.Note(State.DocumentPane()), State.Insert(_), true) => <NoteDocumentEditor />
 
       | _ => <NoteDocument document />
       }}
-      isSelectedItem=isCurrentDocument
+      isSelectedItem=isSelectedDocument
       itemRef={ReactDOM.Ref.domRef(listItemRef)}
       child={makeChildren(documentMap, document)
       ->Array.map((document: State.noteDocument) => {

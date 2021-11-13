@@ -154,7 +154,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteItemPane) =>
             writeBatch->addSet(
               items->doc(addingItemId),
               {
-                "documentId": state.note.documentPane.currentId,
+                "documentId": state.note.documentPane.selectedId,
                 "text": "",
                 "parentId": parentId,
                 "prevId": prevId,
@@ -179,7 +179,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteItemPane) =>
             writeBatch->addSet(
               items->doc(addingItemId),
               {
-                "documentId": state.note.documentPane.currentId,
+                "documentId": state.note.documentPane.selectedId,
                 "text": "",
                 "parentId": parentId,
                 "prevId": id,
@@ -205,7 +205,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteItemPane) =>
           store,
           Action.Note(
             Action.ItemPane(
-              Action.SetCurrentItem({id: addingItemId, initialCursorPosition: State.Start()}),
+              Action.SetSelectedItem({id: addingItemId, initialCursorPosition: State.Start()}),
             ),
           ),
         )
@@ -214,7 +214,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteItemPane) =>
     | _ => ()
     }
 
-  | Action.DeleteItem({nextCurrentId, initialCursorPosition}) =>
+  | Action.DeleteItem({nextSelectedId, initialCursorPosition}) =>
     switch state->State.Note.ItemPane.selectedItem {
     | Some(item) => {
         open Firebase.Firestore
@@ -247,8 +247,8 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteItemPane) =>
           store,
           Action.Note(
             Action.ItemPane(
-              Action.SetCurrentItem({
-                id: nextCurrentId,
+              Action.SetSelectedItem({
+                id: nextSelectedId,
                 initialCursorPosition: initialCursorPosition,
               }),
             ),

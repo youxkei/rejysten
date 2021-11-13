@@ -8,14 +8,14 @@ type firestoreNoteDocumentPane =
   | IndentDocument(unit)
   | UnindentDocument(unit)
   | AddDocument({direction: direction})
-  | DeleteDocument({nextCurrentId: string, initialCursorPosition: State.initialCursorPosition})
+  | DeleteDocument({nextSelectedId: string, initialCursorPosition: State.initialCursorPosition})
 
 type firestoreNoteItemPane =
   | SaveItem(unit)
   | IndentItem(unit)
   | UnindentItem(unit)
   | AddItem({direction: direction})
-  | DeleteItem({nextCurrentId: string, initialCursorPosition: State.initialCursorPosition})
+  | DeleteItem({nextSelectedId: string, initialCursorPosition: State.initialCursorPosition})
 
 type firestoreNote = DocumentPane(firestoreNoteDocumentPane) | ItemPane(firestoreNoteItemPane)
 
@@ -27,7 +27,7 @@ type noteDocumentPane =
   | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
   | ToNormalMode(unit)
   | SetEditingText({text: string})
-  | SetCurrentDocument({id: string, initialCursorPosition: State.initialCursorPosition})
+  | SetSelectedDocument({id: string, initialCursorPosition: State.initialCursorPosition})
 
 type noteItemPane =
   | ToAboveItem(unit)
@@ -36,7 +36,7 @@ type noteItemPane =
   | ToBottomItem(unit)
   | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
   | ToNormalMode(unit)
-  | SetCurrentItem({id: string, initialCursorPosition: State.initialCursorPosition})
+  | SetSelectedItem({id: string, initialCursorPosition: State.initialCursorPosition})
 
 type note =
   | DocumentPane(noteDocumentPane)
@@ -75,7 +75,7 @@ type t =
     })
 
   // actions for data manipulation from state.firestore to each tab states
-  | SetNoteDocumentPaneState({currentId: string})
+  | SetNoteDocumentPaneState({selectedId: string})
   | SetSearchState({
       ancestorDocuments: Set.String.t,
       searchedDocuments: Set.String.t,

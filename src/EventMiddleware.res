@@ -148,9 +148,9 @@ module KeyDown = {
 
           | "Backspace" if isNeutral && !shiftKey && state.note.documentPane.editingText == "" =>
             switch state->State.Note.DocumentPane.selectedDocument {
-            | Some(currentDocument)
-              if currentDocument.firstChildId == "" && currentDocument.lastChildId == "" =>
-              switch state->State.Note.DocumentPane.aboveDocument(currentDocument) {
+            | Some(selectedDocument)
+              if selectedDocument.firstChildId == "" && selectedDocument.lastChildId == "" =>
+              switch state->State.Note.DocumentPane.aboveDocument(selectedDocument) {
               | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" =>
                 switch state->State.Note.ItemPane.topItem {
                 | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
@@ -158,7 +158,7 @@ module KeyDown = {
                     Action.FirestoreNote(
                       Action.DocumentPane(
                         Action.DeleteDocument({
-                          nextCurrentId: aboveId,
+                          nextSelectedId: aboveId,
                           initialCursorPosition: State.End(),
                         }),
                       ),
@@ -178,9 +178,9 @@ module KeyDown = {
 
           | "Delete" if isNeutral && !shiftKey && state.note.documentPane.editingText == "" =>
             switch state->State.Note.DocumentPane.selectedDocument {
-            | Some(currentDocument)
-              if currentDocument.firstChildId == "" && currentDocument.lastChildId == "" =>
-              switch state->State.Note.DocumentPane.belowDocument(currentDocument) {
+            | Some(selectedDocument)
+              if selectedDocument.firstChildId == "" && selectedDocument.lastChildId == "" =>
+              switch state->State.Note.DocumentPane.belowDocument(selectedDocument) {
               | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" =>
                 switch state->State.Note.ItemPane.topItem {
                 | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
@@ -188,7 +188,7 @@ module KeyDown = {
                     Action.FirestoreNote(
                       Action.DocumentPane(
                         Action.DeleteDocument({
-                          nextCurrentId: belowId,
+                          nextSelectedId: belowId,
                           initialCursorPosition: State.Start(),
                         }),
                       ),
@@ -342,15 +342,15 @@ module KeyDown = {
 
           | "Backspace" if isNeutral && !shiftKey && state.itemEditor.editingText == "" =>
             switch state->State.Note.ItemPane.selectedItem {
-            | Some(currentItem)
-              if currentItem.firstChildId == "" && currentItem.lastChildId == "" =>
-              switch state->State.Note.ItemPane.aboveItem(currentItem) {
+            | Some(selectedItem)
+              if selectedItem.firstChildId == "" && selectedItem.lastChildId == "" =>
+              switch state->State.Note.ItemPane.aboveItem(selectedItem) {
               | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
                   dispatch(
                     Action.FirestoreNote(
                       Action.ItemPane(
                         Action.DeleteItem({
-                          nextCurrentId: aboveId,
+                          nextSelectedId: aboveId,
                           initialCursorPosition: State.End(),
                         }),
                       ),
@@ -368,15 +368,15 @@ module KeyDown = {
 
           | "Delete" if isNeutral && !shiftKey && state.itemEditor.editingText == "" =>
             switch state->State.Note.ItemPane.selectedItem {
-            | Some(currentItem)
-              if currentItem.firstChildId == "" && currentItem.lastChildId == "" =>
-              switch state->State.Note.ItemPane.belowItem(currentItem) {
+            | Some(selectedItem)
+              if selectedItem.firstChildId == "" && selectedItem.lastChildId == "" =>
+              switch state->State.Note.ItemPane.belowItem(selectedItem) {
               | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" => {
                   dispatch(
                     Action.FirestoreNote(
                       Action.ItemPane(
                         Action.DeleteItem({
-                          nextCurrentId: belowId,
+                          nextSelectedId: belowId,
                           initialCursorPosition: State.Start(),
                         }),
                       ),
@@ -457,7 +457,7 @@ module Click = {
         dispatch(
           Action.Note(
             Action.DocumentPane(
-              Action.SetCurrentDocument({id: documentId, initialCursorPosition: State.End()}),
+              Action.SetSelectedDocument({id: documentId, initialCursorPosition: State.End()}),
             ),
           ),
         )
@@ -477,7 +477,7 @@ module Click = {
         dispatch(
           Action.Note(
             Action.ItemPane(
-              Action.SetCurrentItem({id: itemId, initialCursorPosition: State.End()}),
+              Action.SetSelectedItem({id: itemId, initialCursorPosition: State.End()}),
             ),
           ),
         )

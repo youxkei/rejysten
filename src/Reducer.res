@@ -22,17 +22,17 @@ module Note = {
     switch action {
     | Action.ToAboveDocument() =>
       switch state->State.Note.DocumentPane.selectedDocument {
-      | Some(currentDocument) =>
-        switch state->State.Note.DocumentPane.aboveDocument(currentDocument) {
+      | Some(selectedDocument) =>
+        switch state->State.Note.DocumentPane.aboveDocument(selectedDocument) {
         | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
             ...state,
             note: {
               documentPane: {
                 ...state.note.documentPane,
-                currentId: aboveId,
+                selectedId: aboveId,
               },
               itemPane: {
-                currentId: "",
+                selectedId: "",
               },
             },
           }
@@ -48,7 +48,7 @@ module Note = {
               ...state.note,
               documentPane: {
                 ...state.note.documentPane,
-                currentId: firstChildId,
+                selectedId: firstChildId,
               },
             },
           }
@@ -59,17 +59,17 @@ module Note = {
 
     | Action.ToBelowDocument() =>
       switch state->State.Note.DocumentPane.selectedDocument {
-      | Some(currentDocument) =>
-        switch state->State.Note.DocumentPane.belowDocument(currentDocument) {
+      | Some(selectedDocument) =>
+        switch state->State.Note.DocumentPane.belowDocument(selectedDocument) {
         | Some({id: belowId}) => {
             ...state,
             note: {
               documentPane: {
                 ...state.note.documentPane,
-                currentId: belowId,
+                selectedId: belowId,
               },
               itemPane: {
-                currentId: "",
+                selectedId: "",
               },
             },
           }
@@ -85,7 +85,7 @@ module Note = {
               ...state.note,
               documentPane: {
                 ...state.note.documentPane,
-                currentId: firstChildId,
+                selectedId: firstChildId,
               },
             },
           }
@@ -129,17 +129,17 @@ module Note = {
         },
       }
 
-    | Action.SetCurrentDocument({id, initialCursorPosition}) =>
+    | Action.SetSelectedDocument({id, initialCursorPosition}) =>
       switch state.mode {
       | State.Normal() => {
           ...state,
           note: {
             documentPane: {
               ...state.note.documentPane,
-              currentId: id,
+              selectedId: id,
             },
             itemPane: {
-              currentId: "",
+              selectedId: "",
             },
           },
         }
@@ -156,11 +156,11 @@ module Note = {
             mode: State.Insert({initialCursorPosition: initialCursorPosition}),
             note: {
               documentPane: {
-                currentId: id,
+                selectedId: id,
                 editingText: editingText,
               },
               itemPane: {
-                currentId: "",
+                selectedId: "",
               },
             },
           }
@@ -180,7 +180,7 @@ module Note = {
             note: {
               ...state.note,
               itemPane: {
-                currentId: aboveId,
+                selectedId: aboveId,
               },
             },
           }
@@ -195,7 +195,7 @@ module Note = {
             note: {
               ...state.note,
               itemPane: {
-                currentId: firstChildId,
+                selectedId: firstChildId,
               },
             },
           }
@@ -213,7 +213,7 @@ module Note = {
             note: {
               ...state.note,
               itemPane: {
-                currentId: belowId,
+                selectedId: belowId,
               },
             },
           }
@@ -228,7 +228,7 @@ module Note = {
             note: {
               ...state.note,
               itemPane: {
-                currentId: firstChildId,
+                selectedId: firstChildId,
               },
             },
           }
@@ -244,7 +244,7 @@ module Note = {
           note: {
             ...state.note,
             itemPane: {
-              currentId: topItem.id,
+              selectedId: topItem.id,
             },
           },
         }
@@ -259,7 +259,7 @@ module Note = {
           note: {
             ...state.note,
             itemPane: {
-              currentId: bottomItem.id,
+              selectedId: bottomItem.id,
             },
           },
         }
@@ -290,14 +290,14 @@ module Note = {
         },
       }
 
-    | Action.SetCurrentItem({id, initialCursorPosition}) =>
+    | Action.SetSelectedItem({id, initialCursorPosition}) =>
       switch state.mode {
       | State.Normal() => {
           ...state,
           note: {
             ...state.note,
             itemPane: {
-              currentId: id,
+              selectedId: id,
             },
           },
         }
@@ -318,7 +318,7 @@ module Note = {
             note: {
               ...state.note,
               itemPane: {
-                currentId: id,
+                selectedId: id,
               },
             },
           }
@@ -368,7 +368,7 @@ let reducer = (state: State.t, action) => {
     }
 
   | Action.FocusNote(Action.ItemPane()) =>
-    if state.note.itemPane.currentId == "" {
+    if state.note.itemPane.selectedId == "" {
       switch state->State.Note.ItemPane.rootItem {
       | Some({firstChildId}) => {
           ...state,
@@ -379,7 +379,7 @@ let reducer = (state: State.t, action) => {
               editingText: "",
             },
             itemPane: {
-              currentId: firstChildId,
+              selectedId: firstChildId,
             },
           },
         }
@@ -436,13 +436,13 @@ let reducer = (state: State.t, action) => {
       },
     }
 
-  | Action.SetNoteDocumentPaneState({currentId}) => {
+  | Action.SetNoteDocumentPaneState({selectedId}) => {
       ...state,
       note: {
         ...state.note,
         documentPane: {
           ...state.note.documentPane,
-          currentId: currentId,
+          selectedId: selectedId,
         },
       },
     }

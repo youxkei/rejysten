@@ -1,7 +1,7 @@
 open Belt
 
-module SetInitialCurrentDocumentId = {
-  let getInitialCurrentDocumentId = rootDocument => {
+module SetInitialSelectedDocumentId = {
+  let getInitialSelectedDocumentId = rootDocument => {
     rootDocument->Option.map((rootDocument: State.noteDocument) => rootDocument.firstChildId)
   }
 
@@ -13,11 +13,11 @@ module SetInitialCurrentDocumentId = {
 
     React.useEffect(() => {
       if isInitial {
-        switch rootDocument->getInitialCurrentDocumentId {
-        | Some(initialCurrentDocumentId) =>
+        switch rootDocument->getInitialSelectedDocumentId {
+        | Some(initialSelectedDocumentId) =>
           dispatch(
             Action.SetNoteDocumentPaneState({
-              currentId: initialCurrentDocumentId,
+              selectedId: initialSelectedDocumentId,
             }),
           )
 
@@ -45,7 +45,7 @@ let make = () => {
 
   switch rootDocument {
   | Some(document) => <>
-      <section className> <NoteDocuments document /> </section> <SetInitialCurrentDocumentId />
+      <section className> <NoteDocuments document /> </section> <SetInitialSelectedDocumentId />
     </>
 
   | None => React.null

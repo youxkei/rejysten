@@ -1,6 +1,6 @@
 open Belt
 
-module SetInitialCurrentActionLog = {
+module SetInitialSelectedActionLog = {
   let getInitialSelectedActionLogId = latestDateActionLog => {
     latestDateActionLog->Option.flatMap((dateActionLog: State.dateActionLog) => {
       dateActionLog.actionLogMap
@@ -39,5 +39,5 @@ module SetInitialCurrentActionLog = {
 
 @react.component
 let make = () => {
-  <> <ActionLogRecentDateActionLogs /> <SetInitialCurrentActionLog /> </>
+  <> <ActionLogRecentDateActionLogs /> <SetInitialSelectedActionLog /> </>
 }

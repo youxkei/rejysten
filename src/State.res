@@ -77,10 +77,10 @@ type focus = Note(noteFocus) | Search(unit) | ActionLog(unit)
 
 type itemEditor = {editingText: string}
 
-type noteItemPaneState = {currentId: string}
+type noteItemPaneState = {selectedId: string}
 
 type noteDocumentPaneState = {
-  currentId: string,
+  selectedId: string,
   editingText: string,
 }
 
@@ -150,8 +150,8 @@ module Firestore = {
 
 module Note = {
   module DocumentPane = {
-    let selectedDocumentId = ({note: {documentPane: {currentId}}}) => currentId
-    let editingText = ({note: {documentPane: {editingText}}}) => editingText
+    let selectedDocumentId = state => state.note.documentPane.selectedId
+    let editingText = state => state.note.documentPane.editingText
 
     let selectedDocument = state => state->Firestore.getDocument(state->selectedDocumentId)
 
@@ -201,11 +201,11 @@ module Note = {
       }
     }
 
-    let isInitial = ({note: {documentPane: {currentId}}}) => currentId == ""
+    let isInitial = state => state->selectedDocumentId == ""
   }
 
   module ItemPane = {
-    let selectedItemId = ({note: {itemPane: {currentId}}}) => currentId
+    let selectedItemId = state => state.note.itemPane.selectedId
 
     let selectedItem = state => state->Firestore.getItem(state->selectedItemId)
 
@@ -312,11 +312,11 @@ let initialState: t = {
   },
   note: {
     documentPane: {
-      currentId: "",
+      selectedId: "",
       editingText: "",
     },
     itemPane: {
-      currentId: "",
+      selectedId: "",
     },
   },
   search: {
