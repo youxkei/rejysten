@@ -94,43 +94,43 @@ external entries: 'a => array<(string, 'b)> = "entries"
     })
 
   let toActionLogMap = (actionLogs, dateActionLogId) => {
-    let (actionLogMap, (latestActionLogId, _)) = Belt.Array.reduce(
-      actionLogs->entries,
-      (Map.String.empty, ("", -1)),
+    Belt.Array.reduce(actionLogs->entries, (Map.String.empty, "", ""), (
+      (actionLogMap, currentOldedstActionLogId, currentLatestDateActionLogId),
+      (id, actionLog),
+    ) => {
+      let prevId = actionLog["prevId"]
+      let nextId = actionLog["nextId"]
+      let (itemMap, rootItemId) = actionLog["items"]->toItemMap(dateActionLogId, id)
+
       (
-        (actionLogMap, (currentOldedstActionLogId, currentOldestsActionLogBegin)),
-        (id, actionLog),
-      ) => {
-        let begin = actionLog["begin"]
-        let (itemMap, rootItemId) = actionLog["items"]->toItemMap(dateActionLogId, id)
-
-        (
-          actionLogMap->Map.String.set(
-            id,
-            (
-              {
-                id: id,
-                dateActionLogId: dateActionLogId,
-                begin: begin,
-                end: actionLog["end"],
-                prevId: actionLog["prevId"],
-                nextId: actionLog["nextId"],
-                text: actionLog["text"],
-                itemMap: itemMap,
-                rootItemId: rootItemId,
-              }: State.actionLog
-            ),
+        actionLogMap->Map.String.set(
+          id,
+          (
+            {
+              id: id,
+              dateActionLogId: dateActionLogId,
+              begin: actionLog["begin"],
+              end: actionLog["end"],
+              prevId: prevId,
+              nextId: nextId,
+              text: actionLog["text"],
+              itemMap: itemMap,
+              rootItemId: rootItemId,
+            }: State.actionLog
           ),
-          if currentOldestsActionLogBegin == -1 || begin < currentOldestsActionLogBegin {
-            (id, begin)
-          } else {
-            (currentOldedstActionLogId, currentOldestsActionLogBegin)
-          },
-        )
-      },
-    )
-
-    (actionLogMap, latestActionLogId)
+        ),
+        if prevId == "" {
+          id
+        } else {
+          currentOldedstActionLogId
+        },
+        if nextId == "" {
+          id
+        } else {
+          currentLatestDateActionLogId
+        },
+      )
+    })
   }
 
   let toDateActionLogMap = dateActionLogs =>
@@ -140,7 +140,8 @@ external entries: 'a => array<(string, 'b)> = "entries"
     ) => {
       let id = dateActionLog["id"]
       let nextId = dateActionLog["nextId"]
-      let (actionLogMap, latestActionLogId) = dateActionLog["actionLogs"]->toActionLogMap(id)
+      let (actionLogMap, oldestActionLogId, latestActionLogId) =
+        dateActionLog["actionLogs"]->toActionLogMap(id)
 
       (
         dateActionLogMap->Map.String.set(
@@ -152,6 +153,7 @@ external entries: 'a => array<(string, 'b)> = "entries"
               prevId: dateActionLog["prevId"],
               nextId: nextId,
               actionLogMap: actionLogMap,
+              oldestActionLogId: oldestActionLogId,
               latestActionLogId: latestActionLogId,
             }: State.dateActionLog
           ),

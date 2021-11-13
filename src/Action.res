@@ -47,6 +47,10 @@ type search =
   | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
   | ToNormalMode(unit)
 
+type actionLog =
+  | ToAboveActionLog(unit)
+  | ToBelowActionLog(unit)
+
 type t =
   // event action handled in EventMiddleware
   | Event(Event.t)
@@ -60,6 +64,7 @@ type t =
   // per page actions
   | Note(note)
   | Search(search)
+  | ActionLog(actionLog)
 
   // focus change actions
   | FocusNote(focusNotePane)
@@ -81,7 +86,7 @@ type t =
       searchedDocuments: Set.String.t,
       searchedItems: Set.String.t,
     })
-  | SetActionLogState({selectedId: string})
+  | SetActionLogState({selectedDateActionLogId: string, selectedActionLogId: string})
 
   // action for Redux DevTool
   | DevToolUpdate({state: State.t})

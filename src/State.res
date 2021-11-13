@@ -62,6 +62,7 @@ type dateActionLog = {
   prevId: string,
   nextId: string,
   actionLogMap: actionLogMap,
+  oldestActionLogId: string,
   latestActionLogId: string,
 }
 
@@ -96,7 +97,10 @@ type searchState = {
   searchedItems: Set.String.t,
 }
 
-type actionLogState = {selectedId: string}
+type actionLogState = {
+  selectedActionLogId: string,
+  selectedDateActionLogId: string,
+}
 
 type firestoreState = {
   documentMap: noteDocumentMap,
@@ -300,8 +304,65 @@ module Search = {
 }
 
 module ActionLog = {
-  let selectedId = state => state.actionLog.selectedId
-  let isInitial = state => state->selectedId == ""
+  let selectedActionLogId = state => state.actionLog.selectedActionLogId
+  let selectedDateActionLogId = state => state.actionLog.selectedDateActionLogId
+  let isInitial = state => state->selectedDateActionLogId == ""
+
+  let selectedDateActionLog = state =>
+    state->Firestore.getDateActitonLog(state->selectedDateActionLogId)
+
+  let selectedActionLog = state =>
+    switch state->selectedDateActionLog {
+    | Some(dateActionLog) => dateActionLog.actionLogMap->Map.String.get(state->selectedActionLogId)
+
+    | None => None
+    }
+
+  let aboveActionLog = state =>
+    switch state->selectedDateActionLog {
+    | Some(selectedDateActionLog) =>
+      switch selectedDateActionLog.actionLogMap->Map.String.get(state->selectedActionLogId) {
+      | Some(selectedActionLog) =>
+        switch selectedDateActionLog.actionLogMap->Map.String.get(selectedActionLog.prevId) {
+        | Some(actionLog) => Some(actionLog)
+
+        | None =>
+          switch state->Firestore.getDateActitonLog(selectedDateActionLog.prevId) {
+          | Some(prevDateActionLog) =>
+            prevDateActionLog.actionLogMap->Map.String.get(prevDateActionLog.latestActionLogId)
+
+          | None => None
+          }
+        }
+
+      | None => None
+      }
+
+    | None => None
+    }
+
+  let belowActionLog = state =>
+    switch state->selectedDateActionLog {
+    | Some(selectedDateActionLog) =>
+      switch selectedDateActionLog.actionLogMap->Map.String.get(state->selectedActionLogId) {
+      | Some(selectedActionLog) =>
+        switch selectedDateActionLog.actionLogMap->Map.String.get(selectedActionLog.nextId) {
+        | Some(actionLog) => Some(actionLog)
+
+        | None =>
+          switch state->Firestore.getDateActitonLog(selectedDateActionLog.nextId) {
+          | Some(nextDateActionLog) =>
+            nextDateActionLog.actionLogMap->Map.String.get(nextDateActionLog.oldestActionLogId)
+
+          | None => None
+          }
+        }
+
+      | None => None
+      }
+
+    | None => None
+    }
 }
 
 let initialState: t = {
@@ -326,7 +387,8 @@ let initialState: t = {
     searchedItems: Set.String.empty,
   },
   actionLog: {
-    selectedId: "",
+    selectedDateActionLogId: "",
+    selectedActionLogId: "",
   },
   firestore: {
     documentMap: Map.String.empty,

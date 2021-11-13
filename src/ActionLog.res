@@ -1,12 +1,12 @@
 open Belt
 
 module SetInitialSelectedActionLog = {
-  let getInitialSelectedActionLogId = latestDateActionLog => {
+  let getInitialSelectedIds = latestDateActionLog => {
     latestDateActionLog->Option.flatMap((dateActionLog: State.dateActionLog) => {
       dateActionLog.actionLogMap
       ->Map.String.get(dateActionLog.latestActionLogId)
       ->Option.map((actionLog: State.actionLog) => {
-        actionLog.id
+        (dateActionLog.id, actionLog.id)
       })
     })
   }
@@ -19,11 +19,12 @@ module SetInitialSelectedActionLog = {
 
     React.useEffect(() => {
       if isInitial {
-        switch latestDateActionLog->getInitialSelectedActionLogId {
-        | Some(initialSelectedActionLogId) =>
+        switch latestDateActionLog->getInitialSelectedIds {
+        | Some((initialSelectedDateActionLogId, initialSelectedActionLogId)) =>
           dispatch(
             Action.SetActionLogState({
-              selectedId: initialSelectedActionLogId,
+              selectedDateActionLogId: initialSelectedDateActionLogId,
+              selectedActionLogId: initialSelectedActionLogId,
             }),
           )
 

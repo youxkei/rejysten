@@ -8,7 +8,7 @@ let rec makeRecentDateActionLogs = (dateActionLogMap, currentId, n, recentDateAc
   } else {
     switch dateActionLogMap->Map.String.get(currentId) {
     | Some(dateActionLog: State.dateActionLog) =>
-      let _ = recentDateActionLogs->Js.Array2.push(dateActionLog)
+      let _ = recentDateActionLogs->Js.Array2.unshift(dateActionLog)
       dateActionLogMap->makeRecentDateActionLogs(dateActionLog.prevId, n + 1, recentDateActionLogs)
 
     | None => recentDateActionLogs

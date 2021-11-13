@@ -435,6 +435,14 @@ module KeyDown = {
           dispatch(Action.FocusNote(Action.ItemPane()))
           event->preventDefault
 
+        | "KeyK" if !ctrlKey && !shiftKey =>
+          dispatch(Action.ActionLog(Action.ToAboveActionLog()))
+          event->preventDefault
+
+        | "KeyJ" if !ctrlKey && !shiftKey =>
+          dispatch(Action.ActionLog(Action.ToBelowActionLog()))
+          event->preventDefault
+
         | _ => ()
         }
       }

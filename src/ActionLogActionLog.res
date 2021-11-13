@@ -1,15 +1,27 @@
 open Belt
 
+let getTimeString = unixtime => {
+  if unixtime == 0 {
+    "unspecified"
+  } else {
+    let date = Js.Date.fromFloat(unixtime->Int.toFloat)
+    `${date->Js.Date.getHours->Float.toString}:${date->Js.Date.getMinutes->Float.toString}:${date
+      ->Js.Date.getSeconds
+      ->Float.toString}`
+  }
+}
+
 @react.component
 let make = (~actionLog: State.actionLog, ()) => {
-  let selectedId = Redux.useSelector(State.ActionLog.selectedId)
-  let toString = Int.toString
+  let selectedId = Redux.useSelector(State.ActionLog.selectedActionLogId)
   let {id, itemMap, rootItemId, text, begin, end} = actionLog
   let isSelectedActionLog = id === selectedId
+  let begin = begin->getTimeString
+  let end = end->getTimeString
 
   <BulletList
     bullet={<Bullet />}
-    item={`${text} ${begin->toString} ${end->toString}`->React.string}
+    item={<> <p> {text->React.string} </p> <p> {`${begin} -> ${end}`->React.string} </p> </>}
     isSelectedItem=isSelectedActionLog
     child={switch itemMap->Map.String.get(rootItemId) {
     | Some(rootItem) =>

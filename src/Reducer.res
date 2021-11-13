@@ -350,6 +350,36 @@ let searchReducer = (state: State.t, action) => {
   }
 }
 
+let actionLogReducer = (state: State.t, action) => {
+  switch action {
+  | Action.ToAboveActionLog() =>
+    switch state->State.ActionLog.aboveActionLog {
+    | Some(aboveActionLog) => {
+        ...state,
+        actionLog: {
+          selectedDateActionLogId: aboveActionLog.dateActionLogId,
+          selectedActionLogId: aboveActionLog.id,
+        },
+      }
+
+    | None => state
+    }
+
+  | Action.ToBelowActionLog() =>
+    switch state->State.ActionLog.belowActionLog {
+    | Some(belowActionLog) => {
+        ...state,
+        actionLog: {
+          selectedDateActionLogId: belowActionLog.dateActionLogId,
+          selectedActionLogId: belowActionLog.id,
+        },
+      }
+
+    | None => state
+    }
+  }
+}
+
 let reducer = (state: State.t, action) => {
   switch action {
   | Action.Event(_)
@@ -359,6 +389,7 @@ let reducer = (state: State.t, action) => {
   | Action.Note(Action.DocumentPane(action)) => Note.documentPaneReducer(state, action)
   | Action.Note(Action.ItemPane(action)) => Note.documentItemPaneReducer(state, action)
   | Action.Search(action) => searchReducer(state, action)
+  | Action.ActionLog(action) => actionLogReducer(state, action)
 
   | Action.ItemEditor(action) => ItemEditor.reducer(state, action)
 
@@ -457,10 +488,11 @@ let reducer = (state: State.t, action) => {
       },
     }
 
-  | Action.SetActionLogState({selectedId}) => {
+  | Action.SetActionLogState({selectedDateActionLogId, selectedActionLogId}) => {
       ...state,
       actionLog: {
-        selectedId: selectedId,
+        selectedDateActionLogId: selectedDateActionLogId,
+        selectedActionLogId: selectedActionLogId,
       },
     }
 
