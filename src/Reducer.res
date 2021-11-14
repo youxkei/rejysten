@@ -400,8 +400,8 @@ let reducer = (state: State.t, action) => {
 
   | Action.FocusNote(Action.ItemPane()) =>
     if state.note.itemPane.selectedId == "" {
-      switch state->State.Note.ItemPane.rootItem {
-      | Some({firstChildId}) => {
+      switch state->State.Note.ItemPane.bottomItem {
+      | Some(bottomItem) => {
           ...state,
           focus: State.Note(State.ItemPane()),
           note: {
@@ -410,7 +410,7 @@ let reducer = (state: State.t, action) => {
               editingText: "",
             },
             itemPane: {
-              selectedId: firstChildId,
+              selectedId: bottomItem.id,
             },
           },
         }
