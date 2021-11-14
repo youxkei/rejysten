@@ -21,77 +21,39 @@ module Note = {
   let documentPaneReducer = (state: State.t, action) => {
     switch action {
     | Action.ToAboveDocument() =>
-      switch state->State.Note.DocumentPane.selectedDocument {
-      | Some(selectedDocument) =>
-        switch state->State.Note.DocumentPane.aboveDocument(selectedDocument) {
-        | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
-            ...state,
-            note: {
-              documentPane: {
-                ...state.note.documentPane,
-                selectedId: aboveId,
-              },
-              itemPane: {
-                selectedId: "",
-              },
+      switch state->State.Note.DocumentPane.aboveSelectedDocument {
+      | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
+          ...state,
+          note: {
+            documentPane: {
+              ...state.note.documentPane,
+              selectedId: aboveId,
             },
-          }
-
-        | _ => state
+            itemPane: {
+              selectedId: "",
+            },
+          },
         }
 
-      | None =>
-        switch state->State.Firestore.rootDocument {
-        | Some({firstChildId}) => {
-            ...state,
-            note: {
-              ...state.note,
-              documentPane: {
-                ...state.note.documentPane,
-                selectedId: firstChildId,
-              },
-            },
-          }
-
-        | None => state
-        }
+      | _ => state
       }
 
     | Action.ToBelowDocument() =>
-      switch state->State.Note.DocumentPane.selectedDocument {
-      | Some(selectedDocument) =>
-        switch state->State.Note.DocumentPane.belowDocument(selectedDocument) {
-        | Some({id: belowId}) => {
-            ...state,
-            note: {
-              documentPane: {
-                ...state.note.documentPane,
-                selectedId: belowId,
-              },
-              itemPane: {
-                selectedId: "",
-              },
+      switch state->State.Note.DocumentPane.belowSelectedDocument {
+      | Some({id: belowId}) => {
+          ...state,
+          note: {
+            documentPane: {
+              ...state.note.documentPane,
+              selectedId: belowId,
             },
-          }
-
-        | None => state
+            itemPane: {
+              selectedId: "",
+            },
+          },
         }
 
-      | None =>
-        switch state->State.Firestore.rootDocument {
-        | Some({firstChildId}) => {
-            ...state,
-            note: {
-              ...state.note,
-              documentPane: {
-                ...state.note.documentPane,
-                selectedId: firstChildId,
-              },
-            },
-          }
-
-        | None => state
-        }
+      | None => state
       }
 
     | Action.ToInsertMode({initialCursorPosition}) =>
@@ -172,69 +134,33 @@ module Note = {
   let documentItemPaneReducer = (state: State.t, action) => {
     switch action {
     | Action.ToAboveItem() =>
-      switch state->State.Note.ItemPane.selectedItem {
-      | Some(item) =>
-        switch state->State.Note.ItemPane.aboveItem(item) {
-        | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
-            ...state,
-            note: {
-              ...state.note,
-              itemPane: {
-                selectedId: aboveId,
-              },
+      switch state->State.Note.ItemPane.aboveSelectedItem {
+      | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
+          ...state,
+          note: {
+            ...state.note,
+            itemPane: {
+              selectedId: aboveId,
             },
-          }
-
-        | _ => state
+          },
         }
 
-      | None =>
-        switch state->State.Note.ItemPane.rootItem {
-        | Some({firstChildId}) => {
-            ...state,
-            note: {
-              ...state.note,
-              itemPane: {
-                selectedId: firstChildId,
-              },
-            },
-          }
-
-        | None => state
-        }
+      | _ => state
       }
 
     | Action.ToBelowItem() =>
-      switch state->State.Note.ItemPane.selectedItem {
-      | Some(item) =>
-        switch state->State.Note.ItemPane.belowItem(item) {
-        | Some({id: belowId}) => {
-            ...state,
-            note: {
-              ...state.note,
-              itemPane: {
-                selectedId: belowId,
-              },
+      switch state->State.Note.ItemPane.belowSelectedItem {
+      | Some({id: belowId}) => {
+          ...state,
+          note: {
+            ...state.note,
+            itemPane: {
+              selectedId: belowId,
             },
-          }
-
-        | _ => state
+          },
         }
 
-      | None =>
-        switch state->State.Note.ItemPane.rootItem {
-        | Some({firstChildId}) => {
-            ...state,
-            note: {
-              ...state.note,
-              itemPane: {
-                selectedId: firstChildId,
-              },
-            },
-          }
-
-        | _ => state
-        }
+      | _ => state
       }
 
     | Action.ToTopItem() =>

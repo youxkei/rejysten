@@ -159,49 +159,59 @@ module Note = {
 
     let selectedDocument = state => state->Firestore.getDocument(state->selectedDocumentId)
 
-    let aboveDocument = (state, {prevId, parentId}: noteDocument) => {
-      switch state->Firestore.getDocument(prevId) {
-      | Some(document) => {
-          let rec searchPrev = (document: noteDocument) => {
-            switch state->Firestore.getDocument(document.lastChildId) {
-            | Some(document) => searchPrev(document)
+    let aboveSelectedDocument = state => {
+      switch state->selectedDocument {
+      | Some({prevId, parentId}) =>
+        switch state->Firestore.getDocument(prevId) {
+        | Some(document) => {
+            let rec searchPrev = (document: noteDocument) => {
+              switch state->Firestore.getDocument(document.lastChildId) {
+              | Some(document) => searchPrev(document)
 
-            | None => document
-            }
-          }
-
-          Some(searchPrev(document))
-        }
-
-      | None => state->Firestore.getDocument(parentId)
-      }
-    }
-
-    let belowDocument = (state, document: noteDocument) => {
-      let {nextId, firstChildId} = document
-
-      switch state->Firestore.getDocument(firstChildId) {
-      | Some(document) => Some(document)
-
-      | None =>
-        switch state->Firestore.getDocument(nextId) {
-        | Some(document) => Some(document)
-
-        | None => {
-            let rec searchNext = ({nextId, parentId}: noteDocument) => {
-              switch state->Firestore.getDocument(nextId) {
-              | Some(document) => Some(document)
-
-              | None =>
-                state
-                ->Firestore.getDocument(parentId)
-                ->Option.flatMap(document => searchNext(document))
+              | None => document
               }
             }
 
-            searchNext(document)
+            Some(searchPrev(document))
+          }
+
+        | None => state->Firestore.getDocument(parentId)
+        }
+
+      | None => None
+      }
+    }
+
+    let belowSelectedDocument = state => {
+      switch state->selectedDocument {
+      | Some(document) =>
+        let {nextId, firstChildId} = document
+
+        switch state->Firestore.getDocument(firstChildId) {
+        | Some(document) => Some(document)
+
+        | None =>
+          switch state->Firestore.getDocument(nextId) {
+          | Some(document) => Some(document)
+
+          | None => {
+              let rec searchNext = ({nextId, parentId}: noteDocument) => {
+                switch state->Firestore.getDocument(nextId) {
+                | Some(document) => Some(document)
+
+                | None =>
+                  state
+                  ->Firestore.getDocument(parentId)
+                  ->Option.flatMap(document => searchNext(document))
+                }
+              }
+
+              searchNext(document)
+            }
           }
         }
+
+      | None => None
       }
     }
 
@@ -251,46 +261,57 @@ module Note = {
       }
     }
 
-    let aboveItem = (state, {prevId, parentId}: item) => {
-      switch state->Firestore.getItem(prevId) {
-      | Some(item) => {
-          let rec searchPrev = (item: item) => {
-            switch state->Firestore.getItem(item.lastChildId) {
-            | Some(item) => searchPrev(item)
+    let aboveSelectedItem = state => {
+      switch state->selectedItem {
+      | Some({prevId, parentId}) =>
+        switch state->Firestore.getItem(prevId) {
+        | Some(item) => {
+            let rec searchPrev = (item: item) => {
+              switch state->Firestore.getItem(item.lastChildId) {
+              | Some(item) => searchPrev(item)
 
-            | None => item
-            }
-          }
-
-          Some(searchPrev(item))
-        }
-
-      | None => state->Firestore.getItem(parentId)
-      }
-    }
-
-    let belowItem = (state, item: item) => {
-      let {nextId, firstChildId} = item
-
-      switch state->Firestore.getItem(firstChildId) {
-      | Some(item) => Some(item)
-
-      | None =>
-        switch state->Firestore.getItem(nextId) {
-        | Some(item) => Some(item)
-
-        | None => {
-            let rec searchNext = ({nextId, parentId}: item) => {
-              switch state->Firestore.getItem(nextId) {
-              | Some(item) => Some(item)
-
-              | None => state->Firestore.getItem(parentId)->Option.flatMap(item => searchNext(item))
+              | None => item
               }
             }
 
-            searchNext(item)
+            Some(searchPrev(item))
+          }
+
+        | None => state->Firestore.getItem(parentId)
+        }
+
+      | None => None
+      }
+    }
+
+    let belowSelectedItem = state => {
+      switch state->selectedItem {
+      | Some(item) =>
+        let {nextId, firstChildId} = item
+
+        switch state->Firestore.getItem(firstChildId) {
+        | Some(item) => Some(item)
+
+        | None =>
+          switch state->Firestore.getItem(nextId) {
+          | Some(item) => Some(item)
+
+          | None => {
+              let rec searchNext = ({nextId, parentId}: item) => {
+                switch state->Firestore.getItem(nextId) {
+                | Some(item) => Some(item)
+
+                | None =>
+                  state->Firestore.getItem(parentId)->Option.flatMap(item => searchNext(item))
+                }
+              }
+
+              searchNext(item)
+            }
           }
         }
+
+      | None => None
       }
     }
   }

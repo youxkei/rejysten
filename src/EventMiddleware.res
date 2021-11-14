@@ -148,9 +148,9 @@ module KeyDown = {
 
           | "Backspace" if isNeutral && !shiftKey && state.note.documentPane.editingText == "" =>
             switch state->State.Note.DocumentPane.selectedDocument {
-            | Some(selectedDocument)
-              if selectedDocument.firstChildId == "" && selectedDocument.lastChildId == "" =>
-              switch state->State.Note.DocumentPane.aboveDocument(selectedDocument) {
+            | Some({firstChildId: "", lastChildId: ""}) =>
+              // selected document has no children
+              switch state->State.Note.DocumentPane.aboveSelectedDocument {
               | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" =>
                 switch state->State.Note.ItemPane.topItem {
                 | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
@@ -178,9 +178,9 @@ module KeyDown = {
 
           | "Delete" if isNeutral && !shiftKey && state.note.documentPane.editingText == "" =>
             switch state->State.Note.DocumentPane.selectedDocument {
-            | Some(selectedDocument)
-              if selectedDocument.firstChildId == "" && selectedDocument.lastChildId == "" =>
-              switch state->State.Note.DocumentPane.belowDocument(selectedDocument) {
+            | Some({firstChildId: "", lastChildId: ""}) =>
+              // selected document has no children
+              switch state->State.Note.DocumentPane.belowSelectedDocument {
               | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" =>
                 switch state->State.Note.ItemPane.topItem {
                 | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
@@ -342,9 +342,9 @@ module KeyDown = {
 
           | "Backspace" if isNeutral && !shiftKey && state.itemEditor.editingText == "" =>
             switch state->State.Note.ItemPane.selectedItem {
-            | Some(selectedItem)
-              if selectedItem.firstChildId == "" && selectedItem.lastChildId == "" =>
-              switch state->State.Note.ItemPane.aboveItem(selectedItem) {
+            | Some({firstChildId: "", lastChildId: ""}) =>
+              // selected item has no children
+              switch state->State.Note.ItemPane.aboveSelectedItem {
               | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
                   dispatch(
                     Action.FirestoreNote(
@@ -368,9 +368,9 @@ module KeyDown = {
 
           | "Delete" if isNeutral && !shiftKey && state.itemEditor.editingText == "" =>
             switch state->State.Note.ItemPane.selectedItem {
-            | Some(selectedItem)
-              if selectedItem.firstChildId == "" && selectedItem.lastChildId == "" =>
-              switch state->State.Note.ItemPane.belowItem(selectedItem) {
+            | Some({firstChildId: "", lastChildId: ""}) =>
+              // selected item has no children
+              switch state->State.Note.ItemPane.belowSelectedItem {
               | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" => {
                   dispatch(
                     Action.FirestoreNote(
