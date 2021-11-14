@@ -26,7 +26,7 @@ let make = () => {
 
   recentDateActionLogs
   ->Array.map((dateActionLog: State.dateActionLog) => {
-    <ActionLogDateActionLog dateActionLog />
+    <ActionLogDateActionLog key=dateActionLog.id dateActionLog />
   })
   ->React.array
 }

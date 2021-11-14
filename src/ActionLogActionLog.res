@@ -11,17 +11,26 @@ let getTimeString = unixtime => {
   }
 }
 
+module ActionLog = {
+  @react.component
+  let make = (~actionLog: State.actionLog, ()) => {
+    let {text, begin, end} = actionLog
+    let begin = begin->getTimeString
+    let end = end->getTimeString
+
+    <> <p> {text->React.string} </p> <p> {`${begin} → ${end}`->React.string} </p> </>
+  }
+}
+
 @react.component
 let make = (~actionLog: State.actionLog, ()) => {
   let selectedId = Redux.useSelector(State.ActionLog.selectedActionLogId)
-  let {id, itemMap, rootItemId, text, begin, end} = actionLog
+  let {id, itemMap, rootItemId} = actionLog
   let isSelectedActionLog = id === selectedId
-  let begin = begin->getTimeString
-  let end = end->getTimeString
 
   <BulletList
     bullet={<Bullet />}
-    item={<> <p> {text->React.string} </p> <p> {`${begin} -> ${end}`->React.string} </p> </>}
+    item={<ActionLog actionLog />}
     isSelectedItem=isSelectedActionLog
     child={switch itemMap->Map.String.get(rootItemId) {
     | Some(rootItem) =>
