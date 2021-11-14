@@ -11,11 +11,9 @@ external addEventListener: (Dom.window, string, Dom.keyboardEvent => unit) => un
   import "firebase/compat/firestore";
 `)
 
-let loggerMiddleware = (store, next, action) => {
-  Js.log(Reductive.Store.getState(store))
+let loggerMiddleware = (_store, next, action) => {
   Js.log(action)
   next(action)
-  Js.log(Reductive.Store.getState(store))
 }
 
 let enhancer = ReductiveDevTools.Connectors.enhancer(
@@ -29,9 +27,9 @@ let store = enhancer(Reductive.Store.create)(
   ~preloadedState=State.initialState,
   ~enhancer=(store, next) =>
     next
-    ->loggerMiddleware(store, _)
     ->FirestoreMiddleware.middleware(store, _)
-    ->EventMiddleware.middleware(store, _),
+    ->EventMiddleware.middleware(store, _)
+    ->loggerMiddleware(store, _),
   (),
 )
 

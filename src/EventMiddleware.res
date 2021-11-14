@@ -146,7 +146,7 @@ module KeyDown = {
             )
             event->preventDefault
 
-          | "Backspace" if isNeutral && !shiftKey && state.note.documentPane.editingText == "" =>
+          | "Backspace" if isNeutral && !shiftKey && state.editor.editingText == "" =>
             switch state->State.Note.DocumentPane.selectedDocument {
             | Some({firstChildId: "", lastChildId: ""}) =>
               // selected document has no children
@@ -176,7 +176,7 @@ module KeyDown = {
             | _ => ()
             }
 
-          | "Delete" if isNeutral && !shiftKey && state.note.documentPane.editingText == "" =>
+          | "Delete" if isNeutral && !shiftKey && state.editor.editingText == "" =>
             switch state->State.Note.DocumentPane.selectedDocument {
             | Some({firstChildId: "", lastChildId: ""}) =>
               // selected document has no children
@@ -212,7 +212,7 @@ module KeyDown = {
       }
     }
 
-    module DocumentItemPane = {
+    module ItemPane = {
       module Normal = {
         let handler = (store, event) => {
           let dispatch = Reductive.Store.dispatch(store)
@@ -340,7 +340,7 @@ module KeyDown = {
               event->preventDefault
             }
 
-          | "Backspace" if isNeutral && !shiftKey && state.itemEditor.editingText == "" =>
+          | "Backspace" if isNeutral && !shiftKey && state.editor.editingText == "" =>
             switch state->State.Note.ItemPane.selectedItem {
             | Some({firstChildId: "", lastChildId: ""}) =>
               // selected item has no children
@@ -366,7 +366,7 @@ module KeyDown = {
             | _ => ()
             }
 
-          | "Delete" if isNeutral && !shiftKey && state.itemEditor.editingText == "" =>
+          | "Delete" if isNeutral && !shiftKey && state.editor.editingText == "" =>
             switch state->State.Note.ItemPane.selectedItem {
             | Some({firstChildId: "", lastChildId: ""}) =>
               // selected item has no children
@@ -524,6 +524,15 @@ module Blur = {
         dispatch(Action.Note(Action.ItemPane(Action.ToNormalMode())))
       }
     }
+
+    module DocumentPane = {
+      let handler = (store, _event) => {
+        let dispatch = Reductive.Store.dispatch(store)
+
+        dispatch(Action.FirestoreNote(Action.DocumentPane(Action.SaveDocument())))
+        dispatch(Action.Note(Action.DocumentPane(Action.ToNormalMode())))
+      }
+    }
   }
 }
 
@@ -539,9 +548,9 @@ let middleware = (store, next, action) => {
         KeyDown.Note.DocumentPane.Insert.handler(store, event)
 
       | (Event.KeyDown({event}), State.Note(State.ItemPane()), State.Normal()) =>
-        KeyDown.Note.DocumentItemPane.Normal.handler(store, event)
+        KeyDown.Note.ItemPane.Normal.handler(store, event)
       | (Event.KeyDown({event}), State.Note(State.ItemPane()), State.Insert(_)) =>
-        KeyDown.Note.DocumentItemPane.Insert.handler(store, event)
+        KeyDown.Note.ItemPane.Insert.handler(store, event)
 
       | (Event.KeyDown({event}), State.Search(), State.Normal()) =>
         KeyDown.Search.Normal.handler(store, event)
@@ -562,9 +571,10 @@ let middleware = (store, next, action) => {
       | (Event.Click({event, isDouble, target}), State.ActionLog(), _) =>
         Click.ActionLog.handler(store, event, isDouble, target)
 
+      | (Event.Blur(_), State.Note(State.DocumentPane()), _) =>
+        Blur.Note.DocumentPane.handler(store, event)
       | (Event.Blur({event}), State.Note(State.ItemPane()), _) =>
         Blur.Note.ItemPane.handler(store, event)
-      | (Event.Blur(_), State.Note(State.DocumentPane()), _) => ()
       | (Event.Blur(_), State.Search(), _) => ()
       | (Event.Blur(_), State.ActionLog(), _) => ()
       }

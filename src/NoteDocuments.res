@@ -69,7 +69,7 @@ module rec DocumentsInner: {
     <BulletList
       bullet={<Bullet />}
       item={switch (focus, mode, isSelectedDocument) {
-      | (State.Note(State.DocumentPane()), State.Insert(_), true) => <NoteDocumentEditor />
+      | (State.Note(State.DocumentPane()), State.Insert(_), true) => <Editor />
 
       | _ => <NoteDocument document />
       }}

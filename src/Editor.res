@@ -5,24 +5,19 @@ open Belt
 @get external value: Js.t<'a> => string = "value"
 
 @react.component
-let make = React.memo(() => {
-  let text = Redux.useSelector(State.Note.DocumentPane.editingText)
+let make = () => {
+  let text = Redux.useSelector(State.Editor.editingText)
   let initialCursorPosition = Redux.useSelector(State.initialCursorPosition)
 
   let dispatch = Redux.useDispatch()
 
-  let onChange = React.useCallback1(event => {
-    dispatch(
-      Action.Note(
-        Action.DocumentPane(Action.SetEditingText({text: event->ReactEvent.Form.target->value})),
-      ),
-    )
-  }, [])
+  let onChange = event => {
+    dispatch(Action.Editor(Action.SetEditingText({text: event->ReactEvent.Form.target->value})))
+  }
 
-  let onBlur = React.useCallback1(_ => {
-    dispatch(Action.FirestoreNote(Action.DocumentPane(Action.SaveDocument())))
-    dispatch(Action.Note(Action.DocumentPane(Action.ToNormalMode())))
-  }, [])
+  let onBlur = event => {
+    dispatch(Action.Event(Event.Blur({event: event})))
+  }
 
   let textareaRef = React.useRef(Js.Nullable.null)
 
@@ -46,8 +41,6 @@ let make = React.memo(() => {
   }, [])
 
   <ReactTextareaAutosize
-    className={Style.Note.editor} ref={ReactDOM.Ref.domRef(textareaRef)} value=text onChange onBlur
+    className=Style.Note.editor ref={ReactDOM.Ref.domRef(textareaRef)} value=text onChange onBlur
   />
-})
-
-React.setDisplayName(make, "DocumentEditor")
+}

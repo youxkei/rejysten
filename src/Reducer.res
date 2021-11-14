@@ -4,12 +4,12 @@ let get = HashMap.String.get
 
 exception ActionShouldBeProcessedByMiddleware(Action.t)
 
-module ItemEditor = {
-  let reducer = (state: State.t, action: Action.itemEditor) => {
+module Editor = {
+  let reducer = (state: State.t, action: Action.editor) => {
     switch action {
     | Action.SetEditingText({text}) => {
         ...state,
-        itemEditor: {
+        editor: {
           editingText: text,
         },
       }
@@ -26,7 +26,6 @@ module Note = {
           ...state,
           note: {
             documentPane: {
-              ...state.note.documentPane,
               selectedId: aboveId,
             },
             itemPane: {
@@ -44,7 +43,6 @@ module Note = {
           ...state,
           note: {
             documentPane: {
-              ...state.note.documentPane,
               selectedId: belowId,
             },
             itemPane: {
@@ -65,12 +63,8 @@ module Note = {
 
       {
         ...state,
-        note: {
-          ...state.note,
-          documentPane: {
-            ...state.note.documentPane,
-            editingText: editingText,
-          },
+        editor: {
+          editingText: editingText,
         },
         mode: State.Insert({initialCursorPosition: initialCursorPosition}),
       }
@@ -80,24 +74,12 @@ module Note = {
         mode: State.Normal(),
       }
 
-    | Action.SetEditingText({text}) => {
-        ...state,
-        note: {
-          ...state.note,
-          documentPane: {
-            ...state.note.documentPane,
-            editingText: text,
-          },
-        },
-      }
-
     | Action.SetSelectedDocument({id, initialCursorPosition}) =>
       switch state.mode {
       | State.Normal() => {
           ...state,
           note: {
             documentPane: {
-              ...state.note.documentPane,
               selectedId: id,
             },
             itemPane: {
@@ -116,10 +98,12 @@ module Note = {
           {
             ...state,
             mode: State.Insert({initialCursorPosition: initialCursorPosition}),
+            editor: {
+              editingText: editingText,
+            },
             note: {
               documentPane: {
                 selectedId: id,
-                editingText: editingText,
               },
               itemPane: {
                 selectedId: "",
@@ -202,7 +186,7 @@ module Note = {
 
       {
         ...state,
-        itemEditor: {
+        editor: {
           editingText: editingText,
         },
         mode: State.Insert({initialCursorPosition: initialCursorPosition}),
@@ -211,7 +195,7 @@ module Note = {
     | Action.ToNormalMode() => {
         ...state,
         mode: State.Normal(),
-        itemEditor: {
+        editor: {
           editingText: "",
         },
       }
@@ -238,7 +222,7 @@ module Note = {
           {
             ...state,
             mode: State.Insert({initialCursorPosition: initialCursorPosition}),
-            itemEditor: {
+            editor: {
               editingText: editingText,
             },
             note: {
@@ -317,7 +301,7 @@ let reducer = (state: State.t, action) => {
   | Action.Search(action) => searchReducer(state, action)
   | Action.ActionLog(action) => actionLogReducer(state, action)
 
-  | Action.ItemEditor(action) => ItemEditor.reducer(state, action)
+  | Action.Editor(action) => Editor.reducer(state, action)
 
   | Action.FocusNote(Action.DocumentPane()) => {
       ...state,
@@ -331,10 +315,7 @@ let reducer = (state: State.t, action) => {
           ...state,
           focus: State.Note(State.ItemPane()),
           note: {
-            documentPane: {
-              ...state.note.documentPane,
-              editingText: "",
-            },
+            ...state.note,
             itemPane: {
               selectedId: bottomItem.id,
             },
@@ -347,13 +328,6 @@ let reducer = (state: State.t, action) => {
       {
         ...state,
         focus: State.Note(State.ItemPane()),
-        note: {
-          ...state.note,
-          documentPane: {
-            ...state.note.documentPane,
-            editingText: "",
-          },
-        },
       }
     }
 
@@ -398,7 +372,6 @@ let reducer = (state: State.t, action) => {
       note: {
         ...state.note,
         documentPane: {
-          ...state.note.documentPane,
           selectedId: selectedId,
         },
       },

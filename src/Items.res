@@ -82,7 +82,7 @@ module rec ItemsInner: {
     <BulletList
       bullet={<Bullet />}
       item={switch (isFocused, editable, mode, isSelectedItem) {
-      | (true, true, State.Insert(_), true) => <ItemEditor />
+      | (true, true, State.Insert(_), true) => <Editor />
 
       | _ => <Item item />
       }}

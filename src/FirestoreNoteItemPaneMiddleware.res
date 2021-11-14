@@ -11,10 +11,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteItemPane) =>
       | State.Insert(_) =>
         open Firebase.Firestore
 
-        Firebase.firestore
-        ->collection("items")
-        ->doc(id)
-        ->update({"text": state.itemEditor.editingText})
+        Firebase.firestore->collection("items")->doc(id)->update({"text": state.editor.editingText})
 
       | _ => ()
       }
@@ -32,8 +29,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteItemPane) =>
       let items = db->collection("items")
 
       switch state.mode {
-      | State.Insert(_) =>
-        writeBatch->addUpdate(items->doc(id), {"text": state.itemEditor.editingText})
+      | State.Insert(_) => writeBatch->addUpdate(items->doc(id), {"text": state.editor.editingText})
 
       | _ => ()
       }
@@ -81,8 +77,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteItemPane) =>
       let items = db->collection("items")
 
       switch state.mode {
-      | State.Insert(_) =>
-        writeBatch->addUpdate(items->doc(id), {"text": state.itemEditor.editingText})
+      | State.Insert(_) => writeBatch->addUpdate(items->doc(id), {"text": state.editor.editingText})
 
       | _ => ()
       }
@@ -142,7 +137,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteItemPane) =>
 
         switch state.mode {
         | State.Insert(_) =>
-          writeBatch->addUpdate(items->doc(id), {"text": state.itemEditor.editingText})
+          writeBatch->addUpdate(items->doc(id), {"text": state.editor.editingText})
 
         | _ => ()
         }

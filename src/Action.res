@@ -19,14 +19,13 @@ type firestoreNoteItemPane =
 
 type firestoreNote = DocumentPane(firestoreNoteDocumentPane) | ItemPane(firestoreNoteItemPane)
 
-type itemEditor = SetEditingText({text: string})
+type editor = SetEditingText({text: string})
 
 type noteDocumentPane =
   | ToAboveDocument(unit)
   | ToBelowDocument(unit)
   | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
   | ToNormalMode(unit)
-  | SetEditingText({text: string})
   | SetSelectedDocument({id: string, initialCursorPosition: State.initialCursorPosition})
 
 type noteItemPane =
@@ -59,7 +58,7 @@ type t =
   | FirestoreNote(firestoreNote)
 
   // per element actions
-  | ItemEditor(itemEditor)
+  | Editor(editor)
 
   // per page actions
   | Note(note)
