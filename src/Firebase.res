@@ -15,11 +15,17 @@ module Firestore = {
   type t
   type collection
   type document
+  type fieldPath
+
+  @module("firebase/firestore") @new
+  external fieldPath3: (string, string, string) => fieldPath = "FieldPath"
 
   @module("firebase/firestore") external collection: (t, string) => collection = "collection"
   @module("firebase/firestore") external doc: (collection, string) => document = "doc"
 
   @module("firebase/firestore") external update: (document, Js.t<'a>) => unit = "updateDoc"
+  @module("firebase/firestore")
+  external updateField: (document, fieldPath, 'a) => unit = "updateDoc"
 
   type writeBatch
   @module("firebase/firestore") external writeBatch: t => writeBatch = "writeBatch"

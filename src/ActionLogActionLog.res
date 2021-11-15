@@ -13,12 +13,22 @@ let getTimeString = unixtime => {
 
 module ActionLog = {
   @react.component
-  let make = (~actionLog: State.actionLog, ()) => {
+  let make = (~actionLog: State.actionLog, ~isSelectedActionLog, ()) => {
+    let mode = Redux.useSelector(State.mode)
     let {text, begin, end} = actionLog
     let begin = begin->getTimeString
     let end = end->getTimeString
 
-    <> <p> {text->React.string} </p> <p> {`${begin} → ${end}`->React.string} </p> </>
+    <>
+      <p>
+        {switch mode {
+        | State.Insert(_) if isSelectedActionLog => <Editor />
+
+        | _ => text->React.string
+        }}
+      </p>
+      <p> {`${begin} → ${end}`->React.string} </p>
+    </>
   }
 }
 
@@ -30,7 +40,7 @@ let make = (~actionLog: State.actionLog, ()) => {
 
   <BulletList
     bullet={<Bullet />}
-    item={<ActionLog actionLog />}
+    item={<ActionLog actionLog isSelectedActionLog />}
     isSelectedItem=isSelectedActionLog
     child={switch itemMap->Map.String.get(rootItemId) {
     | Some(rootItem) =>

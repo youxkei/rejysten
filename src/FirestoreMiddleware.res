@@ -6,6 +6,9 @@ let middleware = (store, next, action) => {
   | Action.FirestoreNote(Action.ItemPane(firestoreItemAction)) =>
     FirestoreNoteItemPaneMiddleware.middleware(store, firestoreItemAction)
 
+  | Action.FirestoreActionLog(firestoreActionLogAction) =>
+    FirestoreActionLogMiddleware.middleware(store, firestoreActionLogAction)
+
   | _ => next(action)
   }
 }

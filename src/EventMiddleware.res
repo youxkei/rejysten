@@ -415,13 +415,39 @@ module KeyDown = {
           dispatch(Action.ActionLog(Action.ToBelowActionLog()))
           event->preventDefault
 
+        | "KeyI" if !ctrlKey && !shiftKey =>
+          dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
+          event->preventDefault
+
+        | "KeyA" if !ctrlKey && !shiftKey =>
+          dispatch(Action.ToInsertMode({initialCursorPosition: State.End()}))
+          event->preventDefault
+
         | _ => ()
         }
       }
     }
 
     module Insert = {
-      let handler = (_store, _event) => ()
+      let handler = (store, event) => {
+        let dispatch = Reductive.Store.dispatch(store)
+        let _state: State.t = Reductive.Store.getState(store)
+
+        let code = event->code
+        let ctrlKey = event->ctrlKey
+        let shiftKey = event->shiftKey
+        let isComposing = event->isComposing
+        let isNeutral = !ctrlKey && !isComposing
+
+        switch code {
+        | "Escape" if isNeutral && !shiftKey => {
+            dispatch(Action.FirestoreActionLog(Action.SaveActionLog()))
+            dispatch(Action.ToNormalMode())
+          }
+
+        | _ => ()
+        }
+      }
     }
   }
 }

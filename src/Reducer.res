@@ -240,7 +240,8 @@ let actionLogReducer = (state: State.t, action) => {
 let reducer = (state: State.t, action) => {
   switch action {
   | Action.Event(_)
-  | Action.FirestoreNote(_) =>
+  | Action.FirestoreNote(_)
+  | Action.FirestoreActionLog(_) =>
     raise(ActionShouldBeProcessedByMiddleware(action))
 
   | Action.Editor(action) => Editor.reducer(state, action)

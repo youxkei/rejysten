@@ -19,6 +19,8 @@ type firestoreNoteItemPane =
 
 type firestoreNote = DocumentPane(firestoreNoteDocumentPane) | ItemPane(firestoreNoteItemPane)
 
+type firestoreActionLog = SaveActionLog(unit)
+
 type editor = SetEditingText({text: string})
 
 type noteDocumentPane =
@@ -49,6 +51,7 @@ type t =
 
   // firestore actions handled in FirestoreMiddleware
   | FirestoreNote(firestoreNote)
+  | FirestoreActionLog(firestoreActionLog)
 
   // global state actions
   | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
