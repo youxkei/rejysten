@@ -54,26 +54,6 @@ module Note = {
       | None => state
       }
 
-    | Action.ToInsertMode({initialCursorPosition}) =>
-      let editingText = switch state->State.Note.DocumentPane.selectedDocument {
-      | Some({text}) => text
-
-      | None => ""
-      }
-
-      {
-        ...state,
-        editor: {
-          editingText: editingText,
-        },
-        mode: State.Insert({initialCursorPosition: initialCursorPosition}),
-      }
-
-    | Action.ToNormalMode() => {
-        ...state,
-        mode: State.Normal(),
-      }
-
     | Action.SetSelectedDocument({id, initialCursorPosition}) =>
       switch state.mode {
       | State.Normal() => {
@@ -177,29 +157,6 @@ module Note = {
       | None => state
       }
 
-    | Action.ToInsertMode({initialCursorPosition}) =>
-      let editingText = switch state->State.Note.ItemPane.selectedItem {
-      | Some({text}) => text
-
-      | None => ""
-      }
-
-      {
-        ...state,
-        editor: {
-          editingText: editingText,
-        },
-        mode: State.Insert({initialCursorPosition: initialCursorPosition}),
-      }
-
-    | Action.ToNormalMode() => {
-        ...state,
-        mode: State.Normal(),
-        editor: {
-          editingText: "",
-        },
-      }
-
     | Action.SetSelectedItem({id, initialCursorPosition}) =>
       switch state.mode {
       | State.Normal() => {
@@ -247,16 +204,6 @@ let searchReducer = (state: State.t, action) => {
         searchingText: text,
       },
     }
-
-  | Action.ToInsertMode({initialCursorPosition}) => {
-      ...state,
-      mode: State.Insert({initialCursorPosition: initialCursorPosition}),
-    }
-
-  | Action.ToNormalMode() => {
-      ...state,
-      mode: State.Normal(),
-    }
   }
 }
 
@@ -296,12 +243,27 @@ let reducer = (state: State.t, action) => {
   | Action.FirestoreNote(_) =>
     raise(ActionShouldBeProcessedByMiddleware(action))
 
+  | Action.Editor(action) => Editor.reducer(state, action)
+
   | Action.Note(Action.DocumentPane(action)) => Note.documentPaneReducer(state, action)
   | Action.Note(Action.ItemPane(action)) => Note.documentItemPaneReducer(state, action)
   | Action.Search(action) => searchReducer(state, action)
   | Action.ActionLog(action) => actionLogReducer(state, action)
 
-  | Action.Editor(action) => Editor.reducer(state, action)
+  | Action.DevToolUpdate({state}) => state
+
+  | Action.ToInsertMode({initialCursorPosition}) => {
+      ...state,
+      mode: State.Insert({initialCursorPosition: initialCursorPosition}),
+      editor: {
+        editingText: state->State.selectedText,
+      },
+    }
+
+  | Action.ToNormalMode() => {
+      ...state,
+      mode: State.Normal(),
+    }
 
   | Action.FocusNote(Action.DocumentPane()) => {
       ...state,
@@ -394,7 +356,5 @@ let reducer = (state: State.t, action) => {
         selectedActionLogId: selectedActionLogId,
       },
     }
-
-  | Action.DevToolUpdate({state}) => state
   }
 }

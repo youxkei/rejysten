@@ -53,28 +53,16 @@ module KeyDown = {
                   Action.DocumentPane(Action.AddDocument({direction: direction})),
                 ),
               )
-              dispatch(
-                Action.Note(
-                  Action.DocumentPane(Action.ToInsertMode({initialCursorPosition: State.Start()})),
-                ),
-              )
+              dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
             }
 
           | "KeyI" if !ctrlKey && !shiftKey => {
-              dispatch(
-                Action.Note(
-                  Action.DocumentPane(Action.ToInsertMode({initialCursorPosition: State.Start()})),
-                ),
-              )
+              dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
               event->preventDefault
             }
 
           | "KeyA" if !ctrlKey && !shiftKey => {
-              dispatch(
-                Action.Note(
-                  Action.DocumentPane(Action.ToInsertMode({initialCursorPosition: State.End()})),
-                ),
-              )
+              dispatch(Action.ToInsertMode({initialCursorPosition: State.End()}))
               event->preventDefault
             }
 
@@ -90,11 +78,7 @@ module KeyDown = {
                   Action.DocumentPane(Action.AddDocument({direction: direction})),
                 ),
               )
-              dispatch(
-                Action.Note(
-                  Action.DocumentPane(Action.ToInsertMode({initialCursorPosition: State.Start()})),
-                ),
-              )
+              dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
 
               event->preventDefault
             }
@@ -128,7 +112,7 @@ module KeyDown = {
           switch code {
           | "Escape" if isNeutral && !shiftKey =>
             dispatch(Action.FirestoreNote(Action.DocumentPane(Action.SaveDocument())))
-            dispatch(Action.Note(Action.DocumentPane(Action.ToNormalMode())))
+            dispatch(Action.ToNormalMode())
 
           | "Tab" if isNeutral && !shiftKey =>
             dispatch(Action.FirestoreNote(Action.DocumentPane(Action.IndentDocument())))
@@ -248,20 +232,12 @@ module KeyDown = {
             }
 
           | "KeyI" if !ctrlKey && !shiftKey => {
-              dispatch(
-                Action.Note(
-                  Action.ItemPane(Action.ToInsertMode({initialCursorPosition: State.Start()})),
-                ),
-              )
+              dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
               event->preventDefault
             }
 
           | "KeyA" if !ctrlKey && !shiftKey => {
-              dispatch(
-                Action.Note(
-                  Action.ItemPane(Action.ToInsertMode({initialCursorPosition: State.End()})),
-                ),
-              )
+              dispatch(Action.ToInsertMode({initialCursorPosition: State.End()}))
               event->preventDefault
             }
 
@@ -275,11 +251,7 @@ module KeyDown = {
               dispatch(
                 Action.FirestoreNote(Action.ItemPane(Action.AddItem({direction: direction}))),
               )
-              dispatch(
-                Action.Note(
-                  Action.ItemPane(Action.ToInsertMode({initialCursorPosition: State.Start()})),
-                ),
-              )
+              dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
 
               event->preventDefault
             }
@@ -320,7 +292,7 @@ module KeyDown = {
           switch code {
           | "Escape" if isNeutral && !shiftKey => {
               dispatch(Action.FirestoreNote(Action.ItemPane(Action.SaveItem())))
-              dispatch(Action.Note(Action.ItemPane(Action.ToNormalMode())))
+              dispatch(Action.ToNormalMode())
             }
 
           | "Tab" if isNeutral && !shiftKey => {
@@ -471,13 +443,9 @@ module Click = {
         )
 
         if isDouble {
-          dispatch(
-            Action.Note(
-              Action.DocumentPane(Action.ToInsertMode({initialCursorPosition: State.End()})),
-            ),
-          )
+          dispatch(Action.ToInsertMode({initialCursorPosition: State.End()}))
         } else {
-          dispatch(Action.Note(Action.DocumentPane(Action.ToNormalMode())))
+          dispatch(Action.ToNormalMode())
         }
 
       | Event.Item(itemId) =>
@@ -491,11 +459,9 @@ module Click = {
         )
 
         if isDouble {
-          dispatch(
-            Action.Note(Action.ItemPane(Action.ToInsertMode({initialCursorPosition: State.End()}))),
-          )
+          dispatch(Action.ToInsertMode({initialCursorPosition: State.End()}))
         } else {
-          dispatch(Action.Note(Action.ItemPane(Action.ToNormalMode())))
+          dispatch(Action.ToNormalMode())
         }
       }
     }
@@ -521,7 +487,7 @@ module Blur = {
         let dispatch = Reductive.Store.dispatch(store)
 
         dispatch(Action.FirestoreNote(Action.ItemPane(Action.SaveItem())))
-        dispatch(Action.Note(Action.ItemPane(Action.ToNormalMode())))
+        dispatch(Action.ToNormalMode())
       }
     }
 
@@ -530,7 +496,7 @@ module Blur = {
         let dispatch = Reductive.Store.dispatch(store)
 
         dispatch(Action.FirestoreNote(Action.DocumentPane(Action.SaveDocument())))
-        dispatch(Action.Note(Action.DocumentPane(Action.ToNormalMode())))
+        dispatch(Action.ToNormalMode())
       }
     }
   }

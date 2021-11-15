@@ -415,13 +415,7 @@ let initialState: t = {
   },
 }
 
-let state = state => state
 let mode = ({mode}) => mode
-let editing = ({mode}) =>
-  switch mode {
-  | Normal() => false
-  | Insert(_) => true
-  }
 let focus = ({focus}) => focus
 
 let initialCursorPosition = ({mode}) =>
@@ -429,4 +423,29 @@ let initialCursorPosition = ({mode}) =>
   | Normal() => Start()
 
   | Insert({initialCursorPosition}) => initialCursorPosition
+  }
+
+let selectedText = state =>
+  switch state.focus {
+  | Note(DocumentPane()) =>
+    switch state->Note.DocumentPane.selectedDocument {
+    | Some(item) => item.text
+
+    | None => ""
+    }
+  | Note(ItemPane()) =>
+    switch state->Note.ItemPane.selectedItem {
+    | Some(item) => item.text
+
+    | None => ""
+    }
+
+  | Search() => ""
+
+  | ActionLog() =>
+    switch state->ActionLog.selectedActionLog {
+    | Some(item) => item.text
+
+    | None => ""
+    }
   }

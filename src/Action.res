@@ -24,8 +24,6 @@ type editor = SetEditingText({text: string})
 type noteDocumentPane =
   | ToAboveDocument(unit)
   | ToBelowDocument(unit)
-  | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
-  | ToNormalMode(unit)
   | SetSelectedDocument({id: string, initialCursorPosition: State.initialCursorPosition})
 
 type noteItemPane =
@@ -33,18 +31,13 @@ type noteItemPane =
   | ToBelowItem(unit)
   | ToTopItem(unit)
   | ToBottomItem(unit)
-  | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
-  | ToNormalMode(unit)
   | SetSelectedItem({id: string, initialCursorPosition: State.initialCursorPosition})
 
 type note =
   | DocumentPane(noteDocumentPane)
   | ItemPane(noteItemPane)
 
-type search =
-  | SetSearchingText({text: string})
-  | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
-  | ToNormalMode(unit)
+type search = SetSearchingText({text: string})
 
 type actionLog =
   | ToAboveActionLog(unit)
@@ -57,6 +50,13 @@ type t =
   // firestore actions handled in FirestoreMiddleware
   | FirestoreNote(firestoreNote)
 
+  // global state actions
+  | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
+  | ToNormalMode(unit)
+  | FocusNote(focusNotePane)
+  | FocusSearch(unit)
+  | FocusActionLog(unit)
+
   // per element actions
   | Editor(editor)
 
@@ -64,11 +64,6 @@ type t =
   | Note(note)
   | Search(search)
   | ActionLog(actionLog)
-
-  // focus change actions
-  | FocusNote(focusNotePane)
-  | FocusSearch(unit)
-  | FocusActionLog(unit)
 
   // actions for syncing state.firestore and firestore
   | SetFirestoreItemState({itemMap: State.itemMap})
