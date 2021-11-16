@@ -17,12 +17,14 @@ module KeyDown = {
 
           switch code {
           | "Tab" if !ctrlKey && !shiftKey => {
-              dispatch(Action.FirestoreNote(Action.DocumentPane(Action.IndentDocument())))
+              dispatch(Action.Firestore(Action.Note(Action.DocumentPane(Action.IndentDocument()))))
               event->preventDefault
             }
 
           | "Tab" if !ctrlKey && shiftKey => {
-              dispatch(Action.FirestoreNote(Action.DocumentPane(Action.UnindentDocument())))
+              dispatch(
+                Action.Firestore(Action.Note(Action.DocumentPane(Action.UnindentDocument()))),
+              )
               event->preventDefault
             }
 
@@ -49,8 +51,8 @@ module KeyDown = {
               }
 
               dispatch(
-                Action.FirestoreNote(
-                  Action.DocumentPane(Action.AddDocument({direction: direction})),
+                Action.Firestore(
+                  Action.Note(Action.DocumentPane(Action.AddDocument({direction: direction}))),
                 ),
               )
               dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
@@ -74,8 +76,8 @@ module KeyDown = {
               }
 
               dispatch(
-                Action.FirestoreNote(
-                  Action.DocumentPane(Action.AddDocument({direction: direction})),
+                Action.Firestore(
+                  Action.Note(Action.DocumentPane(Action.AddDocument({direction: direction}))),
                 ),
               )
               dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
@@ -111,21 +113,21 @@ module KeyDown = {
 
           switch code {
           | "Escape" if isNeutral && !shiftKey =>
-            dispatch(Action.FirestoreNote(Action.DocumentPane(Action.SaveDocument())))
+            dispatch(Action.Firestore(Action.Note(Action.DocumentPane(Action.SaveDocument()))))
             dispatch(Action.ToNormalMode())
 
           | "Tab" if isNeutral && !shiftKey =>
-            dispatch(Action.FirestoreNote(Action.DocumentPane(Action.IndentDocument())))
+            dispatch(Action.Firestore(Action.Note(Action.DocumentPane(Action.IndentDocument()))))
             event->preventDefault
 
           | "Tab" if isNeutral && shiftKey =>
-            dispatch(Action.FirestoreNote(Action.DocumentPane(Action.UnindentDocument())))
+            dispatch(Action.Firestore(Action.Note(Action.DocumentPane(Action.UnindentDocument()))))
             event->preventDefault
 
           | "Enter" if isNeutral && !shiftKey =>
             dispatch(
-              Action.FirestoreNote(
-                Action.DocumentPane(Action.AddDocument({direction: Action.Next()})),
+              Action.Firestore(
+                Action.Note(Action.DocumentPane(Action.AddDocument({direction: Action.Next()}))),
               ),
             )
             event->preventDefault
@@ -139,12 +141,14 @@ module KeyDown = {
                 switch state->State.Note.ItemPane.topItem {
                 | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
                   dispatch(
-                    Action.FirestoreNote(
-                      Action.DocumentPane(
-                        Action.DeleteDocument({
-                          nextSelectedId: aboveId,
-                          initialCursorPosition: State.End(),
-                        }),
+                    Action.Firestore(
+                      Action.Note(
+                        Action.DocumentPane(
+                          Action.DeleteDocument({
+                            nextSelectedId: aboveId,
+                            initialCursorPosition: State.End(),
+                          }),
+                        ),
                       ),
                     ),
                   )
@@ -169,12 +173,14 @@ module KeyDown = {
                 switch state->State.Note.ItemPane.topItem {
                 | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
                   dispatch(
-                    Action.FirestoreNote(
-                      Action.DocumentPane(
-                        Action.DeleteDocument({
-                          nextSelectedId: belowId,
-                          initialCursorPosition: State.Start(),
-                        }),
+                    Action.Firestore(
+                      Action.Note(
+                        Action.DocumentPane(
+                          Action.DeleteDocument({
+                            nextSelectedId: belowId,
+                            initialCursorPosition: State.Start(),
+                          }),
+                        ),
                       ),
                     ),
                   )
@@ -207,12 +213,12 @@ module KeyDown = {
 
           switch code {
           | "Tab" if !ctrlKey && !shiftKey => {
-              dispatch(Action.FirestoreNote(Action.ItemPane(Action.IndentItem())))
+              dispatch(Action.Firestore(Action.Note(Action.ItemPane(Action.IndentItem()))))
               event->preventDefault
             }
 
           | "Tab" if !ctrlKey && shiftKey => {
-              dispatch(Action.FirestoreNote(Action.ItemPane(Action.UnindentItem())))
+              dispatch(Action.Firestore(Action.Note(Action.ItemPane(Action.UnindentItem()))))
               event->preventDefault
             }
 
@@ -249,7 +255,9 @@ module KeyDown = {
               }
 
               dispatch(
-                Action.FirestoreNote(Action.ItemPane(Action.AddItem({direction: direction}))),
+                Action.Firestore(
+                  Action.Note(Action.ItemPane(Action.AddItem({direction: direction}))),
+                ),
               )
               dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
 
@@ -291,23 +299,25 @@ module KeyDown = {
 
           switch code {
           | "Escape" if isNeutral && !shiftKey => {
-              dispatch(Action.FirestoreNote(Action.ItemPane(Action.SaveItem())))
+              dispatch(Action.Firestore(Action.Note(Action.ItemPane(Action.SaveItem()))))
               dispatch(Action.ToNormalMode())
             }
 
           | "Tab" if isNeutral && !shiftKey => {
-              dispatch(Action.FirestoreNote(Action.ItemPane(Action.IndentItem())))
+              dispatch(Action.Firestore(Action.Note(Action.ItemPane(Action.IndentItem()))))
               event->preventDefault
             }
 
           | "Tab" if isNeutral && shiftKey => {
-              dispatch(Action.FirestoreNote(Action.ItemPane(Action.UnindentItem())))
+              dispatch(Action.Firestore(Action.Note(Action.ItemPane(Action.UnindentItem()))))
               event->preventDefault
             }
 
           | "Enter" if isNeutral && !shiftKey => {
               dispatch(
-                Action.FirestoreNote(Action.ItemPane(Action.AddItem({direction: Action.Next()}))),
+                Action.Firestore(
+                  Action.Note(Action.ItemPane(Action.AddItem({direction: Action.Next()}))),
+                ),
               )
               event->preventDefault
             }
@@ -319,12 +329,14 @@ module KeyDown = {
               switch state->State.Note.ItemPane.aboveSelectedItem {
               | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
                   dispatch(
-                    Action.FirestoreNote(
-                      Action.ItemPane(
-                        Action.DeleteItem({
-                          nextSelectedId: aboveId,
-                          initialCursorPosition: State.End(),
-                        }),
+                    Action.Firestore(
+                      Action.Note(
+                        Action.ItemPane(
+                          Action.DeleteItem({
+                            nextSelectedId: aboveId,
+                            initialCursorPosition: State.End(),
+                          }),
+                        ),
                       ),
                     ),
                   )
@@ -345,12 +357,14 @@ module KeyDown = {
               switch state->State.Note.ItemPane.belowSelectedItem {
               | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" => {
                   dispatch(
-                    Action.FirestoreNote(
-                      Action.ItemPane(
-                        Action.DeleteItem({
-                          nextSelectedId: belowId,
-                          initialCursorPosition: State.Start(),
-                        }),
+                    Action.Firestore(
+                      Action.Note(
+                        Action.ItemPane(
+                          Action.DeleteItem({
+                            nextSelectedId: belowId,
+                            initialCursorPosition: State.Start(),
+                          }),
+                        ),
                       ),
                     ),
                   )
@@ -441,7 +455,7 @@ module KeyDown = {
 
         switch code {
         | "Escape" if isNeutral && !shiftKey => {
-            dispatch(Action.FirestoreActionLog(Action.SaveActionLog()))
+            dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
             dispatch(Action.ToNormalMode())
           }
 
@@ -512,7 +526,7 @@ module Blur = {
       let handler = (store, _event) => {
         let dispatch = Reductive.Store.dispatch(store)
 
-        dispatch(Action.FirestoreNote(Action.ItemPane(Action.SaveItem())))
+        dispatch(Action.Firestore(Action.Note(Action.ItemPane(Action.SaveItem()))))
         dispatch(Action.ToNormalMode())
       }
     }
@@ -521,7 +535,7 @@ module Blur = {
       let handler = (store, _event) => {
         let dispatch = Reductive.Store.dispatch(store)
 
-        dispatch(Action.FirestoreNote(Action.DocumentPane(Action.SaveDocument())))
+        dispatch(Action.Firestore(Action.Note(Action.DocumentPane(Action.SaveDocument()))))
         dispatch(Action.ToNormalMode())
       }
     }

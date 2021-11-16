@@ -1,6 +1,7 @@
 open Belt
 
 type direction = Prev(unit) | Next(unit)
+
 type focusNotePane = DocumentPane(unit) | ItemPane(unit)
 
 type firestoreNoteDocumentPane =
@@ -20,6 +21,8 @@ type firestoreNoteItemPane =
 type firestoreNote = DocumentPane(firestoreNoteDocumentPane) | ItemPane(firestoreNoteItemPane)
 
 type firestoreActionLog = SaveActionLog(unit)
+
+type firestore = Note(firestoreNote) | ActionLog(firestoreActionLog)
 
 type editor = SetEditingText({text: string})
 
@@ -50,8 +53,7 @@ type t =
   | Event(Event.t)
 
   // firestore actions handled in FirestoreMiddleware
-  | FirestoreNote(firestoreNote)
-  | FirestoreActionLog(firestoreActionLog)
+  | Firestore(firestore)
 
   // global state actions
   | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
@@ -76,7 +78,7 @@ type t =
       latestDateActionLogId: string,
     })
 
-  // actions for data manipulation from state.firestore to each tab states
+  // actions for data manipulation from state.firestore to each page states
   | SetNoteDocumentPaneState({selectedId: string})
   | SetSearchState({
       ancestorDocuments: Set.String.t,
