@@ -20,7 +20,9 @@ type firestoreNoteItemPane =
 
 type firestoreNote = DocumentPane(firestoreNoteDocumentPane) | ItemPane(firestoreNoteItemPane)
 
-type firestoreActionLog = SaveActionLog(unit)
+type firestoreActionLog =
+  | SaveActionLog(unit)
+  | AddActionLog({direction: direction})
 
 type firestore = Note(firestoreNote) | ActionLog(firestoreActionLog)
 
@@ -47,6 +49,7 @@ type search = SetSearchingText({text: string})
 type actionLog =
   | ToAboveActionLog(unit)
   | ToBelowActionLog(unit)
+  | SetState({selectedDateActionLogId: string, selectedActionLogId: string})
 
 type t =
   // event action handled in EventMiddleware
@@ -86,6 +89,7 @@ type t =
       searchedItems: Set.String.t,
     })
   | SetActionLogState({selectedDateActionLogId: string, selectedActionLogId: string})
+  | SetActionLogOldestRecentDateActionLogId({oldestRecentDateActionLogId: string})
 
   // action for Redux DevTool
   | DevToolUpdate({state: State.t})

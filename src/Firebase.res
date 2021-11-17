@@ -18,6 +18,10 @@ module Firestore = {
   type fieldPath
 
   @module("firebase/firestore") @new
+  external fieldPath1: string => fieldPath = "FieldPath"
+  @module("firebase/firestore") @new
+  external fieldPath2: (string, string) => fieldPath = "FieldPath"
+  @module("firebase/firestore") @new
   external fieldPath3: (string, string, string) => fieldPath = "FieldPath"
 
   @module("firebase/firestore") external collection: (t, string) => collection = "collection"
@@ -30,6 +34,7 @@ module Firestore = {
   type writeBatch
   @module("firebase/firestore") external writeBatch: t => writeBatch = "writeBatch"
   @send external addUpdate: (writeBatch, document, Js.t<'a>) => unit = "update"
+  @send external addUpdateField: (writeBatch, document, fieldPath, 'a) => unit = "update"
   @send external addSet: (writeBatch, document, Js.t<'a>) => unit = "set"
   @send external addDelete: (writeBatch, document) => unit = "delete"
   @send external commit: writeBatch => unit = "commit"

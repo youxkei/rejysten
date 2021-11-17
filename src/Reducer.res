@@ -210,10 +210,11 @@ let searchReducer = (state: State.t, action) => {
 let actionLogReducer = (state: State.t, action) => {
   switch action {
   | Action.ToAboveActionLog() =>
-    switch state->State.ActionLog.aboveActionLog {
+    switch state->State.ActionLog.aboveRecentActionLog {
     | Some(aboveActionLog) => {
         ...state,
         actionLog: {
+          ...state.actionLog,
           selectedDateActionLogId: aboveActionLog.dateActionLogId,
           selectedActionLogId: aboveActionLog.id,
         },
@@ -227,12 +228,22 @@ let actionLogReducer = (state: State.t, action) => {
     | Some(belowActionLog) => {
         ...state,
         actionLog: {
+          ...state.actionLog,
           selectedDateActionLogId: belowActionLog.dateActionLogId,
           selectedActionLogId: belowActionLog.id,
         },
       }
 
     | None => state
+    }
+
+  | Action.SetState({selectedDateActionLogId, selectedActionLogId}) => {
+      ...state,
+      actionLog: {
+        ...state.actionLog,
+        selectedDateActionLogId: selectedDateActionLogId,
+        selectedActionLogId: selectedActionLogId,
+      },
     }
   }
 }
@@ -352,8 +363,17 @@ let reducer = (state: State.t, action) => {
   | Action.SetActionLogState({selectedDateActionLogId, selectedActionLogId}) => {
       ...state,
       actionLog: {
+        ...state.actionLog,
         selectedDateActionLogId: selectedDateActionLogId,
         selectedActionLogId: selectedActionLogId,
+      },
+    }
+
+  | Action.SetActionLogOldestRecentDateActionLogId({oldestRecentDateActionLogId}) => {
+      ...state,
+      actionLog: {
+        ...state.actionLog,
+        oldestRecentDateActionLogId: oldestRecentDateActionLogId,
       },
     }
   }

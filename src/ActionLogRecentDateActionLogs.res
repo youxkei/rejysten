@@ -1,18 +1,28 @@
 open Belt
 
-let recentDateActionLogsNum = 2
+let rec makeRecentDateActionLogs = (
+  dateActionLogMap,
+  oldestRecentDateActionLogId,
+  currentId,
+  n,
+  recentDateActionLogs,
+) => {
+  switch dateActionLogMap->Map.String.get(currentId) {
+  | Some(dateActionLog: State.dateActionLog) =>
+    let _ = recentDateActionLogs->Js.Array2.unshift(dateActionLog)
 
-let rec makeRecentDateActionLogs = (dateActionLogMap, currentId, n, recentDateActionLogs) => {
-  if n == recentDateActionLogsNum {
-    recentDateActionLogs
-  } else {
-    switch dateActionLogMap->Map.String.get(currentId) {
-    | Some(dateActionLog: State.dateActionLog) =>
-      let _ = recentDateActionLogs->Js.Array2.unshift(dateActionLog)
-      dateActionLogMap->makeRecentDateActionLogs(dateActionLog.prevId, n + 1, recentDateActionLogs)
-
-    | None => recentDateActionLogs
+    if dateActionLog.id == oldestRecentDateActionLogId {
+      recentDateActionLogs
+    } else {
+      dateActionLogMap->makeRecentDateActionLogs(
+        oldestRecentDateActionLogId,
+        dateActionLog.prevId,
+        n + 1,
+        recentDateActionLogs,
+      )
     }
+
+  | None => recentDateActionLogs
   }
 }
 
@@ -20,9 +30,15 @@ let rec makeRecentDateActionLogs = (dateActionLogMap, currentId, n, recentDateAc
 let make = () => {
   let dateActionLogMap = Redux.useSelector(State.Firestore.dateActionLogMap)
   let latestDateActionLogId = Redux.useSelector(State.Firestore.latestDateActionLogId)
+  let oldestRecentDateActionLogId = Redux.useSelector(State.ActionLog.oldestRecentDateActionLogId)
 
   let recentDateActionLogs =
-    dateActionLogMap->makeRecentDateActionLogs(latestDateActionLogId, 0, [])
+    dateActionLogMap->makeRecentDateActionLogs(
+      oldestRecentDateActionLogId,
+      latestDateActionLogId,
+      0,
+      [],
+    )
 
   recentDateActionLogs
   ->Array.map((dateActionLog: State.dateActionLog) => {

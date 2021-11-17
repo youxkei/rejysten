@@ -97,6 +97,7 @@ type searchState = {
 type actionLogState = {
   selectedActionLogId: string,
   selectedDateActionLogId: string,
+  oldestRecentDateActionLogId: string,
 }
 
 type firestoreState = {
@@ -331,6 +332,7 @@ module Search = {
 module ActionLog = {
   let selectedActionLogId = state => state.actionLog.selectedActionLogId
   let selectedDateActionLogId = state => state.actionLog.selectedDateActionLogId
+  let oldestRecentDateActionLogId = state => state.actionLog.oldestRecentDateActionLogId
   let isInitial = state => state->selectedDateActionLogId == ""
 
   let selectedDateActionLog = state =>
@@ -348,18 +350,22 @@ module ActionLog = {
     | None => None
     }
 
-  let aboveActionLog = state =>
+  let aboveRecentActionLog = state =>
     switch state->selectedActionLog {
     | Some((selectedDateActionLog, selectedActionLog)) =>
       switch selectedDateActionLog.actionLogMap->Map.String.get(selectedActionLog.prevId) {
       | Some(actionLog) => Some(actionLog)
 
       | None =>
-        switch state->Firestore.getDateActitonLog(selectedDateActionLog.prevId) {
-        | Some(prevDateActionLog) =>
-          prevDateActionLog.actionLogMap->Map.String.get(prevDateActionLog.latestActionLogId)
+        if selectedDateActionLog.id == state.actionLog.oldestRecentDateActionLogId {
+          None
+        } else {
+          switch state->Firestore.getDateActitonLog(selectedDateActionLog.prevId) {
+          | Some(prevDateActionLog) =>
+            prevDateActionLog.actionLogMap->Map.String.get(prevDateActionLog.latestActionLogId)
 
-        | None => None
+          | None => None
+          }
         }
       }
 
@@ -408,6 +414,7 @@ let initialState: t = {
   actionLog: {
     selectedDateActionLogId: "",
     selectedActionLogId: "",
+    oldestRecentDateActionLogId: "",
   },
   firestore: {
     documentMap: Map.String.empty,

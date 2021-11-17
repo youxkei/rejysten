@@ -15,7 +15,7 @@ let make = (~dateActionLog: State.dateActionLog, ()) => {
   <>
     <p> {dateActionLog.date->React.string} </p>
     {dateActionLog.actionLogMap
-    ->makeActionLogs(dateActionLog.latestActionLogId, [])
+    ->makeActionLogs(dateActionLog.oldestActionLogId, [])
     ->Array.map(actionLog => <ActionLogActionLog key=actionLog.id actionLog />)
     ->React.array}
   </>
