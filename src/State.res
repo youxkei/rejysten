@@ -147,6 +147,14 @@ module Firestore = {
   }
 
   let latestDateActionLog = state => state->getDateActitonLog(state->latestDateActionLogId)
+
+  let latestActionLog = state =>
+    switch state->latestDateActionLog {
+    | Some(dateActionLog) =>
+      dateActionLog.actionLogMap->Map.String.get(dateActionLog.latestActionLogId)
+
+    | None => None
+    }
 }
 
 module Note = {
@@ -330,27 +338,9 @@ module ActionLog = {
 
   let selectedActionLog = state =>
     switch state->selectedDateActionLog {
-    | Some(dateActionLog) => dateActionLog.actionLogMap->Map.String.get(state->selectedActionLogId)
-
-    | None => None
-    }
-
-  let aboveActionLog = state =>
-    switch state->selectedDateActionLog {
-    | Some(selectedDateActionLog) =>
-      switch selectedDateActionLog.actionLogMap->Map.String.get(state->selectedActionLogId) {
-      | Some(selectedActionLog) =>
-        switch selectedDateActionLog.actionLogMap->Map.String.get(selectedActionLog.prevId) {
-        | Some(actionLog) => Some(actionLog)
-
-        | None =>
-          switch state->Firestore.getDateActitonLog(selectedDateActionLog.prevId) {
-          | Some(prevDateActionLog) =>
-            prevDateActionLog.actionLogMap->Map.String.get(prevDateActionLog.latestActionLogId)
-
-          | None => None
-          }
-        }
+    | Some(dateActionLog) =>
+      switch dateActionLog.actionLogMap->Map.String.get(state->selectedActionLogId) {
+      | Some(actionLog) => Some((dateActionLog, actionLog))
 
       | None => None
       }
@@ -358,24 +348,37 @@ module ActionLog = {
     | None => None
     }
 
-  let belowActionLog = state =>
-    switch state->selectedDateActionLog {
-    | Some(selectedDateActionLog) =>
-      switch selectedDateActionLog.actionLogMap->Map.String.get(state->selectedActionLogId) {
-      | Some(selectedActionLog) =>
-        switch selectedDateActionLog.actionLogMap->Map.String.get(selectedActionLog.nextId) {
-        | Some(actionLog) => Some(actionLog)
+  let aboveActionLog = state =>
+    switch state->selectedActionLog {
+    | Some((selectedDateActionLog, selectedActionLog)) =>
+      switch selectedDateActionLog.actionLogMap->Map.String.get(selectedActionLog.prevId) {
+      | Some(actionLog) => Some(actionLog)
 
-        | None =>
-          switch state->Firestore.getDateActitonLog(selectedDateActionLog.nextId) {
-          | Some(nextDateActionLog) =>
-            nextDateActionLog.actionLogMap->Map.String.get(nextDateActionLog.oldestActionLogId)
+      | None =>
+        switch state->Firestore.getDateActitonLog(selectedDateActionLog.prevId) {
+        | Some(prevDateActionLog) =>
+          prevDateActionLog.actionLogMap->Map.String.get(prevDateActionLog.latestActionLogId)
 
-          | None => None
-          }
+        | None => None
         }
+      }
 
-      | None => None
+    | None => None
+    }
+
+  let belowActionLog = state =>
+    switch state->selectedActionLog {
+    | Some((selectedDateActionLog, selectedActionLog)) =>
+      switch selectedDateActionLog.actionLogMap->Map.String.get(selectedActionLog.nextId) {
+      | Some(actionLog) => Some(actionLog)
+
+      | None =>
+        switch state->Firestore.getDateActitonLog(selectedDateActionLog.nextId) {
+        | Some(nextDateActionLog) =>
+          nextDateActionLog.actionLogMap->Map.String.get(nextDateActionLog.oldestActionLogId)
+
+        | None => None
+        }
       }
 
     | None => None
@@ -444,7 +447,7 @@ let selectedText = state =>
 
   | ActionLog() =>
     switch state->ActionLog.selectedActionLog {
-    | Some(item) => item.text
+    | Some((_, actionLog)) => actionLog.text
 
     | None => ""
     }

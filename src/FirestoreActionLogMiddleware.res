@@ -6,7 +6,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
   switch action {
   | Action.SaveActionLog() =>
     switch state->State.ActionLog.selectedActionLog {
-    | Some({id, dateActionLogId}) =>
+    | Some((_, {id, dateActionLogId})) =>
       switch state.mode {
       | State.Insert(_) =>
         open Firebase.Firestore
