@@ -1,13 +1,10 @@
 open Belt
 
-let getTimeString = unixtime => {
-  if unixtime == 0 {
-    "unspecified"
+let getTimeString = unixtimeMillis => {
+  if unixtimeMillis == 0.0 {
+    "N/A"
   } else {
-    let date = Js.Date.fromFloat(unixtime->Int.toFloat)
-    `${date->Js.Date.getHours->Float.toString}:${date->Js.Date.getMinutes->Float.toString}:${date
-      ->Js.Date.getSeconds
-      ->Float.toString}`
+    unixtimeMillis->Date.fromUnixtimeMillis->Date.formatTime
   }
 }
 

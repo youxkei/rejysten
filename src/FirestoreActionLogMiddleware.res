@@ -1,40 +1,4 @@
-open Belt
-
 @module("uuid") external uuidv4: unit => string = "v4"
-
-let before = (lhs, rhs) => {
-  open Js.Date
-
-  let lhsYear = lhs->getFullYear
-  let rhsYear = rhs->getFullYear
-  let lhsMonth = lhs->getMonth
-  let rhsMonth = rhs->getMonth
-  let lhsDate = lhs->getDate
-  let rhsDate = rhs->getDate
-
-  if lhsYear < rhsYear {
-    true
-  } else if lhsYear > rhsYear {
-    false
-  } else if lhsMonth < rhsMonth {
-    true
-  } else if lhsMonth > rhsMonth {
-    false
-  } else if lhsDate < rhsDate {
-    true
-  } else if lhsDate > rhsDate {
-    false
-  } else {
-    false
-  }
-}
-
-let formatDate = date => {
-  open Js.Date
-
-  `${date->getFullYear->Int.fromFloat->Int.toString}-${(date->getMonth->Int.fromFloat + 1)
-      ->Int.toString}-${date->getDate->Int.fromFloat->Int.toString}`
-}
 
 let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
   let state = Reductive.Store.getState(store)
@@ -73,8 +37,8 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
 
         let nextSelectedDateActionLogId = switch direction {
         | Action.Next() =>
-          let now = Js.Date.make()
-          let selectedDateActionLogDate = Js.Date.fromString(selectedDateActionLog.date)
+          let now = Date.now()
+          let selectedDateActionLogDate = Date.fromString(selectedDateActionLog.date)
 
           switch state.mode {
           | State.Insert(_) =>
@@ -86,7 +50,10 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
           | _ => ()
           }
 
-          if latestActionLog.id == selectedActionLog.id && selectedDateActionLogDate->before(now) {
+          if (
+            latestActionLog.id == selectedActionLog.id &&
+              selectedDateActionLogDate->Date.before(now)
+          ) {
             let newDateActionLogId = uuidv4()
             let newRootItemId = uuidv4()
             let newItemId = uuidv4()
@@ -94,7 +61,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
             writeBatch->addSet(
               dateActionLogs->doc(newDateActionLogId),
               {
-                "date": now->formatDate,
+                "date": now->Date.formatDate,
                 "prevId": selectedDateActionLog.id,
                 "nextId": "",
                 "actionLogs": Js.Dict.fromList(list{
@@ -211,6 +178,47 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
       }
 
     | None => ()
+    }
+
+  | Action.StartActionLog() =>
+    switch state->State.ActionLog.selectedActionLog {
+    | Some((selectedDateActionLog, selectedActionLog)) if selectedActionLog.begin == 0.0 =>
+      open Firebase.Firestore
+
+      let dateActionLogs = Firebase.firestore->collection("dateActionLogs")
+
+      switch state->State.ActionLog.aboveRecentActionLog {
+      | Some(aboveActionLog) if aboveActionLog.end != 0.0 =>
+        dateActionLogs
+        ->doc(selectedDateActionLog.id)
+        ->updateField(fieldPath3("actionLogs", selectedActionLog.id, "begin"), aboveActionLog.end)
+
+      | _ =>
+        dateActionLogs
+        ->doc(selectedDateActionLog.id)
+        ->updateField(
+          fieldPath3("actionLogs", selectedActionLog.id, "begin"),
+          Date.now()->Date.toUnixtimeMillis,
+        )
+      }
+    | _ => ()
+    }
+
+  | Action.FinishActionLog() =>
+    switch state->State.ActionLog.selectedActionLog {
+    | Some((selectedDateActionLog, selectedActionLog)) if selectedActionLog.end == 0.0 =>
+      open Firebase.Firestore
+
+      let dateActionLogs = Firebase.firestore->collection("dateActionLogs")
+
+      dateActionLogs
+      ->doc(selectedDateActionLog.id)
+      ->updateField(
+        fieldPath3("actionLogs", selectedActionLog.id, "end"),
+        Date.now()->Date.toUnixtimeMillis,
+      )
+
+    | _ => ()
     }
   }
 }

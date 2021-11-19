@@ -1,1 +1,1 @@
-let recentDateActionLogsNum = 2
+let recentDateActionLogsNum = 7

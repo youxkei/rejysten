@@ -45,8 +45,8 @@ type actionLogItem = {
 type actionLog = {
   id: string,
   dateActionLogId: string,
-  begin: int,
-  end: int,
+  begin: float,
+  end: float,
   prevId: string,
   nextId: string,
   text: string,
