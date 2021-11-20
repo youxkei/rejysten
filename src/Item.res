@@ -16,6 +16,7 @@ let make = React.memo((~item: State.item) => {
 
   <div className=Style.item onClick>
     <ReactMarkdown
+      className=Style.markdown
       remarkPlugins={[ReactMarkdown.gfm, ReactMarkdown.externalLinks, ReactMarkdown.highlight]}>
       {item.text}
     </ReactMarkdown>

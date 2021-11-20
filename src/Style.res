@@ -68,6 +68,19 @@ module Search = {
 }
 
 let item = style(. [width(100.0->pct), height(100.0->pct)])
+let markdown = style(. [
+  selector(".hljs", [backgroundColor(transparent)]),
+  selector("code",
+  [
+    backgroundColor(nord[2]),
+    fontSize(14->px),
+    border(1->px, solid, nord[10]),
+    borderRadius(3->px),
+    padding4(~top=2->px, ~bottom=1->px, ~left=2->px, ~right=2->px),
+    margin2(~v=0->px, ~h=3->px),
+    display(inlineBlock),
+  ]),
+])
 
 global(.
   "body",
@@ -92,20 +105,3 @@ global(. "p", [margin(0->px)])
 global(. "pre", [margin(0->px)])
 global(. "a:link", [color(nord[7])])
 global(. "a:visited", [color(nord[7])])
-global(. ".hljs", [backgroundColor(transparent)])
-global(.
-  "code",
-  [
-    backgroundColor(nord[2]),
-    fontSize(14->px),
-    border(1->px, solid, nord[10]),
-    borderRadius(3->px),
-    padding(2->px),
-    margin2(~v=0->px, ~h=3->px),
-    verticalAlign(10.0->pct),
-  ],
-)
-global(.
-  "code.hljs",
-  [backgroundColor(nord[2]), border(1->px, solid, nord[10]), borderRadius(3->px), padding(3->px)],
-)
