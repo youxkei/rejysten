@@ -32,7 +32,12 @@ module BulletList = {
     width(100.0->pct),
   ])
 
-  let bullet = style(. [gridColumnStart(1), textAlign(#right)])
+  let bullet = style(. [
+    gridColumnStart(1),
+    display(inlineFlex),
+    alignItems(center),
+    justifyContent(flexEnd),
+  ])
   let item = style(. [gridColumnStart(3), width(100.0->pct)])
   let selectedItem = merge(. [item, style(. [backgroundColor(nord[1])])])
   let child = style(. [gridColumnStart(3), gridRowStart(2), width(100.0->pct)])
@@ -68,18 +73,34 @@ module Search = {
 }
 
 let item = style(. [width(100.0->pct), height(100.0->pct)])
+
 let markdown = style(. [
+  width(100.0->pct),
+  height(100.0->pct),
+  selector(
+    " > p",
+    [
+      width(100.0->pct),
+      height(100.0->pct),
+      display(inlineFlex),
+      flexWrap(wrap),
+      alignItems(flexEnd),
+    ],
+  ),
   selector(".hljs", [backgroundColor(transparent)]),
-  selector("code",
-  [
-    backgroundColor(nord[2]),
-    fontSize(14->px),
-    border(1->px, solid, nord[10]),
-    borderRadius(3->px),
-    padding4(~top=2->px, ~bottom=1->px, ~left=2->px, ~right=2->px),
-    margin2(~v=0->px, ~h=3->px),
-    display(inlineBlock),
-  ]),
+  selector(
+    "code",
+    [
+      backgroundColor(nord[2]),
+      fontSize(14->px),
+      border(1->px, solid, nord[10]),
+      borderRadius(3->px),
+      padding4(~top=2->px, ~bottom=1->px, ~left=2->px, ~right=2->px),
+      margin2(~v=0->px, ~h=3->px),
+      display(inlineBlock),
+      boxSizing(borderBox),
+    ],
+  ),
 ])
 
 global(.
