@@ -41,6 +41,6 @@ let make = () => {
   }, [])
 
   <ReactTextareaAutosize
-    className=Style.Note.editor ref={ReactDOM.Ref.domRef(textareaRef)} value=text onChange onBlur
+    className=Style.editor ref={ReactDOM.Ref.domRef(textareaRef)} value=text onChange onBlur
   />
 }

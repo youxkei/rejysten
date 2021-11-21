@@ -52,6 +52,13 @@ module BulletList = {
 }
 
 let item = style(. [width(100.0->pct)])
+let editor = style(. [
+  backgroundColor(nord[1]),
+  width(100.0->pct),
+  borderStyle(none),
+  outlineStyle(none),
+  padding(0->px),
+])
 
 let markdown = style(. [
   selector(" > p", [display(inlineFlex), flexWrap(wrap), alignItems(center), columnGap(3->px)]),
@@ -77,14 +84,6 @@ module Note = {
   let unfocusedPane = style(. [backgroundColor(nord[0]), filter([#brightness(75.0)])])
 
   let document = style(. [width(100.0->pct)])
-
-  let editor = style(. [
-    backgroundColor(nord[1]),
-    width(100.0->pct),
-    borderStyle(none),
-    outlineStyle(none),
-    padding(0->px),
-  ])
 
   let style = style(. [
     display(grid),
