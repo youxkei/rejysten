@@ -6,15 +6,40 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
   switch action {
   | Action.SaveActionLog() =>
     switch state->State.ActionLog.selectedActionLog {
-    | Some((_, {id, dateActionLogId})) =>
+    | Some(({date}, {id, dateActionLogId})) =>
       switch state.mode {
       | State.Insert(_) =>
         open Firebase.Firestore
 
-        Firebase.firestore
-        ->collection("dateActionLogs")
-        ->doc(dateActionLogId)
-        ->updateField(fieldPath3("actionLogs", id, "text"), state.editor.editingText)
+        switch state->State.ActionLog.focus {
+        | State.ActionLog() =>
+          Firebase.firestore
+          ->collection("dateActionLogs")
+          ->doc(dateActionLogId)
+          ->updateField(fieldPath3("actionLogs", id, "text"), state.editor.editingText)
+
+        | State.Begin() =>
+          switch Date.parseEditString(date, state.editor.editingText) {
+          | Some(beginDate) =>
+            Firebase.firestore
+            ->collection("dateActionLogs")
+            ->doc(dateActionLogId)
+            ->updateField(fieldPath3("actionLogs", id, "begin"), beginDate->Date.toUnixtimeMillis)
+
+          | None => ()
+          }
+
+        | State.End() =>
+          switch Date.parseEditString(date, state.editor.editingText) {
+          | Some(endDate) =>
+            Firebase.firestore
+            ->collection("dateActionLogs")
+            ->doc(dateActionLogId)
+            ->updateField(fieldPath3("actionLogs", id, "end"), endDate->Date.toUnixtimeMillis)
+
+          | None => ()
+          }
+        }
 
       | _ => ()
       }
@@ -167,7 +192,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
         Reductive.Store.dispatch(
           store,
           Action.ActionLog(
-            Action.SetState({
+            Action.SetSelectedActionLog({
               selectedDateActionLogId: nextSelectedDateActionLogId,
               selectedActionLogId: addingActionLogId,
             }),

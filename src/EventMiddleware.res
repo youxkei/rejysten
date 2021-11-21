@@ -458,9 +458,9 @@ module KeyDown = {
     }
 
     module Insert = {
-      let handler = (store, event) => {
+      let handler = (store, event, initialCursorPosition) => {
         let dispatch = Reductive.Store.dispatch(store)
-        let _state: State.t = Reductive.Store.getState(store)
+        let state: State.t = Reductive.Store.getState(store)
 
         let code = event->code
         let ctrlKey = event->ctrlKey
@@ -469,10 +469,30 @@ module KeyDown = {
         let isNeutral = !ctrlKey && !isComposing
 
         switch code {
-        | "Escape" if isNeutral && !shiftKey => {
+        | "Escape" if isNeutral && !shiftKey =>
+          dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
+          dispatch(Action.ActionLog(Action.Focus(State.ActionLog())))
+          dispatch(Action.ToNormalMode())
+
+        | "Tab" if isNeutral && !shiftKey =>
+          switch state->State.ActionLog.focus {
+          | State.ActionLog() =>
             dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
-            dispatch(Action.ToNormalMode())
+            dispatch(Action.ActionLog(Action.Focus(State.Begin())))
+            dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
+
+          | State.Begin() =>
+            dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
+            dispatch(Action.ActionLog(Action.Focus(State.End())))
+            dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
+
+          | State.End() =>
+            dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
+            dispatch(Action.ActionLog(Action.Focus(State.ActionLog())))
+            dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
           }
+
+          event->preventDefault
 
         | _ => ()
         }
@@ -580,8 +600,8 @@ let middleware = (store, next, action) => {
 
       | (Event.KeyDown({event}), State.ActionLog(), State.Normal()) =>
         KeyDown.ActionLog.Normal.handler(store, event)
-      | (Event.KeyDown({event}), State.ActionLog(), State.Insert(_)) =>
-        KeyDown.ActionLog.Insert.handler(store, event)
+      | (Event.KeyDown({event}), State.ActionLog(), State.Insert({initialCursorPosition})) =>
+        KeyDown.ActionLog.Insert.handler(store, event, initialCursorPosition)
 
       | (Event.Click({event, isDouble, target}), State.Note(State.DocumentPane()), _) =>
         Click.Note.handler(store, event, isDouble, target)

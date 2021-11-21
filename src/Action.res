@@ -51,7 +51,8 @@ type search = SetSearchingText({text: string})
 type actionLog =
   | ToAboveActionLog(unit)
   | ToBelowActionLog(unit)
-  | SetState({selectedDateActionLogId: string, selectedActionLogId: string})
+  | SetSelectedActionLog({selectedDateActionLogId: string, selectedActionLogId: string})
+  | Focus(State.actionLogFocus)
 
 type t =
   // event action handled in EventMiddleware

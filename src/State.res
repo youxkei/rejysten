@@ -94,7 +94,10 @@ type searchState = {
   searchedItems: Set.String.t,
 }
 
+type actionLogFocus = ActionLog(unit) | Begin(unit) | End(unit)
+
 type actionLogState = {
+  focus: actionLogFocus,
   selectedActionLogId: string,
   selectedDateActionLogId: string,
   oldestRecentDateActionLogId: string,
@@ -330,6 +333,7 @@ module Search = {
 }
 
 module ActionLog = {
+  let focus = state => state.actionLog.focus
   let selectedActionLogId = state => state.actionLog.selectedActionLogId
   let selectedDateActionLogId = state => state.actionLog.selectedDateActionLogId
   let oldestRecentDateActionLogId = state => state.actionLog.oldestRecentDateActionLogId
@@ -412,6 +416,7 @@ let initialState: t = {
     searchedItems: Set.String.empty,
   },
   actionLog: {
+    focus: ActionLog(),
     selectedDateActionLogId: "",
     selectedActionLogId: "",
     oldestRecentDateActionLogId: "",
@@ -454,7 +459,12 @@ let selectedText = state =>
 
   | ActionLog() =>
     switch state->ActionLog.selectedActionLog {
-    | Some((_, actionLog)) => actionLog.text
+    | Some((_, actionLog)) =>
+      switch state->ActionLog.focus {
+      | ActionLog() => actionLog.text
+      | Begin() => actionLog.begin->Date.fromUnixtimeMillis->Date.getTimeStringForEdit
+      | End() => actionLog.end->Date.fromUnixtimeMillis->Date.getTimeStringForEdit
+      }
 
     | None => ""
     }

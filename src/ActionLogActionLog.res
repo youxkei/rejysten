@@ -1,31 +1,54 @@
 open Belt
 
-let getTimeString = unixtimeMillis => {
-  if unixtimeMillis == 0.0 {
-    "N/A"
-  } else {
-    unixtimeMillis->Date.fromUnixtimeMillis->Date.formatTime
-  }
-}
-
 module ActionLog = {
   @react.component
   let make = (~actionLog: State.actionLog, ~isSelectedActionLog, ()) => {
     let mode = Redux.useSelector(State.mode)
+    let focus = Redux.useSelector(State.ActionLog.focus)
+
     let {text, begin, end} = actionLog
-    let begin = begin->getTimeString
-    let end = end->getTimeString
+    let text = text->React.string
+    let beginTime = begin->Date.fromUnixtimeMillis->Date.getTimeStringForDisplay->React.string
+    let endTime = end->Date.fromUnixtimeMillis->Date.getTimeStringForDisplay->React.string
 
-    <>
-      <p>
-        {switch mode {
-        | State.Insert(_) if isSelectedActionLog => <Editor />
+    <div className=Style.ActionLog.actionLog>
+      {switch mode {
+      | State.Insert(_) if isSelectedActionLog => <>
+          <p>
+            {switch focus {
+            | State.ActionLog() => <Editor />
+            | _ => text
+            }}
+          </p>
+          <p>
+            <span>
+              {switch focus {
+              | State.Begin() => <Editor inline=true />
 
-        | _ => text->React.string
-        }}
-      </p>
-      <p> {`${begin} → ${end}`->React.string} </p>
-    </>
+              | _ => beginTime
+              }}
+            </span>
+            <span> {` → `->React.string} </span>
+            <span>
+              {switch focus {
+              | State.End() => <Editor inline=true />
+
+              | _ => endTime
+              }}
+            </span>
+          </p>
+        </>
+
+      | _ => <>
+          <p> {text} </p>
+          <p>
+            <span> {beginTime} </span>
+            <span> {` → `->React.string} </span>
+            <span> {endTime} </span>
+          </p>
+        </>
+      }}
+    </div>
   }
 }
 

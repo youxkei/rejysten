@@ -5,11 +5,17 @@ open Belt
 @get external value: Js.t<'a> => string = "value"
 
 @react.component
-let make = () => {
+let make = (~inline=false, ()) => {
   let text = Redux.useSelector(State.Editor.editingText)
   let initialCursorPosition = Redux.useSelector(State.initialCursorPosition)
 
   let dispatch = Redux.useDispatch()
+
+  let className = if inline {
+    Style.inlineEditor
+  } else {
+    Style.blockEditor
+  }
 
   let onChange = event => {
     dispatch(Action.Editor(Action.SetEditingText({text: event->ReactEvent.Form.target->value})))
@@ -41,6 +47,6 @@ let make = () => {
   }, [])
 
   <ReactTextareaAutosize
-    className=Style.editor ref={ReactDOM.Ref.domRef(textareaRef)} value=text onChange onBlur
+    className ref={ReactDOM.Ref.domRef(textareaRef)} value=text onChange onBlur
   />
 }

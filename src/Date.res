@@ -1,3 +1,5 @@
+open Belt
+
 type t = Js.Date.t
 
 let now = Js.Date.make
@@ -16,6 +18,64 @@ let formatTime = date => {
   open Js.Date
 
   Printf.sprintf("%02g:%02g:%02g", date->getHours, date->getMinutes, date->getSeconds)
+}
+
+let getTimeStringForDisplay = date => {
+  if date->toUnixtimeMillis == 0.0 {
+    "N/A"
+  } else {
+    date->formatTime
+  }
+}
+
+let getTimeStringForEdit = date => {
+  open Js.Date
+
+  if date->toUnixtimeMillis == 0.0 {
+    ""
+  } else {
+    Printf.sprintf("%02g%02g%02g", date->getHours, date->getMinutes, date->getSeconds)
+  }
+}
+
+let parseEditString = (dateString, timeEditString) => {
+  switch timeEditString->Js.String2.length {
+  | 0 => Some(0.0->fromUnixtimeMillis)
+
+  | 4 =>
+    let hours = timeEditString->Js.String2.substrAtMost(~from=0, ~length=2)->Float.fromString
+    let minutes = timeEditString->Js.String2.substrAtMost(~from=2, ~length=2)->Float.fromString
+
+    switch (hours, minutes) {
+    | (Some(hours), Some(minutes)) =>
+      let date = dateString->fromString
+      let _ = date->Js.Date.setHoursM(~hours, ~minutes, ())
+
+      Some(date)
+
+    | _ => None
+    }
+
+  | 6 =>
+    let hours = timeEditString->Js.String2.substrAtMost(~from=0, ~length=2)->Float.fromString
+    let minutes = timeEditString->Js.String2.substrAtMost(~from=2, ~length=2)->Float.fromString
+    let seconds = timeEditString->Js.String2.substrAtMost(~from=4, ~length=2)->Float.fromString
+
+    switch (hours, minutes, seconds) {
+    | (Some(hours), Some(minutes), Some(seconds)) =>
+      let date = dateString->fromString
+      let _ = date->Js.Date.setHoursMS(~hours, ~minutes, ~seconds, ())
+
+      Js.log((hours, minutes, seconds))
+      Js.log(date)
+
+      Some(date)
+
+    | _ => None
+    }
+
+  | _ => None
+  }
 }
 
 let before = (lhs, rhs) => {

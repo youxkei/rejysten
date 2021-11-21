@@ -237,12 +237,20 @@ let actionLogReducer = (state: State.t, action) => {
     | None => state
     }
 
-  | Action.SetState({selectedDateActionLogId, selectedActionLogId}) => {
+  | Action.SetSelectedActionLog({selectedDateActionLogId, selectedActionLogId}) => {
       ...state,
       actionLog: {
         ...state.actionLog,
         selectedDateActionLogId: selectedDateActionLogId,
         selectedActionLogId: selectedActionLogId,
+      },
+    }
+
+  | Action.Focus(focus) => {
+      ...state,
+      actionLog: {
+        ...state.actionLog,
+        focus: focus,
       },
     }
   }

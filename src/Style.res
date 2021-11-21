@@ -52,13 +52,13 @@ module BulletList = {
 }
 
 let item = style(. [width(100.0->pct)])
-let editor = style(. [
+let inlineEditor = style(. [
   backgroundColor(nord[1]),
-  width(100.0->pct),
   borderStyle(none),
   outlineStyle(none),
   padding(0->px),
 ])
+let blockEditor = merge(. [inlineEditor, style(. [width(100.0->pct)])])
 
 let markdown = style(. [
   selector(" > p", [display(inlineFlex), flexWrap(wrap), alignItems(center), columnGap(3->px)]),
@@ -95,6 +95,10 @@ module Note = {
 
 module Search = {
   let editor = style(. [borderStyle(none), outlineStyle(none), padding(0->px)])
+}
+
+module ActionLog = {
+  let actionLog = style(. [width(100.0->pct)])
 }
 
 global(.
