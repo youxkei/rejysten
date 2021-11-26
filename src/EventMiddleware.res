@@ -494,6 +494,26 @@ module KeyDown = {
 
           event->preventDefault
 
+        | "Tab" if isNeutral && shiftKey =>
+          switch state->State.ActionLog.focus {
+          | State.ActionLog() =>
+            dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
+            dispatch(Action.ActionLog(Action.Focus(State.End())))
+            dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
+
+          | State.Begin() =>
+            dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
+            dispatch(Action.ActionLog(Action.Focus(State.ActionLog())))
+            dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
+
+          | State.End() =>
+            dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
+            dispatch(Action.ActionLog(Action.Focus(State.Begin())))
+            dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
+          }
+
+          event->preventDefault
+
         | _ => ()
         }
       }
