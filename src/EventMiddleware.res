@@ -575,6 +575,15 @@ module Blur = {
       }
     }
   }
+
+  module ActionLog = {
+    let handler = (store, _event) => {
+      let dispatch = Reductive.Store.dispatch(store)
+
+      dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
+      dispatch(Action.ToNormalMode())
+    }
+  }
 }
 
 let middleware = (store, next, action) => {
@@ -617,7 +626,7 @@ let middleware = (store, next, action) => {
       | (Event.Blur({event}), State.Note(State.ItemPane()), _) =>
         Blur.Note.ItemPane.handler(store, event)
       | (Event.Blur(_), State.Search(), _) => ()
-      | (Event.Blur(_), State.ActionLog(), _) => ()
+      | (Event.Blur(_), State.ActionLog(), _) => Blur.ActionLog.handler(store, event)
       }
     }
 
