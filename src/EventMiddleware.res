@@ -411,6 +411,7 @@ module KeyDown = {
     module Normal = {
       let handler = (store, event) => {
         let dispatch = Reductive.Store.dispatch(store)
+        let focus = Reductive.Store.getState(store)->State.ActionLog.focus
 
         let code = event->code
         let ctrlKey = event->ctrlKey
@@ -422,12 +423,22 @@ module KeyDown = {
           event->preventDefault
 
         | "KeyK" if !ctrlKey && !shiftKey =>
-          dispatch(Action.ActionLog(Action.ToAboveActionLog()))
-          event->preventDefault
+          switch focus {
+          | State.Text() | State.Begin() | State.End() =>
+            dispatch(Action.ActionLog(Action.ToAboveActionLog()))
+            event->preventDefault
+
+          | State.Items() => () // TODO
+          }
 
         | "KeyJ" if !ctrlKey && !shiftKey =>
-          dispatch(Action.ActionLog(Action.ToBelowActionLog()))
-          event->preventDefault
+          switch focus {
+          | State.Text() | State.Begin() | State.End() =>
+            dispatch(Action.ActionLog(Action.ToBelowActionLog()))
+            event->preventDefault
+
+          | State.Items() => () // TODO
+          }
 
         | "KeyI" if !ctrlKey && !shiftKey =>
           dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
@@ -438,11 +449,16 @@ module KeyDown = {
           event->preventDefault
 
         | "KeyO" if !ctrlKey && !shiftKey =>
-          dispatch(
-            Action.Firestore(Action.ActionLog(Action.AddActionLog({direction: Action.Next()}))),
-          )
-          dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
-          event->preventDefault
+          switch focus {
+          | State.Text() | State.Begin() | State.End() =>
+            dispatch(
+              Action.Firestore(Action.ActionLog(Action.AddActionLog({direction: Action.Next()}))),
+            )
+            dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
+            event->preventDefault
+
+          | State.Items() => () // TODO
+          }
 
         | "KeyS" if !ctrlKey && !shiftKey =>
           dispatch(Action.Firestore(Action.ActionLog(Action.StartActionLog())))
@@ -451,6 +467,24 @@ module KeyDown = {
         | "KeyF" if !ctrlKey && !shiftKey =>
           dispatch(Action.Firestore(Action.ActionLog(Action.FinishActionLog())))
           event->preventDefault
+
+        | "KeyL" if !ctrlKey && !shiftKey =>
+          switch focus {
+          | State.Text() | State.Begin() | State.End() =>
+            dispatch(Action.ActionLog(Action.Focus(State.Items())))
+            event->preventDefault
+
+          | State.Items() => ()
+          }
+
+        | "KeyH" if !ctrlKey && !shiftKey =>
+          switch focus {
+          | State.Text() | State.Begin() | State.End() => ()
+
+          | State.Items() =>
+            dispatch(Action.ActionLog(Action.Focus(State.Text())))
+            event->preventDefault
+          }
 
         | _ => ()
         }
@@ -471,12 +505,12 @@ module KeyDown = {
         switch code {
         | "Escape" if isNeutral && !shiftKey =>
           dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
-          dispatch(Action.ActionLog(Action.Focus(State.ActionLog())))
+          dispatch(Action.ActionLog(Action.Focus(State.Text())))
           dispatch(Action.ToNormalMode())
 
         | "Tab" if isNeutral && !shiftKey =>
           switch state->State.ActionLog.focus {
-          | State.ActionLog() =>
+          | State.Text() =>
             dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
             dispatch(Action.ActionLog(Action.Focus(State.Begin())))
             dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
@@ -488,28 +522,32 @@ module KeyDown = {
 
           | State.End() =>
             dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
-            dispatch(Action.ActionLog(Action.Focus(State.ActionLog())))
+            dispatch(Action.ActionLog(Action.Focus(State.Text())))
             dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
+
+          | State.Items() => () // TODO
           }
 
           event->preventDefault
 
         | "Tab" if isNeutral && shiftKey =>
           switch state->State.ActionLog.focus {
-          | State.ActionLog() =>
+          | State.Text() =>
             dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
             dispatch(Action.ActionLog(Action.Focus(State.End())))
             dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
 
           | State.Begin() =>
             dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
-            dispatch(Action.ActionLog(Action.Focus(State.ActionLog())))
+            dispatch(Action.ActionLog(Action.Focus(State.Text())))
             dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
 
           | State.End() =>
             dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
             dispatch(Action.ActionLog(Action.Focus(State.Begin())))
             dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
+
+          | State.Items() => () // TODO
           }
 
           event->preventDefault
@@ -601,6 +639,7 @@ module Blur = {
       let dispatch = Reductive.Store.dispatch(store)
 
       dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
+      dispatch(Action.ActionLog(Action.Focus(State.Text())))
       dispatch(Action.ToNormalMode())
     }
   }

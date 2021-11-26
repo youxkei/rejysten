@@ -12,7 +12,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
         open Firebase.Firestore
 
         switch state->State.ActionLog.focus {
-        | State.ActionLog() =>
+        | State.Text() =>
           Firebase.firestore
           ->collection("dateActionLogs")
           ->doc(dateActionLogId)
@@ -39,6 +39,8 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
 
           | None => ()
           }
+
+        | State.Items() => () // TODO
         }
 
       | _ => ()

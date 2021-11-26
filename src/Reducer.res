@@ -246,12 +246,29 @@ let actionLogReducer = (state: State.t, action) => {
       },
     }
 
-  | Action.Focus(focus) => {
-      ...state,
-      actionLog: {
-        ...state.actionLog,
-        focus: focus,
-      },
+  | Action.Focus(focus) =>
+    switch focus {
+    | State.Text() | State.Begin() | State.End() => {
+        ...state,
+        actionLog: {
+          ...state.actionLog,
+          focus: focus,
+        },
+      }
+
+    | State.Items() =>
+      switch state->State.ActionLog.selectedActionLogRootItem {
+      | Some(rootItem) => {
+          ...state,
+          actionLog: {
+            ...state.actionLog,
+            selectedActionLogItemId: rootItem.firstChildId,
+            focus: State.Items(),
+          },
+        }
+
+      | None => state
+      }
     }
   }
 }

@@ -7,7 +7,7 @@ let make = React.memo(() => {
   let rootItem = Redux.useSelector(State.Note.ItemPane.rootItem)
   let (rootItem, ()) = Hook.useDebounce(rootItem, 50)
 
-  let isFocused = switch focus {
+  let focusable = switch focus {
   | State.Note(State.ItemPane()) => true
   | _ => false
   }
@@ -20,7 +20,7 @@ let make = React.memo(() => {
 
   switch rootItem {
   | Some(item) =>
-    <section className> <Items editable=true isFocused item selectedItemId itemMap /> </section>
+    <section className> <Items editable=true focusable item selectedItemId itemMap /> </section>
 
   | None => React.null
   }

@@ -30,21 +30,21 @@ let makeChildren = (itemMap, item: State.item) => {
 module rec ItemsInner: {
   let make: {
     "editable": bool,
-    "isFocused": bool,
+    "focusable": bool,
     "item": State.item,
     "selectedItemId": string,
     "itemMap": State.itemMap,
   } => ReasonReact.reactElement
   let makeProps: (
     ~editable: bool,
-    ~isFocused: bool,
+    ~focusable: bool,
     ~item: State.item,
     ~selectedItemId: string,
     ~itemMap: State.itemMap,
     ~key: string=?,
     unit,
   ) => {
-    "isFocused": bool,
+    "focusable": bool,
     "editable": bool,
     "item": State.item,
     "selectedItemId": string,
@@ -52,12 +52,12 @@ module rec ItemsInner: {
   }
 } = {
   @react.component
-  let make = (~editable, ~isFocused, ~item: State.item, ~selectedItemId, ~itemMap) => {
+  let make = (~editable, ~focusable, ~item: State.item, ~selectedItemId, ~itemMap) => {
     let mode = Redux.useSelector(State.mode)
     let listItemRef = React.useRef(Js.Nullable.null)
     let innerHeight = Hook.useInnerHeight()
 
-    let isSelectedItem = item.id == selectedItemId
+    let isSelectedItem = focusable && item.id == selectedItemId
 
     React.useEffect2(() => {
       if isSelectedItem {
@@ -81,7 +81,7 @@ module rec ItemsInner: {
 
     <BulletList
       bullet={<Bullet />}
-      item={switch (isFocused, editable, mode, isSelectedItem) {
+      item={switch (focusable, editable, mode, isSelectedItem) {
       | (true, true, State.Insert(_), true) => <Editor />
 
       | _ => <Item item />
@@ -90,7 +90,7 @@ module rec ItemsInner: {
       itemRef={ReactDOM.Ref.domRef(listItemRef)}
       child={makeChildren(itemMap, item)
       ->Array.map((item: State.item) => {
-        <ItemsInner key=item.id editable isFocused item selectedItemId itemMap />
+        <ItemsInner key=item.id editable focusable item selectedItemId itemMap />
       })
       ->React.array}
     />
@@ -98,10 +98,10 @@ module rec ItemsInner: {
 }
 
 @react.component
-let make = (~editable, ~isFocused, ~item, ~selectedItemId, ~itemMap) => {
+let make = (~editable, ~focusable, ~item, ~selectedItemId, ~itemMap) => {
   makeChildren(itemMap, item)
   ->Array.map(item => {
-    <ItemsInner key=item.id editable isFocused item selectedItemId itemMap />
+    <ItemsInner key=item.id editable focusable item selectedItemId itemMap />
   })
   ->React.array
 }

@@ -94,12 +94,13 @@ type searchState = {
   searchedItems: Set.String.t,
 }
 
-type actionLogFocus = ActionLog(unit) | Begin(unit) | End(unit)
+type actionLogFocus = Text(unit) | Begin(unit) | End(unit) | Items(unit)
 
 type actionLogState = {
   focus: actionLogFocus,
   selectedActionLogId: string,
   selectedDateActionLogId: string,
+  selectedActionLogItemId: string,
   oldestRecentDateActionLogId: string,
 }
 
@@ -334,8 +335,9 @@ module Search = {
 
 module ActionLog = {
   let focus = state => state.actionLog.focus
-  let selectedActionLogId = state => state.actionLog.selectedActionLogId
   let selectedDateActionLogId = state => state.actionLog.selectedDateActionLogId
+  let selectedActionLogId = state => state.actionLog.selectedActionLogId
+  let selectedActionLogItemId = state => state.actionLog.selectedActionLogItemId
   let oldestRecentDateActionLogId = state => state.actionLog.oldestRecentDateActionLogId
   let isInitial = state => state->selectedDateActionLogId == ""
 
@@ -350,6 +352,20 @@ module ActionLog = {
 
       | None => None
       }
+
+    | None => None
+    }
+
+  let selectedActionLogRootItem = state =>
+    switch state->selectedActionLog {
+    | Some((_, actionLog)) => actionLog.itemMap->Map.String.get(actionLog.rootItemId)
+
+    | None => None
+    }
+
+  let selectedActionLogItem = state =>
+    switch state->selectedActionLog {
+    | Some((_, actionLog)) => actionLog.itemMap->Map.String.get(state->selectedActionLogItemId)
 
     | None => None
     }
@@ -416,9 +432,10 @@ let initialState: t = {
     searchedItems: Set.String.empty,
   },
   actionLog: {
-    focus: ActionLog(),
+    focus: Text(),
     selectedDateActionLogId: "",
     selectedActionLogId: "",
+    selectedActionLogItemId: "",
     oldestRecentDateActionLogId: "",
   },
   firestore: {
@@ -461,9 +478,14 @@ let selectedText = state =>
     switch state->ActionLog.selectedActionLog {
     | Some((_, actionLog)) =>
       switch state->ActionLog.focus {
-      | ActionLog() => actionLog.text
+      | Text() => actionLog.text
       | Begin() => actionLog.begin->Date.fromUnixtimeMillis->Date.getTimeStringForEdit
       | End() => actionLog.end->Date.fromUnixtimeMillis->Date.getTimeStringForEdit
+      | Items() =>
+        switch state->ActionLog.selectedActionLogItem {
+        | Some(item) => item.text
+        | None => ""
+        }
       }
 
     | None => ""

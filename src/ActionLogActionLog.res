@@ -16,7 +16,7 @@ module ActionLog = {
       | State.Insert(_) if isSelectedActionLog => <>
           <p>
             {switch focus {
-            | State.ActionLog() => <Editor />
+            | State.Text() => <Editor />
             | _ => text
             }}
           </p>
@@ -54,9 +54,15 @@ module ActionLog = {
 
 @react.component
 let make = (~actionLog: State.actionLog, ()) => {
+  let focus = Redux.useSelector(State.ActionLog.focus)
   let selectedId = Redux.useSelector(State.ActionLog.selectedActionLogId)
+  let selectedActionLogItemId = Redux.useSelector(State.ActionLog.selectedActionLogItemId)
+
   let {id, itemMap, rootItemId} = actionLog
-  let isSelectedActionLog = id === selectedId
+  let (isSelectedActionLog, focusable) = switch focus {
+  | State.Text() | State.Begin() | State.End() => (id == selectedId, false)
+  | State.Items() => (false, true)
+  }
 
   <BulletList
     bullet={<Bullet />}
@@ -64,7 +70,7 @@ let make = (~actionLog: State.actionLog, ()) => {
     isSelectedItem=isSelectedActionLog
     child={switch itemMap->Map.String.get(rootItemId) {
     | Some(rootItem) =>
-      <Items editable=true isFocused=false item=rootItem selectedItemId="" itemMap />
+      <Items editable=true focusable item=rootItem selectedItemId=selectedActionLogItemId itemMap />
 
     | None => React.null
     }}
