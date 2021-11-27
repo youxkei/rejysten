@@ -11,14 +11,14 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
       | State.Insert(_) =>
         open Firebase.Firestore
 
-        switch state->State.ActionLog.focus {
-        | State.Text() =>
+        switch state.focus {
+        | State.ActionLog(State.Record(State.Text())) =>
           Firebase.firestore
           ->collection("dateActionLogs")
           ->doc(dateActionLogId)
           ->updateField(fieldPath3("actionLogs", id, "text"), state.editor.editingText)
 
-        | State.Begin() =>
+        | State.ActionLog(State.Record(State.Begin())) =>
           switch Date.parseEditString(date, state.editor.editingText) {
           | Some(beginDate) =>
             Firebase.firestore
@@ -29,7 +29,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
           | None => ()
           }
 
-        | State.End() =>
+        | State.ActionLog(State.Record(State.End())) =>
           switch Date.parseEditString(date, state.editor.editingText) {
           | Some(endDate) =>
             Firebase.firestore
@@ -40,7 +40,9 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
           | None => ()
           }
 
-        | State.Items() => () // TODO
+        | State.ActionLog(State.Items()) => () // TODO
+
+        | _ => ()
         }
 
       | _ => ()

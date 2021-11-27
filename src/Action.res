@@ -52,7 +52,6 @@ type actionLog =
   | ToAboveActionLog(unit)
   | ToBelowActionLog(unit)
   | SetSelectedActionLog({selectedDateActionLogId: string, selectedActionLogId: string})
-  | Focus(State.actionLogFocus)
 
 type t =
   // event action handled in EventMiddleware
@@ -66,7 +65,7 @@ type t =
   | ToNormalMode(unit)
   | FocusNote(focusNotePane)
   | FocusSearch(unit)
-  | FocusActionLog(unit)
+  | FocusActionLog(State.actionLogFocus)
 
   // per element actions
   | Editor(editor)

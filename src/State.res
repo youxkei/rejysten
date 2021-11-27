@@ -74,7 +74,11 @@ type mode = Normal(unit) | Insert({initialCursorPosition: initialCursorPosition}
 
 type noteFocus = DocumentPane(unit) | ItemPane(unit)
 
-type focus = Note(noteFocus) | Search(unit) | ActionLog(unit)
+type actionLogRecordFocus = Text(unit) | Begin(unit) | End(unit)
+
+type actionLogFocus = Record(actionLogRecordFocus) | Items(unit)
+
+type focus = Note(noteFocus) | Search(unit) | ActionLog(actionLogFocus)
 
 type editor = {editingText: string}
 
@@ -94,10 +98,7 @@ type searchState = {
   searchedItems: Set.String.t,
 }
 
-type actionLogFocus = Text(unit) | Begin(unit) | End(unit) | Items(unit)
-
 type actionLogState = {
-  focus: actionLogFocus,
   selectedActionLogId: string,
   selectedDateActionLogId: string,
   selectedActionLogItemId: string,
@@ -334,7 +335,6 @@ module Search = {
 }
 
 module ActionLog = {
-  let focus = state => state.actionLog.focus
   let selectedDateActionLogId = state => state.actionLog.selectedDateActionLogId
   let selectedActionLogId = state => state.actionLog.selectedActionLogId
   let selectedActionLogItemId = state => state.actionLog.selectedActionLogItemId
@@ -432,7 +432,6 @@ let initialState: t = {
     searchedItems: Set.String.empty,
   },
   actionLog: {
-    focus: Text(),
     selectedDateActionLogId: "",
     selectedActionLogId: "",
     selectedActionLogItemId: "",
@@ -465,6 +464,7 @@ let selectedText = state =>
 
     | None => ""
     }
+
   | Note(ItemPane()) =>
     switch state->Note.ItemPane.selectedItem {
     | Some(item) => item.text
@@ -474,13 +474,16 @@ let selectedText = state =>
 
   | Search() => ""
 
-  | ActionLog() =>
+  | ActionLog(focus) =>
     switch state->ActionLog.selectedActionLog {
     | Some((_, actionLog)) =>
-      switch state->ActionLog.focus {
-      | Text() => actionLog.text
-      | Begin() => actionLog.begin->Date.fromUnixtimeMillis->Date.getTimeStringForEdit
-      | End() => actionLog.end->Date.fromUnixtimeMillis->Date.getTimeStringForEdit
+      switch focus {
+      | Record(Text()) => actionLog.text
+
+      | Record(Begin()) => actionLog.begin->Date.fromUnixtimeMillis->Date.getTimeStringForEdit
+
+      | Record(End()) => actionLog.end->Date.fromUnixtimeMillis->Date.getTimeStringForEdit
+
       | Items() =>
         switch state->ActionLog.selectedActionLogItem {
         | Some(item) => item.text

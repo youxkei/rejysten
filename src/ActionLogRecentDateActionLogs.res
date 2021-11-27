@@ -27,7 +27,7 @@ let rec makeRecentDateActionLogs = (
 }
 
 @react.component
-let make = () => {
+let make = (~focus) => {
   let dateActionLogMap = Redux.useSelector(State.Firestore.dateActionLogMap)
   let latestDateActionLogId = Redux.useSelector(State.Firestore.latestDateActionLogId)
   let oldestRecentDateActionLogId = Redux.useSelector(State.ActionLog.oldestRecentDateActionLogId)
@@ -42,7 +42,7 @@ let make = () => {
 
   recentDateActionLogs
   ->Array.map((dateActionLog: State.dateActionLog) => {
-    <ActionLogDateActionLog key=dateActionLog.id dateActionLog />
+    <ActionLogDateActionLog key=dateActionLog.id dateActionLog focus />
   })
   ->React.array
 }

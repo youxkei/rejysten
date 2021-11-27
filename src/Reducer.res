@@ -245,31 +245,6 @@ let actionLogReducer = (state: State.t, action) => {
         selectedActionLogId: selectedActionLogId,
       },
     }
-
-  | Action.Focus(focus) =>
-    switch focus {
-    | State.Text() | State.Begin() | State.End() => {
-        ...state,
-        actionLog: {
-          ...state.actionLog,
-          focus: focus,
-        },
-      }
-
-    | State.Items() =>
-      switch state->State.ActionLog.selectedActionLogRootItem {
-      | Some(rootItem) => {
-          ...state,
-          actionLog: {
-            ...state.actionLog,
-            selectedActionLogItemId: rootItem.firstChildId,
-            focus: State.Items(),
-          },
-        }
-
-      | None => state
-      }
-    }
   }
 }
 
@@ -334,9 +309,26 @@ let reducer = (state: State.t, action) => {
       focus: State.Search(),
     }
 
-  | Action.FocusActionLog() => {
-      ...state,
-      focus: State.ActionLog(),
+  | Action.FocusActionLog(focus) =>
+    switch focus {
+    | State.Record(_) => {
+        ...state,
+        focus: State.ActionLog(focus),
+      }
+
+    | State.Items() =>
+      switch state->State.ActionLog.selectedActionLogRootItem {
+      | Some(rootItem) => {
+          ...state,
+          focus: State.ActionLog(focus),
+          actionLog: {
+            ...state.actionLog,
+            selectedActionLogItemId: rootItem.firstChildId,
+          },
+        }
+
+      | None => state
+      }
     }
 
   | Action.SetFirestoreDocumentState({documentMap, rootDocumentId}) => {

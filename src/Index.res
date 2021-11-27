@@ -61,7 +61,7 @@ module Main = {
     switch focus {
     | State.Note(_) => <Note />
     | State.Search() => <Search />
-    | State.ActionLog(_) => <ActionLog />
+    | State.ActionLog(focus) => <ActionLog focus />
     }
   }
 }

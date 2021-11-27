@@ -79,9 +79,9 @@ module SetActionLogOldestRecentDateActionLogId = {
 }
 
 @react.component
-let make = () => {
+let make = (~focus) => {
   <>
-    <ActionLogRecentDateActionLogs />
+    <ActionLogRecentDateActionLogs focus />
     <SetInitialSelectedActionLog />
     <SetActionLogOldestRecentDateActionLogId />
   </>

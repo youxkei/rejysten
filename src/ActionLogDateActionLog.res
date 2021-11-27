@@ -11,12 +11,12 @@ let rec makeActionLogs = (actionLogMap, currentId, actionLogs) => {
 }
 
 @react.component
-let make = (~dateActionLog: State.dateActionLog, ()) => {
+let make = (~dateActionLog: State.dateActionLog, ~focus, ()) => {
   <>
     <p> {dateActionLog.date->React.string} </p>
     {dateActionLog.actionLogMap
     ->makeActionLogs(dateActionLog.oldestActionLogId, [])
-    ->Array.map(actionLog => <ActionLogActionLog key=actionLog.id actionLog />)
+    ->Array.map(actionLog => <ActionLogActionLog key=actionLog.id actionLog focus />)
     ->React.array}
   </>
 }
