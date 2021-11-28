@@ -46,8 +46,8 @@ module rec ItemsInner: {
 } = {
   @react.component
   let make = (~item: State.item) => {
-    let itemMap = Redux.useSelector(State.Firestore.itemMap)
-    let searchedItems = Redux.useSelector(State.Search.searchedItems)
+    let itemMap = Redux.useSelector(Selector.Firestore.itemMap)
+    let searchedItems = Redux.useSelector(Selector.Search.searchedItems)
 
     <BulletList
       bullet={<Bullet />}
@@ -71,11 +71,11 @@ module rec DocumentsInner: {
 } = {
   @react.component
   let make = (~document: State.noteDocument) => {
-    let documentMap = Redux.useSelector(State.Firestore.documentMap)
-    let itemMap = Redux.useSelector(State.Firestore.itemMap)
-    let ancestorDocuments = Redux.useSelector(State.Search.ancestorDocuments)
-    let searchedDocuments = Redux.useSelector(State.Search.searchedDocuments)
-    let searchedItems = Redux.useSelector(State.Search.searchedItems)
+    let documentMap = Redux.useSelector(Selector.Firestore.documentMap)
+    let itemMap = Redux.useSelector(Selector.Firestore.itemMap)
+    let ancestorDocuments = Redux.useSelector(Selector.Search.ancestorDocuments)
+    let searchedDocuments = Redux.useSelector(Selector.Search.searchedDocuments)
+    let searchedItems = Redux.useSelector(Selector.Search.searchedItems)
 
     <BulletList
       bullet={<Bullet />}
@@ -109,10 +109,10 @@ module rec DocumentsInner: {
 
 @react.component
 let make = () => {
-  let documentMap = Redux.useSelector(State.Firestore.documentMap)
-  let rootDocument = Redux.useSelector(State.Firestore.rootDocument)
-  let ancestorDocuments = Redux.useSelector(State.Search.ancestorDocuments)
-  let searchedItems = Redux.useSelector(State.Search.searchedItems)
+  let documentMap = Redux.useSelector(Selector.Firestore.documentMap)
+  let rootDocument = Redux.useSelector(Selector.Firestore.rootDocument)
+  let ancestorDocuments = Redux.useSelector(Selector.Search.ancestorDocuments)
+  let searchedItems = Redux.useSelector(Selector.Search.searchedItems)
 
   switch rootDocument {
   | Some(rootDocument) =>

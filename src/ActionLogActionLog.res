@@ -3,8 +3,8 @@ open Belt
 module Record = {
   @react.component
   let make = (~actionLog: State.actionLog, ~isSelectedActionLog, ()) => {
-    let mode = Redux.useSelector(State.mode)
-    let focus = Redux.useSelector(State.focus)
+    let mode = Redux.useSelector(Selector.mode)
+    let focus = Redux.useSelector(Selector.focus)
 
     let {text, begin, end} = actionLog
     let text = text->React.string
@@ -54,8 +54,8 @@ module Record = {
 
 @react.component
 let make = (~actionLog: State.actionLog, ~focus, ()) => {
-  let selectedId = Redux.useSelector(State.ActionLog.selectedActionLogId)
-  let selectedActionLogItemId = Redux.useSelector(State.ActionLog.selectedActionLogItemId)
+  let selectedId = Redux.useSelector(Selector.ActionLog.selectedActionLogId)
+  let selectedActionLogItemId = Redux.useSelector(Selector.ActionLog.selectedActionLogItemId)
 
   let {id, itemMap, rootItemId} = actionLog
   let (isSelectedActionLog, focusable) = switch focus {

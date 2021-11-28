@@ -56,7 +56,7 @@ module KeyDownHandler = {
 module Main = {
   @react.component
   let make = () => {
-    let focus = Redux.useSelector(State.focus)
+    let focus = Redux.useSelector(Selector.focus)
 
     switch focus {
     | State.Note(_) => <Note />

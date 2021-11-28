@@ -14,8 +14,8 @@ module SetInitialSelectedActionLog = {
   @react.component
   let make = () => {
     let dispatch = Redux.useDispatch()
-    let latestDateActionLog = Redux.useSelector(State.Firestore.latestDateActionLog)
-    let isInitial = Redux.useSelector(State.ActionLog.isInitial)
+    let latestDateActionLog = Redux.useSelector(Selector.Firestore.latestDateActionLog)
+    let isInitial = Redux.useSelector(Selector.ActionLog.isInitial)
 
     React.useEffect(() => {
       if isInitial {
@@ -58,8 +58,8 @@ module SetActionLogOldestRecentDateActionLogId = {
   @react.component
   let make = () => {
     let dispatch = Redux.useDispatch()
-    let dateActionLogMap = Redux.useSelector(State.Firestore.dateActionLogMap)
-    let latestDateActionLogId = Redux.useSelector(State.Firestore.latestDateActionLogId)
+    let dateActionLogMap = Redux.useSelector(Selector.Firestore.dateActionLogMap)
+    let latestDateActionLogId = Redux.useSelector(Selector.Firestore.latestDateActionLogId)
 
     React.useEffect(() => {
       dispatch(

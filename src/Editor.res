@@ -6,8 +6,8 @@ open Belt
 
 @react.component
 let make = (~inline=false, ()) => {
-  let text = Redux.useSelector(State.Editor.editingText)
-  let initialCursorPosition = Redux.useSelector(State.initialCursorPosition)
+  let text = Redux.useSelector(Selector.Editor.editingText)
+  let initialCursorPosition = Redux.useSelector(Selector.initialCursorPosition)
 
   let dispatch = Redux.useDispatch()
 

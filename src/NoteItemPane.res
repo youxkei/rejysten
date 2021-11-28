@@ -1,10 +1,10 @@
 @react.component
 let make = React.memo(() => {
-  let focus = Redux.useSelector(State.focus)
-  let itemMap = Redux.useSelector(State.Firestore.itemMap)
-  let selectedItemId = Redux.useSelector(State.Note.ItemPane.selectedItemId)
+  let focus = Redux.useSelector(Selector.focus)
+  let itemMap = Redux.useSelector(Selector.Firestore.itemMap)
+  let selectedItemId = Redux.useSelector(Selector.Note.ItemPane.selectedItemId)
 
-  let rootItem = Redux.useSelector(State.Note.ItemPane.rootItem)
+  let rootItem = Redux.useSelector(Selector.Note.ItemPane.rootItem)
   let (rootItem, ()) = Hook.useDebounce(rootItem, 50)
 
   let focusable = switch focus {

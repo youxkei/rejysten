@@ -21,7 +21,7 @@ module Note = {
   let documentPaneReducer = (state: State.t, action) => {
     switch action {
     | Action.ToAboveDocument() =>
-      switch state->State.Note.DocumentPane.aboveSelectedDocument {
+      switch state->Selector.Note.DocumentPane.aboveSelectedDocument {
       | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
           ...state,
           note: {
@@ -38,7 +38,7 @@ module Note = {
       }
 
     | Action.ToBelowDocument() =>
-      switch state->State.Note.DocumentPane.belowSelectedDocument {
+      switch state->Selector.Note.DocumentPane.belowSelectedDocument {
       | Some({id: belowId}) => {
           ...state,
           note: {
@@ -69,7 +69,7 @@ module Note = {
         }
 
       | State.Insert(_) => {
-          let editingText = switch state->State.Firestore.getDocument(id) {
+          let editingText = switch state->Selector.Firestore.getDocument(id) {
           | Some({text}) => text
 
           | None => ""
@@ -98,7 +98,7 @@ module Note = {
   let documentItemPaneReducer = (state: State.t, action) => {
     switch action {
     | Action.ToAboveItem() =>
-      switch state->State.Note.ItemPane.aboveSelectedItem {
+      switch state->Selector.Note.ItemPane.aboveSelectedItem {
       | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
           ...state,
           note: {
@@ -113,7 +113,7 @@ module Note = {
       }
 
     | Action.ToBelowItem() =>
-      switch state->State.Note.ItemPane.belowSelectedItem {
+      switch state->Selector.Note.ItemPane.belowSelectedItem {
       | Some({id: belowId}) => {
           ...state,
           note: {
@@ -128,7 +128,7 @@ module Note = {
       }
 
     | Action.ToTopItem() =>
-      switch state->State.Note.ItemPane.topItem {
+      switch state->Selector.Note.ItemPane.topItem {
       | Some(topItem) => {
           ...state,
           note: {
@@ -143,7 +143,7 @@ module Note = {
       }
 
     | Action.ToBottomItem() =>
-      switch state->State.Note.ItemPane.bottomItem {
+      switch state->Selector.Note.ItemPane.bottomItem {
       | Some(bottomItem) => {
           ...state,
           note: {
@@ -170,7 +170,7 @@ module Note = {
         }
 
       | State.Insert(_) => {
-          let editingText = switch state->State.Firestore.getItem(id) {
+          let editingText = switch state->Selector.Firestore.getItem(id) {
           | Some({text}) => text
 
           | None => ""
@@ -210,7 +210,7 @@ let searchReducer = (state: State.t, action) => {
 let actionLogReducer = (state: State.t, action) => {
   switch action {
   | Action.ToAboveActionLog() =>
-    switch state->State.ActionLog.aboveRecentActionLog {
+    switch state->Selector.ActionLog.aboveRecentActionLog {
     | Some(aboveActionLog) => {
         ...state,
         actionLog: {
@@ -224,7 +224,7 @@ let actionLogReducer = (state: State.t, action) => {
     }
 
   | Action.ToBelowActionLog() =>
-    switch state->State.ActionLog.belowActionLog {
+    switch state->Selector.ActionLog.belowActionLog {
     | Some(belowActionLog) => {
         ...state,
         actionLog: {
@@ -267,7 +267,7 @@ let reducer = (state: State.t, action) => {
       ...state,
       mode: State.Insert({initialCursorPosition: initialCursorPosition}),
       editor: {
-        editingText: state->State.selectedText,
+        editingText: state->Selector.selectedText,
       },
     }
 
@@ -276,17 +276,13 @@ let reducer = (state: State.t, action) => {
       mode: State.Normal(),
     }
 
-  | Action.FocusNote(Action.DocumentPane()) => {
-      ...state,
-      focus: State.Note(State.DocumentPane()),
-    }
-
-  | Action.FocusNote(Action.ItemPane()) =>
-    if state.note.itemPane.selectedId == "" {
-      switch state->State.Note.ItemPane.bottomItem {
+  | Action.Focus(focus) =>
+    switch focus {
+    | State.Note(State.ItemPane()) if state.note.itemPane.selectedId == "" =>
+      switch state->Selector.Note.ItemPane.bottomItem {
       | Some(bottomItem) => {
           ...state,
-          focus: State.Note(State.ItemPane()),
+          focus: focus,
           note: {
             ...state.note,
             itemPane: {
@@ -297,30 +293,12 @@ let reducer = (state: State.t, action) => {
 
       | None => state
       }
-    } else {
-      {
-        ...state,
-        focus: State.Note(State.ItemPane()),
-      }
-    }
 
-  | Action.FocusSearch() => {
-      ...state,
-      focus: State.Search(),
-    }
-
-  | Action.FocusActionLog(focus) =>
-    switch focus {
-    | State.Record(_) => {
-        ...state,
-        focus: State.ActionLog(focus),
-      }
-
-    | State.Items() =>
-      switch state->State.ActionLog.selectedActionLogRootItem {
+    | State.ActionLog(State.Items()) =>
+      switch state->Selector.ActionLog.selectedActionLogRootItem {
       | Some(rootItem) => {
           ...state,
-          focus: State.ActionLog(focus),
+          focus: focus,
           actionLog: {
             ...state.actionLog,
             selectedActionLogItemId: rootItem.firstChildId,
@@ -328,6 +306,11 @@ let reducer = (state: State.t, action) => {
         }
 
       | None => state
+      }
+
+    | _ => {
+        ...state,
+        focus: focus,
       }
     }
 

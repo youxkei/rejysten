@@ -5,7 +5,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
 
   switch action {
   | Action.SaveActionLog() =>
-    switch state->State.ActionLog.selectedActionLog {
+    switch state->Selector.ActionLog.selectedActionLog {
     | Some(({date}, {id, dateActionLogId})) =>
       switch state.mode {
       | State.Insert(_) =>
@@ -52,9 +52,9 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
     }
 
   | Action.AddActionLog({direction}) =>
-    switch state->State.ActionLog.selectedActionLog {
+    switch state->Selector.ActionLog.selectedActionLog {
     | Some((selectedDateActionLog, selectedActionLog)) =>
-      switch state->State.Firestore.latestActionLog {
+      switch state->Selector.Firestore.latestActionLog {
       | Some(latestActionLog) =>
         open Firebase.Firestore
 
@@ -210,13 +210,13 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
     }
 
   | Action.StartActionLog() =>
-    switch state->State.ActionLog.selectedActionLog {
+    switch state->Selector.ActionLog.selectedActionLog {
     | Some((selectedDateActionLog, selectedActionLog)) if selectedActionLog.begin == 0.0 =>
       open Firebase.Firestore
 
       let dateActionLogs = Firebase.firestore->collection("dateActionLogs")
 
-      switch state->State.ActionLog.aboveRecentActionLog {
+      switch state->Selector.ActionLog.aboveRecentActionLog {
       | Some(aboveActionLog) if aboveActionLog.end != 0.0 =>
         dateActionLogs
         ->doc(selectedDateActionLog.id)
@@ -234,7 +234,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
     }
 
   | Action.FinishActionLog() =>
-    switch state->State.ActionLog.selectedActionLog {
+    switch state->Selector.ActionLog.selectedActionLog {
     | Some((selectedDateActionLog, selectedActionLog)) if selectedActionLog.end == 0.0 =>
       open Firebase.Firestore
 

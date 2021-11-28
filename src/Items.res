@@ -53,7 +53,7 @@ module rec ItemsInner: {
 } = {
   @react.component
   let make = (~editable, ~focusable, ~item: State.item, ~selectedItemId, ~itemMap) => {
-    let mode = Redux.useSelector(State.mode)
+    let mode = Redux.useSelector(Selector.mode)
     let listItemRef = React.useRef(Js.Nullable.null)
     let innerHeight = Hook.useInnerHeight()
 

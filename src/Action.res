@@ -2,8 +2,6 @@ open Belt
 
 type direction = Prev(unit) | Next(unit)
 
-type focusNotePane = DocumentPane(unit) | ItemPane(unit)
-
 type firestoreNoteDocumentPane =
   | SaveDocument(unit)
   | IndentDocument(unit)
@@ -63,9 +61,7 @@ type t =
   // global state actions
   | ToInsertMode({initialCursorPosition: State.initialCursorPosition})
   | ToNormalMode(unit)
-  | FocusNote(focusNotePane)
-  | FocusSearch(unit)
-  | FocusActionLog(State.actionLogFocus)
+  | Focus(State.focus)
 
   // per element actions
   | Editor(editor)

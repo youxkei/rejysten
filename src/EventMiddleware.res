@@ -39,7 +39,7 @@ module KeyDown = {
             }
 
           | "KeyL" if !ctrlKey && !shiftKey => {
-              dispatch(Action.FocusNote(Action.ItemPane()))
+              dispatch(Action.Focus(State.Note(State.ItemPane())))
               event->preventDefault
             }
 
@@ -86,12 +86,12 @@ module KeyDown = {
             }
 
           | "KeyL" if !ctrlKey && shiftKey => {
-              dispatch(Action.FocusActionLog(State.Record(State.Text())))
+              dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
               event->preventDefault
             }
 
           | "Slash" if !ctrlKey && !shiftKey => {
-              dispatch(Action.FocusSearch())
+              dispatch(Action.Focus(State.Search()))
               event->preventDefault
             }
 
@@ -133,12 +133,12 @@ module KeyDown = {
             event->preventDefault
 
           | "Backspace" if isNeutral && !shiftKey && state.editor.editingText == "" =>
-            switch state->State.Note.DocumentPane.selectedDocument {
+            switch state->Selector.Note.DocumentPane.selectedDocument {
             | Some({firstChildId: "", lastChildId: ""}) =>
               // selected document has no children
-              switch state->State.Note.DocumentPane.aboveSelectedDocument {
+              switch state->Selector.Note.DocumentPane.aboveSelectedDocument {
               | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" =>
-                switch state->State.Note.ItemPane.topItem {
+                switch state->Selector.Note.ItemPane.topItem {
                 | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
                   dispatch(
                     Action.Firestore(
@@ -165,12 +165,12 @@ module KeyDown = {
             }
 
           | "Delete" if isNeutral && !shiftKey && state.editor.editingText == "" =>
-            switch state->State.Note.DocumentPane.selectedDocument {
+            switch state->Selector.Note.DocumentPane.selectedDocument {
             | Some({firstChildId: "", lastChildId: ""}) =>
               // selected document has no children
-              switch state->State.Note.DocumentPane.belowSelectedDocument {
+              switch state->Selector.Note.DocumentPane.belowSelectedDocument {
               | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" =>
-                switch state->State.Note.ItemPane.topItem {
+                switch state->Selector.Note.ItemPane.topItem {
                 | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
                   dispatch(
                     Action.Firestore(
@@ -223,7 +223,7 @@ module KeyDown = {
             }
 
           | "KeyH" if !ctrlKey && !shiftKey => {
-              dispatch(Action.FocusNote(Action.DocumentPane()))
+              dispatch(Action.Focus(State.Note(State.DocumentPane())))
               event->preventDefault
             }
 
@@ -272,12 +272,12 @@ module KeyDown = {
             }
 
           | "KeyL" if !ctrlKey && shiftKey => {
-              dispatch(Action.FocusActionLog(State.Record(State.Text())))
+              dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
               event->preventDefault
             }
 
           | "Slash" if !ctrlKey && !shiftKey => {
-              dispatch(Action.FocusSearch())
+              dispatch(Action.Focus(State.Search()))
               event->preventDefault
             }
 
@@ -323,10 +323,10 @@ module KeyDown = {
             }
 
           | "Backspace" if isNeutral && !shiftKey && state.editor.editingText == "" =>
-            switch state->State.Note.ItemPane.selectedItem {
+            switch state->Selector.Note.ItemPane.selectedItem {
             | Some({firstChildId: "", lastChildId: ""}) =>
               // selected item has no children
-              switch state->State.Note.ItemPane.aboveSelectedItem {
+              switch state->Selector.Note.ItemPane.aboveSelectedItem {
               | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
                   dispatch(
                     Action.Firestore(
@@ -351,10 +351,10 @@ module KeyDown = {
             }
 
           | "Delete" if isNeutral && !shiftKey && state.editor.editingText == "" =>
-            switch state->State.Note.ItemPane.selectedItem {
+            switch state->Selector.Note.ItemPane.selectedItem {
             | Some({firstChildId: "", lastChildId: ""}) =>
               // selected item has no children
-              switch state->State.Note.ItemPane.belowSelectedItem {
+              switch state->Selector.Note.ItemPane.belowSelectedItem {
               | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" => {
                   dispatch(
                     Action.Firestore(
@@ -393,7 +393,7 @@ module KeyDown = {
         let code = event->code
 
         switch code {
-        | "Escape" => dispatch(Action.FocusNote(Action.ItemPane()))
+        | "Escape" => dispatch(Action.Focus(State.Note(State.ItemPane())))
 
         | _ => ()
         }
@@ -419,7 +419,7 @@ module KeyDown = {
 
           switch code {
           | "KeyN" if !ctrlKey && shiftKey =>
-            dispatch(Action.FocusNote(Action.ItemPane()))
+            dispatch(Action.Focus(State.Note(State.ItemPane())))
             event->preventDefault
 
           | "KeyK" if !ctrlKey && !shiftKey =>
@@ -454,7 +454,7 @@ module KeyDown = {
             event->preventDefault
 
           | "KeyL" if !ctrlKey && !shiftKey =>
-            dispatch(Action.FocusActionLog(State.Items()))
+            dispatch(Action.Focus(State.ActionLog(State.Items())))
             event->preventDefault
 
           | _ => ()
@@ -475,24 +475,24 @@ module KeyDown = {
           switch code {
           | "Escape" if isNeutral && !shiftKey =>
             dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
-            dispatch(Action.FocusActionLog(State.Record(State.Text())))
+            dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
             dispatch(Action.ToNormalMode())
 
           | "Tab" if isNeutral && !shiftKey =>
             switch focus {
             | State.Text() =>
               dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
-              dispatch(Action.FocusActionLog(State.Record(State.Begin())))
+              dispatch(Action.Focus(State.ActionLog(State.Record(State.Begin()))))
               dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
 
             | State.Begin() =>
               dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
-              dispatch(Action.FocusActionLog(State.Record(State.End())))
+              dispatch(Action.Focus(State.ActionLog(State.Record(State.End()))))
               dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
 
             | State.End() =>
               dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
-              dispatch(Action.FocusActionLog(State.Record(State.Text())))
+              dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
               dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
             }
 
@@ -502,17 +502,17 @@ module KeyDown = {
             switch focus {
             | State.Text() =>
               dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
-              dispatch(Action.FocusActionLog(State.Record(State.End())))
+              dispatch(Action.Focus(State.ActionLog(State.Record(State.End()))))
               dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
 
             | State.Begin() =>
               dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
-              dispatch(Action.FocusActionLog(State.Record(State.Text())))
+              dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
               dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
 
             | State.End() =>
               dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
-              dispatch(Action.FocusActionLog(State.Record(State.Begin())))
+              dispatch(Action.Focus(State.ActionLog(State.Record(State.Begin()))))
               dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
             }
 
@@ -535,7 +535,7 @@ module KeyDown = {
 
           switch code {
           | "KeyH" if !ctrlKey && !shiftKey =>
-            dispatch(Action.FocusActionLog(State.Record(State.Text())))
+            dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
             event->preventDefault
 
           | _ => ()
@@ -557,7 +557,7 @@ module Click = {
 
       switch target {
       | Event.Document(documentId) =>
-        dispatch(Action.FocusNote(Action.DocumentPane()))
+        dispatch(Action.Focus(State.Note(State.DocumentPane())))
         dispatch(
           Action.Note(
             Action.DocumentPane(
@@ -573,7 +573,7 @@ module Click = {
         }
 
       | Event.Item(itemId) =>
-        dispatch(Action.FocusNote(Action.ItemPane()))
+        dispatch(Action.Focus(State.Note(State.ItemPane())))
         dispatch(
           Action.Note(
             Action.ItemPane(
@@ -631,7 +631,7 @@ module Blur = {
         let dispatch = Reductive.Store.dispatch(store)
 
         dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
-        dispatch(Action.FocusActionLog(State.Record(State.Text())))
+        dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
         dispatch(Action.ToNormalMode())
       }
     }

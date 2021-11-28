@@ -28,9 +28,11 @@ let rec makeRecentDateActionLogs = (
 
 @react.component
 let make = (~focus) => {
-  let dateActionLogMap = Redux.useSelector(State.Firestore.dateActionLogMap)
-  let latestDateActionLogId = Redux.useSelector(State.Firestore.latestDateActionLogId)
-  let oldestRecentDateActionLogId = Redux.useSelector(State.ActionLog.oldestRecentDateActionLogId)
+  let dateActionLogMap = Redux.useSelector(Selector.Firestore.dateActionLogMap)
+  let latestDateActionLogId = Redux.useSelector(Selector.Firestore.latestDateActionLogId)
+  let oldestRecentDateActionLogId = Redux.useSelector(
+    Selector.ActionLog.oldestRecentDateActionLogId,
+  )
 
   let recentDateActionLogs =
     dateActionLogMap->makeRecentDateActionLogs(

@@ -8,8 +8,8 @@ module SetInitialSelectedDocumentId = {
   @react.component
   let make = () => {
     let dispatch = Redux.useDispatch()
-    let rootDocument = Redux.useSelector(State.Firestore.rootDocument)
-    let isInitial = Redux.useSelector(State.Note.DocumentPane.isInitial)
+    let rootDocument = Redux.useSelector(Selector.Firestore.rootDocument)
+    let isInitial = Redux.useSelector(Selector.Note.DocumentPane.isInitial)
 
     React.useEffect(() => {
       if isInitial {
@@ -34,8 +34,8 @@ module SetInitialSelectedDocumentId = {
 
 @react.component
 let make = () => {
-  let focus = Redux.useSelector(State.focus)
-  let rootDocument = Redux.useSelector(State.Firestore.rootDocument)
+  let focus = Redux.useSelector(Selector.focus)
+  let rootDocument = Redux.useSelector(Selector.Firestore.rootDocument)
 
   let className = switch focus {
   | State.Note(State.DocumentPane()) => `${Style.Note.documentPane} ${Style.Note.focusedPane}`

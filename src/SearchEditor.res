@@ -8,7 +8,7 @@ open Belt
 let make = () => {
   let dispatch = Redux.useDispatch()
 
-  let text = Redux.useSelector(State.Search.searchingText)
+  let text = Redux.useSelector(Selector.Search.searchingText)
   let textareaRef = React.useRef(Js.Nullable.null)
 
   let onChange = React.useCallback1(event => {

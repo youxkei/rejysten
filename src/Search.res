@@ -54,9 +54,9 @@ module Sync = {
   @react.component
   let make = () => {
     let dispatch = Redux.useDispatch()
-    let documentMap = Redux.useSelector(State.Firestore.documentMap)
-    let itemMap = Redux.useSelector(State.Firestore.itemMap)
-    let searchingText = Redux.useSelector(State.Search.searchingText)
+    let documentMap = Redux.useSelector(Selector.Firestore.documentMap)
+    let itemMap = Redux.useSelector(Selector.Firestore.itemMap)
+    let searchingText = Redux.useSelector(Selector.Search.searchingText)
     let (searchingText, ()) = Hook.useDebounce(searchingText, 200)
 
     React.useEffect2(() => {
