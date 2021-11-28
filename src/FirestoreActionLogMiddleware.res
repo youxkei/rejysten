@@ -247,6 +247,111 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
     | None => ()
     }
 
+  | Action.AddActionLogItem({direction}) =>
+    switch state->Selector.ActionLog.selectedActionLogItem {
+    | Some(selectedDateActionLog, selectedActionLog, selectedItem) =>
+      open Firebase.Firestore
+
+      let db = Firebase.firestore
+      let writeBatch = db->writeBatch
+      let selectedDateActionLogDoc = db->collection("dateActionLogs")->doc(selectedDateActionLog.id)
+
+      let addingItemId = uuidv4()
+
+      let itemPath = id => fieldPath4("actionLogs", selectedActionLog.id, "items", id)
+      let itemPathWithField = (id, field) =>
+        fieldPath5("actionLogs", selectedActionLog.id, "items", id, field)
+
+      switch state.mode {
+      | State.Insert(_) =>
+        writeBatch->addUpdateField(
+          selectedDateActionLogDoc,
+          itemPathWithField(selectedItem.id, "text"),
+          state.editor.editingText,
+        )
+
+      | _ => ()
+      }
+
+      switch direction {
+      | Action.Prev() =>
+        writeBatch->addUpdateField(
+          selectedDateActionLogDoc,
+          itemPathWithField(selectedItem.id, "prevId"),
+          addingItemId,
+        )
+
+        writeBatch->addUpdateField(
+          selectedDateActionLogDoc,
+          itemPath(addingItemId),
+          {
+            "firstChildId": "",
+            "lastChildId": "",
+            "prevId": selectedItem.prevId,
+            "parentId": selectedItem.parentId,
+            "nextId": selectedItem.id,
+            "text": "",
+          },
+        )
+
+        if selectedItem.prevId == "" {
+          if selectedItem.parentId != "" {
+            writeBatch->addUpdateField(
+              selectedDateActionLogDoc,
+              itemPathWithField(selectedItem.parentId, "firstChildId"),
+              addingItemId,
+            )
+          } else {
+            writeBatch->addUpdateField(
+              selectedDateActionLogDoc,
+              itemPathWithField(selectedItem.prevId, "nextId"),
+              addingItemId,
+            )
+          }
+        }
+
+      | Action.Next() =>
+        writeBatch->addUpdateField(
+          selectedDateActionLogDoc,
+          itemPathWithField(selectedItem.id, "nextId"),
+          addingItemId,
+        )
+
+        writeBatch->addUpdateField(
+          selectedDateActionLogDoc,
+          itemPath(addingItemId),
+          {
+            "firstChildId": "",
+            "lastChildId": "",
+            "prevId": selectedItem.id,
+            "parentId": selectedItem.parentId,
+            "nextId": selectedItem.nextId,
+            "text": "",
+          },
+        )
+
+        if selectedItem.nextId == "" {
+          if selectedItem.parentId != "" {
+            writeBatch->addUpdateField(
+              selectedDateActionLogDoc,
+              itemPathWithField(selectedItem.parentId, "lastChildId"),
+              addingItemId,
+            )
+          } else {
+            writeBatch->addUpdateField(
+              selectedDateActionLogDoc,
+              itemPathWithField(selectedItem.nextId, "prevId"),
+              addingItemId,
+            )
+          }
+        }
+      }
+
+      writeBatch->commit
+
+    | None => ()
+    }
+
   | Action.StartActionLog() =>
     switch state->Selector.ActionLog.selectedActionLog {
     | Some((selectedDateActionLog, selectedActionLog)) if selectedActionLog.begin == 0.0 =>

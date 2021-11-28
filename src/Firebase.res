@@ -24,6 +24,8 @@ module Firestore = {
   @module("firebase/firestore") @new
   external fieldPath3: (string, string, string) => fieldPath = "FieldPath"
   @module("firebase/firestore") @new
+  external fieldPath4: (string, string, string, string) => fieldPath = "FieldPath"
+  @module("firebase/firestore") @new
   external fieldPath5: (string, string, string, string, string) => fieldPath = "FieldPath"
 
   @module("firebase/firestore") external collection: (t, string) => collection = "collection"

@@ -554,6 +554,24 @@ module KeyDown = {
             dispatch(Action.ToInsertMode({initialCursorPosition: State.End()}))
             event->preventDefault
 
+          | "KeyO" if !ctrlKey && !shiftKey =>
+            dispatch(
+              Action.Firestore(
+                Action.ActionLog(Action.AddActionLogItem({direction: Action.Next()})),
+              ),
+            )
+            //dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
+            event->preventDefault
+
+          | "KeyO" if !ctrlKey && shiftKey =>
+            dispatch(
+              Action.Firestore(
+                Action.ActionLog(Action.AddActionLogItem({direction: Action.Prev()})),
+              ),
+            )
+            //dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
+            event->preventDefault
+
           | _ => ()
           }
         }
