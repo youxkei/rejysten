@@ -68,6 +68,27 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
     | _ => ()
     }
 
+  | Action.SaveActionLogItem() =>
+    switch state.mode {
+    | State.Insert(_) =>
+      switch state->Selector.ActionLog.selectedActionLogItem {
+      | Some(dateActionLog, actionLog, item) =>
+        open Firebase.Firestore
+
+        Firebase.firestore
+        ->collection("dateActionLogs")
+        ->doc(dateActionLog.id)
+        ->updateField(
+          fieldPath5("actionLogs", actionLog.id, "items", item.id, "text"),
+          state.editor.editingText,
+        )
+
+      | None => ()
+      }
+
+    | _ => ()
+    }
+
   | Action.AddActionLog({direction}) =>
     switch state->Selector.ActionLog.selectedActionLog {
     | Some((selectedDateActionLog, selectedActionLog)) =>

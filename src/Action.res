@@ -22,6 +22,7 @@ type firestoreActionLog =
   | SaveActionLogRecordText(unit)
   | SaveActionLogRecordBegin(unit)
   | SaveActionLogRecordEnd(unit)
+  | SaveActionLogItem(unit)
   | AddActionLog({direction: direction})
   | StartActionLog(unit)
   | FinishActionLog(unit)

@@ -99,6 +99,8 @@ module Search = {
 
 module ActionLog = {
   let actionLog = style(. [width(100.0->pct)])
+
+  let style = style(. [width(100.0->pct), height(100.0->pct), overflow(auto)])
 }
 
 global(.

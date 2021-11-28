@@ -223,7 +223,7 @@ module ActionLog = {
     switch state->selectedDateActionLog {
     | Some(dateActionLog) =>
       switch dateActionLog.actionLogMap->Map.String.get(state->selectedActionLogId) {
-      | Some(actionLog) => Some((dateActionLog, actionLog))
+      | Some(actionLog) => Some(dateActionLog, actionLog)
 
       | None => None
       }
@@ -233,21 +233,26 @@ module ActionLog = {
 
   let selectedActionLogRootItem = (state: State.t) =>
     switch state->selectedActionLog {
-    | Some((_, actionLog)) => actionLog.itemMap->Map.String.get(actionLog.rootItemId)
+    | Some(_, actionLog) => actionLog.itemMap->Map.String.get(actionLog.rootItemId)
 
     | None => None
     }
 
   let selectedActionLogItem = (state: State.t) =>
     switch state->selectedActionLog {
-    | Some((_, actionLog)) => actionLog.itemMap->Map.String.get(state->selectedActionLogItemId)
+    | Some(dateActionLog, actionLog) =>
+      switch actionLog.itemMap->Map.String.get(state->selectedActionLogItemId) {
+      | Some(item) => Some(dateActionLog, actionLog, item)
+
+      | None => None
+      }
 
     | None => None
     }
 
   let aboveRecentActionLog = (state: State.t) =>
     switch state->selectedActionLog {
-    | Some((selectedDateActionLog, selectedActionLog)) =>
+    | Some(selectedDateActionLog, selectedActionLog) =>
       switch selectedDateActionLog.actionLogMap->Map.String.get(selectedActionLog.prevId) {
       | Some(actionLog) => Some(actionLog)
 
@@ -269,7 +274,7 @@ module ActionLog = {
 
   let belowActionLog = (state: State.t) =>
     switch state->selectedActionLog {
-    | Some((selectedDateActionLog, selectedActionLog)) =>
+    | Some(selectedDateActionLog, selectedActionLog) =>
       switch selectedDateActionLog.actionLogMap->Map.String.get(selectedActionLog.nextId) {
       | Some(actionLog) => Some(actionLog)
 
@@ -326,7 +331,7 @@ let selectedText = (state: State.t) =>
 
       | Items() =>
         switch state->ActionLog.selectedActionLogItem {
-        | Some(item) => item.text
+        | Some(_, _, item) => item.text
         | None => ""
         }
       }
