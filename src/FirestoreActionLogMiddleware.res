@@ -4,45 +4,62 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
   let state = Reductive.Store.getState(store)
 
   switch action {
-  | Action.SaveActionLog() =>
+  | Action.SaveActionLogRecordText() =>
+    switch state->Selector.ActionLog.selectedActionLog {
+    | Some((_, {id, dateActionLogId})) =>
+      switch state.mode {
+      | State.Insert(_) =>
+        open Firebase.Firestore
+
+        Firebase.firestore
+        ->collection("dateActionLogs")
+        ->doc(dateActionLogId)
+        ->updateField(fieldPath3("actionLogs", id, "text"), state.editor.editingText)
+
+      | _ => ()
+      }
+
+    | _ => ()
+    }
+
+  | Action.SaveActionLogRecordBegin() =>
     switch state->Selector.ActionLog.selectedActionLog {
     | Some(({date}, {id, dateActionLogId})) =>
       switch state.mode {
       | State.Insert(_) =>
         open Firebase.Firestore
 
-        switch state.focus {
-        | State.ActionLog(State.Record(State.Text())) =>
+        switch Date.parseEditString(date, state.editor.editingText) {
+        | Some(beginDate) =>
           Firebase.firestore
           ->collection("dateActionLogs")
           ->doc(dateActionLogId)
-          ->updateField(fieldPath3("actionLogs", id, "text"), state.editor.editingText)
+          ->updateField(fieldPath3("actionLogs", id, "begin"), beginDate->Date.toUnixtimeMillis)
 
-        | State.ActionLog(State.Record(State.Begin())) =>
-          switch Date.parseEditString(date, state.editor.editingText) {
-          | Some(beginDate) =>
-            Firebase.firestore
-            ->collection("dateActionLogs")
-            ->doc(dateActionLogId)
-            ->updateField(fieldPath3("actionLogs", id, "begin"), beginDate->Date.toUnixtimeMillis)
+        | None => ()
+        }
 
-          | None => ()
-          }
+      | _ => ()
+      }
 
-        | State.ActionLog(State.Record(State.End())) =>
-          switch Date.parseEditString(date, state.editor.editingText) {
-          | Some(endDate) =>
-            Firebase.firestore
-            ->collection("dateActionLogs")
-            ->doc(dateActionLogId)
-            ->updateField(fieldPath3("actionLogs", id, "end"), endDate->Date.toUnixtimeMillis)
+    | _ => ()
+    }
 
-          | None => ()
-          }
+  | Action.SaveActionLogRecordEnd() =>
+    switch state->Selector.ActionLog.selectedActionLog {
+    | Some(({date}, {id, dateActionLogId})) =>
+      switch state.mode {
+      | State.Insert(_) =>
+        open Firebase.Firestore
 
-        | State.ActionLog(State.Items()) => () // TODO
+        switch Date.parseEditString(date, state.editor.editingText) {
+        | Some(endDate) =>
+          Firebase.firestore
+          ->collection("dateActionLogs")
+          ->doc(dateActionLogId)
+          ->updateField(fieldPath3("actionLogs", id, "end"), endDate->Date.toUnixtimeMillis)
 
-        | _ => ()
+        | None => ()
         }
 
       | _ => ()

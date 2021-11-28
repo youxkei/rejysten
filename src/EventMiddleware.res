@@ -474,47 +474,55 @@ module KeyDown = {
 
           switch code {
           | "Escape" if isNeutral && !shiftKey =>
-            dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
+            switch focus {
+            | State.Text() =>
+              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordText())))
+
+            | State.Begin() =>
+              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordBegin())))
+
+            | State.End() =>
+              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordEnd())))
+            }
+
             dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
             dispatch(Action.ToNormalMode())
 
           | "Tab" if isNeutral && !shiftKey =>
             switch focus {
             | State.Text() =>
-              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
+              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordText())))
               dispatch(Action.Focus(State.ActionLog(State.Record(State.Begin()))))
-              dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
 
             | State.Begin() =>
-              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
+              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordBegin())))
               dispatch(Action.Focus(State.ActionLog(State.Record(State.End()))))
-              dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
 
             | State.End() =>
-              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
+              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordEnd())))
               dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
-              dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
             }
+
+            dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
 
             event->preventDefault
 
           | "Tab" if isNeutral && shiftKey =>
             switch focus {
             | State.Text() =>
-              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
+              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordText())))
               dispatch(Action.Focus(State.ActionLog(State.Record(State.End()))))
-              dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
 
             | State.Begin() =>
-              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
+              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordBegin())))
               dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
-              dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
 
             | State.End() =>
-              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
+              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordEnd())))
               dispatch(Action.Focus(State.ActionLog(State.Record(State.Begin()))))
-              dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
             }
+
+            dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
 
             event->preventDefault
 
@@ -627,10 +635,20 @@ module Blur = {
 
   module ActionLog = {
     module Record = {
-      let handler = (store, _event) => {
+      let handler = (store, _event, focus) => {
         let dispatch = Reductive.Store.dispatch(store)
 
-        dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLog())))
+        switch focus {
+        | State.Text() =>
+          dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordText())))
+
+        | State.Begin() =>
+          dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordBegin())))
+
+        | State.End() =>
+          dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordEnd())))
+        }
+
         dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
         dispatch(Action.ToNormalMode())
       }
@@ -717,8 +735,8 @@ let middleware = (store, next, action) => {
       | (Event.Blur(_), State.Search(), _) => ()
 
       // ActionLogRecord
-      | (Event.Blur(_), State.ActionLog(State.Record(_focus)), _) =>
-        Blur.ActionLog.Record.handler(store, event)
+      | (Event.Blur(_), State.ActionLog(State.Record(focus)), _) =>
+        Blur.ActionLog.Record.handler(store, event, focus)
 
       // ActionLogItems
       | (Event.Blur(_), State.ActionLog(State.Items()), _) =>
