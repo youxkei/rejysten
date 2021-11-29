@@ -542,6 +542,10 @@ module KeyDown = {
           let shiftKey = event->shiftKey
 
           switch code {
+          | "KeyN" if !ctrlKey && shiftKey =>
+            dispatch(Action.Focus(State.Note(State.ItemPane())))
+            event->preventDefault
+
           | "KeyH" if !ctrlKey && !shiftKey =>
             dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
             event->preventDefault
