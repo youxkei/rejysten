@@ -439,18 +439,16 @@ module KeyDown = {
             event->preventDefault
 
           | "KeyO" if !ctrlKey && !shiftKey =>
-            dispatch(
-              Action.Firestore(Action.ActionLog(Action.AddActionLog({direction: Action.Next()}))),
-            )
+            dispatch(Action.Firestore(Action.ActionLog(Action.Add({direction: Action.Next()}))))
             dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
             event->preventDefault
 
           | "KeyS" if !ctrlKey && !shiftKey =>
-            dispatch(Action.Firestore(Action.ActionLog(Action.StartActionLog())))
+            dispatch(Action.Firestore(Action.ActionLog(Action.Start())))
             event->preventDefault
 
           | "KeyF" if !ctrlKey && !shiftKey =>
-            dispatch(Action.Firestore(Action.ActionLog(Action.FinishActionLog())))
+            dispatch(Action.Firestore(Action.ActionLog(Action.Finish())))
             event->preventDefault
 
           | "KeyL" if !ctrlKey && !shiftKey =>
@@ -476,13 +474,13 @@ module KeyDown = {
           | "Escape" if isNeutral && !shiftKey =>
             switch focus {
             | State.Text() =>
-              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordText())))
+              dispatch(Action.Firestore(Action.ActionLog(Action.Record(Action.SaveText()))))
 
             | State.Begin() =>
-              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordBegin())))
+              dispatch(Action.Firestore(Action.ActionLog(Action.Record(Action.SaveBegin()))))
 
             | State.End() =>
-              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordEnd())))
+              dispatch(Action.Firestore(Action.ActionLog(Action.Record(Action.SaveEnd()))))
             }
 
             dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
@@ -491,15 +489,15 @@ module KeyDown = {
           | "Tab" if isNeutral && !shiftKey =>
             switch focus {
             | State.Text() =>
-              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordText())))
+              dispatch(Action.Firestore(Action.ActionLog(Action.Record(Action.SaveText()))))
               dispatch(Action.Focus(State.ActionLog(State.Record(State.Begin()))))
 
             | State.Begin() =>
-              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordBegin())))
+              dispatch(Action.Firestore(Action.ActionLog(Action.Record(Action.SaveBegin()))))
               dispatch(Action.Focus(State.ActionLog(State.Record(State.End()))))
 
             | State.End() =>
-              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordEnd())))
+              dispatch(Action.Firestore(Action.ActionLog(Action.Record(Action.SaveEnd()))))
               dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
             }
 
@@ -510,15 +508,15 @@ module KeyDown = {
           | "Tab" if isNeutral && shiftKey =>
             switch focus {
             | State.Text() =>
-              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordText())))
+              dispatch(Action.Firestore(Action.ActionLog(Action.Record(Action.SaveText()))))
               dispatch(Action.Focus(State.ActionLog(State.Record(State.End()))))
 
             | State.Begin() =>
-              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordBegin())))
+              dispatch(Action.Firestore(Action.ActionLog(Action.Record(Action.SaveBegin()))))
               dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
 
             | State.End() =>
-              dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordEnd())))
+              dispatch(Action.Firestore(Action.ActionLog(Action.Record(Action.SaveEnd()))))
               dispatch(Action.Focus(State.ActionLog(State.Record(State.Begin()))))
             }
 
@@ -561,7 +559,7 @@ module KeyDown = {
           | "KeyO" if !ctrlKey && !shiftKey =>
             dispatch(
               Action.Firestore(
-                Action.ActionLog(Action.AddActionLogItem({direction: Action.Next()})),
+                Action.ActionLog(Action.Items(Action.Add({direction: Action.Next()}))),
               ),
             )
             //dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
@@ -570,7 +568,7 @@ module KeyDown = {
           | "KeyO" if !ctrlKey && shiftKey =>
             dispatch(
               Action.Firestore(
-                Action.ActionLog(Action.AddActionLogItem({direction: Action.Prev()})),
+                Action.ActionLog(Action.Items(Action.Add({direction: Action.Prev()}))),
               ),
             )
             //dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
@@ -594,7 +592,7 @@ module KeyDown = {
 
           switch code {
           | "Escape" if isNeutral && !shiftKey =>
-            dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogItem())))
+            dispatch(Action.Firestore(Action.ActionLog(Action.Items(Action.Save()))))
             dispatch(Action.ToNormalMode())
 
           | _ => ()
@@ -687,13 +685,13 @@ module Blur = {
 
         switch focus {
         | State.Text() =>
-          dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordText())))
+          dispatch(Action.Firestore(Action.ActionLog(Action.Record(Action.SaveText()))))
 
         | State.Begin() =>
-          dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordBegin())))
+          dispatch(Action.Firestore(Action.ActionLog(Action.Record(Action.SaveBegin()))))
 
         | State.End() =>
-          dispatch(Action.Firestore(Action.ActionLog(Action.SaveActionLogRecordEnd())))
+          dispatch(Action.Firestore(Action.ActionLog(Action.Record(Action.SaveEnd()))))
         }
 
         dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))

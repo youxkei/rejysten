@@ -18,15 +18,21 @@ type firestoreNoteItemPane =
 
 type firestoreNote = DocumentPane(firestoreNoteDocumentPane) | ItemPane(firestoreNoteItemPane)
 
+type firestoreActionLogRecord =
+  | SaveText(unit)
+  | SaveBegin(unit)
+  | SaveEnd(unit)
+
+type firestoreActionLogItems =
+  | Save(unit)
+  | Add({direction: direction})
+
 type firestoreActionLog =
-  | SaveActionLogRecordText(unit)
-  | SaveActionLogRecordBegin(unit)
-  | SaveActionLogRecordEnd(unit)
-  | SaveActionLogItem(unit)
-  | AddActionLog({direction: direction})
-  | AddActionLogItem({direction: direction})
-  | StartActionLog(unit)
-  | FinishActionLog(unit)
+  | Record(firestoreActionLogRecord)
+  | Items(firestoreActionLogItems)
+  | Add({direction: direction})
+  | Start(unit)
+  | Finish(unit)
 
 type firestore = Note(firestoreNote) | ActionLog(firestoreActionLog)
 
