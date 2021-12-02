@@ -237,12 +237,72 @@ let actionLogReducer = (state: State.t, action) => {
     | None => state
     }
 
+  | Action.ToAboveActionLogItem() =>
+    switch state->Selector.ActionLog.aboveSelectedActionLogItem {
+    | Some(aboveActionLogItem) if aboveActionLogItem.parentId != "" => {
+        ...state,
+        actionLog: {
+          ...state.actionLog,
+          selectedActionLogItemId: aboveActionLogItem.id,
+        },
+      }
+
+    | _ => state
+    }
+
+  | Action.ToBelowActionLogItem() =>
+    switch state->Selector.ActionLog.belowSelectedActionLogItem {
+    | Some(belowSelectedActionLogItem) => {
+        ...state,
+        actionLog: {
+          ...state.actionLog,
+          selectedActionLogItemId: belowSelectedActionLogItem.id,
+        },
+      }
+
+    | None => state
+    }
+
+  | Action.ToTopActionLogItem() =>
+    switch state->Selector.ActionLog.topSelectedActionLogItem {
+    | Some(topSelectedActionLogItem) => {
+        ...state,
+        actionLog: {
+          ...state.actionLog,
+          selectedActionLogItemId: topSelectedActionLogItem.id,
+        },
+      }
+
+    | None => state
+    }
+
+  | Action.ToBottomActionLogItem() =>
+    switch state->Selector.ActionLog.bottomSelectedActionLogItem {
+    | Some(bottomSelectedActionLogItem) => {
+        ...state,
+        actionLog: {
+          ...state.actionLog,
+          selectedActionLogItemId: bottomSelectedActionLogItem.id,
+        },
+      }
+
+    | None => state
+    }
+
   | Action.SetSelectedActionLog({selectedDateActionLogId, selectedActionLogId}) => {
       ...state,
       actionLog: {
         ...state.actionLog,
         selectedDateActionLogId: selectedDateActionLogId,
         selectedActionLogId: selectedActionLogId,
+      },
+    }
+
+  | Action.SetSelectedActionLogItem({selectedActionLogItemId}) => {
+      ...state,
+      actionLog: {
+        ...state.actionLog,
+        selectedActionLogItemId: selectedActionLogItemId,
       },
     }
   }
@@ -295,13 +355,13 @@ let reducer = (state: State.t, action) => {
       }
 
     | State.ActionLog(State.Items()) =>
-      switch state->Selector.ActionLog.selectedActionLogRootItem {
-      | Some(rootItem) => {
+      switch state->Selector.ActionLog.selectedActionLogBottomItem {
+      | Some(bottomItem) => {
           ...state,
           focus: focus,
           actionLog: {
             ...state.actionLog,
-            selectedActionLogItemId: rootItem.firstChildId,
+            selectedActionLogItemId: bottomItem.id,
           },
         }
 

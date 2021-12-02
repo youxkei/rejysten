@@ -13,10 +13,10 @@ external scrollIntoView: (
   {"behavior": string, "block": string, "inline": string},
 ) => unit = "scrollIntoView"
 
-let makeChildren = (itemMap, item: State.item) => {
+let makeChildren = (itemMap, item: State.Item.t) => {
   let rec makeChildren = (itemId, children) => {
     switch itemMap->Map.String.get(itemId) {
-    | Some(item: State.item) =>
+    | Some(item: State.Item.t) =>
       let _ = children->Js.Array2.push(item)
       makeChildren(item.nextId, children)
 
@@ -31,28 +31,28 @@ module rec ItemsInner: {
   let make: {
     "editable": bool,
     "focusable": bool,
-    "item": State.item,
+    "item": State.Item.t,
     "selectedItemId": string,
-    "itemMap": State.itemMap,
+    "itemMap": State.Item.map,
   } => ReasonReact.reactElement
   let makeProps: (
     ~editable: bool,
     ~focusable: bool,
-    ~item: State.item,
+    ~item: State.Item.t,
     ~selectedItemId: string,
-    ~itemMap: State.itemMap,
+    ~itemMap: State.Item.map,
     ~key: string=?,
     unit,
   ) => {
     "focusable": bool,
     "editable": bool,
-    "item": State.item,
+    "item": State.Item.t,
     "selectedItemId": string,
-    "itemMap": State.itemMap,
+    "itemMap": State.Item.map,
   }
 } = {
   @react.component
-  let make = (~editable, ~focusable, ~item: State.item, ~selectedItemId, ~itemMap) => {
+  let make = (~editable, ~focusable, ~item: State.Item.t, ~selectedItemId, ~itemMap) => {
     let mode = Redux.useSelector(Selector.mode)
     let listItemRef = React.useRef(Js.Nullable.null)
     let innerHeight = Hook.useInnerHeight()
@@ -89,7 +89,7 @@ module rec ItemsInner: {
       isSelectedItem
       itemRef={ReactDOM.Ref.domRef(listItemRef)}
       child={makeChildren(itemMap, item)
-      ->Array.map((item: State.item) => {
+      ->Array.map((item: State.Item.t) => {
         <ItemsInner key=item.id editable focusable item selectedItemId itemMap />
       })
       ->React.array}

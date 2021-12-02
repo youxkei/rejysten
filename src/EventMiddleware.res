@@ -562,7 +562,7 @@ module KeyDown = {
                 Action.ActionLog(Action.Items(Action.Add({direction: Action.Next()}))),
               ),
             )
-            //dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
+            dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
             event->preventDefault
 
           | "KeyO" if !ctrlKey && shiftKey =>
@@ -571,7 +571,23 @@ module KeyDown = {
                 Action.ActionLog(Action.Items(Action.Add({direction: Action.Prev()}))),
               ),
             )
-            //dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
+            dispatch(Action.ToInsertMode({initialCursorPosition: State.Start()}))
+            event->preventDefault
+
+          | "KeyJ" if !ctrlKey && !shiftKey =>
+            dispatch(Action.ActionLog(Action.ToBelowActionLogItem()))
+            event->preventDefault
+
+          | "KeyK" if !ctrlKey && !shiftKey =>
+            dispatch(Action.ActionLog(Action.ToAboveActionLogItem()))
+            event->preventDefault
+
+          | "KeyG" if !ctrlKey && !shiftKey =>
+            dispatch(Action.ActionLog(Action.ToTopActionLogItem()))
+            event->preventDefault
+
+          | "KeyG" if !ctrlKey && shiftKey =>
+            dispatch(Action.ActionLog(Action.ToBottomActionLogItem()))
             event->preventDefault
 
           | _ => ()

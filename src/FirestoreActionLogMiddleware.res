@@ -149,13 +149,13 @@ let itemsMiddleware = (store: Redux.Store.t, action: Action.firestoreActionLogIt
               itemPathWithField(selectedItem.parentId, "firstChildId"),
               addingItemId,
             )
-          } else {
-            writeBatch->addUpdateField(
-              selectedDateActionLogDoc,
-              itemPathWithField(selectedItem.prevId, "nextId"),
-              addingItemId,
-            )
           }
+        } else {
+          writeBatch->addUpdateField(
+            selectedDateActionLogDoc,
+            itemPathWithField(selectedItem.prevId, "nextId"),
+            addingItemId,
+          )
         }
 
       | Action.Next() =>
@@ -185,15 +185,20 @@ let itemsMiddleware = (store: Redux.Store.t, action: Action.firestoreActionLogIt
               itemPathWithField(selectedItem.parentId, "lastChildId"),
               addingItemId,
             )
-          } else {
-            writeBatch->addUpdateField(
-              selectedDateActionLogDoc,
-              itemPathWithField(selectedItem.nextId, "prevId"),
-              addingItemId,
-            )
           }
+        } else {
+          writeBatch->addUpdateField(
+            selectedDateActionLogDoc,
+            itemPathWithField(selectedItem.nextId, "prevId"),
+            addingItemId,
+          )
         }
       }
+
+      Reductive.Store.dispatch(
+        store,
+        Action.ActionLog(Action.SetSelectedActionLogItem({selectedActionLogItemId: addingItemId})),
+      )
 
       writeBatch->commit
 
@@ -389,6 +394,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
           Date.now()->Date.toUnixtimeMillis,
         )
       }
+
     | _ => ()
     }
 

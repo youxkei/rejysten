@@ -22,13 +22,13 @@ external outerHeight: Dom.window => float = "outerHeight"
     children
   }
 
-  let makeItemChildren = (itemMap, searchedItems, item: State.item) => {
+  let makeItemChildren = (itemMap, searchedItems, item: State.Item.t) => {
     let children = []
 
     let currentItem = ref(itemMap->Map.String.get(item.firstChildId))
 
     while Option.isSome(currentItem.contents) {
-      let item: State.item = Option.getExn(currentItem.contents)
+      let item: State.Item.t = Option.getExn(currentItem.contents)
 
       if searchedItems->Set.String.has(item.id) {
         let _ = children->Js.Array2.push(item)
@@ -41,11 +41,11 @@ external outerHeight: Dom.window => float = "outerHeight"
 )
 
 module rec ItemsInner: {
-  let make: {"item": State.item} => ReasonReact.reactElement
-  let makeProps: (~item: State.item, ~key: string=?, unit) => {"item": State.item}
+  let make: {"item": State.Item.t} => ReasonReact.reactElement
+  let makeProps: (~item: State.Item.t, ~key: string=?, unit) => {"item": State.Item.t}
 } = {
   @react.component
-  let make = (~item: State.item) => {
+  let make = (~item: State.Item.t) => {
     let itemMap = Redux.useSelector(Selector.Firestore.itemMap)
     let searchedItems = Redux.useSelector(Selector.Search.searchedItems)
 
@@ -53,7 +53,7 @@ module rec ItemsInner: {
       bullet={<Bullet />}
       item={<Item item />}
       child={makeItemChildren(itemMap, searchedItems, item)
-      ->Array.map((item: State.item) => {
+      ->Array.map((item: State.Item.t) => {
         <ItemsInner key=item.id item />
       })
       ->React.array}
@@ -85,7 +85,7 @@ module rec DocumentsInner: {
           switch itemMap->Map.String.get(document.rootItemId) {
           | Some(rootItem) =>
             makeItemChildren(itemMap, searchedItems, rootItem)
-            ->Array.map((item: State.item) => {
+            ->Array.map((item: State.Item.t) => {
               <RenderIfVisible key=item.id defaultHeight={window->outerHeight}>
                 <ItemsInner key=item.id item />
               </RenderIfVisible>

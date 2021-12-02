@@ -1,7 +1,7 @@
 open Belt
 
 module Sync = {
-  let rec addItemAncestors = (set, itemMap, item: State.item) => {
+  let rec addItemAncestors = (set, itemMap, item: State.Item.t) => {
     switch itemMap->Map.String.get(item.parentId) {
     | Some(parent) => set->Set.String.add(item.id)->addItemAncestors(itemMap, parent)
     | None => set->Set.String.add(item.id)
@@ -21,9 +21,9 @@ module Sync = {
     } else {
       let (documentSet, itemSet) = itemMap->Map.String.reduce(
         (Set.String.empty, Set.String.empty),
-        ((documentSet, itemSet), _, item: State.item) => {
+        ((documentSet, itemSet), _, item: State.Item.t) => {
           switch item.container {
-          | State.Note({documentId}) =>
+          | State.Item.Note({documentId}) =>
             if item.text->Js.String2.includes(searchingText) {
               (documentSet->Set.String.add(documentId), itemSet->addItemAncestors(itemMap, item))
             } else {

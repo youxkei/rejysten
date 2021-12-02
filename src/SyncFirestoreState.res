@@ -48,13 +48,13 @@ external entries: 'a => array<(string, 'b)> = "entries"
           {
             id: id,
             text: item["text"],
-            container: State.Note({documentId: item["documentId"]}),
+            container: State.Item.Note({documentId: item["documentId"]}),
             nextId: item["nextId"],
             prevId: item["prevId"],
             parentId: item["parentId"],
             firstChildId: item["firstChildId"],
             lastChildId: item["lastChildId"],
-          }: State.item
+          }: State.Item.t
         ),
       )
     })
@@ -72,7 +72,7 @@ external entries: 'a => array<(string, 'b)> = "entries"
           (
             {
               id: id,
-              container: State.ActionLog({
+              container: State.Item.ActionLog({
                 dateActionLogId: dateActionLogId,
                 actionLogId: actionLogId,
               }),
@@ -82,7 +82,7 @@ external entries: 'a => array<(string, 'b)> = "entries"
               nextId: item["nextId"],
               firstChildId: item["firstChildId"],
               lastChildId: item["lastChildId"],
-            }: State.item
+            }: State.Item.t
           ),
         ),
         if parentId == "" {

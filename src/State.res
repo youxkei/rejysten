@@ -1,21 +1,82 @@
 open Belt
 
-type itemContainer =
-  | Note({documentId: string})
-  | ActionLog({dateActionLogId: string, actionLogId: string})
+module Item = {
+  type container =
+    | Note({documentId: string})
+    | ActionLog({dateActionLogId: string, actionLogId: string})
 
-type item = {
-  id: string,
-  text: string,
-  container: itemContainer,
-  parentId: string,
-  prevId: string,
-  nextId: string,
-  firstChildId: string,
-  lastChildId: string,
+  type t = {
+    id: string,
+    text: string,
+    container: container,
+    parentId: string,
+    prevId: string,
+    nextId: string,
+    firstChildId: string,
+    lastChildId: string,
+  }
+
+  type map = Map.String.t<t>
+
+  let above = (map, item) => {
+    switch map->Map.String.get(item.prevId) {
+    | Some(item) =>
+      let rec searchPrev = item => {
+        switch map->Map.String.get(item.lastChildId) {
+        | Some(item) => searchPrev(item)
+
+        | None => item
+        }
+      }
+
+      Some(searchPrev(item))
+
+    | None => map->Map.String.get(item.parentId)
+    }
+  }
+
+  let below = (map, item) => {
+    switch map->Map.String.get(item.firstChildId) {
+    | Some(item) => Some(item)
+
+    | None =>
+      let rec searchNext = item => {
+        switch map->Map.String.get(item.nextId) {
+        | Some(item) => Some(item)
+
+        | None =>
+          switch map->Map.String.get(item.parentId) {
+          | Some(item) => searchNext(item)
+
+          | None => None
+          }
+        }
+      }
+
+      searchNext(item)
+    }
+  }
+
+  let top = (map, item) => {
+    map->Map.String.get(item.firstChildId)
+  }
+
+  let bottom = (map, item) => {
+    let rec searchBottom = (item, isRoot) =>
+      switch map->Map.String.get(item.lastChildId) {
+      | Some(item) => searchBottom(item, false)
+
+      | None =>
+        if isRoot {
+          None
+        } else {
+          Some(item)
+        }
+      }
+
+    searchBottom(item, true)
+  }
 }
-
-type itemMap = Map.String.t<item>
 
 type noteDocument = {
   id: string,
@@ -50,7 +111,7 @@ type actionLog = {
   prevId: string,
   nextId: string,
   text: string,
-  itemMap: itemMap,
+  itemMap: Item.map,
   rootItemId: string,
 }
 
@@ -107,7 +168,7 @@ type actionLogState = {
 
 type firestoreState = {
   documentMap: noteDocumentMap,
-  itemMap: itemMap,
+  itemMap: Item.map,
   dateActionLogMap: dateActionLogMap,
   rootDocumentId: string,
   latestDateActionLogId: string,

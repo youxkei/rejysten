@@ -59,7 +59,12 @@ type search = SetSearchingText({text: string})
 type actionLog =
   | ToAboveActionLog(unit)
   | ToBelowActionLog(unit)
+  | ToAboveActionLogItem(unit)
+  | ToBelowActionLogItem(unit)
+  | ToTopActionLogItem(unit)
+  | ToBottomActionLogItem(unit)
   | SetSelectedActionLog({selectedDateActionLogId: string, selectedActionLogId: string})
+  | SetSelectedActionLogItem({selectedActionLogItemId: string})
 
 type t =
   // event action handled in EventMiddleware
@@ -82,7 +87,7 @@ type t =
   | ActionLog(actionLog)
 
   // actions for syncing state.firestore and firestore
-  | SetFirestoreItemState({itemMap: State.itemMap})
+  | SetFirestoreItemState({itemMap: State.Item.map})
   | SetFirestoreDocumentState({documentMap: State.noteDocumentMap, rootDocumentId: string})
   | SetFirestoreDateActionLogState({
       dateActionLogMap: State.dateActionLogMap,

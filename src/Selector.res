@@ -116,54 +116,9 @@ module Note = {
       }
     }
 
-    let topItem = (state: State.t) => {
-      switch state->rootItem {
-      | Some({firstChildId}) => state->Firestore.getItem(firstChildId)
-
-      | None => None
-      }
-    }
-
-    let bottomItem = (state: State.t) => {
-      switch state->rootItem {
-      | Some({lastChildId}) =>
-        switch state->Firestore.getItem(lastChildId) {
-        | Some(item) =>
-          let rec searchBottom = (item: State.item) => {
-            switch state->Firestore.getItem(item.lastChildId) {
-            | Some(item) => searchBottom(item)
-
-            | None => item
-            }
-          }
-
-          Some(searchBottom(item))
-
-        | None => None
-        }
-
-      | None => None
-      }
-    }
-
     let aboveSelectedItem = (state: State.t) => {
       switch state->selectedItem {
-      | Some({prevId, parentId}) =>
-        switch state->Firestore.getItem(prevId) {
-        | Some(item) => {
-            let rec searchPrev = (item: State.item) => {
-              switch state->Firestore.getItem(item.lastChildId) {
-              | Some(item) => searchPrev(item)
-
-              | None => item
-              }
-            }
-
-            Some(searchPrev(item))
-          }
-
-        | None => state->Firestore.getItem(parentId)
-        }
+      | Some(selectedItem) => state->Firestore.itemMap->State.Item.above(selectedItem)
 
       | None => None
       }
@@ -171,30 +126,23 @@ module Note = {
 
     let belowSelectedItem = (state: State.t) => {
       switch state->selectedItem {
-      | Some(item) =>
-        let {nextId, firstChildId} = item
+      | Some(selectedItem) => state->Firestore.itemMap->State.Item.below(selectedItem)
 
-        switch state->Firestore.getItem(firstChildId) {
-        | Some(item) => Some(item)
+      | None => None
+      }
+    }
 
-        | None =>
-          switch state->Firestore.getItem(nextId) {
-          | Some(item) => Some(item)
+    let topItem = (state: State.t) => {
+      switch state->rootItem {
+      | Some(rootItem) => state->Firestore.itemMap->State.Item.top(rootItem)
 
-          | None => {
-              let rec searchNext = ({nextId, parentId}: State.item) => {
-                switch state->Firestore.getItem(nextId) {
-                | Some(item) => Some(item)
+      | None => None
+      }
+    }
 
-                | None =>
-                  state->Firestore.getItem(parentId)->Option.flatMap(item => searchNext(item))
-                }
-              }
-
-              searchNext(item)
-            }
-          }
-        }
+    let bottomItem = (state: State.t) => {
+      switch state->rootItem {
+      | Some(rootItem) => state->Firestore.itemMap->State.Item.bottom(rootItem)
 
       | None => None
       }
@@ -233,7 +181,12 @@ module ActionLog = {
 
   let selectedActionLogRootItem = (state: State.t) =>
     switch state->selectedActionLog {
-    | Some(_, actionLog) => actionLog.itemMap->Map.String.get(actionLog.rootItemId)
+    | Some(dateActionLog, actionLog) =>
+      switch actionLog.itemMap->Map.String.get(actionLog.rootItemId) {
+      | Some(rootItem) => Some(dateActionLog, actionLog, rootItem)
+
+      | None => None
+      }
 
     | None => None
     }
@@ -246,6 +199,20 @@ module ActionLog = {
 
       | None => None
       }
+
+    | None => None
+    }
+
+  let selectedActionLogTopItem = (state: State.t) =>
+    switch state->selectedActionLogRootItem {
+    | Some(_, actionLog, rootItem) => actionLog.itemMap->State.Item.top(rootItem)
+
+    | None => None
+    }
+
+  let selectedActionLogBottomItem = (state: State.t) =>
+    switch state->selectedActionLogRootItem {
+    | Some(_, actionLog, rootItem) => actionLog.itemMap->State.Item.bottom(rootItem)
 
     | None => None
     }
@@ -286,6 +253,46 @@ module ActionLog = {
         | None => None
         }
       }
+
+    | None => None
+    }
+
+  let topSelectedActionLogItem = (state: State.t) =>
+    switch state->selectedActionLog {
+    | Some(_, selectedActionLog) =>
+      switch selectedActionLog.itemMap->Map.String.get(selectedActionLog.rootItemId) {
+      | Some(rootItem) => selectedActionLog.itemMap->State.Item.top(rootItem)
+
+      | None => None
+      }
+
+    | None => None
+    }
+
+  let bottomSelectedActionLogItem = (state: State.t) =>
+    switch state->selectedActionLog {
+    | Some(_, selectedActionLog) =>
+      switch selectedActionLog.itemMap->Map.String.get(selectedActionLog.rootItemId) {
+      | Some(rootItem) => selectedActionLog.itemMap->State.Item.bottom(rootItem)
+
+      | None => None
+      }
+
+    | None => None
+    }
+
+  let aboveSelectedActionLogItem = (state: State.t) =>
+    switch state->selectedActionLogItem {
+    | Some(_, selectedActionLog, selectedItem) =>
+      selectedActionLog.itemMap->State.Item.above(selectedItem)
+
+    | None => None
+    }
+
+  let belowSelectedActionLogItem = (state: State.t) =>
+    switch state->selectedActionLogItem {
+    | Some(_, selectedActionLog, selectedItem) =>
+      selectedActionLog.itemMap->State.Item.below(selectedItem)
 
     | None => None
     }
