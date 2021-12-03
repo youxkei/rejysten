@@ -1,3 +1,5 @@
+open Belt
+
 @module("uuid") external uuidv4: unit => string = "v4"
 
 let recordMiddleware = (store: Redux.Store.t, action: Action.firestoreActionLogRecord) => {
@@ -199,6 +201,113 @@ let itemsMiddleware = (store: Redux.Store.t, action: Action.firestoreActionLogIt
         store,
         Action.ActionLog(Action.SetSelectedActionLogItem({selectedActionLogItemId: addingItemId})),
       )
+
+      writeBatch->commit
+
+    | None => ()
+    }
+
+  | Indent() =>
+    switch state->Selector.ActionLog.selectedActionLogItem {
+    | Some({id: dateActionLogId}, {id: actionLogId, itemMap}, {id, parentId, prevId, nextId}) =>
+      open Firebase.Firestore
+
+      let db = Firebase.firestore
+      let writeBatch = db->writeBatch
+      let dateActionLogDoc = db->collection("dateActionLogs")->doc(dateActionLogId)
+
+      let itemPath = (id, field) => fieldPath5("actionLogs", actionLogId, "items", id, field)
+
+      switch state.mode {
+      | State.Insert(_) =>
+        writeBatch->addUpdateField(dateActionLogDoc, itemPath(id, "text"), state.editor.editingText)
+
+      | _ => ()
+      }
+
+      switch itemMap->Map.String.get(prevId) {
+      | Some({lastChildId: prevLastChildId}) =>
+        if prevLastChildId == "" {
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(id, "parentId"), prevId)
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(id, "prevId"), "")
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(id, "nextId"), "")
+
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(prevId, "nextId"), nextId)
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(prevId, "firstChildId"), id)
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(prevId, "lastChildId"), id)
+        } else {
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(id, "parentId"), prevId)
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(id, "prevId"), prevLastChildId)
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(id, "nextId"), "")
+
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(prevId, "nextId"), nextId)
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(prevId, "lastChildId"), id)
+
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(prevLastChildId, "nextId"), id)
+        }
+
+        if nextId == "" {
+          if parentId != "" {
+            writeBatch->addUpdateField(dateActionLogDoc, itemPath(parentId, "lastChildId"), prevId)
+          }
+        } else {
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(nextId, "prevId"), prevId)
+        }
+
+      | None => ()
+      }
+
+      writeBatch->commit
+
+    | None => ()
+    }
+
+  | Dedent() =>
+    switch state->Selector.ActionLog.selectedActionLogItem {
+    | Some({id: dateActionLogId}, {id: actionLogId, itemMap}, {id, parentId, prevId, nextId}) =>
+      open Firebase.Firestore
+
+      let db = Firebase.firestore
+      let writeBatch = db->writeBatch
+      let dateActionLogDoc = db->collection("dateActionLogs")->doc(dateActionLogId)
+
+      let itemPath = (id, field) => fieldPath5("actionLogs", actionLogId, "items", id, field)
+
+      switch state.mode {
+      | State.Insert(_) =>
+        writeBatch->addUpdateField(dateActionLogDoc, itemPath(id, "text"), state.editor.editingText)
+
+      | _ => ()
+      }
+
+      switch itemMap->Map.String.get(parentId) {
+      | Some({parentId: parentParentId, nextId: parentNextId}) if parentParentId != "" =>
+        writeBatch->addUpdateField(dateActionLogDoc, itemPath(id, "parentId"), parentParentId)
+        writeBatch->addUpdateField(dateActionLogDoc, itemPath(id, "prevId"), parentId)
+        writeBatch->addUpdateField(dateActionLogDoc, itemPath(id, "nextId"), parentNextId)
+
+        writeBatch->addUpdateField(dateActionLogDoc, itemPath(parentId, "nextId"), id)
+
+        if nextId == "" {
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(parentId, "lastChildId"), prevId)
+        } else {
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(nextId, "prevId"), prevId)
+        }
+
+        if prevId == "" {
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(parentId, "firstChildId"), nextId)
+        } else {
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(prevId, "nextId"), nextId)
+        }
+
+        if parentNextId == "" {
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(parentParentId, "lastChildId"), id)
+        } else {
+          writeBatch->addUpdateField(dateActionLogDoc, itemPath(parentNextId, "prevId"), id)
+        }
+
+      | _ => ()
+      }
 
       writeBatch->commit
 

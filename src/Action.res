@@ -5,14 +5,14 @@ type direction = Prev(unit) | Next(unit)
 type firestoreNoteDocumentPane =
   | SaveDocument(unit)
   | IndentDocument(unit)
-  | UnindentDocument(unit)
+  | DedentDocument(unit)
   | AddDocument({direction: direction})
   | DeleteDocument({nextSelectedId: string, initialCursorPosition: State.initialCursorPosition})
 
 type firestoreNoteItemPane =
   | SaveItem(unit)
   | IndentItem(unit)
-  | UnindentItem(unit)
+  | DedentItem(unit)
   | AddItem({direction: direction})
   | DeleteItem({nextSelectedId: string, initialCursorPosition: State.initialCursorPosition})
 
@@ -26,6 +26,8 @@ type firestoreActionLogRecord =
 type firestoreActionLogItems =
   | Save(unit)
   | Add({direction: direction})
+  | Indent(unit)
+  | Dedent(unit)
 
 type firestoreActionLog =
   | Record(firestoreActionLogRecord)

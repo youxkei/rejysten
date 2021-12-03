@@ -74,7 +74,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreNoteDocumentPane
     | None => ()
     }
 
-  | Action.UnindentDocument() =>
+  | Action.DedentDocument() =>
     switch state->Selector.Note.DocumentPane.selectedDocument {
     | Some({id, parentId, prevId, nextId}) =>
       open Firebase.Firestore

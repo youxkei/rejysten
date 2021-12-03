@@ -22,9 +22,7 @@ module KeyDown = {
             }
 
           | "Tab" if !ctrlKey && shiftKey => {
-              dispatch(
-                Action.Firestore(Action.Note(Action.DocumentPane(Action.UnindentDocument()))),
-              )
+              dispatch(Action.Firestore(Action.Note(Action.DocumentPane(Action.DedentDocument()))))
               event->preventDefault
             }
 
@@ -121,7 +119,7 @@ module KeyDown = {
             event->preventDefault
 
           | "Tab" if isNeutral && shiftKey =>
-            dispatch(Action.Firestore(Action.Note(Action.DocumentPane(Action.UnindentDocument()))))
+            dispatch(Action.Firestore(Action.Note(Action.DocumentPane(Action.DedentDocument()))))
             event->preventDefault
 
           | "Enter" if isNeutral && !shiftKey =>
@@ -218,7 +216,7 @@ module KeyDown = {
             }
 
           | "Tab" if !ctrlKey && shiftKey => {
-              dispatch(Action.Firestore(Action.Note(Action.ItemPane(Action.UnindentItem()))))
+              dispatch(Action.Firestore(Action.Note(Action.ItemPane(Action.DedentItem()))))
               event->preventDefault
             }
 
@@ -309,7 +307,7 @@ module KeyDown = {
             }
 
           | "Tab" if isNeutral && shiftKey => {
-              dispatch(Action.Firestore(Action.Note(Action.ItemPane(Action.UnindentItem()))))
+              dispatch(Action.Firestore(Action.Note(Action.ItemPane(Action.DedentItem()))))
               event->preventDefault
             }
 
@@ -590,6 +588,14 @@ module KeyDown = {
             dispatch(Action.ActionLog(Action.ToBottomActionLogItem()))
             event->preventDefault
 
+          | "Tab" if !ctrlKey && !shiftKey =>
+            dispatch(Action.Firestore(Action.ActionLog(Action.Items(Action.Indent()))))
+            event->preventDefault
+
+          | "Tab" if !ctrlKey && shiftKey =>
+            dispatch(Action.Firestore(Action.ActionLog(Action.Items(Action.Dedent()))))
+            event->preventDefault
+
           | _ => ()
           }
         }
@@ -610,6 +616,14 @@ module KeyDown = {
           | "Escape" if isNeutral && !shiftKey =>
             dispatch(Action.Firestore(Action.ActionLog(Action.Items(Action.Save()))))
             dispatch(Action.ToNormalMode())
+
+          | "Tab" if isNeutral && !shiftKey =>
+            dispatch(Action.Firestore(Action.ActionLog(Action.Items(Action.Indent()))))
+            event->preventDefault
+
+          | "Tab" if isNeutral && shiftKey =>
+            dispatch(Action.Firestore(Action.ActionLog(Action.Items(Action.Dedent()))))
+            event->preventDefault
 
           | _ => ()
           }
