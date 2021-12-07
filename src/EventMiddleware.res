@@ -604,7 +604,7 @@ module KeyDown = {
       module Insert = {
         let handler = (store, event) => {
           let dispatch = Reductive.Store.dispatch(store)
-          let _state: State.t = Reductive.Store.getState(store)
+          let state: State.t = Reductive.Store.getState(store)
 
           let code = event->code
           let ctrlKey = event->ctrlKey
@@ -624,6 +624,56 @@ module KeyDown = {
           | "Tab" if isNeutral && shiftKey =>
             dispatch(Action.Firestore(Action.ActionLog(Action.Items(Action.Dedent()))))
             event->preventDefault
+
+          | "Backspace" if isNeutral && !shiftKey && state.editor.editingText == "" =>
+            switch state->Selector.ActionLog.selectedActionLogItem {
+            | Some(_, _, {firstChildId: "", lastChildId: ""}) =>
+              // selected item has no children
+              switch state->Selector.ActionLog.aboveSelectedActionLogItem {
+              | Some({id: aboveId, parentId: aboveParentId}) if aboveParentId != "" => {
+                  dispatch(Action.Firestore(Action.ActionLog(Action.Items(Action.Delete()))))
+                  dispatch(
+                    Action.ActionLog(
+                      Action.SetSelectedActionLogItem({
+                        selectedActionLogItemId: aboveId,
+                        initialCursorPosition: State.End(),
+                      }),
+                    ),
+                  )
+
+                  event->preventDefault
+                }
+
+              | _ => ()
+              }
+
+            | _ => ()
+            }
+
+          | "Delete" if isNeutral && !shiftKey && state.editor.editingText == "" =>
+            switch state->Selector.ActionLog.selectedActionLogItem {
+            | Some(_, _, {firstChildId: "", lastChildId: ""}) =>
+              // selected item has no children
+              switch state->Selector.ActionLog.belowSelectedActionLogItem {
+              | Some({id: belowId, parentId: belowParentId}) if belowParentId != "" => {
+                  dispatch(Action.Firestore(Action.ActionLog(Action.Items(Action.Delete()))))
+                  dispatch(
+                    Action.ActionLog(
+                      Action.SetSelectedActionLogItem({
+                        selectedActionLogItemId: belowId,
+                        initialCursorPosition: State.Start(),
+                      }),
+                    ),
+                  )
+
+                  event->preventDefault
+                }
+
+              | _ => ()
+              }
+
+            | _ => ()
+            }
 
           | _ => ()
           }

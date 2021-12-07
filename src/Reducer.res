@@ -298,12 +298,25 @@ let actionLogReducer = (state: State.t, action) => {
       },
     }
 
-  | Action.SetSelectedActionLogItem({selectedActionLogItemId}) => {
+  | Action.SetSelectedActionLogItem({selectedActionLogItemId, initialCursorPosition}) =>
+    let state = {
       ...state,
       actionLog: {
         ...state.actionLog,
         selectedActionLogItemId: selectedActionLogItemId,
       },
+    }
+
+    switch state.mode {
+    | State.Normal() => state
+
+    | State.Insert(_) => {
+        ...state,
+        mode: State.Insert({initialCursorPosition: initialCursorPosition}),
+        editor: {
+          editingText: state->Selector.selectedText,
+        },
+      }
     }
   }
 }
@@ -323,7 +336,9 @@ let reducer = (state: State.t, action) => {
 
   | Action.DevToolUpdate({state}) => state
 
-  | Action.ToInsertMode({initialCursorPosition}) => {
+  | Action.ToInsertMode({initialCursorPosition}) =>
+    Js.log(`ToInsertMode "${state->Selector.selectedText}"`)
+    {
       ...state,
       mode: State.Insert({initialCursorPosition: initialCursorPosition}),
       editor: {

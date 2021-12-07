@@ -26,6 +26,7 @@ type firestoreActionLogRecord =
 type firestoreActionLogItems =
   | Save(unit)
   | Add({direction: direction})
+  | Delete(unit)
   | Indent(unit)
   | Dedent(unit)
 
@@ -66,7 +67,10 @@ type actionLog =
   | ToTopActionLogItem(unit)
   | ToBottomActionLogItem(unit)
   | SetSelectedActionLog({selectedDateActionLogId: string, selectedActionLogId: string})
-  | SetSelectedActionLogItem({selectedActionLogItemId: string})
+  | SetSelectedActionLogItem({
+      selectedActionLogItemId: string,
+      initialCursorPosition: State.initialCursorPosition,
+    })
 
 type t =
   // event action handled in EventMiddleware

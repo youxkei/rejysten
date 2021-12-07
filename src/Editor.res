@@ -9,6 +9,9 @@ let make = (~inline=false, ()) => {
   let text = Redux.useSelector(Selector.Editor.editingText)
   let initialCursorPosition = Redux.useSelector(Selector.initialCursorPosition)
 
+  Js.log(`text: "${text}"`)
+  Js.log(initialCursorPosition)
+
   let dispatch = Redux.useDispatch()
 
   let className = if inline {
@@ -44,7 +47,7 @@ let make = (~inline=false, ()) => {
     })
 
     None
-  }, [])
+  }, [initialCursorPosition])
 
   <ReactTextareaAutosize
     className ref={ReactDOM.Ref.domRef(textareaRef)} value=text onChange onBlur

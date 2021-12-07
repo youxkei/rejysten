@@ -34,6 +34,7 @@ module Firestore = {
   @module("firebase/firestore") external update: (document, Js.t<'a>) => unit = "updateDoc"
   @module("firebase/firestore")
   external updateField: (document, fieldPath, 'a) => unit = "updateDoc"
+  @module("firebase/firestore") external deleteField: unit => Js.t<'a> = "deleteField"
 
   type writeBatch
   @module("firebase/firestore") external writeBatch: t => writeBatch = "writeBatch"

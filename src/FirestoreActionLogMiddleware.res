@@ -199,8 +199,67 @@ let itemsMiddleware = (store: Redux.Store.t, action: Action.firestoreActionLogIt
 
       Reductive.Store.dispatch(
         store,
-        Action.ActionLog(Action.SetSelectedActionLogItem({selectedActionLogItemId: addingItemId})),
+        Action.ActionLog(
+          Action.SetSelectedActionLogItem({
+            selectedActionLogItemId: addingItemId,
+            initialCursorPosition: State.Start(),
+          }),
+        ),
       )
+
+      writeBatch->commit
+
+    | None => ()
+    }
+
+  | Action.Delete() =>
+    switch state->Selector.ActionLog.selectedActionLogItem {
+    | Some(selectedDateActionLog, selectedActionLog, selectedItem) =>
+      open Firebase.Firestore
+
+      let db = Firebase.firestore
+      let writeBatch = db->writeBatch
+      let selectedDateActionLogDoc = db->collection("dateActionLogs")->doc(selectedDateActionLog.id)
+
+      let itemPath = id => fieldPath4("actionLogs", selectedActionLog.id, "items", id)
+      let itemPathWithField = (id, field) =>
+        fieldPath5("actionLogs", selectedActionLog.id, "items", id, field)
+
+      writeBatch->addUpdateField(selectedDateActionLogDoc, itemPath(selectedItem.id), deleteField())
+
+      let {parentId, prevId, nextId} = selectedItem
+
+      if prevId == "" {
+        if parentId != "" {
+          writeBatch->addUpdateField(
+            selectedDateActionLogDoc,
+            itemPathWithField(parentId, "firstChildId"),
+            nextId,
+          )
+        }
+      } else {
+        writeBatch->addUpdateField(
+          selectedDateActionLogDoc,
+          itemPathWithField(prevId, "nextId"),
+          nextId,
+        )
+      }
+
+      if nextId == "" {
+        if parentId != "" {
+          writeBatch->addUpdateField(
+            selectedDateActionLogDoc,
+            itemPathWithField(parentId, "lastChildId"),
+            prevId,
+          )
+        }
+      } else {
+        writeBatch->addUpdateField(
+          selectedDateActionLogDoc,
+          itemPathWithField(nextId, "prevId"),
+          prevId,
+        )
+      }
 
       writeBatch->commit
 
