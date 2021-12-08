@@ -393,8 +393,11 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
         let db = Firebase.firestore
         let writeBatch = db->writeBatch
         let dateActionLogs = db->collection("dateActionLogs")
+        let selectedDateActionLogDoc = dateActionLogs->doc(selectedDateActionLog.id)
 
         let addingActionLogId = uuidv4()
+        let newRootItemId = uuidv4()
+        let newItemId = uuidv4()
 
         let nextSelectedDateActionLogId = switch direction {
         | Action.Next() =>
@@ -404,7 +407,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
           switch state.mode {
           | State.Insert(_) =>
             writeBatch->addUpdateField(
-              dateActionLogs->doc(selectedDateActionLog.id),
+              selectedDateActionLogDoc,
               fieldPath3("actionLogs", selectedActionLog.id, "text"),
               state.editor.editingText,
             )
@@ -416,8 +419,6 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
               selectedDateActionLogDate->Date.before(now)
           ) {
             let newDateActionLogId = uuidv4()
-            let newRootItemId = uuidv4()
-            let newItemId = uuidv4()
 
             writeBatch->addSet(
               dateActionLogs->doc(newDateActionLogId),
@@ -465,24 +466,21 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
             )
 
             writeBatch->addUpdateField(
-              dateActionLogs->doc(selectedDateActionLog.id),
+              selectedDateActionLogDoc,
               fieldPath1("nextId"),
               newDateActionLogId,
             )
 
             newDateActionLogId
           } else {
-            let newRootItemId = uuidv4()
-            let newItemId = uuidv4()
-
             writeBatch->addUpdateField(
-              dateActionLogs->doc(selectedDateActionLog.id),
+              selectedDateActionLogDoc,
               fieldPath2("actionLogs", addingActionLogId),
               {
                 "begin": 0,
                 "end": 0,
                 "prevId": selectedActionLog.id,
-                "nextId": "",
+                "nextId": selectedActionLog.nextId,
                 "text": "",
                 "items": Js.Dict.fromList(list{
                   (
@@ -512,15 +510,74 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
             )
 
             writeBatch->addUpdateField(
-              dateActionLogs->doc(selectedDateActionLog.id),
+              selectedDateActionLogDoc,
               fieldPath3("actionLogs", selectedActionLog.id, "nextId"),
               addingActionLogId,
             )
 
+            if selectedActionLog.nextId != "" {
+              writeBatch->addUpdateField(
+                selectedDateActionLogDoc,
+                fieldPath3("actionLogs", selectedActionLog.nextId, "prevId"),
+                addingActionLogId,
+              )
+            }
+
             selectedDateActionLog.id
           }
 
-        | Action.Prev() => selectedDateActionLog.id
+        | Action.Prev() =>
+          writeBatch->addUpdateField(
+            selectedDateActionLogDoc,
+            fieldPath2("actionLogs", addingActionLogId),
+            {
+              "begin": 0,
+              "end": 0,
+              "prevId": selectedActionLog.prevId,
+              "nextId": selectedActionLog.id,
+              "text": "",
+              "items": Js.Dict.fromList(list{
+                (
+                  newRootItemId,
+                  {
+                    "firstChildId": newItemId,
+                    "lastChildId": newItemId,
+                    "prevId": "",
+                    "parentId": "",
+                    "nextId": "",
+                    "text": "",
+                  },
+                ),
+                (
+                  newItemId,
+                  {
+                    "firstChildId": "",
+                    "lastChildId": "",
+                    "prevId": "",
+                    "parentId": newRootItemId,
+                    "nextId": "",
+                    "text": "",
+                  },
+                ),
+              }),
+            },
+          )
+
+          writeBatch->addUpdateField(
+            selectedDateActionLogDoc,
+            fieldPath3("actionLogs", selectedActionLog.id, "prevId"),
+            addingActionLogId,
+          )
+
+          if selectedActionLog.prevId != "" {
+            writeBatch->addUpdateField(
+              selectedDateActionLogDoc,
+              fieldPath3("actionLogs", selectedActionLog.prevId, "nextId"),
+              addingActionLogId,
+            )
+          }
+
+          selectedDateActionLog.id
         }
 
         writeBatch->commit
