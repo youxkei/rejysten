@@ -243,7 +243,7 @@ module ActionLog = {
     }
   }
 
-  let aboveRecentActionLog = (state: State.t) =>
+  let aboveSelectedActionLogAcrossRecentDateActionLogs = (state: State.t) =>
     switch state->selectedActionLog {
     | Some(selectedDateActionLog, selectedActionLog) =>
       switch selectedDateActionLog.actionLogMap->Map.String.get(selectedActionLog.prevId) {
@@ -265,7 +265,7 @@ module ActionLog = {
     | None => None
     }
 
-  let belowActionLog = (state: State.t) =>
+  let belowSelectedActionLogAcrossRecentDateActionLogs = (state: State.t) =>
     switch state->selectedActionLog {
     | Some(selectedDateActionLog, selectedActionLog) =>
       switch selectedDateActionLog.actionLogMap->Map.String.get(selectedActionLog.nextId) {

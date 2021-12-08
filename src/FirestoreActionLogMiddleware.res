@@ -643,7 +643,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
 
       let dateActionLogs = Firebase.firestore->collection("dateActionLogs")
 
-      switch state->Selector.ActionLog.aboveRecentActionLog {
+      switch state->Selector.ActionLog.aboveSelectedActionLogAcrossRecentDateActionLogs {
       | Some(aboveActionLog) if aboveActionLog.end != 0.0 =>
         dateActionLogs
         ->doc(selectedDateActionLog.id)

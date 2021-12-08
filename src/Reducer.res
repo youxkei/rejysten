@@ -210,7 +210,7 @@ let searchReducer = (state: State.t, action) => {
 let actionLogReducer = (state: State.t, action) => {
   switch action {
   | Action.ToAboveActionLog() =>
-    switch state->Selector.ActionLog.aboveRecentActionLog {
+    switch state->Selector.ActionLog.aboveSelectedActionLogAcrossRecentDateActionLogs {
     | Some(aboveActionLog) => {
         ...state,
         actionLog: {
@@ -224,7 +224,7 @@ let actionLogReducer = (state: State.t, action) => {
     }
 
   | Action.ToBelowActionLog() =>
-    switch state->Selector.ActionLog.belowActionLog {
+    switch state->Selector.ActionLog.belowSelectedActionLogAcrossRecentDateActionLogs {
     | Some(belowActionLog) => {
         ...state,
         actionLog: {
