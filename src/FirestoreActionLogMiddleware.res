@@ -588,12 +588,50 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
             Action.SetSelectedActionLog({
               selectedDateActionLogId: nextSelectedDateActionLogId,
               selectedActionLogId: addingActionLogId,
+              initialCursorPosition: State.Start(),
             }),
           ),
         )
 
       | _ => ()
       }
+
+    | None => ()
+    }
+
+  | Action.Delete() =>
+    switch state->Selector.ActionLog.selectedActionLog {
+    | Some(selectedDateActionLog, selectedActionLog) =>
+      open Firebase.Firestore
+
+      let db = Firebase.firestore
+      let writeBatch = db->writeBatch
+      let dateActionLogs = db->collection("dateActionLogs")
+      let selectedDateActionLogDoc = dateActionLogs->doc(selectedDateActionLog.id)
+
+      writeBatch->addUpdateField(
+        selectedDateActionLogDoc,
+        fieldPath2("actionLogs", selectedActionLog.id),
+        deleteField(),
+      )
+
+      if selectedActionLog.prevId != "" {
+        writeBatch->addUpdateField(
+          selectedDateActionLogDoc,
+          fieldPath3("actionLogs", selectedActionLog.prevId, "nextId"),
+          selectedActionLog.nextId,
+        )
+      }
+
+      if selectedActionLog.nextId != "" {
+        writeBatch->addUpdateField(
+          selectedDateActionLogDoc,
+          fieldPath3("actionLogs", selectedActionLog.nextId, "prevId"),
+          selectedActionLog.prevId,
+        )
+      }
+
+      writeBatch->commit
 
     | None => ()
     }

@@ -289,13 +289,30 @@ let actionLogReducer = (state: State.t, action) => {
     | None => state
     }
 
-  | Action.SetSelectedActionLog({selectedDateActionLogId, selectedActionLogId}) => {
+  | Action.SetSelectedActionLog({
+      selectedDateActionLogId,
+      selectedActionLogId,
+      initialCursorPosition,
+    }) =>
+    let state = {
       ...state,
       actionLog: {
         ...state.actionLog,
         selectedDateActionLogId: selectedDateActionLogId,
         selectedActionLogId: selectedActionLogId,
       },
+    }
+
+    switch state.mode {
+    | State.Normal() => state
+
+    | State.Insert(_) => {
+        ...state,
+        mode: State.Insert({initialCursorPosition: initialCursorPosition}),
+        editor: {
+          editingText: state->Selector.selectedText,
+        },
+      }
     }
 
   | Action.SetSelectedActionLogItem({selectedActionLogItemId, initialCursorPosition}) =>

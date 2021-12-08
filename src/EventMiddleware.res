@@ -466,6 +466,7 @@ module KeyDown = {
       module Insert = {
         let handler = (store, event, initialCursorPosition, focus) => {
           let dispatch = Reductive.Store.dispatch(store)
+          let state: State.t = Reductive.Store.getState(store)
 
           let code = event->code
           let ctrlKey = event->ctrlKey
@@ -526,6 +527,64 @@ module KeyDown = {
             dispatch(Action.ToInsertMode({initialCursorPosition: initialCursorPosition}))
 
             event->preventDefault
+
+          | "Backspace" if isNeutral && !shiftKey && state.editor.editingText == "" =>
+            switch focus {
+            | State.Text() =>
+              switch state->Selector.ActionLog.aboveSelectedActionLog {
+              | Some({id: selectedDateActionLogId}, {id: aboveId}) =>
+                switch state->Selector.ActionLog.selectedActionLogTopItem {
+                | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
+                  dispatch(Action.Firestore(Action.ActionLog(Action.Delete())))
+                  dispatch(
+                    Action.ActionLog(
+                      Action.SetSelectedActionLog({
+                        selectedDateActionLogId: selectedDateActionLogId,
+                        selectedActionLogId: aboveId,
+                        initialCursorPosition: State.End(),
+                      }),
+                    ),
+                  )
+
+                  event->preventDefault
+
+                | _ => ()
+                }
+
+              | None => ()
+              }
+
+            | _ => ()
+            }
+
+          | "Delete" if isNeutral && !shiftKey && state.editor.editingText == "" =>
+            switch focus {
+            | State.Text() =>
+              switch state->Selector.ActionLog.belowSelectedActionLog {
+              | Some({id: selectedDateActionLogId}, {id: belowId}) =>
+                switch state->Selector.ActionLog.selectedActionLogTopItem {
+                | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
+                  dispatch(Action.Firestore(Action.ActionLog(Action.Delete())))
+                  dispatch(
+                    Action.ActionLog(
+                      Action.SetSelectedActionLog({
+                        selectedDateActionLogId: selectedDateActionLogId,
+                        selectedActionLogId: belowId,
+                        initialCursorPosition: State.Start(),
+                      }),
+                    ),
+                  )
+
+                  event->preventDefault
+
+                | _ => ()
+                }
+
+              | None => ()
+              }
+
+            | _ => ()
+            }
 
           | _ => ()
           }

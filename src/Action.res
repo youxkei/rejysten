@@ -34,6 +34,7 @@ type firestoreActionLog =
   | Record(firestoreActionLogRecord)
   | Items(firestoreActionLogItems)
   | Add({direction: direction})
+  | Delete(unit)
   | Start(unit)
   | Finish(unit)
 
@@ -66,7 +67,11 @@ type actionLog =
   | ToBelowActionLogItem(unit)
   | ToTopActionLogItem(unit)
   | ToBottomActionLogItem(unit)
-  | SetSelectedActionLog({selectedDateActionLogId: string, selectedActionLogId: string})
+  | SetSelectedActionLog({
+      selectedDateActionLogId: string,
+      selectedActionLogId: string,
+      initialCursorPosition: State.initialCursorPosition,
+    })
   | SetSelectedActionLogItem({
       selectedActionLogItemId: string,
       initialCursorPosition: State.initialCursorPosition,

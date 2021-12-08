@@ -217,6 +217,32 @@ module ActionLog = {
     | None => None
     }
 
+  let aboveSelectedActionLog = (state: State.t) => {
+    switch state->selectedActionLog {
+    | Some(selectedDateActionLog, {prevId}) =>
+      switch selectedDateActionLog.actionLogMap->Map.String.get(prevId) {
+      | Some(aboveActionLog) => Some(selectedDateActionLog, aboveActionLog)
+
+      | None => None
+      }
+
+    | None => None
+    }
+  }
+
+  let belowSelectedActionLog = (state: State.t) => {
+    switch state->selectedActionLog {
+    | Some(selectedDateActionLog, {nextId}) =>
+      switch selectedDateActionLog.actionLogMap->Map.String.get(nextId) {
+      | Some(belowActionLog) => Some(selectedDateActionLog, belowActionLog)
+
+      | None => None
+      }
+
+    | None => None
+    }
+  }
+
   let aboveRecentActionLog = (state: State.t) =>
     switch state->selectedActionLog {
     | Some(selectedDateActionLog, selectedActionLog) =>
