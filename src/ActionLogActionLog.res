@@ -1,17 +1,53 @@
 open Belt
 
+@send
+external getBoundingClientRect: Dom.element => {
+  "left": int,
+  "right": int,
+  "top": int,
+  "bottom": int,
+} = "getBoundingClientRect"
+@send
+external scrollIntoView: (
+  Dom.element,
+  {"behavior": string, "block": string, "inline": string},
+) => unit = "scrollIntoView"
+
 module Record = {
   @react.component
   let make = (~actionLog: State.actionLog, ~isSelectedActionLog, ()) => {
     let mode = Redux.useSelector(Selector.mode)
     let focus = Redux.useSelector(Selector.focus)
+    let innerHeight = Hook.useInnerHeight()
+    let recordRef = React.useRef(Js.Nullable.null)
+
+    React.useEffect2(() => {
+      if isSelectedActionLog {
+        switch recordRef.current->Js.Nullable.toOption {
+        | Some(record) =>
+          let rect = record->getBoundingClientRect
+
+          if rect["top"] < Style.globalMargin {
+            record->scrollIntoView({"behavior": "auto", "block": "start", "inline": "nearest"})
+          }
+
+          if rect["bottom"] > innerHeight - Style.globalMargin {
+            record->scrollIntoView({"behavior": "auto", "block": "end", "inline": "nearest"})
+          }
+
+        | None => ()
+        }
+      }
+
+      None
+    }, (isSelectedActionLog, innerHeight))
 
     let {text, begin, end} = actionLog
     let text = text->React.string
     let beginTime = begin->Date.fromUnixtimeMillis->Date.getTimeStringForDisplay->React.string
     let endTime = end->Date.fromUnixtimeMillis->Date.getTimeStringForDisplay->React.string
 
-    <div className=Style.ActionLog.actionLog>
+    <div className=Style.ActionLog.actionLog ref={ReactDOM.Ref.domRef(recordRef)}>
       {switch mode {
       | State.Insert(_) if isSelectedActionLog => <>
           <p>
