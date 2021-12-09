@@ -8,10 +8,7 @@ external getBoundingClientRect: Dom.element => {
   "bottom": int,
 } = "getBoundingClientRect"
 @send
-external scrollIntoView: (
-  Dom.element,
-  {"behavior": string, "block": string, "inline": string},
-) => unit = "scrollIntoView"
+external scrollIntoView: (Dom.element, {"block": string}) => unit = "scrollIntoView"
 
 let makeChildren = (itemMap, item: State.Item.t) => {
   let rec makeChildren = (itemId, children) => {
@@ -67,11 +64,11 @@ module rec ItemsInner: {
           let rect = listItem->getBoundingClientRect
 
           if rect["top"] < Style.globalMargin {
-            listItem->scrollIntoView({"behavior": "auto", "block": "start", "inline": "nearest"})
+            listItem->scrollIntoView({"block": "start"})
           }
 
           if rect["bottom"] > innerHeight - Style.globalMargin {
-            listItem->scrollIntoView({"behavior": "auto", "block": "end", "inline": "nearest"})
+            listItem->scrollIntoView({"block": "end"})
           }
         })
       }

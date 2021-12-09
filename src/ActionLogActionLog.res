@@ -8,10 +8,7 @@ external getBoundingClientRect: Dom.element => {
   "bottom": int,
 } = "getBoundingClientRect"
 @send
-external scrollIntoView: (
-  Dom.element,
-  {"behavior": string, "block": string, "inline": string},
-) => unit = "scrollIntoView"
+external scrollIntoView: (Dom.element, {"block": string}) => unit = "scrollIntoView"
 
 module Record = {
   @react.component
@@ -28,11 +25,11 @@ module Record = {
           let rect = record->getBoundingClientRect
 
           if rect["top"] < Style.globalMargin {
-            record->scrollIntoView({"behavior": "auto", "block": "start", "inline": "nearest"})
+            record->scrollIntoView({"block": "start"})
           }
 
           if rect["bottom"] > innerHeight - Style.globalMargin {
-            record->scrollIntoView({"behavior": "auto", "block": "end", "inline": "nearest"})
+            record->scrollIntoView({"block": "end"})
           }
 
         | None => ()
