@@ -862,7 +862,10 @@ module Blur = {
 
     module Items = {
       let handler = (store, _event) => {
-        let _dispatch = Reductive.Store.dispatch(store)
+        let dispatch = Reductive.Store.dispatch(store)
+
+        dispatch(Action.Firestore(Action.ActionLog(Action.Items(Action.Save()))))
+        dispatch(Action.ToNormalMode())
       }
     }
   }
