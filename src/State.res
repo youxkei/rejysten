@@ -190,7 +190,7 @@ type t = {
 
 let initialState: t = {
   mode: Normal(),
-  focus: Note(DocumentPane()),
+  focus: ActionLog(Record(Text())),
   editor: {
     editingText: "",
   },
