@@ -528,6 +528,15 @@ module KeyDown = {
 
             event->preventDefault
 
+          | "Enter" if isNeutral && !shiftKey =>
+            switch focus {
+            | State.Text() =>
+              dispatch(Action.Firestore(Action.ActionLog(Action.Add({direction: Action.Next()}))))
+              event->preventDefault
+
+            | _ => ()
+            }
+
           | "Backspace" if isNeutral && !shiftKey && state.editor.editingText == "" =>
             switch focus {
             | State.Text() =>
@@ -687,6 +696,14 @@ module KeyDown = {
 
           | "Tab" if isNeutral && shiftKey =>
             dispatch(Action.Firestore(Action.ActionLog(Action.Items(Action.Dedent()))))
+            event->preventDefault
+
+          | "Enter" if isNeutral && !shiftKey =>
+            dispatch(
+              Action.Firestore(
+                Action.ActionLog(Action.Items(Action.Add({direction: Action.Next()}))),
+              ),
+            )
             event->preventDefault
 
           | "Backspace" if isNeutral && !shiftKey && state.editor.editingText == "" =>
