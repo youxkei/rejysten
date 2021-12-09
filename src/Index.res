@@ -40,7 +40,10 @@ module KeyDownHandler = {
     let dispatch = Redux.useDispatch()
 
     React.useEffect1(() => {
-      let listener = event => dispatch(Action.Event(Event.KeyDown({event: event})))
+      let listener = event => {
+        Js.log("onKeydown")
+        dispatch(Action.Event(Event.KeyDown({event: event})))
+      }
 
       window->addEventListener("keydown", listener)
 
@@ -58,11 +61,16 @@ module Main = {
   let make = () => {
     let focus = Redux.useSelector(Selector.focus)
 
-    switch focus {
-    | State.Note(_) => <Note />
-    | State.Search() => <Search />
-    | State.ActionLog(focus) => <ActionLog focus />
-    }
+    <div className=Style.Main.style>
+      <div className=Style.Main.content>
+        {switch focus {
+        | State.Note(_) => <Note />
+        | State.Search() => <Search />
+        | State.ActionLog(focus) => <ActionLog focus />
+        }}
+      </div>
+      <div className=Style.Main.buttonBar> <ButtonBar /> </div>
+    </div>
   }
 }
 

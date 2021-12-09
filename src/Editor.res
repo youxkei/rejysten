@@ -25,6 +25,7 @@ let make = (~inline=false, ()) => {
   }
 
   let onBlur = event => {
+    Js.log("onBlur")
     dispatch(Action.Event(Event.Blur({event: event})))
   }
 

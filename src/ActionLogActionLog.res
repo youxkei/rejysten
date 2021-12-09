@@ -28,7 +28,7 @@ module Record = {
             record->scrollIntoView({"block": "start"})
           }
 
-          if rect["bottom"] > innerHeight - Style.globalMargin {
+          if rect["bottom"] > innerHeight - Style.ButtonBar.height {
             record->scrollIntoView({"block": "end"})
           }
 

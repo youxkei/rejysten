@@ -103,6 +103,33 @@ module ActionLog = {
   let style = style(. [width(100.0->pct), height(100.0->pct), overflow(auto)])
 }
 
+module ButtonBar = {
+  let height = 64
+
+  let button = style(. [fontFamily(#monospace), fontSize(24->px)])
+
+  let style = style(. [
+    display(flexBox),
+    flexDirection(row),
+    alignItems(center),
+    justifyContent(spaceAround),
+    width(100.0->pct),
+    CssJs.height(height->px),
+  ])
+}
+
+module Main = {
+  let content = style(. [gridRowStart(1), overflow(auto)])
+  let buttonBar = style(. [gridRowStart(2), height(ButtonBar.height->px)])
+
+  let style = style(. [
+    display(grid),
+    gridTemplateRows([auto, ButtonBar.height->px]),
+    width(100.0->pct),
+    height(100.0->pct),
+  ])
+}
+
 global(.
   "body",
   [
@@ -110,7 +137,7 @@ global(.
     backgroundColor(nord[0]),
     fontFamily(#sansSerif),
     fontSize(16->px),
-    margin(globalMargin->px),
+    margin4(~top=globalMargin->px, ~left=globalMargin->px, ~right=globalMargin->px, ~bottom=0->px),
     unsafe("touch-action", "manipulation"),
   ],
 )

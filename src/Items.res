@@ -67,7 +67,7 @@ module rec ItemsInner: {
             listItem->scrollIntoView({"block": "start"})
           }
 
-          if rect["bottom"] > innerHeight - Style.globalMargin {
+          if rect["bottom"] > innerHeight - Style.ButtonBar.height {
             listItem->scrollIntoView({"block": "end"})
           }
         })

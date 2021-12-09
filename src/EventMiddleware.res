@@ -2,6 +2,7 @@
 @get external shiftKey: Dom.keyboardEvent => bool = "shiftKey"
 @get external ctrlKey: Dom.keyboardEvent => bool = "ctrlKey"
 @get external isComposing: Dom.keyboardEvent => bool = "isComposing"
+@get external location: Dom.keyboardEvent => int = "location"
 @send external preventDefault: Dom.keyboardEvent => unit = "preventDefault"
 
 module KeyDown = {
@@ -876,7 +877,18 @@ let middleware = (store, next, action) => {
   | Action.Event(event) => {
       let state: State.t = Reductive.Store.getState(store)
 
-      switch (event, state.focus, state.mode) {
+      let mode = switch event {
+      | Event.KeyDown({event}) =>
+        if event->location == 42 {
+          State.Insert({initialCursorPosition: State.End()})
+        } else {
+          state.mode
+        }
+
+      | _ => state.mode
+      }
+
+      switch (event, state.focus, mode) {
       // KeyDownEvent
       // NoteDocumentPane
       | (Event.KeyDown({event}), State.Note(State.DocumentPane()), State.Normal()) =>
