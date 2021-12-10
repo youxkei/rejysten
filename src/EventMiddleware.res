@@ -877,18 +877,7 @@ let middleware = (store, next, action) => {
   | Action.Event(event) => {
       let state: State.t = Reductive.Store.getState(store)
 
-      let mode = switch event {
-      | Event.KeyDown({event}) =>
-        if event->location == 42 {
-          State.Insert({initialCursorPosition: State.End()})
-        } else {
-          state.mode
-        }
-
-      | _ => state.mode
-      }
-
-      switch (event, state.focus, mode) {
+      switch (event, state.focus, state.mode) {
       // KeyDownEvent
       // NoteDocumentPane
       | (Event.KeyDown({event}), State.Note(State.DocumentPane()), State.Normal()) =>

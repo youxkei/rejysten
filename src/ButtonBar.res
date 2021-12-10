@@ -4,18 +4,12 @@ external dispatchKeyboardEvent: Dom.keyboardEvent => unit = "dispatchEvent"
 @new
 external makeKeyboardEvent: (
   string,
-  {"code": string, "shiftKey": bool, "ctrlKey": bool, "location": int},
+  {"code": string, "shiftKey": bool, "ctrlKey": bool},
 ) => Dom.keyboardEvent = "KeyboardEvent"
 
 module Button = {
   @react.component
-  let make = (~text, ~code, ~shift=false, ~ctrl=false, ~insert=false) => {
-    let location = if insert {
-      42
-    } else {
-      0
-    }
-
+  let make = (~text, ~code, ~shift=false, ~ctrl=false) => {
     <button
       className=Style.ButtonBar.button
       onClick={_ => {
@@ -26,7 +20,6 @@ module Button = {
               "code": code,
               "shiftKey": shift,
               "ctrlKey": ctrl,
-              "location": location,
             },
           ),
         )
@@ -55,8 +48,6 @@ let make = () => {
     <Button text="STab" code="Tab" shift=true />
     <Button text="s" code="KeyS" />
     <Button text="f" code="KeyF" />
-    <Button text="Backspace" code="Backspace" insert=true />
-    <Button text="Enter" code="Enter" insert=true />
     <button className=Style.ButtonBar.button> {"Esc"->React.string} </button>
   </div>
 }
