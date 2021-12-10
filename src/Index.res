@@ -41,7 +41,6 @@ module KeyDownHandler = {
 
     React.useEffect1(() => {
       let listener = event => {
-        Js.log("onKeydown")
         dispatch(Action.Event(Event.KeyDown({event: event})))
       }
 

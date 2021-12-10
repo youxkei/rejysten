@@ -353,9 +353,7 @@ let reducer = (state: State.t, action) => {
 
   | Action.DevToolUpdate({state}) => state
 
-  | Action.ToInsertMode({initialCursorPosition}) =>
-    Js.log(`ToInsertMode "${state->Selector.selectedText}"`)
-    {
+  | Action.ToInsertMode({initialCursorPosition}) => {
       ...state,
       mode: State.Insert({initialCursorPosition: initialCursorPosition}),
       editor: {

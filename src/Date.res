@@ -66,9 +66,6 @@ let parseEditString = (dateString, timeEditString) => {
       let date = dateString->fromString
       let _ = date->Js.Date.setHoursMS(~hours, ~minutes, ~seconds, ())
 
-      Js.log((hours, minutes, seconds))
-      Js.log(date)
-
       Some(date)
 
     | _ => None

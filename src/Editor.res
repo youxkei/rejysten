@@ -9,9 +9,6 @@ let make = (~inline=false, ()) => {
   let text = Redux.useSelector(Selector.Editor.editingText)
   let initialCursorPosition = Redux.useSelector(Selector.initialCursorPosition)
 
-  Js.log(`text: "${text}"`)
-  Js.log(initialCursorPosition)
-
   let dispatch = Redux.useDispatch()
 
   let className = if inline {
@@ -25,7 +22,6 @@ let make = (~inline=false, ()) => {
   }
 
   let onBlur = event => {
-    Js.log("onBlur")
     dispatch(Action.Event(Event.Blur({event: event})))
   }
 
