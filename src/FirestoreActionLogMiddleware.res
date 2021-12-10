@@ -386,156 +386,101 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
   | Action.Add({direction}) =>
     switch state->Selector.ActionLog.selectedActionLog {
     | Some((selectedDateActionLog, selectedActionLog)) =>
-      switch state->Selector.Firestore.latestActionLog {
-      | Some(latestActionLog) =>
-        open Firebase.Firestore
+      open Firebase.Firestore
 
-        let db = Firebase.firestore
-        let writeBatch = db->writeBatch
-        let dateActionLogs = db->collection("dateActionLogs")
-        let selectedDateActionLogDoc = dateActionLogs->doc(selectedDateActionLog.id)
+      let db = Firebase.firestore
+      let writeBatch = db->writeBatch
+      let dateActionLogs = db->collection("dateActionLogs")
+      let selectedDateActionLogDoc = dateActionLogs->doc(selectedDateActionLog.id)
 
-        let addingActionLogId = uuidv4()
-        let newRootItemId = uuidv4()
-        let newItemId = uuidv4()
+      let addingActionLogId = uuidv4()
+      let newRootItemId = uuidv4()
+      let newItemId = uuidv4()
 
-        let nextSelectedDateActionLogId = switch direction {
-        | Action.Next() =>
-          let now = Date.now()
-          let selectedDateActionLogDate = Date.fromString(selectedDateActionLog.date)
-          let initialBegin = selectedActionLog.end
+      let nextSelectedDateActionLogId = switch direction {
+      | Action.Next() =>
+        let now = Date.now()
+        let selectedDateActionLogDate = Date.fromString(selectedDateActionLog.date)
+        let initialBegin = selectedActionLog.end
 
-          switch state.mode {
-          | State.Insert(_) =>
-            writeBatch->addUpdateField(
-              selectedDateActionLogDoc,
-              fieldPath3("actionLogs", selectedActionLog.id, "text"),
-              state.editor.editingText,
-            )
-          | _ => ()
-          }
+        switch state.mode {
+        | State.Insert(_) =>
+          writeBatch->addUpdateField(
+            selectedDateActionLogDoc,
+            fieldPath3("actionLogs", selectedActionLog.id, "text"),
+            state.editor.editingText,
+          )
+        | _ => ()
+        }
 
-          if (
-            latestActionLog.id == selectedActionLog.id &&
-              selectedDateActionLogDate->Date.before(now)
-          ) {
-            let newDateActionLogId = uuidv4()
+        if (
+          selectedDateActionLog.nextId == "" &&
+          selectedActionLog.nextId == "" &&
+          selectedDateActionLogDate->Date.before(now)
+        ) {
+          let newDateActionLogId = uuidv4()
 
-            writeBatch->addSet(
-              dateActionLogs->doc(newDateActionLogId),
-              {
-                "date": now->Date.formatDate,
-                "prevId": selectedDateActionLog.id,
-                "nextId": "",
-                "actionLogs": Js.Dict.fromList(list{
-                  (
-                    addingActionLogId,
-                    {
-                      "begin": initialBegin,
-                      "end": 0,
-                      "prevId": "",
-                      "nextId": "",
-                      "text": "",
-                      "items": Js.Dict.fromList(list{
-                        (
-                          newRootItemId,
-                          {
-                            "firstChildId": newItemId,
-                            "lastChildId": newItemId,
-                            "prevId": "",
-                            "parentId": "",
-                            "nextId": "",
-                            "text": "",
-                          },
-                        ),
-                        (
-                          newItemId,
-                          {
-                            "firstChildId": "",
-                            "lastChildId": "",
-                            "prevId": "",
-                            "parentId": newRootItemId,
-                            "nextId": "",
-                            "text": "",
-                          },
-                        ),
-                      }),
-                    },
-                  ),
-                }),
-              },
-            )
+          writeBatch->addSet(
+            dateActionLogs->doc(newDateActionLogId),
+            {
+              "date": now->Date.formatDate,
+              "prevId": selectedDateActionLog.id,
+              "nextId": "",
+              "actionLogs": Js.Dict.fromList(list{
+                (
+                  addingActionLogId,
+                  {
+                    "begin": initialBegin,
+                    "end": 0,
+                    "prevId": "",
+                    "nextId": "",
+                    "text": "",
+                    "items": Js.Dict.fromList(list{
+                      (
+                        newRootItemId,
+                        {
+                          "firstChildId": newItemId,
+                          "lastChildId": newItemId,
+                          "prevId": "",
+                          "parentId": "",
+                          "nextId": "",
+                          "text": "",
+                        },
+                      ),
+                      (
+                        newItemId,
+                        {
+                          "firstChildId": "",
+                          "lastChildId": "",
+                          "prevId": "",
+                          "parentId": newRootItemId,
+                          "nextId": "",
+                          "text": "",
+                        },
+                      ),
+                    }),
+                  },
+                ),
+              }),
+            },
+          )
 
-            writeBatch->addUpdateField(
-              selectedDateActionLogDoc,
-              fieldPath1("nextId"),
-              newDateActionLogId,
-            )
+          writeBatch->addUpdateField(
+            selectedDateActionLogDoc,
+            fieldPath1("nextId"),
+            newDateActionLogId,
+          )
 
-            newDateActionLogId
-          } else {
-            writeBatch->addUpdateField(
-              selectedDateActionLogDoc,
-              fieldPath2("actionLogs", addingActionLogId),
-              {
-                "begin": initialBegin,
-                "end": 0,
-                "prevId": selectedActionLog.id,
-                "nextId": selectedActionLog.nextId,
-                "text": "",
-                "items": Js.Dict.fromList(list{
-                  (
-                    newRootItemId,
-                    {
-                      "firstChildId": newItemId,
-                      "lastChildId": newItemId,
-                      "prevId": "",
-                      "parentId": "",
-                      "nextId": "",
-                      "text": "",
-                    },
-                  ),
-                  (
-                    newItemId,
-                    {
-                      "firstChildId": "",
-                      "lastChildId": "",
-                      "prevId": "",
-                      "parentId": newRootItemId,
-                      "nextId": "",
-                      "text": "",
-                    },
-                  ),
-                }),
-              },
-            )
-
-            writeBatch->addUpdateField(
-              selectedDateActionLogDoc,
-              fieldPath3("actionLogs", selectedActionLog.id, "nextId"),
-              addingActionLogId,
-            )
-
-            if selectedActionLog.nextId != "" {
-              writeBatch->addUpdateField(
-                selectedDateActionLogDoc,
-                fieldPath3("actionLogs", selectedActionLog.nextId, "prevId"),
-                addingActionLogId,
-              )
-            }
-
-            selectedDateActionLog.id
-          }
-
-        | Action.Prev() =>
+          newDateActionLogId
+        } else {
           writeBatch->addUpdateField(
             selectedDateActionLogDoc,
             fieldPath2("actionLogs", addingActionLogId),
             {
-              "begin": 0,
+              "begin": initialBegin,
               "end": 0,
-              "prevId": selectedActionLog.prevId,
-              "nextId": selectedActionLog.id,
+              "prevId": selectedActionLog.id,
+              "nextId": selectedActionLog.nextId,
               "text": "",
               "items": Js.Dict.fromList(list{
                 (
@@ -566,14 +511,14 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
 
           writeBatch->addUpdateField(
             selectedDateActionLogDoc,
-            fieldPath3("actionLogs", selectedActionLog.id, "prevId"),
+            fieldPath3("actionLogs", selectedActionLog.id, "nextId"),
             addingActionLogId,
           )
 
-          if selectedActionLog.prevId != "" {
+          if selectedActionLog.nextId != "" {
             writeBatch->addUpdateField(
               selectedDateActionLogDoc,
-              fieldPath3("actionLogs", selectedActionLog.prevId, "nextId"),
+              fieldPath3("actionLogs", selectedActionLog.nextId, "prevId"),
               addingActionLogId,
             )
           }
@@ -581,21 +526,72 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
           selectedDateActionLog.id
         }
 
-        writeBatch->commit
-
-        Reductive.Store.dispatch(
-          store,
-          Action.ActionLog(
-            Action.SetSelectedActionLog({
-              selectedDateActionLogId: nextSelectedDateActionLogId,
-              selectedActionLogId: addingActionLogId,
-              initialCursorPosition: State.Start(),
+      | Action.Prev() =>
+        writeBatch->addUpdateField(
+          selectedDateActionLogDoc,
+          fieldPath2("actionLogs", addingActionLogId),
+          {
+            "begin": 0,
+            "end": 0,
+            "prevId": selectedActionLog.prevId,
+            "nextId": selectedActionLog.id,
+            "text": "",
+            "items": Js.Dict.fromList(list{
+              (
+                newRootItemId,
+                {
+                  "firstChildId": newItemId,
+                  "lastChildId": newItemId,
+                  "prevId": "",
+                  "parentId": "",
+                  "nextId": "",
+                  "text": "",
+                },
+              ),
+              (
+                newItemId,
+                {
+                  "firstChildId": "",
+                  "lastChildId": "",
+                  "prevId": "",
+                  "parentId": newRootItemId,
+                  "nextId": "",
+                  "text": "",
+                },
+              ),
             }),
-          ),
+          },
         )
 
-      | _ => ()
+        writeBatch->addUpdateField(
+          selectedDateActionLogDoc,
+          fieldPath3("actionLogs", selectedActionLog.id, "prevId"),
+          addingActionLogId,
+        )
+
+        if selectedActionLog.prevId != "" {
+          writeBatch->addUpdateField(
+            selectedDateActionLogDoc,
+            fieldPath3("actionLogs", selectedActionLog.prevId, "nextId"),
+            addingActionLogId,
+          )
+        }
+
+        selectedDateActionLog.id
       }
+
+      writeBatch->commit
+
+      Reductive.Store.dispatch(
+        store,
+        Action.ActionLog(
+          Action.SetSelectedActionLog({
+            selectedDateActionLogId: nextSelectedDateActionLogId,
+            selectedActionLogId: addingActionLogId,
+            initialCursorPosition: State.Start(),
+          }),
+        ),
+      )
 
     | None => ()
     }
