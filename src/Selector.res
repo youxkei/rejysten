@@ -179,45 +179,7 @@ module ActionLog = {
     | None => None
     }
 
-  let selectedActionLogRootItem = (state: State.t) =>
-    switch state->selectedActionLog {
-    | Some(dateActionLog, actionLog) =>
-      switch actionLog.itemMap->Map.String.get(actionLog.rootItemId) {
-      | Some(rootItem) => Some(dateActionLog, actionLog, rootItem)
-
-      | None => None
-      }
-
-    | None => None
-    }
-
-  let selectedActionLogItem = (state: State.t) =>
-    switch state->selectedActionLog {
-    | Some(dateActionLog, actionLog) =>
-      switch actionLog.itemMap->Map.String.get(state->selectedActionLogItemId) {
-      | Some(item) => Some(dateActionLog, actionLog, item)
-
-      | None => None
-      }
-
-    | None => None
-    }
-
-  let selectedActionLogTopItem = (state: State.t) =>
-    switch state->selectedActionLogRootItem {
-    | Some(_, actionLog, rootItem) => actionLog.itemMap->State.Item.top(rootItem)
-
-    | None => None
-    }
-
-  let selectedActionLogBottomItem = (state: State.t) =>
-    switch state->selectedActionLogRootItem {
-    | Some(_, actionLog, rootItem) => actionLog.itemMap->State.Item.bottom(rootItem)
-
-    | None => None
-    }
-
-  let aboveSelectedActionLog = (state: State.t) => {
+  let aboveSelectedActionLog = (state: State.t) =>
     switch state->selectedActionLog {
     | Some(selectedDateActionLog, {prevId}) =>
       switch selectedDateActionLog.actionLogMap->Map.String.get(prevId) {
@@ -228,9 +190,8 @@ module ActionLog = {
 
     | None => None
     }
-  }
 
-  let belowSelectedActionLog = (state: State.t) => {
+  let belowSelectedActionLog = (state: State.t) =>
     switch state->selectedActionLog {
     | Some(selectedDateActionLog, {nextId}) =>
       switch selectedDateActionLog.actionLogMap->Map.String.get(nextId) {
@@ -241,7 +202,6 @@ module ActionLog = {
 
     | None => None
     }
-  }
 
   let aboveSelectedActionLogAcrossRecentDateActionLogs = (state: State.t) =>
     switch state->selectedActionLog {
@@ -283,11 +243,11 @@ module ActionLog = {
     | None => None
     }
 
-  let topSelectedActionLogItem = (state: State.t) =>
+  let selectedActionLogRootItem = (state: State.t) =>
     switch state->selectedActionLog {
-    | Some(_, selectedActionLog) =>
-      switch selectedActionLog.itemMap->Map.String.get(selectedActionLog.rootItemId) {
-      | Some(rootItem) => selectedActionLog.itemMap->State.Item.top(rootItem)
+    | Some(dateActionLog, actionLog) =>
+      switch actionLog.itemMap->Map.String.get(actionLog.rootItemId) {
+      | Some(rootItem) => Some(dateActionLog, actionLog, rootItem)
 
       | None => None
       }
@@ -295,14 +255,28 @@ module ActionLog = {
     | None => None
     }
 
-  let bottomSelectedActionLogItem = (state: State.t) =>
+  let selectedActionLogItem = (state: State.t) =>
     switch state->selectedActionLog {
-    | Some(_, selectedActionLog) =>
-      switch selectedActionLog.itemMap->Map.String.get(selectedActionLog.rootItemId) {
-      | Some(rootItem) => selectedActionLog.itemMap->State.Item.bottom(rootItem)
+    | Some(dateActionLog, actionLog) =>
+      switch actionLog.itemMap->Map.String.get(state->selectedActionLogItemId) {
+      | Some(item) => Some(dateActionLog, actionLog, item)
 
       | None => None
       }
+
+    | None => None
+    }
+
+  let topSelectedActionLogItem = (state: State.t) =>
+    switch state->selectedActionLogRootItem {
+    | Some(_, actionLog, rootItem) => actionLog.itemMap->State.Item.top(rootItem)
+
+    | None => None
+    }
+
+  let bottomSelectedActionLogItem = (state: State.t) =>
+    switch state->selectedActionLogRootItem {
+    | Some(_, actionLog, rootItem) => actionLog.itemMap->State.Item.bottom(rootItem)
 
     | None => None
     }

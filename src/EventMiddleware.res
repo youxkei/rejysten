@@ -543,7 +543,7 @@ module KeyDown = {
             | State.Text() =>
               switch state->Selector.ActionLog.aboveSelectedActionLog {
               | Some({id: selectedDateActionLogId}, {id: aboveId}) =>
-                switch state->Selector.ActionLog.selectedActionLogTopItem {
+                switch state->Selector.ActionLog.topSelectedActionLogItem {
                 | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
                   dispatch(Action.Firestore(Action.ActionLog(Action.Delete())))
                   dispatch(
@@ -572,7 +572,7 @@ module KeyDown = {
             | State.Text() =>
               switch state->Selector.ActionLog.belowSelectedActionLog {
               | Some({id: selectedDateActionLogId}, {id: belowId}) =>
-                switch state->Selector.ActionLog.selectedActionLogTopItem {
+                switch state->Selector.ActionLog.topSelectedActionLogItem {
                 | Some({text: "", prevId: "", nextId: "", firstChildId: "", lastChildId: ""}) =>
                   dispatch(Action.Firestore(Action.ActionLog(Action.Delete())))
                   dispatch(

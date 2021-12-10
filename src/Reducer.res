@@ -385,7 +385,7 @@ let reducer = (state: State.t, action) => {
       }
 
     | State.ActionLog(State.Items()) =>
-      switch state->Selector.ActionLog.selectedActionLogBottomItem {
+      switch state->Selector.ActionLog.bottomSelectedActionLogItem {
       | Some(bottomItem) => {
           ...state,
           focus: focus,
