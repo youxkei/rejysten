@@ -1,5 +1,5 @@
 @react.component
-let make = React.memo((~item: State.Item.t) => {
+let make = React.memo((~item: State.Item.t, ~clickEventTargetCreator) => {
   let dispatch = Redux.useDispatch()
 
   let onClick = Hook.useDouble(React.useCallback1((event, isDouble) => {
@@ -8,7 +8,7 @@ let make = React.memo((~item: State.Item.t) => {
           Event.Click({
             event: Event.Mouse(event),
             isDouble: isDouble,
-            target: Event.Item(item.id),
+            target: clickEventTargetCreator(item.id),
           }),
         ),
       )

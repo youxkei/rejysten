@@ -49,9 +49,12 @@ module rec ItemsInner: {
     let itemMap = Redux.useSelector(Selector.Firestore.itemMap)
     let searchedItems = Redux.useSelector(Selector.Search.searchedItems)
 
+    // TODO
+    let clickEventTargetCreator = _ => Event.Search()
+
     <BulletList
       bullet={<Bullet />}
-      item={<Item item />}
+      item={<Item item clickEventTargetCreator />}
       child={makeItemChildren(itemMap, searchedItems, item)
       ->Array.map((item: State.Item.t) => {
         <ItemsInner key=item.id item />

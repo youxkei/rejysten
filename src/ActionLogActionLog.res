@@ -13,10 +13,59 @@ external scrollIntoView: (Dom.element, {"block": string}) => unit = "scrollIntoV
 module Record = {
   @react.component
   let make = (~actionLog: State.actionLog, ~isSelectedActionLog, ()) => {
+    let dispatch = Redux.useDispatch()
     let mode = Redux.useSelector(Selector.mode)
     let focus = Redux.useSelector(Selector.focus)
     let innerHeight = Hook.useInnerHeight()
     let recordRef = React.useRef(Js.Nullable.null)
+
+    let textOnClick = Hook.useDouble(React.useCallback2((event, isDouble) => {
+        dispatch(
+          Action.Event(
+            Event.Click({
+              event: Event.Mouse(event),
+              isDouble: isDouble,
+              target: Event.ActionLog({
+                dateActionLogId: actionLog.dateActionLogId,
+                actionLogId: actionLog.id,
+                target: Event.RecordText(),
+              }),
+            }),
+          ),
+        )
+      }, (actionLog.dateActionLogId, actionLog.id)))
+
+    let beginOnClick = Hook.useDouble(React.useCallback2((event, isDouble) => {
+        dispatch(
+          Action.Event(
+            Event.Click({
+              event: Event.Mouse(event),
+              isDouble: isDouble,
+              target: Event.ActionLog({
+                dateActionLogId: actionLog.dateActionLogId,
+                actionLogId: actionLog.id,
+                target: Event.RecordBegin(),
+              }),
+            }),
+          ),
+        )
+      }, (actionLog.dateActionLogId, actionLog.id)))
+
+    let endOnClick = Hook.useDouble(React.useCallback2((event, isDouble) => {
+        dispatch(
+          Action.Event(
+            Event.Click({
+              event: Event.Mouse(event),
+              isDouble: isDouble,
+              target: Event.ActionLog({
+                dateActionLogId: actionLog.dateActionLogId,
+                actionLogId: actionLog.id,
+                target: Event.RecordEnd(),
+              }),
+            }),
+          ),
+        )
+      }, (actionLog.dateActionLogId, actionLog.id)))
 
     React.useEffect2(() => {
       if isSelectedActionLog {
@@ -73,11 +122,11 @@ module Record = {
         </>
 
       | _ => <>
-          <p> {text} </p>
+          <p onClick=textOnClick> {text} </p>
           <p>
-            <span> {beginTime} </span>
+            <span onClick=beginOnClick> {beginTime} </span>
             <span> {` → `->React.string} </span>
-            <span> {endTime} </span>
+            <span onClick=endOnClick> {endTime} </span>
           </p>
         </>
       }}
@@ -90,11 +139,17 @@ let make = (~actionLog: State.actionLog, ~focus, ()) => {
   let selectedId = Redux.useSelector(Selector.ActionLog.selectedActionLogId)
   let selectedActionLogItemId = Redux.useSelector(Selector.ActionLog.selectedActionLogItemId)
 
-  let {id, itemMap, rootItemId} = actionLog
+  let {id, dateActionLogId, itemMap, rootItemId} = actionLog
   let (isSelectedActionLog, focusable) = switch focus {
   | State.Record(_) => (id == selectedId, false)
   | State.Items() => (false, true)
   }
+
+  let clickEventTargetCreator = itemId => Event.ActionLog({
+    dateActionLogId: dateActionLogId,
+    actionLogId: id,
+    target: Event.Item({itemId: itemId}),
+  })
 
   <BulletList
     bullet={<Bullet />}
@@ -102,7 +157,14 @@ let make = (~actionLog: State.actionLog, ~focus, ()) => {
     isSelectedItem=isSelectedActionLog
     child={switch itemMap->Map.String.get(rootItemId) {
     | Some(rootItem) =>
-      <Items editable=true focusable item=rootItem selectedItemId=selectedActionLogItemId itemMap />
+      <Items
+        editable=true
+        focusable
+        item=rootItem
+        selectedItemId=selectedActionLogItemId
+        itemMap
+        clickEventTargetCreator
+      />
 
     | None => React.null
     }}

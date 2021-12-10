@@ -1,4 +1,13 @@
-type target = Document(string) | Item(string)
+type noteTarget = DocumentPane({documentId: string}) | ItemPane({itemId: string})
+
+type actionLogTarget =
+  RecordText(unit) | RecordBegin(unit) | RecordEnd(unit) | Item({itemId: string})
+
+type target =
+  | Note(noteTarget)
+  | Search(unit)
+  | ActionLog({dateActionLogId: string, actionLogId: string, target: actionLogTarget})
+
 type mouse_or_touch = Mouse(ReactEvent.Mouse.t) | Touch(ReactEvent.Touch.t)
 
 type t =

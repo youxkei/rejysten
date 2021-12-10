@@ -18,9 +18,13 @@ let make = React.memo(() => {
   | _ => `${Style.Note.itemPane} ${Style.Note.unfocusedPane}`
   }
 
+  let clickEventTargetCreator = itemId => Event.Note(Event.ItemPane({itemId: itemId}))
+
   switch rootItem {
   | Some(item) =>
-    <section className> <Items editable=true focusable item selectedItemId itemMap /> </section>
+    <section className>
+      <Items editable=true focusable item selectedItemId itemMap clickEventTargetCreator />
+    </section>
 
   | None => React.null
   }

@@ -767,11 +767,11 @@ module KeyDown = {
 
 module Click = {
   module Note = {
-    let handler = (store, _event, isDouble, target) => {
+    let handler = (store, isDouble, target) => {
       let dispatch = Reductive.Store.dispatch(store)
 
       switch target {
-      | Event.Document(documentId) =>
+      | Event.DocumentPane({documentId}) =>
         dispatch(Action.Focus(State.Note(State.DocumentPane())))
         dispatch(
           Action.Note(
@@ -787,7 +787,7 @@ module Click = {
           dispatch(Action.ToNormalMode())
         }
 
-      | Event.Item(itemId) =>
+      | Event.ItemPane({itemId}) =>
         dispatch(Action.Focus(State.Note(State.ItemPane())))
         dispatch(
           Action.Note(
@@ -807,14 +807,96 @@ module Click = {
   }
 
   module Search = {
-    let handler = (_store, _event, _isDouble, _target) => {
+    let handler = (_store, _isDouble) => {
       ()
     }
   }
 
   module ActionLog = {
-    let handler = (_store, _event, _isDouble, _target) => {
-      ()
+    let handler = (event, store, isDouble, dateActionLogId, actionLogId, target) => {
+      let dispatch = Reductive.Store.dispatch(store)
+
+      switch target {
+      | Event.RecordText() =>
+        dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
+        dispatch(
+          Action.ActionLog(
+            Action.SetSelectedActionLog({
+              selectedDateActionLogId: dateActionLogId,
+              selectedActionLogId: actionLogId,
+              initialCursorPosition: State.End(),
+            }),
+          ),
+        )
+
+        if isDouble {
+          dispatch(Action.ToInsertMode({initialCursorPosition: State.End()}))
+          event->Event.preventDefault
+        }
+
+      | Event.RecordBegin() =>
+        dispatch(
+          Action.ActionLog(
+            Action.SetSelectedActionLog({
+              selectedDateActionLogId: dateActionLogId,
+              selectedActionLogId: actionLogId,
+              initialCursorPosition: State.End(),
+            }),
+          ),
+        )
+
+        if isDouble {
+          dispatch(Action.Focus(State.ActionLog(State.Record(State.Begin()))))
+          dispatch(Action.ToInsertMode({initialCursorPosition: State.End()}))
+          event->Event.preventDefault
+        } else {
+          dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
+        }
+
+      | Event.RecordEnd() =>
+        dispatch(
+          Action.ActionLog(
+            Action.SetSelectedActionLog({
+              selectedDateActionLogId: dateActionLogId,
+              selectedActionLogId: actionLogId,
+              initialCursorPosition: State.End(),
+            }),
+          ),
+        )
+
+        if isDouble {
+          dispatch(Action.Focus(State.ActionLog(State.Record(State.End()))))
+          dispatch(Action.ToInsertMode({initialCursorPosition: State.End()}))
+          event->Event.preventDefault
+        } else {
+          dispatch(Action.Focus(State.ActionLog(State.Record(State.Text()))))
+        }
+
+      | Event.Item({itemId}) =>
+        dispatch(Action.Focus(State.ActionLog(State.Items())))
+        dispatch(
+          Action.ActionLog(
+            Action.SetSelectedActionLog({
+              selectedDateActionLogId: dateActionLogId,
+              selectedActionLogId: actionLogId,
+              initialCursorPosition: State.End(),
+            }),
+          ),
+        )
+        dispatch(
+          Action.ActionLog(
+            Action.SetSelectedActionLogItem({
+              selectedActionLogItemId: itemId,
+              initialCursorPosition: State.End(),
+            }),
+          ),
+        )
+
+        if isDouble {
+          dispatch(Action.ToInsertMode({initialCursorPosition: State.End()}))
+          event->Event.preventDefault
+        }
+      }
     }
   }
 }
@@ -921,16 +1003,23 @@ let middleware = (store, next, action) => {
 
       // ClickEvent
       // Note
-      | (Event.Click({event, isDouble, target}), State.Note(_), _) =>
-        Click.Note.handler(store, event, isDouble, target)
+      | (Event.Click({isDouble, target: Event.Note(target)}), _, _) =>
+        Click.Note.handler(store, isDouble, target)
 
-      // Search
-      | (Event.Click({event, isDouble, target}), State.Search(), _) =>
-        Click.Search.handler(store, event, isDouble, target)
+      | (Event.Click({isDouble, target: Event.Search()}), _, _) =>
+        Click.Search.handler(store, isDouble)
 
       // ActionLog
-      | (Event.Click({event, isDouble, target}), State.ActionLog(_), _) =>
-        Click.ActionLog.handler(store, event, isDouble, target)
+      | (
+          Event.Click({
+            event,
+            isDouble,
+            target: Event.ActionLog({dateActionLogId, actionLogId, target}),
+          }),
+          _,
+          _,
+        ) =>
+        Click.ActionLog.handler(event, store, isDouble, dateActionLogId, actionLogId, target)
 
       // BlurEvent
       // NoteDocumentPane

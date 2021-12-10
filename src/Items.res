@@ -31,6 +31,7 @@ module rec ItemsInner: {
     "item": State.Item.t,
     "selectedItemId": string,
     "itemMap": State.Item.map,
+    "clickEventTargetCreator": string => Event.target,
   } => ReasonReact.reactElement
   let makeProps: (
     ~editable: bool,
@@ -38,6 +39,7 @@ module rec ItemsInner: {
     ~item: State.Item.t,
     ~selectedItemId: string,
     ~itemMap: State.Item.map,
+    ~clickEventTargetCreator: string => Event.target,
     ~key: string=?,
     unit,
   ) => {
@@ -46,10 +48,18 @@ module rec ItemsInner: {
     "item": State.Item.t,
     "selectedItemId": string,
     "itemMap": State.Item.map,
+    "clickEventTargetCreator": string => Event.target,
   }
 } = {
   @react.component
-  let make = (~editable, ~focusable, ~item: State.Item.t, ~selectedItemId, ~itemMap) => {
+  let make = (
+    ~editable,
+    ~focusable,
+    ~item: State.Item.t,
+    ~selectedItemId,
+    ~itemMap,
+    ~clickEventTargetCreator,
+  ) => {
     let mode = Redux.useSelector(Selector.mode)
     let listItemRef = React.useRef(Js.Nullable.null)
     let innerHeight = Hook.useInnerHeight()
@@ -81,13 +91,15 @@ module rec ItemsInner: {
       item={switch (focusable, editable, mode, isSelectedItem) {
       | (true, true, State.Insert(_), true) => <Editor />
 
-      | _ => <Item item />
+      | _ => <Item item clickEventTargetCreator />
       }}
       isSelectedItem
       itemRef={ReactDOM.Ref.domRef(listItemRef)}
       child={makeChildren(itemMap, item)
       ->Array.map((item: State.Item.t) => {
-        <ItemsInner key=item.id editable focusable item selectedItemId itemMap />
+        <ItemsInner
+          key=item.id editable focusable item selectedItemId itemMap clickEventTargetCreator
+        />
       })
       ->React.array}
     />
@@ -95,10 +107,12 @@ module rec ItemsInner: {
 }
 
 @react.component
-let make = (~editable, ~focusable, ~item, ~selectedItemId, ~itemMap) => {
+let make = (~editable, ~focusable, ~item, ~selectedItemId, ~itemMap, ~clickEventTargetCreator) => {
   makeChildren(itemMap, item)
   ->Array.map(item => {
-    <ItemsInner key=item.id editable focusable item selectedItemId itemMap />
+    <ItemsInner
+      key=item.id editable focusable item selectedItemId itemMap clickEventTargetCreator
+    />
   })
   ->React.array
 }

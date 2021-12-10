@@ -8,7 +8,7 @@ let make = React.memo((~document: State.noteDocument) => {
           Event.Click({
             event: Event.Mouse(event),
             isDouble: isDouble,
-            target: Event.Document(document.id),
+            target: Event.Note(Event.DocumentPane({documentId: document.id})),
           }),
         ),
       )
