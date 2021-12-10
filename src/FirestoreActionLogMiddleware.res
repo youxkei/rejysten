@@ -403,6 +403,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
         | Action.Next() =>
           let now = Date.now()
           let selectedDateActionLogDate = Date.fromString(selectedDateActionLog.date)
+          let initialBegin = selectedActionLog.end
 
           switch state.mode {
           | State.Insert(_) =>
@@ -430,7 +431,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
                   (
                     addingActionLogId,
                     {
-                      "begin": 0,
+                      "begin": initialBegin,
                       "end": 0,
                       "prevId": "",
                       "nextId": "",
@@ -477,7 +478,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
               selectedDateActionLogDoc,
               fieldPath2("actionLogs", addingActionLogId),
               {
-                "begin": 0,
+                "begin": initialBegin,
                 "end": 0,
                 "prevId": selectedActionLog.id,
                 "nextId": selectedActionLog.nextId,
