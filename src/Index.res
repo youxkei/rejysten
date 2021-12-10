@@ -105,7 +105,7 @@ module App = {
       | Some(error) => error->toString->React.string
       | None =>
         switch user {
-        | Some(_) => <> <Main /> <SyncFirestoreState /> </>
+        | Some(_) => <> <Main /> <SyncFirestoreState /> <SetInitialValue /> </>
 
         | None => "logging in"->React.string
         }

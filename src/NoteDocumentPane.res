@@ -1,37 +1,3 @@
-open Belt
-
-module SetInitialSelectedDocumentId = {
-  let getInitialSelectedDocumentId = rootDocument => {
-    rootDocument->Option.map((rootDocument: State.noteDocument) => rootDocument.firstChildId)
-  }
-
-  @react.component
-  let make = () => {
-    let dispatch = Redux.useDispatch()
-    let rootDocument = Redux.useSelector(Selector.Firestore.rootDocument)
-    let isInitial = Redux.useSelector(Selector.Note.DocumentPane.isInitial)
-
-    React.useEffect(() => {
-      if isInitial {
-        switch rootDocument->getInitialSelectedDocumentId {
-        | Some(initialSelectedDocumentId) =>
-          dispatch(
-            Action.SetNoteDocumentPaneState({
-              selectedId: initialSelectedDocumentId,
-            }),
-          )
-
-        | None => ()
-        }
-      }
-
-      None
-    })
-
-    React.null
-  }
-}
-
 @react.component
 let make = () => {
   let focus = Redux.useSelector(Selector.focus)
@@ -44,9 +10,7 @@ let make = () => {
   }
 
   switch rootDocument {
-  | Some(document) => <>
-      <section className> <NoteDocuments document /> </section> <SetInitialSelectedDocumentId />
-    </>
+  | Some(document) => <> <section className> <NoteDocuments document /> </section> </>
 
   | None => React.null
   }

@@ -1,43 +1,5 @@
 open Belt
 
-module SetInitialSelectedActionLog = {
-  let getInitialSelectedIds = latestDateActionLog => {
-    latestDateActionLog->Option.flatMap((dateActionLog: State.dateActionLog) => {
-      dateActionLog.actionLogMap
-      ->Map.String.get(dateActionLog.latestActionLogId)
-      ->Option.map((actionLog: State.actionLog) => {
-        (dateActionLog.id, actionLog.id)
-      })
-    })
-  }
-
-  @react.component
-  let make = () => {
-    let dispatch = Redux.useDispatch()
-    let latestDateActionLog = Redux.useSelector(Selector.Firestore.latestDateActionLog)
-    let isInitial = Redux.useSelector(Selector.ActionLog.isInitial)
-
-    React.useEffect(() => {
-      if isInitial {
-        switch latestDateActionLog->getInitialSelectedIds {
-        | Some((initialSelectedDateActionLogId, initialSelectedActionLogId)) =>
-          dispatch(
-            Action.SetActionLogState({
-              selectedDateActionLogId: initialSelectedDateActionLogId,
-              selectedActionLogId: initialSelectedActionLogId,
-            }),
-          )
-
-        | None => ()
-        }
-      }
-      None
-    })
-
-    React.null
-  }
-}
-
 module SetActionLogOldestRecentDateActionLogId = {
   let getOldestRecentDateActionLogId = (dateActionLogMap, latestDateActionLogId) => {
     let rec walk = (dateActionLogId, n) => {
@@ -82,7 +44,6 @@ module SetActionLogOldestRecentDateActionLogId = {
 let make = (~focus) => {
   <>
     <main className=Style.ActionLog.style> <ActionLogRecentDateActionLogs focus /> </main>
-    <SetInitialSelectedActionLog />
     <SetActionLogOldestRecentDateActionLogId />
   </>
 }
