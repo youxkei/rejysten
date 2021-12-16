@@ -145,11 +145,11 @@ let make = (~actionLog: State.actionLog, ~focus, ()) => {
   | State.Items() => (false, true)
   }
 
-  let clickEventTargetCreator = itemId => Event.ActionLog({
+  let clickEventTargetCreator = React.useCallback2(itemId => Event.ActionLog({
     dateActionLogId: dateActionLogId,
     actionLogId: id,
     target: Event.Item({itemId: itemId}),
-  })
+  }), (dateActionLogId, id))
 
   <BulletList
     bullet={<Bullet />}

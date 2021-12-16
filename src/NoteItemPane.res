@@ -1,3 +1,5 @@
+let clickEventTargetCreator = itemId => Event.Note(Event.ItemPane({itemId: itemId}))
+
 @react.component
 let make = React.memo(() => {
   let focus = Redux.useSelector(Selector.focus)
@@ -17,8 +19,6 @@ let make = React.memo(() => {
 
   | _ => `${Style.Note.itemPane} ${Style.Note.unfocusedPane}`
   }
-
-  let clickEventTargetCreator = itemId => Event.Note(Event.ItemPane({itemId: itemId}))
 
   switch rootItem {
   | Some(item) =>

@@ -2,7 +2,7 @@
 let make = React.memo((~item: State.Item.t, ~clickEventTargetCreator) => {
   let dispatch = Redux.useDispatch()
 
-  let onClick = Hook.useDouble(React.useCallback1((event, isDouble) => {
+  let onClick = Hook.useDouble(React.useCallback2((event, isDouble) => {
       dispatch(
         Action.Event(
           Event.Click({
@@ -12,7 +12,7 @@ let make = React.memo((~item: State.Item.t, ~clickEventTargetCreator) => {
           }),
         ),
       )
-    }, [item.id]))
+    }, (item.id, clickEventTargetCreator)))
 
   <div className=Style.item onClick>
     <ReactMarkdown
