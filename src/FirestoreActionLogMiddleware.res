@@ -401,7 +401,20 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
       | Action.Next() =>
         let now = Date.now()
         let selectedDateActionLogDate = Date.fromString(selectedDateActionLog.date)
-        let initialBegin = selectedActionLog.end
+
+        let endAndBegin = if selectedActionLog.end == 0.0 {
+          now->Date.toUnixtimeMillis
+        } else {
+          selectedActionLog.end
+        }
+
+        if selectedActionLog.nextId == "" && endAndBegin > 0.0 {
+          writeBatch->addUpdateField(
+            selectedDateActionLogDoc,
+            fieldPath3("actionLogs", selectedActionLog.id, "end"),
+            endAndBegin,
+          )
+        }
 
         switch state.mode {
         | State.Insert(_) =>
@@ -430,7 +443,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
                 (
                   addingActionLogId,
                   {
-                    "begin": initialBegin,
+                    "begin": endAndBegin,
                     "end": 0,
                     "prevId": "",
                     "nextId": "",
@@ -477,7 +490,7 @@ let middleware = (store: Redux.Store.t, action: Action.firestoreActionLog) => {
             selectedDateActionLogDoc,
             fieldPath2("actionLogs", addingActionLogId),
             {
-              "begin": initialBegin,
+              "begin": endAndBegin,
               "end": 0,
               "prevId": selectedActionLog.id,
               "nextId": selectedActionLog.nextId,
