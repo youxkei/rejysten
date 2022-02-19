@@ -234,6 +234,22 @@ module Item = {
 }
 
 module DateActionLog = {
+  let getOldestRecentDateActionLogId = (dateActionLogMap, latestDateActionLogId) => {
+    let rec walk = (dateActionLogId, n) => {
+      if n == Config.recentDateActionLogsNum {
+        dateActionLogId
+      } else {
+        switch dateActionLogMap->Map.String.get(dateActionLogId) {
+        | Some(dateActionLog: State.dateActionLog) => walk(dateActionLog.prevId, n + 1)
+
+        | None => dateActionLogId
+        }
+      }
+    }
+
+    walk(latestDateActionLogId, 1)
+  }
+
   @react.component
   let make = () => {
     open Firebase.Firestore
@@ -253,10 +269,15 @@ module DateActionLog = {
       switch error {
       | None if !loading =>
         let (dateActionLogMap, latestDateActionLogId) = dateActionLogs->toDateActionLogMap
+        let oldestRecentDateActionLogId = getOldestRecentDateActionLogId(
+          dateActionLogMap,
+          latestDateActionLogId,
+        )
         dispatch(
           Action.SetFirestoreDateActionLogState({
             dateActionLogMap: dateActionLogMap,
             latestDateActionLogId: latestDateActionLogId,
+            oldestRecentDateActionLogId: oldestRecentDateActionLogId,
           }),
         )
       | _ => ()

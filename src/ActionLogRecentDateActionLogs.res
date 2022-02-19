@@ -31,7 +31,7 @@ let make = (~focus) => {
   let dateActionLogMap = Redux.useSelector(Selector.Firestore.dateActionLogMap)
   let latestDateActionLogId = Redux.useSelector(Selector.Firestore.latestDateActionLogId)
   let oldestRecentDateActionLogId = Redux.useSelector(
-    Selector.ActionLog.oldestRecentDateActionLogId,
+    Selector.Firestore.oldestRecentDateActionLogId,
   )
 
   let recentDateActionLogs =

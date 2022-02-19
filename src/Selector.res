@@ -10,6 +10,7 @@ module Firestore = {
   let dateActionLogMap = (state: State.t) => state.firestore.dateActionLogMap
   let rootDocumentId = (state: State.t) => state.firestore.rootDocumentId
   let latestDateActionLogId = (state: State.t) => state.firestore.latestDateActionLogId
+  let oldestRecentDateActionLogId = (state: State.t) => state.firestore.oldestRecentDateActionLogId
 
   let getDocument = ({firestore: {documentMap}}: State.t, id) => {
     documentMap->Map.String.get(id)
@@ -161,7 +162,6 @@ module ActionLog = {
   let selectedDateActionLogId = (state: State.t) => state.actionLog.selectedDateActionLogId
   let selectedActionLogId = (state: State.t) => state.actionLog.selectedActionLogId
   let selectedActionLogItemId = (state: State.t) => state.actionLog.selectedActionLogItemId
-  let oldestRecentDateActionLogId = (state: State.t) => state.actionLog.oldestRecentDateActionLogId
   let isInitial = (state: State.t) => state->selectedDateActionLogId == ""
 
   let selectedDateActionLog = (state: State.t) =>
@@ -210,7 +210,7 @@ module ActionLog = {
       | Some(actionLog) => Some(actionLog)
 
       | None =>
-        if selectedDateActionLog.id == state.actionLog.oldestRecentDateActionLogId {
+        if selectedDateActionLog.id == state.firestore.oldestRecentDateActionLogId {
           None
         } else {
           switch state->Firestore.getDateActitonLog(selectedDateActionLog.prevId) {

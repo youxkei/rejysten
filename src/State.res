@@ -163,7 +163,6 @@ type actionLogState = {
   selectedActionLogId: string,
   selectedDateActionLogId: string,
   selectedActionLogItemId: string,
-  oldestRecentDateActionLogId: string,
 }
 
 type firestoreState = {
@@ -172,6 +171,7 @@ type firestoreState = {
   dateActionLogMap: dateActionLogMap,
   rootDocumentId: string,
   latestDateActionLogId: string,
+  oldestRecentDateActionLogId: string,
 }
 
 type t = {
@@ -212,7 +212,6 @@ let initialState: t = {
     selectedDateActionLogId: "",
     selectedActionLogId: "",
     selectedActionLogItemId: "",
-    oldestRecentDateActionLogId: "",
   },
   firestore: {
     documentMap: Map.String.empty,
@@ -220,5 +219,6 @@ let initialState: t = {
     dateActionLogMap: Map.String.empty,
     rootDocumentId: "",
     latestDateActionLogId: "",
+    oldestRecentDateActionLogId: "",
   },
 }

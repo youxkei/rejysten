@@ -103,6 +103,7 @@ type t =
   | SetFirestoreDateActionLogState({
       dateActionLogMap: State.dateActionLogMap,
       latestDateActionLogId: string,
+      oldestRecentDateActionLogId: string,
     })
 
   // actions for data manipulation from state.firestore to each page states
@@ -113,7 +114,6 @@ type t =
       searchedItems: Set.String.t,
     })
   | SetActionLogState({selectedDateActionLogId: string, selectedActionLogId: string})
-  | SetActionLogOldestRecentDateActionLogId({oldestRecentDateActionLogId: string})
 
   // action for Redux DevTool
   | DevToolUpdate({state: State.t})

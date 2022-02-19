@@ -421,12 +421,17 @@ let reducer = (state: State.t, action) => {
       },
     }
 
-  | Action.SetFirestoreDateActionLogState({dateActionLogMap, latestDateActionLogId}) => {
+  | Action.SetFirestoreDateActionLogState({
+      dateActionLogMap,
+      latestDateActionLogId,
+      oldestRecentDateActionLogId,
+    }) => {
       ...state,
       firestore: {
         ...state.firestore,
         dateActionLogMap: dateActionLogMap,
         latestDateActionLogId: latestDateActionLogId,
+        oldestRecentDateActionLogId: oldestRecentDateActionLogId,
       },
     }
 
@@ -456,14 +461,6 @@ let reducer = (state: State.t, action) => {
         ...state.actionLog,
         selectedDateActionLogId: selectedDateActionLogId,
         selectedActionLogId: selectedActionLogId,
-      },
-    }
-
-  | Action.SetActionLogOldestRecentDateActionLogId({oldestRecentDateActionLogId}) => {
-      ...state,
-      actionLog: {
-        ...state.actionLog,
-        oldestRecentDateActionLogId: oldestRecentDateActionLogId,
       },
     }
   }
