@@ -6,7 +6,7 @@
   "scripts": {
     "build": "rimraf dist && bsb -clean-world -make-world && NODE_ENV=production webpack",
     "watch": "bsb -clean-world -make-world -w",
-    "serve": "webpack serve --host 0.0.0.0",
+    "serve": "webpack serve",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
