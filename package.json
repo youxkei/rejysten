@@ -1,0 +1,36 @@
+{
+  "name": "rejysten",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/youxkei/rejysten.git"
+  },
+  "author": "Hisayuki Mima <youxkei@gmail.com>",
+  "license": "CC0-1.0",
+  "bugs": {
+    "url": "https://github.com/youxkei/rejysten/issues"
+  },
+  "homepage": "https://github.com/youxkei/rejysten#readme",
+  "devDependencies": {
+    "@types/react": "^18.0.18",
+    "@types/react-dom": "^18.0.6",
+    "@vitejs/plugin-react": "^2.0.1",
+    "typescript": "^4.8.2",
+    "vite": "^3.0.9",
+    "vite-plugin-checker": "^0.5.0"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "^1.8.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-redux": "^8.0.2",
+    "redux": "^4.2.0"
+  }
+}
