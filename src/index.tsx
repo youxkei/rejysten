@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import { StrictMode } from "react";
+import { StrictMode, Suspense } from "react";
 import { Provider } from "react-redux";
 
 import { App } from "./app";
@@ -11,7 +11,9 @@ if (root) {
   createRoot(root).render(
     <Provider store={store}>
       <StrictMode>
-        <App />
+        <Suspense>
+          <App />
+        </Suspense>
       </StrictMode>
     </Provider>
   );

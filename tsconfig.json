@@ -2,6 +2,7 @@
   "compilerOptions": {
     "lib": ["es2021", "dom"],
     "jsx": "react-jsx",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "skipLibCheck": true
   }
 }
