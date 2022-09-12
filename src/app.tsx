@@ -1,6 +1,5 @@
-import type React from "react";
-
 import { Ulid } from "id128";
+import React from "react";
 
 import { useSelector, useDispatch } from "./store";
 import { app } from "./slice/app";
@@ -11,17 +10,21 @@ export function App() {
   const dispatch = useDispatch();
 
   const { todoCollection } = useRxCollections();
-  const todos = useRxSubscribe(todoCollection.find(), []);
+  const todos = useRxSubscribe(
+    React.useMemo(() => todoCollection.find(), [todoCollection])
+  );
 
   const onChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     dispatch(app.actions.updateText({ text: event.target.value }));
   };
 
   const onClick = () => {
+    const id = Ulid.generate();
+
     todoCollection.insert({
-      todoId: Ulid.generate().toCanonical(),
+      todoId: id.toCanonical(),
       text: text,
-      updatedAt: Date.now(),
+      updatedAt: id.time.getTime(),
     });
   };
 

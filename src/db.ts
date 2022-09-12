@@ -2,7 +2,6 @@ import type {
   RxCollection,
   RxDatabase,
   RxQuery,
-  RxDocument,
   ExtractDocumentTypeFromTypedRxJsonSchema,
 } from "rxdb";
 
@@ -74,22 +73,29 @@ export function useRxCollections(): Collections {
   })();
 }
 
-export function useRxSubscribe<T, U>(query: RxQuery<T, U>, initial: U): U {
-  const state: {
-    onStorageChange: (() => void) | undefined;
-    result: U;
-  } = React.useMemo(
-    () => ({
-      onStorageChange: undefined,
-      result: initial,
-    }),
-    [query]
-  );
+type State = {
+  result: any;
+  onStorageChange: () => void | undefined;
+};
+
+const stateMap: Map<any, State> = new Map();
+
+export function useRxSubscribe<T, U>(query: RxQuery<T, U>): U {
+  const state = stateMap.get(query);
+
+  if (state === undefined) {
+    throw query.exec().then((result) => {
+      stateMap.set(query, {
+        result,
+        onStorageChange: undefined,
+      });
+    });
+  }
 
   React.useEffect(() => {
     const subscription = query.$.subscribe((result) => {
       state.result = result;
-      state?.onStorageChange();
+      state.onStorageChange?.();
     });
 
     return () => subscription.unsubscribe();

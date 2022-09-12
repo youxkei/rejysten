@@ -7,5 +7,11 @@ export default defineConfig({
   server: {
     port: 8080,
   },
-  plugins: [nodePolyfills(), react(), checker({ typescript: true })],
+  plugins: [
+    nodePolyfills(),
+    react({
+      exclude: "*",
+    }),
+    checker({ typescript: true }),
+  ],
 });
