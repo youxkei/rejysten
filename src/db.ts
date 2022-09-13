@@ -75,19 +75,19 @@ export function useRxCollections(): Collections {
 
 type State = {
   result: any;
-  onStorageChange: () => void | undefined;
+  onStorageChanges: Set<() => void>;
 };
 
-const stateMap: Map<any, State> = new Map();
+const stateMap: Map<string, State> = new Map();
 
-export function useRxSubscribe<T, U>(query: RxQuery<T, U>): U {
-  const state = stateMap.get(query);
+export function useRxSubscribe<T, U>(key: string, query: RxQuery<T, U>): U {
+  const state = stateMap.get(key);
 
   if (state === undefined) {
     throw query.exec().then((result) => {
-      stateMap.set(query, {
+      stateMap.set(key, {
         result,
-        onStorageChange: undefined,
+        onStorageChanges: new Set(),
       });
     });
   }
@@ -95,7 +95,8 @@ export function useRxSubscribe<T, U>(query: RxQuery<T, U>): U {
   React.useEffect(() => {
     const subscription = query.$.subscribe((result) => {
       state.result = result;
-      state.onStorageChange?.();
+
+      state.onStorageChanges.forEach((onStorageChange) => onStorageChange());
     });
 
     return () => subscription.unsubscribe();
@@ -103,10 +104,10 @@ export function useRxSubscribe<T, U>(query: RxQuery<T, U>): U {
 
   const sub = React.useCallback(
     (onStorageChange: () => void) => {
-      state.onStorageChange = onStorageChange;
+      state.onStorageChanges.add(onStorageChange);
 
       return () => {
-        state.onStorageChange = undefined;
+        state.onStorageChanges.delete(onStorageChange);
       };
     },
     [state]

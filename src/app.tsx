@@ -10,9 +10,7 @@ export function App() {
   const dispatch = useDispatch();
 
   const { todoCollection } = useRxCollections();
-  const todos = useRxSubscribe(
-    React.useMemo(() => todoCollection.find(), [todoCollection])
-  );
+  const todos = useRxSubscribe("todos", todoCollection.find());
 
   const onChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     dispatch(app.actions.updateText({ text: event.target.value }));
