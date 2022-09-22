@@ -3,6 +3,7 @@ import React from "react";
 import { useSelector, useDispatch } from "../store";
 import { useRxCollections } from "./useRxCollections";
 import { rxdbSync } from "../slice/rxdbSync";
+import { toSnakeCase } from "js-convert-case";
 
 export function useRxSync() {
   const dispatch = useDispatch();
@@ -16,8 +17,10 @@ export function useRxSync() {
       let syncStates = [];
 
       for (const [collectionName, collection] of Object.entries(collections)) {
+        const collectionNameSnakeCase = toSnakeCase(collectionName);
+
         const syncState = collection.syncCouchDB({
-          remote: `https://${user}:${pass}@${domain}/${collectionName}`,
+          remote: `https://${user}:${pass}@${domain}/${collectionNameSnakeCase}`,
           options: {
             live: true,
             retry: true,

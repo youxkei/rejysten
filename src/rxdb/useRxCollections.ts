@@ -1,13 +1,20 @@
 import type { RxCollection, RxDatabase } from "rxdb";
-import type { Todo, Editor } from "./schema";
+import type { Todo, Editor, ListItem, ActionLog } from "./schema";
 
 import { createRxDatabase } from "rxdb";
-import { todoSchema, editorSchema } from "./schema";
+import {
+  todoSchema,
+  editorSchema,
+  listItemSchema,
+  actionLogSchema,
+} from "./schema";
 import { getRxStoragePouch } from "rxdb/plugins/pouchdb";
 
 type Collections = {
   todos: RxCollection<Todo>;
   editors: RxCollection<Editor>;
+  listItems: RxCollection<ListItem>;
+  actionLogs: RxCollection<ActionLog>;
 };
 
 let data:
@@ -23,20 +30,29 @@ export function useRxCollections(): Collections {
   }
 
   throw (async function () {
-    const db = await createRxDatabase<Collections>({
-      name: "db",
-      storage: getRxStoragePouch("idb"),
-    });
+    try {
+      const db = await createRxDatabase<Collections>({
+        name: "db",
+        storage: getRxStoragePouch("idb"),
+      });
 
-    const collections = await db.addCollections<Collections>({
-      todos: {
-        schema: todoSchema,
-      },
-      editors: {
-        schema: editorSchema,
-      },
-    });
-
-    data = { db, collections };
+      const collections = await db.addCollections<Collections>({
+        todos: {
+          schema: todoSchema,
+        },
+        editors: {
+          schema: editorSchema,
+        },
+        listItems: {
+          schema: listItemSchema,
+        },
+        actionLogs: {
+          schema: actionLogSchema,
+        },
+      });
+      data = { db, collections };
+    } catch (e) {
+      console.error(e);
+    }
   })();
 }
