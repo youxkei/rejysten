@@ -3,7 +3,7 @@ import { rxdbSync } from "./slice/rxdbSync";
 
 export function RxdbSyncConfig() {
   const dispatch = useDispatch();
-  const { domain, user, pass, syncing } = useSelector(
+  const { domain, user, pass, syncing, errors } = useSelector(
     (state) => state.rxdbSync
   );
 
@@ -24,13 +24,16 @@ export function RxdbSyncConfig() {
   };
 
   return (
-    <div>
-      <input value={domain} onChange={onDomainChange} />
-      <input value={user} onChange={onUserChange} />
-      <input value={pass} onChange={onPassChange} />
-      <button disabled={syncing} onClick={onClick}>
-        start sync
-      </button>
-    </div>
+    <>
+      <div>
+        <input value={domain} onChange={onDomainChange} />
+        <input value={user} onChange={onUserChange} />
+        <input value={pass} onChange={onPassChange} />
+        <button disabled={syncing} onClick={onClick}>
+          start sync
+        </button>
+      </div>
+      <span>{errors}</span>
+    </>
   );
 }

@@ -1,9 +1,11 @@
 import React from "react";
 
-import { useSelector } from "../store";
+import { useSelector, useDispatch } from "../store";
 import { useRxCollections } from "./useRxCollections";
+import { rxdbSync } from "../slice/rxdbSync";
 
 export function useRxSync() {
+  const dispatch = useDispatch();
   const collections = useRxCollections();
   const { domain, user, pass, syncing } = useSelector(
     (state) => state.rxdbSync
@@ -14,15 +16,21 @@ export function useRxSync() {
       let syncStates = [];
 
       for (const [collectionName, collection] of Object.entries(collections)) {
-        syncStates.push(
-          collection.syncCouchDB({
-            remote: `https://${user}:${pass}@${domain}/${collectionName}`,
-            options: {
-              live: true,
-              retry: true,
-            },
-          })
-        );
+        const syncState = collection.syncCouchDB({
+          remote: `https://${user}:${pass}@${domain}/${collectionName}`,
+          options: {
+            live: true,
+            retry: true,
+          },
+        });
+
+        syncState.error$.subscribe((error) => {
+          dispatch(
+            rxdbSync.actions.syncError({ error: `${collectionName}: ${error}` })
+          );
+        });
+
+        syncStates.push(syncState);
       }
 
       return () => {
