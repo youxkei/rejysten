@@ -1,3 +1,5 @@
+import type { RxCouchDBReplicationState } from "rxdb";
+
 import React from "react";
 
 import { useSelector, useDispatch } from "../store";
@@ -14,7 +16,7 @@ export function useRxSync() {
 
   React.useEffect(() => {
     if (syncing) {
-      let syncStates = [];
+      const syncStates = [] as RxCouchDBReplicationState[];
 
       for (const [collectionName, collection] of Object.entries(collections)) {
         const collectionNameSnakeCase = toSnakeCase(collectionName);

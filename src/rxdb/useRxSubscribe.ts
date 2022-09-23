@@ -7,10 +7,14 @@ function identity<T>(x: T): T {
   return x;
 }
 
-type State = {
-  result: { content: any };
-  onStorageChanges: Set<() => void>;
-};
+type State =
+  | {
+      result: { content: unknown };
+      onStorageChanges: Set<() => void>;
+    }
+  | {
+      error: unknown;
+    };
 
 const stateMap: Map<string, State> = new Map();
 
@@ -22,16 +26,25 @@ export function useRxSubscribe<T>(
   const state = stateMap.get(key);
 
   if (state === undefined) {
-    throw query.exec().then((result: any) => {
-      stateMap.set(key, {
-        result: { content: result },
-        onStorageChanges: new Set(),
+    throw query
+      .exec()
+      .then((result: unknown) => {
+        stateMap.set(key, {
+          result: { content: result },
+          onStorageChanges: new Set(),
+        });
+      })
+      .catch((error) => {
+        stateMap.set(key, { error });
       });
-    });
+  }
+
+  if ("error" in state) {
+    throw state.error;
   }
 
   React.useEffect(() => {
-    const subscription = query.$.subscribe((result: any) => {
+    const subscription = query.$.subscribe((result) => {
       state.result = { content: result };
       state.onStorageChanges.forEach((onStorageChange) => onStorageChange());
     });
@@ -66,5 +79,5 @@ export function useRxSubscribe<T>(
     undefined,
     identity,
     isEqualContent
-  ).content;
+  ).content as T;
 }
