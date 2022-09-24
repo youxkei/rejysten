@@ -1,15 +1,8 @@
-import type { RxCollection, RxDatabase, RxError } from "rxdb";
-import type { Todo, Editor, ListItem, ActionLog } from "./schema";
+import type { RxDatabase } from "rxdb";
+import type { Collections } from "./collections";
 
 import { createRxDatabase } from "rxdb";
 import { getRxStoragePouch } from "rxdb/plugins/pouchdb";
-
-export type Collections = {
-  todos: RxCollection<Todo>;
-  editors: RxCollection<Editor>;
-  listItems: RxCollection<ListItem>;
-  actionLogs: RxCollection<ActionLog>;
-};
 
 let database: RxDatabase<Collections> | undefined;
 let error: unknown;
@@ -23,7 +16,7 @@ export function useRxDatabase(): RxDatabase<Collections> {
     return database;
   }
 
-  throw (async function () {
+  throw (async () => {
     try {
       database = await createRxDatabase<Collections>({
         name: "rejysten",

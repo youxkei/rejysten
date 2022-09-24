@@ -1,13 +1,7 @@
-import type { Collections } from "./useRxDatabase";
+import type { Collections } from "./collections";
 
 import { useRxDatabase } from "./useRxDatabase";
-
-import {
-  todoSchema,
-  editorSchema,
-  listItemSchema,
-  actionLogSchema,
-} from "./schema";
+import { collectionCreators } from "./collections";
 
 let collections: Collections | undefined;
 let error: unknown;
@@ -23,22 +17,9 @@ export function useRxCollections(): Collections {
 
   const db = useRxDatabase();
 
-  throw (async function () {
+  throw (async () => {
     try {
-      collections = await db.addCollections({
-        todos: {
-          schema: todoSchema,
-        },
-        editors: {
-          schema: editorSchema,
-        },
-        listItems: {
-          schema: listItemSchema,
-        },
-        actionLogs: {
-          schema: actionLogSchema,
-        },
-      });
+      collections = await db.addCollections(collectionCreators);
     } catch (err) {
       error = err;
     }
