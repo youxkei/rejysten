@@ -71,6 +71,7 @@ export const collectionCreators = {
         updatedAt: { type: "integer" },
       },
       required: ["id", "beginAt", "endAt", "text", "updatedAt"],
+      indexes: ["beginAt"],
     },
   },
 } as const;
