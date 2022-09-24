@@ -6,6 +6,7 @@ import { addPouchPlugin } from "rxdb/plugins/pouchdb";
 import PouchDBAdapterIDB from "pouchdb-adapter-idb";
 import PouchDBAdapterHTTP from "pouchdb-adapter-http";
 
+export { useRxDatabase } from "./useRxDatabase";
 export { useRxCollections } from "./useRxCollections";
 export { useRxSubscribe } from "./useRxSubscribe";
 

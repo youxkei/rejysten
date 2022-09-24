@@ -3,28 +3,20 @@ import { StrictMode, Suspense } from "react";
 
 import { App } from "./app";
 import { Provider } from "./store";
-import { ErrorBoundary } from "react-error-boundary";
+import { ErrorBoundary } from "./errorBoundary";
 
 const root = document.getElementById("root");
 
 if (root) {
   createRoot(root).render(
-    <Provider>
-      <StrictMode>
-        <ErrorBoundary
-          fallbackRender={({ error, resetErrorBoundary }) => (
-            <>
-              <div>Something went wrong.</div>
-              <pre>{`${error}`}</pre>
-              <button onClick={resetErrorBoundary}>Try again</button>
-            </>
-          )}
-        >
-          <Suspense>
+    <StrictMode>
+      <Provider>
+        <Suspense>
+          <ErrorBoundary>
             <App />
-          </Suspense>
-        </ErrorBoundary>
-      </StrictMode>
-    </Provider>
+          </ErrorBoundary>
+        </Suspense>
+      </Provider>
+    </StrictMode>
   );
 }
