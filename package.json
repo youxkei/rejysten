@@ -21,6 +21,7 @@
   "devDependencies": {
     "@types/react": "^18.0.18",
     "@types/react-dom": "^18.0.6",
+    "@vanilla-extract/vite-plugin": "^3.6.0",
     "@vitejs/plugin-react": "^2.0.1",
     "node-stdlib-browser": "^1.2.0",
     "typescript": "^4.8.2",
@@ -30,6 +31,7 @@
   },
   "dependencies": {
     "@reduxjs/toolkit": "^1.8.5",
+    "@vanilla-extract/css": "^1.9.1",
     "id128": "^1.6.6",
     "js-convert-case": "^4.2.0",
     "pouchdb-adapter-http": "^7.3.0",
@@ -42,5 +44,10 @@
     "redux-persist": "^6.0.0",
     "rxdb": "^12.7.16",
     "use-sync-external-store": "^1.2.0"
+  },
+  "overrides": {
+    "@vanilla-extract/vite-plugin": {
+      "vite": "^3"
+    }
   }
 }

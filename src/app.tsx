@@ -6,8 +6,30 @@ import { app } from "./slice/app";
 import { useRxCollections, useRxSubscribe } from "./rxdb";
 import { useRxSync } from "./rxdb/useRxSync";
 import { RxdbSyncConfig } from "./rxdbSyncConfig";
+import { ItemList } from "./itemList";
 
 export function App() {
+  useRxSync();
+
+  const id = useSelector((state) => state.app.id);
+  const dispatch = useDispatch();
+
+  const onChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    React.startTransition(() => {
+      dispatch(app.actions.updateId({ id: event.target.value }));
+    });
+  };
+
+  return (
+    <>
+      {id === "" ? null : <ItemList id={id} />}
+      <input value={id} onChange={onChange} />
+      <RxdbSyncConfig />
+    </>
+  );
+}
+
+function Todo() {
   useRxSync();
 
   const text = useSelector((state) => state.app.text);
