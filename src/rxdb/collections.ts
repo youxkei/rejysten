@@ -14,7 +14,7 @@ export const collectionCreators = {
       properties: {
         id: { type: "string", maxLength: 26 },
         text: { type: "string" },
-        updatedAt: { type: "number" },
+        updatedAt: { type: "integer" },
       },
       required: ["id", "text", "updatedAt"],
     },
@@ -29,7 +29,7 @@ export const collectionCreators = {
       properties: {
         id: { type: "string", maxLength: 26 },
         text: { type: "string" },
-        updatedAt: { type: "number" },
+        updatedAt: { type: "integer" },
       },
       required: ["id", "text", "updatedAt"],
     },
@@ -49,7 +49,7 @@ export const collectionCreators = {
         parentId: { type: "string", maxLength: 26 },
         text: { type: "string" },
 
-        updatedAt: { type: "number" },
+        updatedAt: { type: "integer" },
       },
       required: ["id", "prevId", "nextId", "parentId", "text", "updatedAt"],
     },
@@ -64,11 +64,11 @@ export const collectionCreators = {
       properties: {
         id: { type: "string", maxLength: 26 },
 
-        beginAt: { type: "number" },
-        endAt: { type: "number" },
+        beginAt: { type: "integer" },
+        endAt: { type: "integer" },
         text: { type: "string" },
 
-        updatedAt: { type: "number" },
+        updatedAt: { type: "integer" },
       },
       required: ["id", "beginAt", "endAt", "text", "updatedAt"],
     },
