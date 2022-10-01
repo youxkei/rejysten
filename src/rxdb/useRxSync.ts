@@ -1,11 +1,11 @@
 import type { RxCouchDBReplicationState } from "rxdb";
 
-import React from "react";
-
-import { useSelector, useDispatch } from "../store";
-import { useRxCollections } from "./useRxCollections";
-import { rxdbSync } from "../slice/rxdbSync";
+import {useEffect} from "react";
 import { toSnakeCase } from "js-convert-case";
+
+import { useSelector, useDispatch } from "@/store";
+import { useRxCollections } from "@/rxdb/useRxCollections";
+import { rxdbSync } from "@/slices/rxdbSync";
 
 export function useRxSync() {
   const dispatch = useDispatch();
@@ -14,7 +14,7 @@ export function useRxSync() {
     (state) => state.rxdbSync
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (syncing) {
       const syncStates = [] as RxCouchDBReplicationState[];
 

@@ -7,9 +7,10 @@ import { RxDBMigrationPlugin } from "rxdb/plugins/migration";
 import PouchDBAdapterIDB from "pouchdb-adapter-idb";
 import PouchDBAdapterHTTP from "pouchdb-adapter-http";
 
-export { useRxDatabase } from "./useRxDatabase";
-export { useRxCollections } from "./useRxCollections";
-export { useRxSubscribe } from "./useRxSubscribe";
+export { useRxDatabase } from "@/rxdb/useRxDatabase";
+export { useRxCollections } from "@/rxdb/useRxCollections";
+export { useRxSubscribe } from "@/rxdb/useRxSubscribe";
+export { useRxSync } from "@/rxdb/useRxSync";
 
 addRxPlugin(RxDBLeaderElectionPlugin);
 addRxPlugin(RxDBReplicationCouchDBPlugin);

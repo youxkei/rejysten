@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import checker from "vite-plugin-checker";
 import nodePolyfills from "vite-plugin-node-stdlib-browser";
 import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
+import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   server: {
@@ -13,5 +14,6 @@ export default defineConfig({
     react(),
     checker({ typescript: true }),
     vanillaExtractPlugin(),
+    tsconfigPaths(),
   ],
 });

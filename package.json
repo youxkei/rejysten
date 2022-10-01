@@ -19,6 +19,8 @@
   },
   "homepage": "https://github.com/youxkei/rejysten#readme",
   "devDependencies": {
+    "@types/pouchdb-adapter-http": "^6.1.3",
+    "@types/pouchdb-adapter-idb": "^6.1.4",
     "@types/react": "^18.0.18",
     "@types/react-dom": "^18.0.6",
     "@vanilla-extract/vite-plugin": "^3.6.0",
@@ -27,7 +29,8 @@
     "typescript": "^4.8.2",
     "vite": "^3.0.9",
     "vite-plugin-checker": "^0.5.0",
-    "vite-plugin-node-stdlib-browser": "^0.1.1"
+    "vite-plugin-node-stdlib-browser": "^0.1.1",
+    "vite-tsconfig-paths": "^3.5.1"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^1.8.5",

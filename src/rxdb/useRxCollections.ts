@@ -1,7 +1,7 @@
-import type { Collections } from "./collections";
+import type { Collections } from "@/rxdb/collections";
 
-import { useRxDatabase } from "./useRxDatabase";
-import { collectionCreators } from "./collections";
+import { useRxDatabase } from "@/rxdb/useRxDatabase";
+import { collectionCreators } from "@/rxdb/collections";
 
 let collections: Collections | undefined;
 let error: unknown;

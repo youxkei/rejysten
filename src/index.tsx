@@ -1,9 +1,9 @@
 import { createRoot } from "react-dom/client";
 import { StrictMode, Suspense } from "react";
 
-import { App } from "./app";
-import { Provider } from "./store";
-import { ErrorBoundary } from "./errorBoundary";
+import { App } from "@/components/app";
+import { Provider } from "@/store";
+import { ErrorBoundary } from "@/errorBoundary";
 
 const root = document.getElementById("root");
 

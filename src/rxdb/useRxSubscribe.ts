@@ -1,6 +1,6 @@
 import type { RxQuery } from "rxdb";
 
-import React from "react";
+import { useCallback, useMemo } from "react";
 import { useSyncExternalStoreWithSelector } from "use-sync-external-store/with-selector";
 
 function identity<T>(x: T): T {
@@ -10,7 +10,6 @@ function identity<T>(x: T): T {
 type State =
   | {
       result: { content: unknown };
-      onStorageChanges: Set<() => void>;
     }
   | {
       error: unknown;
@@ -26,45 +25,35 @@ export function useRxSubscribe<T>(
   const state = stateMap.get(key);
 
   if (state === undefined) {
-    throw query
-      .exec()
-      .then((result: unknown) => {
+    throw (async () => {
+      try {
         stateMap.set(key, {
-          result: { content: result },
-          onStorageChanges: new Set(),
+          result: { content: await query.exec() },
         });
-      })
-      .catch((error) => {
+      } catch (error) {
         stateMap.set(key, { error });
-      });
+      }
+    })();
   }
 
   if ("error" in state) {
     throw state.error;
   }
 
-  React.useEffect(() => {
-    const subscription = query.$.subscribe((result) => {
-      state.result = { content: result };
-      state.onStorageChanges.forEach((onStorageChange) => onStorageChange());
-    });
-
-    return () => subscription.unsubscribe();
-  }, [state]);
-
-  const sub = React.useCallback(
+  const sub = useCallback(
     (onStorageChange: () => void) => {
-      state.onStorageChanges.add(onStorageChange);
+      const subscription = query.$.subscribe((result) => {
+        state.result = { content: result };
+        onStorageChange();
+      });
 
-      return () => {
-        state.onStorageChanges.delete(onStorageChange);
-      };
+      return () => subscription.unsubscribe();
     },
     [state]
   );
 
-  const getSnapshot = React.useCallback(() => state.result, [state]);
-  const isEqualContent = React.useMemo(() => {
+  const getSnapshot = useCallback(() => state.result, [state]);
+  const isEqualContent = useMemo(() => {
     if (isEqual) {
       return (lhs: { content: T }, rhs: { content: T }) =>
         isEqual(lhs.content, rhs.content);

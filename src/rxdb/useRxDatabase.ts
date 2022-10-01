@@ -1,5 +1,5 @@
 import type { RxDatabase } from "rxdb";
-import type { Collections } from "./collections";
+import type { Collections } from "@/rxdb/collections";
 
 import { createRxDatabase } from "rxdb";
 import { getRxStoragePouch } from "rxdb/plugins/pouchdb";

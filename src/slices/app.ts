@@ -7,6 +7,7 @@ export const app = createSlice({
   initialState: {
     text: "Hello, world!",
     id: "",
+    count: 0,
   },
   reducers: {
     updateText: (state, { payload }: PayloadAction<{ text: string }>) => {
@@ -14,6 +15,9 @@ export const app = createSlice({
     },
     updateId: (state, { payload }: PayloadAction<{ id: string }>) => {
       state.id = payload.id;
+    },
+    increment: (state) => {
+      state.count = state.count+1;
     },
   },
 });

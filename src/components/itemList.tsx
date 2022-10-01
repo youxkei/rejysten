@@ -1,6 +1,6 @@
-import { useRxCollections, useRxSubscribe } from "./rxdb";
-import { BulletList } from "./bulletList";
-import { Bullet } from "./bullet";
+import { useRxCollections, useRxSubscribe } from "@/rxdb";
+import { BulletList } from "@/components/bulletList";
+import { Bullet } from "@/components/bullet";
 
 export function ItemList({ id }: { id: string }) {
   return (

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { styles } from "./styles.css";
+import { styles } from "@/styles.css";
 
 export function BulletList(props: {
   bullet: ReactNode;

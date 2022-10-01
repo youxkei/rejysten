@@ -1,5 +1,5 @@
-import { useSelector, useDispatch } from "./store";
-import { rxdbSync } from "./slice/rxdbSync";
+import { useSelector, useDispatch } from "@/store";
+import { rxdbSync } from "@/slices/rxdbSync";
 
 export function RxdbSyncConfig() {
   const dispatch = useDispatch();

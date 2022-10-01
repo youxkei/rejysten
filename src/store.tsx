@@ -1,4 +1,5 @@
 import type { TypedUseSelectorHook } from "react-redux";
+import type { ReactNode } from "react";
 
 import { configureStore } from "@reduxjs/toolkit";
 import { combineReducers } from "redux";
@@ -6,7 +7,7 @@ import {
   useDispatch as useReduxDispatch,
   useSelector as useReduxSelector,
 } from "react-redux";
-import * as ReactRedux from "react-redux";
+import { Provider as ReactReduxProvider } from "react-redux";
 import {
   persistStore,
   persistReducer,
@@ -20,8 +21,8 @@ import {
 import { PersistGate } from "redux-persist/integration/react";
 import storage from "redux-persist/lib/storage";
 
-import { app } from "./slice/app";
-import { rxdbSync } from "./slice/rxdbSync";
+import { app } from "@/slices/app";
+import { rxdbSync } from "@/slices/rxdbSync";
 
 const persistConfig = {
   key: "redux",
@@ -49,13 +50,13 @@ export const store = configureStore({
 
 const persistor = persistStore(store);
 
-export function Provider(props: { children: React.ReactNode }) {
+export function Provider(props: { children: ReactNode }) {
   return (
-    <ReactRedux.Provider store={store}>
+    <ReactReduxProvider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         {props.children}
       </PersistGate>
-    </ReactRedux.Provider>
+    </ReactReduxProvider>
   );
 }
 

@@ -1,5 +1,5 @@
 import { ErrorBoundary as ReactErrorBoundary } from "react-error-boundary";
-import { useRxDatabase } from "./rxdb";
+import { useRxDatabase } from "@/rxdb";
 
 export function ErrorBoundary(props: { children: React.ReactNode }) {
   const db = useRxDatabase();
