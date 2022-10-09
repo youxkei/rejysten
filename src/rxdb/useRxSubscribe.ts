@@ -40,7 +40,7 @@ export function useRxSubscribe<T>(
     throw state.error;
   }
 
-  const sub = useCallback(
+  const subscribe = useCallback(
     (onStorageChange: () => void) => {
       const subscription = query.$.subscribe((result) => {
         state.result = { content: result };
@@ -63,7 +63,7 @@ export function useRxSubscribe<T>(
   }, [isEqual]);
 
   return useSyncExternalStoreWithSelector(
-    sub,
+    subscribe,
     getSnapshot,
     undefined,
     identity,

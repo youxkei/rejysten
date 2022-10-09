@@ -2,7 +2,7 @@ import type { ChangeEvent } from "react";
 
 import { useSelector, useDispatch } from "@/store";
 import { app } from "@/slices/app";
-import { useRxSync } from "@/rxdb/useRxSync";
+import { useRxSync } from "@/rxdb";
 import { RxdbSyncConfig } from "@/components/rxdbSyncConfig";
 import { ItemList } from "@/components/itemList";
 
