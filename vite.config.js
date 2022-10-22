@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import solidPlugin from "vite-plugin-solid";
 import checker from "vite-plugin-checker";
 import nodePolyfills from "vite-plugin-node-stdlib-browser";
 import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
@@ -10,8 +10,8 @@ export default defineConfig({
     port: 8080,
   },
   plugins: [
+    solidPlugin(),
     nodePolyfills(),
-    react(),
     checker({ typescript: true }),
     vanillaExtractPlugin(),
     tsconfigPaths(),

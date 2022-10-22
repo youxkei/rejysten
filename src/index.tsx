@@ -1,22 +1,19 @@
-import { createRoot } from "react-dom/client";
-import { StrictMode, Suspense } from "react";
+import { render, Suspense } from "solid-js/web";
 
-import { App } from "@/components/app";
-import { Provider } from "@/store";
-import { ErrorBoundary } from "@/errorBoundary";
+import { Todo } from "@/components/poc/todo";
+
+function App() {
+  return (
+    <>
+      <Suspense>
+        <p>In Suspense</p>
+        <Todo />
+      </Suspense>
+    </>
+  );
+}
 
 const root = document.getElementById("root");
-
 if (root) {
-  createRoot(root).render(
-    <StrictMode>
-      <Provider>
-        <Suspense>
-          <ErrorBoundary>
-            <App />
-          </ErrorBoundary>
-        </Suspense>
-      </Provider>
-    </StrictMode>
-  );
+  render(() => <App />, root);
 }

@@ -1,9 +1,9 @@
-import type {
-  RxCollection,
-  ExtractDocumentTypeFromTypedRxJsonSchema,
-} from "rxdb";
+import { RxCollection, ExtractDocumentTypeFromTypedRxJsonSchema } from "rxdb";
+import { createResource, createRoot } from "solid-js";
 
-export const collectionCreators = {
+import { database } from "@/rxdb/database";
+
+const collectionCreators = {
   todos: {
     schema: {
       title: "todo schema",
@@ -83,3 +83,12 @@ export type Collections = {
     >
   >;
 };
+
+export const collections = createRoot(
+  () =>
+    createResource(database, (database) => 
+      database.addCollections(
+        collectionCreators
+      ) as Promise<Collections>
+    )[0]
+);

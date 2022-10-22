@@ -1,12 +1,14 @@
 {
   "compilerOptions": {
+    "strict": true,
     "target": "es2021",
+    "module": "esnext",
     "lib": ["es2021", "dom"],
-    "jsx": "react-jsx",
+    "jsx": "preserve",
     "moduleResolution": "node",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "strictNullChecks": true,
+    "jsxImportSource": "solid-js",
 
     "baseUrl": ".",
     "paths": {

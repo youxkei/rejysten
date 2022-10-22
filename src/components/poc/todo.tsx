@@ -1,27 +1,22 @@
-import type { ChangeEvent } from "react";
-
 import { Ulid } from "id128";
+import { For } from "solid-js";
 
-import { useSelector, useDispatch } from "@/store";
-import { app } from "@/slices/app";
-import { useRxSync, useRxCollections, useRxSubscribe } from "@/rxdb";
-import { RxdbSyncConfig } from "@/components/rxdbSyncConfig";
+import { collections, subscribe } from "@/rxdb";
 
 export function Todo() {
-  useRxSync();
+  const todos = subscribe(() => collections()?.todos.find(), []);
 
-  const text = useSelector((state) => state.app.text);
-  const dispatch = useDispatch();
+  const editor = subscribe(
+    () => collections()?.editors.findOne("const"),
+    undefined
+  );
 
-  const collections = useRxCollections();
-  const todos = useRxSubscribe("todos", collections.todos.find());
+  const text = () => editor()?.text ?? "";
 
-  const onChange = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch(app.actions.updateText({ text: event.target.value }));
-
-    collections.editors.upsert({
+  const onInput = (event: { currentTarget: HTMLInputElement }) => {
+    collections()?.editors.upsert({
       id: "const",
-      text: event.target.value,
+      text: event.currentTarget.value,
       updatedAt: Date.now(),
     });
   };
@@ -29,9 +24,9 @@ export function Todo() {
   const onClick = () => {
     const id = Ulid.generate();
 
-    collections.todos.insert({
+    collections()?.todos.insert({
       id: id.toCanonical(),
-      text: text,
+      text: text(),
       updatedAt: id.time.getTime(),
     });
   };
@@ -39,13 +34,11 @@ export function Todo() {
   return (
     <>
       <ul>
-        {todos.map((todo) => (
-          <li key={todo.id}>{todo.text}</li>
-        ))}
+        <For each={todos()}>{(todo, _) => <li>{todo.text}</li>}</For>
       </ul>
-      <input value={text} onChange={onChange} />
+      <p>{text()}</p>
+      <input value={text()} onInput={onInput} />
       <button onClick={onClick}>add</button>
-      <RxdbSyncConfig />
     </>
   );
 }

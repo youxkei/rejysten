@@ -21,32 +21,25 @@
   "devDependencies": {
     "@types/pouchdb-adapter-http": "^6.1.3",
     "@types/pouchdb-adapter-idb": "^6.1.4",
-    "@types/react": "^18.0.18",
-    "@types/react-dom": "^18.0.6",
     "@vanilla-extract/vite-plugin": "^3.6.0",
     "@vitejs/plugin-react": "^2.0.1",
+    "babel-preset-solid": "^1.6.0",
     "node-stdlib-browser": "^1.2.0",
     "typescript": "^4.8.2",
-    "vite": "^3.0.9",
+    "vite": "^3.1.8",
     "vite-plugin-checker": "^0.5.0",
     "vite-plugin-node-stdlib-browser": "^0.1.1",
+    "vite-plugin-solid": "^2.3.10",
     "vite-tsconfig-paths": "^3.5.1"
   },
   "dependencies": {
-    "@reduxjs/toolkit": "^1.8.5",
     "@vanilla-extract/css": "^1.9.1",
     "id128": "^1.6.6",
     "js-convert-case": "^4.2.0",
     "pouchdb-adapter-http": "^7.3.0",
     "pouchdb-adapter-idb": "^7.3.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-error-boundary": "^3.1.4",
-    "react-redux": "^8.0.2",
-    "redux": "^4.2.0",
-    "redux-persist": "^6.0.0",
-    "rxdb": "^12.7.16",
-    "use-sync-external-store": "^1.2.0"
+    "rxdb": "^13.6.0",
+    "solid-js": "^1.6.0"
   },
   "overrides": {
     "@vanilla-extract/vite-plugin": {
