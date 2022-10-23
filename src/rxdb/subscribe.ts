@@ -2,7 +2,7 @@ import type { RxQuery } from "rxdb";
 
 import { createMemo, createResource, onCleanup } from "solid-js";
 
-export function subscribe<T>(
+export function useSubscribe<T>(
   query: () => RxQuery<any, T> | undefined,
   initialValue?: T,
   isEqual?: (lhs: T | undefined, rhs: T | undefined) => boolean
@@ -31,7 +31,7 @@ export function subscribe<T>(
 
   mutateResource = mutate;
 
-  onCleanup(() => subscription.unsubscribe());
+  onCleanup(() => subscription?.unsubscribe());
 
   return createMemo(
     () => {

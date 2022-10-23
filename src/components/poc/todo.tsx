@@ -1,12 +1,14 @@
 import { Ulid } from "id128";
 import { For } from "solid-js";
 
-import { collections, subscribe } from "@/rxdb";
+import { useCollections, useSubscribe } from "@/rxdb";
 
 export function Todo() {
-  const todos = subscribe(() => collections()?.todos.find(), []);
+  const collections = useCollections();
 
-  const editor = subscribe(
+  const todos = useSubscribe(() => collections()?.todos.find(), []);
+
+  const editor = useSubscribe(
     () => collections()?.editors.findOne("const"),
     undefined
   );

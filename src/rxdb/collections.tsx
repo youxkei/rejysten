@@ -1,7 +1,14 @@
 import { RxCollection, ExtractDocumentTypeFromTypedRxJsonSchema } from "rxdb";
-import { createResource, createRoot } from "solid-js";
+import {
+  JSX,
+  Resource,
+  createResource,
+  onCleanup,
+  createContext,
+  useContext,
+} from "solid-js";
 
-import { database } from "@/rxdb/database";
+import { useDatabase } from "@/rxdb/database";
 
 const collectionCreators = {
   todos: {
@@ -84,11 +91,28 @@ export type Collections = {
   >;
 };
 
-export const collections = createRoot(
-  () =>
-    createResource(database, (database) => 
-      database.addCollections(
-        collectionCreators
-      ) as Promise<Collections>
-    )[0]
-);
+const context = createContext<Resource<Collections>>();
+
+export function Provider(props: { children: JSX.Element }) {
+  const database = useDatabase();
+
+  const [collections] = createResource(
+    database,
+    (database) =>
+      database.addCollections(collectionCreators) as Promise<Collections>
+  );
+
+  onCleanup(() => {
+    for (const [_, collection] of Object.entries(collections() ?? {})) {
+      collection.destroy();
+    }
+  });
+
+  return (
+    <context.Provider value={collections}>{props.children}</context.Provider>
+  );
+}
+
+export function useCollections() {
+  return useContext(context)!;
+}
