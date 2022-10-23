@@ -1,6 +1,6 @@
 import { render, Suspense } from "solid-js/web";
 
-import { Provider } from "@/rxdb";
+import { Provider as RxdbProvider } from "@/rxdb";
 import { ErrorBoundary } from "@/components/errorBoundary";
 import { Todo } from "@/components/poc/todo";
 import { Broken } from "@/components/poc/broken";
@@ -11,11 +11,11 @@ function App() {
     <>
       <ErrorBoundary>
         <Suspense>
-          <Provider>
+          <RxdbProvider>
             <Todo />
             <Broken />
             <Lazy />
-          </Provider>
+          </RxdbProvider>
         </Suspense>
       </ErrorBoundary>
     </>
