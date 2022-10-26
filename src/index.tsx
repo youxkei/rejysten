@@ -5,6 +5,7 @@ import { ErrorBoundary } from "@/components/errorBoundary";
 import { Todo } from "@/components/poc/todo";
 import { Broken } from "@/components/poc/broken";
 import { Lazy } from "@/components/poc/lazy";
+import { RxdbSync } from "@/components/rxdbSync";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
             <Todo />
             <Broken />
             <Lazy />
+            <RxdbSync />
           </RxdbProvider>
         </Suspense>
       </ErrorBoundary>
