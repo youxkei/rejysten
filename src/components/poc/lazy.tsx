@@ -1,27 +1,30 @@
-import { Show, createSignal, createResource, startTransition } from "solid-js";
+import { createSignal, createResource, startTransition } from "solid-js";
 
-function LazyComponent() {
-  const [message] = createResource(async () => {
-    await new Promise((r) => setTimeout(r, 5000));
-    return "Loaded";
-  });
+function LazyComponent(props: { message: string }) {
+  const [message] = createResource(
+    () => props.message,
+    async (message) => {
+      await new Promise((r) => setTimeout(r, 500));
+      return message;
+    }
+  );
 
   return <p>{message()}</p>;
 }
 
 export function Lazy() {
-  const [load, setLoad] = createSignal(false);
+  const [message, setMessage] = createSignal("");
 
   return (
     <>
+      <LazyComponent message={message()} />
       <p>
-        <button onClick={() => startTransition(() => setLoad(!load()))}>
-          {load() ? "unload" : "load"}
-        </button>
+        {"Lazy: "}
+        <input
+          value={message()}
+          onInput={(e) => { const newMessage = e.currentTarget.value; startTransition(() => setMessage(newMessage)); }}
+        />
       </p>
-      <Show when={load()}>
-        <LazyComponent />
-      </Show>
     </>
   );
 }
