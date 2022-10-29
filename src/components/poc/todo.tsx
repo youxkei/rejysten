@@ -8,10 +8,7 @@ export function Todo() {
 
   const todos = useSubscribe(() => collections()?.todos.find(), []);
 
-  const editor = useSubscribe(
-    () => collections()?.editors.findOne("const"),
-    undefined
-  );
+  const editor = useSubscribe( () => collections()?.editors.findOne("const"), null);
 
   const text = () => editor()?.text ?? "";
 
