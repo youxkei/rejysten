@@ -96,16 +96,18 @@ const context = createContext<Resource<Collections>>();
 export function Provider(props: { children: JSX.Element }) {
   const database = useDatabase();
 
-  const [collections] = createResource(
-    database,
-    (database) =>
-      database.addCollections(collectionCreators) as Promise<Collections>
-  );
+  const [collections] = createResource(database, async (database) => {
+    const collections: Collections = await database.addCollections(
+      collectionCreators
+    );
 
-  onCleanup(() => {
-    for (const [_, collection] of Object.entries(collections() ?? {})) {
-      collection.destroy();
-    }
+    onCleanup(() => {
+      for (const [_, collection] of Object.entries(collections)) {
+        collection.destroy();
+      }
+    });
+
+    return collections;
   });
 
   return (

@@ -3,14 +3,10 @@ import { Show, For } from "solid-js";
 import { useCollections, useSubscribe } from "@/rxdb";
 import { BulletList } from "@/components/bulletList";
 
-function Bullet() {
-  return <>•</>;
-}
-
 export function ItemList(props: { id: string }) {
   return (
     <BulletList
-      bullet={<Bullet />}
+      bullet={"•"}
       item={<ItemListItem id={props.id} />}
       child={<ItemListChildren parentId={props.id} />}
     />
@@ -34,7 +30,8 @@ export function ItemListItem(props: { id: string }) {
 export function ItemListChildren(props: { parentId: string }) {
   const collections = useCollections();
   const children = useSubscribe(
-    () => collections()?.listItems.find({ selector: { parentId: props.parentId } }),
+    () =>
+      collections()?.listItems.find({ selector: { parentId: props.parentId } }),
     [],
     (prevs, nexts) => {
       if (prevs.length !== nexts.length) {

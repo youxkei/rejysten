@@ -14,15 +14,17 @@ import { Collections } from "@/rxdb/collections";
 const context = createContext<Resource<RxDatabase<Collections>>>();
 
 export function Provider(props: { children: JSX.Element }) {
-  const [database] = createResource(() =>
-    createRxDatabase<Collections>({
+  const [database] = createResource(async () => {
+    const database = await createRxDatabase<Collections>({
       name: "rejysten",
       storage: getRxStoragePouch("idb"),
-    })
-  );
+    });
 
-  onCleanup(() => {
-    database()?.destroy();
+    onCleanup(() => {
+      database.destroy();
+    });
+
+    return database;
   });
 
   return <context.Provider value={database}>{props.children}</context.Provider>;
