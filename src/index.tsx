@@ -2,7 +2,7 @@ import { render, Suspense } from "solid-js/web";
 
 import { Provider as RxdbProvider } from "@/rxdb";
 import { ErrorBoundary } from "@/components/errorBoundary";
-import { Todo } from "@/components/poc/todo";
+import { ItemListTest } from "@/components/poc/itemListTest";
 import { Broken } from "@/components/poc/broken";
 import { Lazy } from "@/components/poc/lazy";
 import { RxdbSync } from "@/components/rxdbSync";
@@ -13,7 +13,7 @@ function App() {
       <ErrorBoundary>
         <Suspense>
           <RxdbProvider>
-            <Todo />
+            <ItemListTest  />
             <Broken />
             <Lazy />
             <RxdbSync />
