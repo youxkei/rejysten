@@ -2,25 +2,23 @@ import { render, Suspense } from "solid-js/web";
 
 import { Provider as RxdbProvider } from "@/rxdb";
 import { ErrorBoundary } from "@/components/errorBoundary";
-import { ItemListTest } from "@/components/poc/itemListTest";
+import { ShowItemList } from "@/components/poc/showItemList";
 import { Broken } from "@/components/poc/broken";
 import { Lazy } from "@/components/poc/lazy";
 import { RxdbSync } from "@/components/rxdbSync";
 
 function App() {
   return (
-    <>
-      <ErrorBoundary>
-        <Suspense>
-          <RxdbProvider>
-            <ItemListTest  />
-            <Broken />
-            <Lazy />
-            <RxdbSync />
-          </RxdbProvider>
-        </Suspense>
-      </ErrorBoundary>
-    </>
+    <ErrorBoundary>
+      <Suspense>
+        <RxdbProvider>
+          <ShowItemList />
+          <Broken />
+          <Lazy />
+          <RxdbSync />
+        </RxdbProvider>
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 

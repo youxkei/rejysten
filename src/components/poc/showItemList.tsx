@@ -2,7 +2,7 @@ import { Show, createSignal, startTransition } from "solid-js";
 
 import { ItemList } from "@/components/itemList";
 
-export function ItemListTest() {
+export function ShowItemList() {
   const [id, setId] = createSignal("");
 
   return (
