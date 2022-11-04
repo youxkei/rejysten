@@ -8,7 +8,10 @@ export function Todo() {
 
   const todos = useSubscribe(() => collections()?.todos.find(), []);
 
-  const editor = useSubscribe( () => collections()?.editors.findOne("const"), null);
+  const editor = useSubscribe(
+    () => collections()?.editors.findOne("const"),
+    null
+  );
 
   const text = () => editor()?.text ?? "";
 
@@ -28,6 +31,12 @@ export function Todo() {
       text: text(),
       updatedAt: id.time.getTime(),
     });
+
+    collections()?.editors.upsert({
+      id: "const",
+      text: "",
+      updatedAt: Date.now(),
+    });
   };
 
   return (
@@ -40,4 +49,74 @@ export function Todo() {
       <button onClick={onClick}>add</button>
     </>
   );
+}
+
+import {
+  render,
+  waitForElementToBeRemoved,
+  findByText,
+  queryByText,
+} from "solid-testing-library";
+import userEvent from "@testing-library/user-event";
+
+import { TestWithRxDB, createCollections } from "@/rxdb/test";
+
+if (import.meta.vitest) {
+  test("renders", async (ctx) => {
+    const tid = ctx.meta.id;
+    let collections = await createCollections(tid);
+
+    await collections.todos.bulkUpsert([
+      { id: "001", text: "foo", updatedAt: 1 },
+      { id: "002", text: "bar", updatedAt: 2 },
+    ]);
+
+    const { container, unmount } = render(() => (
+      <TestWithRxDB tid={tid}>
+        <Todo />
+      </TestWithRxDB>
+    ));
+
+    await waitForElementToBeRemoved(() => queryByText(container, tid));
+    ctx.expect(container.innerHTML).toMatchSnapshot();
+
+    unmount();
+  });
+
+  test("add todos", async (ctx) => {
+    const tid = ctx.meta.id;
+    const collections = await createCollections(tid);
+    const user = userEvent.setup();
+
+    await collections.todos.bulkUpsert([
+      { id: "001", text: "foo", updatedAt: 1 },
+      { id: "002", text: "bar", updatedAt: 2 },
+    ]);
+
+    const { container, unmount } = render(() => (
+      <TestWithRxDB tid={tid}>
+        <Todo />
+      </TestWithRxDB>
+    ));
+
+    await waitForElementToBeRemoved(() => queryByText(container, tid));
+    ctx.expect(container.innerHTML).toMatchSnapshot();
+
+    const input = container.querySelector("input")!;
+    const button = container.querySelector("button")!;
+
+    await user.click(input);
+    await user.keyboard("baz");
+    await findByText(container, "baz");
+    ctx.expect(container.innerHTML).toMatchSnapshot();
+
+    await user.click(button);
+    await findByText(container.querySelector("ul")!, "baz");
+    await waitForElementToBeRemoved(() =>
+      queryByText(container.querySelector("p")!, "baz")
+    );
+    ctx.expect(container.innerHTML).toMatchSnapshot();
+
+    unmount();
+  });
 }

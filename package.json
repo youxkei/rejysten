@@ -6,7 +6,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest"
   },
   "repository": {
     "type": "git",
@@ -19,17 +19,21 @@
   },
   "homepage": "https://github.com/youxkei/rejysten#readme",
   "devDependencies": {
+    "@testing-library/user-event": "^14.4.3",
     "@types/pouchdb-adapter-http": "^6.1.3",
     "@types/pouchdb-adapter-idb": "^6.1.4",
+    "@types/pouchdb-adapter-memory": "^6.1.3",
     "@vanilla-extract/vite-plugin": "^3.6.0",
     "babel-preset-solid": "^1.6.0",
-    "node-stdlib-browser": "^1.2.0",
+    "jsdom": "^20.0.2",
+    "pouchdb-adapter-memory": "^7.3.0",
+    "solid-testing-library": "^0.3.0",
     "typescript": "^4.8.2",
     "vite": "^3.1.8",
     "vite-plugin-checker": "^0.5.0",
-    "vite-plugin-node-stdlib-browser": "^0.1.1",
     "vite-plugin-solid": "^2.3.10",
-    "vite-tsconfig-paths": "^3.5.1"
+    "vite-tsconfig-paths": "^3.5.1",
+    "vitest": "^0.24.5"
   },
   "dependencies": {
     "@vanilla-extract/css": "^1.9.1",

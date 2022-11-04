@@ -1,0 +1,9 @@
+// Vitest Snapshot v1
+
+exports[`add todos 1`] = `"<ul><li>foo</li><li>bar</li></ul><p></p><input><button>add</button>"`;
+
+exports[`add todos 2`] = `"<ul><li>foo</li><li>bar</li></ul><p>baz</p><input><button>add</button>"`;
+
+exports[`add todos 3`] = `"<ul><li>foo</li><li>bar</li><li>baz</li></ul><p></p><input><button>add</button>"`;
+
+exports[`renders 1`] = `"<ul><li>foo</li><li>bar</li></ul><p></p><input><button>add</button>"`;

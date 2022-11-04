@@ -8,9 +8,9 @@ import {
   useContext,
 } from "solid-js";
 
-import { useDatabase } from "@/rxdb/database";
+import { useDatabase} from "@/rxdb/database";
 
-const collectionCreators = {
+export const collectionCreators = {
   todos: {
     schema: {
       title: "todo schema",

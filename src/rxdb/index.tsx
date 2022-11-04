@@ -1,9 +1,9 @@
 import { JSX } from "solid-js";
-import { addRxPlugin } from "rxdb";
+import { RxDatabaseCreator, addRxPlugin } from "rxdb";
 import { RxDBReplicationCouchDBPlugin } from "rxdb/plugins/replication-couchdb";
 import { RxDBLeaderElectionPlugin } from "rxdb/plugins/leader-election";
 import { RxDBUpdatePlugin } from "rxdb/plugins/update";
-import { addPouchPlugin } from "rxdb/plugins/pouchdb";
+import { addPouchPlugin, getRxStoragePouch } from "rxdb/plugins/pouchdb";
 import { RxDBMigrationPlugin } from "rxdb/plugins/migration";
 import PouchDBAdapterIDB from "pouchdb-adapter-idb";
 import PouchDBAdapterHTTP from "pouchdb-adapter-http";
@@ -13,7 +13,7 @@ import { Provider as CollectionsProvider } from "@/rxdb/collections";
 import { useSync } from "@/rxdb/sync";
 
 export { useDatabase } from "@/rxdb/database";
-export { useCollections } from "@/rxdb/collections";
+export { Collections, useCollections } from "@/rxdb/collections";
 export { useSubscribe } from "@/rxdb/subscribe";
 export {
   configStore as syncConfigStore,
@@ -36,9 +36,19 @@ function Sync() {
   return null;
 }
 
-export function Provider(props: { children: JSX.Element }) {
+export function Provider(props: {
+  databaseCreator?: RxDatabaseCreator;
+  children: JSX.Element;
+}) {
   return (
-    <DatabaseProvider>
+    <DatabaseProvider
+      databaseCreator={
+        props.databaseCreator ?? {
+          name: "rejysten",
+          storage: getRxStoragePouch("idb"),
+        }
+      }
+    >
       <CollectionsProvider>
         <>
           <Sync />
