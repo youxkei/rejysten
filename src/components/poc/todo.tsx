@@ -1,17 +1,14 @@
 import { Ulid } from "id128";
 import { For } from "solid-js";
 
-import { useCollections, useSubscribe } from "@/rxdb";
+import { useCollections, useSubscribe, useSubscribeAll } from "@/rxdb";
 
 export function Todo() {
   const collections = useCollections();
 
-  const todos = useSubscribe(() => collections()?.todos.find(), []);
+  const todos = useSubscribeAll(() => collections()?.todos.find());
 
-  const editor = useSubscribe(
-    () => collections()?.editors.findOne("const"),
-    null
-  );
+  const editor = useSubscribe(() => collections()?.editors.findOne("const"));
 
   const text = () => editor()?.text ?? "";
 
@@ -78,7 +75,7 @@ if (import.meta.vitest) {
     ));
 
     await waitForElementToBeRemoved(() => queryByText(container, tid));
-    ctx.expect(container.innerHTML).toMatchSnapshot();
+    ctx.expect(container).toMatchSnapshot();
 
     unmount();
   });
@@ -100,7 +97,7 @@ if (import.meta.vitest) {
     ));
 
     await waitForElementToBeRemoved(() => queryByText(container, tid));
-    ctx.expect(container.innerHTML).toMatchSnapshot();
+    ctx.expect(container).toMatchSnapshot();
 
     const input = container.querySelector("input")!;
     const button = container.querySelector("button")!;
@@ -108,14 +105,14 @@ if (import.meta.vitest) {
     await user.click(input);
     await user.keyboard("baz");
     await findByText(container, "baz");
-    ctx.expect(container.innerHTML).toMatchSnapshot();
+    ctx.expect(container).toMatchSnapshot();
 
     await user.click(button);
     await findByText(container.querySelector("ul")!, "baz");
     await waitForElementToBeRemoved(() =>
       queryByText(container.querySelector("p")!, "baz")
     );
-    ctx.expect(container.innerHTML).toMatchSnapshot();
+    ctx.expect(container).toMatchSnapshot();
 
     unmount();
   });

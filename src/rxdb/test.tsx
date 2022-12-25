@@ -36,5 +36,5 @@ export async function createCollections(tid: string) {
     ignoreDuplicate: true,
   });
 
-  return database.addCollections(collectionCreators);
+  return database.addCollections(collectionCreators) as Promise<Collections>;
 }

@@ -1,11 +1,10 @@
-import type { RxQuery } from "rxdb";
+import type { RxQuery, RxDocument } from "rxdb";
 
 import { createMemo, createResource, onCleanup } from "solid-js";
 
-export function useSubscribe<T, I>(
+function useSubscribeBase<T, I>(
   query: () => RxQuery<any, T> | undefined,
-  initialValue: I,
-  equals?: (lhs: T | I, rhs: T | I) => boolean
+  initialValue: I
 ) {
   let setResource: (value: { content: T }) => void;
   let mutateResource: (value: { content: T }) => void;
@@ -37,5 +36,41 @@ export function useSubscribe<T, I>(
 
   mutateResource = mutate;
 
-  return createMemo(() => resource().content, initialValue, { equals });
+  return createMemo(() => resource().content, initialValue, { equals: false });
+}
+
+export function useSubscribe<T>(query: () => RxQuery<any, T> | undefined) {
+  return useSubscribeBase(query, null);
+}
+
+export function useSubscribeAll<T, U>(
+  query: () => RxQuery<any, RxDocument<T, U>[]> | undefined
+) {
+  const items = useSubscribeBase(query, []);
+
+  const itemsWithRevisions = createMemo(
+    () =>
+      items().map((item) => ({
+        revision: item.revision,
+        item,
+      })),
+    [],
+    {
+      equals(lhss, rhss) {
+        if (lhss.length !== rhss.length) {
+          return false;
+        }
+
+        for (const [i, lhs] of lhss.entries()) {
+          if (lhs.revision !== rhss[i].revision) {
+            return false;
+          }
+        }
+
+        return true;
+      },
+    }
+  );
+
+  return createMemo(() => itemsWithRevisions().map(({ item }) => item));
 }

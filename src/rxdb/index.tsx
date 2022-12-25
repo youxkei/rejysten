@@ -14,7 +14,7 @@ import { useSync } from "@/rxdb/sync";
 
 export { useDatabase } from "@/rxdb/database";
 export { Collections, useCollections } from "@/rxdb/collections";
-export { useSubscribe } from "@/rxdb/subscribe";
+export { useSubscribe, useSubscribeAll } from "@/rxdb/subscribe";
 export {
   configStore as syncConfigStore,
   setConfigWithStopSyncing as setSyncConfigWithStopSyncing,

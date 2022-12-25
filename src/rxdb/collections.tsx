@@ -8,7 +8,7 @@ import {
   useContext,
 } from "solid-js";
 
-import { useDatabase} from "@/rxdb/database";
+import { useDatabase } from "@/rxdb/database";
 
 export const collectionCreators = {
   todos: {
@@ -51,14 +51,15 @@ export const collectionCreators = {
       properties: {
         id: { type: "string", maxLength: 26 },
 
+        text: { type: "string" },
+
         prevId: { type: "string", maxLength: 26 },
         nextId: { type: "string", maxLength: 26 },
         parentId: { type: "string", maxLength: 26 },
-        text: { type: "string" },
 
         updatedAt: { type: "integer" },
       },
-      required: ["id", "prevId", "nextId", "parentId", "text", "updatedAt"],
+      required: ["id", "text", "nextId", "parentId", "prevId", "updatedAt"],
     },
   },
   actionLogs: {
@@ -71,13 +72,14 @@ export const collectionCreators = {
       properties: {
         id: { type: "string", maxLength: 26 },
 
+        text: { type: "string" },
+
         beginAt: { type: "integer" },
         endAt: { type: "integer" },
-        text: { type: "string" },
 
         updatedAt: { type: "integer" },
       },
-      required: ["id", "beginAt", "endAt", "text", "updatedAt"],
+      required: ["id", "text", "endAt", "beginAt", "updatedAt"],
       indexes: ["beginAt"],
     },
   },
