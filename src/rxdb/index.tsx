@@ -13,7 +13,11 @@ import { Provider as CollectionsProvider } from "@/rxdb/collections";
 import { useSync } from "@/rxdb/sync";
 
 export { useDatabase } from "@/rxdb/database";
-export { Collections, useCollections } from "@/rxdb/collections";
+export {
+  Collections,
+  CollectionNameToDocumentType,
+  useCollections,
+} from "@/rxdb/collections";
 export { useSubscribe, useSubscribeAll } from "@/rxdb/subscribe";
 export {
   configStore as syncConfigStore,

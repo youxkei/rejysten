@@ -1,4 +1,8 @@
-import { RxCollection, ExtractDocumentTypeFromTypedRxJsonSchema } from "rxdb";
+import {
+  RxCollection,
+  RxDocument,
+  ExtractDocumentTypeFromTypedRxJsonSchema,
+} from "rxdb";
 import {
   JSX,
   Resource,
@@ -85,11 +89,15 @@ export const collectionCreators = {
   },
 } as const;
 
+export type CollectionNameToDocumentType = {
+  [CollectionName in keyof typeof collectionCreators]: ExtractDocumentTypeFromTypedRxJsonSchema<
+    typeof collectionCreators[CollectionName]["schema"]
+  >;
+};
+
 export type Collections = {
-  [CollectionName in keyof typeof collectionCreators]: RxCollection<
-    ExtractDocumentTypeFromTypedRxJsonSchema<
-      typeof collectionCreators[CollectionName]["schema"]
-    >
+  [DocumentName in keyof CollectionNameToDocumentType]: RxCollection<
+    CollectionNameToDocumentType[DocumentName]
   >;
 };
 

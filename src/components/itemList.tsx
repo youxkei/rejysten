@@ -160,7 +160,7 @@ if (import.meta.vitest) {
     test("text changes", async (ctx) => {
       const tid = ctx.meta.id;
       let collections = await createCollections(tid);
-      await collections.listItems.bulkUpsert(listItems!);
+      await collections.listItems.bulkUpsert(listItems);
 
       const { container, unmount } = render(() => (
         <TestWithRxDB tid={tid}>
