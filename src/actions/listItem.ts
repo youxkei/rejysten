@@ -1,14 +1,14 @@
 import { RxCollection, RxDocument } from "rxdb";
 
-import { CollectionNameToDocumentType } from "@/rxdb";
-
-type ListItem = CollectionNameToDocumentType["listItems"];
+import { Collections } from "@/rxdb/collections";
+import { ListItem } from "@/domain/listItem";
 
 export async function addPrevSibling(
-  listItems: RxCollection<ListItem>,
+  collections: Collections,
   baseItem: RxDocument<ListItem>,
   newItem: ListItem
 ) {
+  const listItems = collections.listItems;
   const prevItem = await listItems.findOne(baseItem.prevId).exec();
 
   if (prevItem === null) {

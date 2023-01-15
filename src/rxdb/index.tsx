@@ -3,21 +3,20 @@ import { RxDatabaseCreator, addRxPlugin } from "rxdb";
 import { RxDBReplicationCouchDBPlugin } from "rxdb/plugins/replication-couchdb";
 import { RxDBLeaderElectionPlugin } from "rxdb/plugins/leader-election";
 import { RxDBUpdatePlugin } from "rxdb/plugins/update";
-import { addPouchPlugin, getRxStoragePouch } from "rxdb/plugins/pouchdb";
 import { RxDBMigrationPlugin } from "rxdb/plugins/migration";
-import PouchDBAdapterIDB from "pouchdb-adapter-idb";
-import PouchDBAdapterHTTP from "pouchdb-adapter-http";
+import { getRxStorageDexie } from "rxdb/plugins/dexie";
 
 import { Provider as DatabaseProvider } from "@/rxdb/database";
 import { Provider as CollectionsProvider } from "@/rxdb/collections";
 import { useSync } from "@/rxdb/sync";
 
-export { useDatabase } from "@/rxdb/database";
-export {
+export type {
   Collections,
   CollectionNameToDocumentType,
-  useCollections,
 } from "@/rxdb/collections";
+
+export { useDatabase } from "@/rxdb/database";
+export { useCollections } from "@/rxdb/collections";
 export { useSubscribe, useSubscribeAll } from "@/rxdb/subscribe";
 export {
   configStore as syncConfigStore,
@@ -31,8 +30,6 @@ addRxPlugin(RxDBLeaderElectionPlugin);
 addRxPlugin(RxDBReplicationCouchDBPlugin);
 addRxPlugin(RxDBUpdatePlugin);
 addRxPlugin(RxDBMigrationPlugin);
-addPouchPlugin(PouchDBAdapterIDB);
-addPouchPlugin(PouchDBAdapterHTTP);
 
 function Sync() {
   useSync();
@@ -49,7 +46,7 @@ export function Provider(props: {
       databaseCreator={
         props.databaseCreator ?? {
           name: "rejysten",
-          storage: getRxStoragePouch("idb"),
+          storage: getRxStorageDexie(),
         }
       }
     >

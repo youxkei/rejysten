@@ -3,6 +3,8 @@ import solidPlugin from "vite-plugin-solid";
 import checker from "vite-plugin-checker";
 import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 import tsconfigPaths from "vite-tsconfig-paths";
+// @ts-ignore
+import nodePolyfills from "vite-plugin-node-stdlib-browser";
 
 export default defineConfig({
   server: {
@@ -13,29 +15,29 @@ export default defineConfig({
     allowNodeBuiltins: ["pouchdb-browser", "pouchdb-utils"],
   },
   plugins: [
-    solidPlugin(),
+    solidPlugin({
+      hot: !process.env.VITEST,
+    }),
     checker({ typescript: true }),
     vanillaExtractPlugin(),
     tsconfigPaths(),
+    ...(process.env.VITEST ? [] : [nodePolyfills()]),
   ],
   define: {
     "import.meta.vitest": false,
   },
   test: {
+    reporters: "verbose",
     includeSource: ["src/**/*.ts{,x}"],
     globals: true,
-    environment: "jsdom",
+    environment: "happy-dom",
     transformMode: {
-      web: [/\.[jt]sx?$/],
+      web: [/\.[jt]sx$/],
     },
     deps: {
       registerNodeLoader: true,
     },
     threads: true,
     isolate: true,
-    setupFiles: ["src/rxdb/test.tsx"],
-  },
-  resolve: {
-    conditions: ["development", "browser"],
   },
 });

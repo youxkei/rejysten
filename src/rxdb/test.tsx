@@ -1,7 +1,9 @@
 import { JSX, Suspense } from "solid-js";
-import { createRxDatabase } from "rxdb";
-import PouchDBAdapterMemory from "pouchdb-adapter-memory";
-import { addPouchPlugin, getRxStoragePouch } from "rxdb/plugins/pouchdb";
+import { createRxDatabase, addRxPlugin } from "rxdb";
+import { RxDBUpdatePlugin } from "rxdb/plugins/update";
+import { getRxStorageDexie } from "rxdb/plugins/dexie";
+
+import { indexedDB, IDBKeyRange } from "fake-indexeddb";
 
 import {
   Collections,
@@ -9,9 +11,8 @@ import {
   collectionCreators,
 } from "@/rxdb/collections";
 import { Provider as DatabaseProvider } from "@/rxdb/database";
-import {} from "@/rxdb/collections";
 
-addPouchPlugin(PouchDBAdapterMemory);
+addRxPlugin(RxDBUpdatePlugin);
 
 export function TestWithRxDB(props: { tid: string; children: JSX.Element }) {
   return (
@@ -19,7 +20,10 @@ export function TestWithRxDB(props: { tid: string; children: JSX.Element }) {
       <DatabaseProvider
         databaseCreator={{
           name: props.tid,
-          storage: getRxStoragePouch("memory"),
+          storage: getRxStorageDexie({
+            indexedDB: indexedDB,
+            IDBKeyRange: IDBKeyRange,
+          }),
           ignoreDuplicate: true,
         }}
       >
@@ -32,7 +36,10 @@ export function TestWithRxDB(props: { tid: string; children: JSX.Element }) {
 export async function createCollections(tid: string) {
   const database = await createRxDatabase<Collections>({
     name: tid,
-    storage: getRxStoragePouch("memory"),
+    storage: getRxStorageDexie({
+      indexedDB: indexedDB,
+      IDBKeyRange: IDBKeyRange,
+    }),
     ignoreDuplicate: true,
   });
 

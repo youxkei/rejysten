@@ -1,0 +1,12 @@
+diff --git a/node_modules/dexie/package.json b/node_modules/dexie/package.json
+index 3833af9..2f8077f 100644
+--- a/node_modules/dexie/package.json
++++ b/node_modules/dexie/package.json
+@@ -15,7 +15,6 @@
+         "default": "./dist/dexie.min.js"
+       },
+       "development": {
+-        "browser": "./dist/modern/dexie.mjs",
+         "module": "./dist/modern/dexie.mjs",
+         "import": "./import-wrapper.mjs",
+         "require": "./dist/dexie.js",

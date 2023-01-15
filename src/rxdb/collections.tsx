@@ -1,16 +1,5 @@
-import {
-  RxCollection,
-  RxDocument,
-  ExtractDocumentTypeFromTypedRxJsonSchema,
-} from "rxdb";
-import {
-  JSX,
-  Resource,
-  createResource,
-  onCleanup,
-  createContext,
-  useContext,
-} from "solid-js";
+import { RxCollection, ExtractDocumentTypeFromTypedRxJsonSchema } from "rxdb";
+import { JSX, createResource, createContext, useContext } from "solid-js";
 
 import { useDatabase } from "@/rxdb/database";
 
@@ -78,13 +67,27 @@ export const collectionCreators = {
 
         text: { type: "string" },
 
-        beginAt: { type: "integer" },
+        beginAt: { type: "integer", multipleOf: 1 },
         endAt: { type: "integer" },
 
         updatedAt: { type: "integer" },
       },
       required: ["id", "text", "endAt", "beginAt", "updatedAt"],
       indexes: ["beginAt"],
+    },
+  },
+  locks: {
+    schema: {
+      title: "lock schema",
+      description: "lock",
+      version: 0,
+      primaryKey: "id",
+      type: "object",
+      properties: {
+        id: { type: "string", maxLength: 4 },
+        isLocked: { type: "boolean" },
+      },
+      required: ["id", "isLocked"],
     },
   },
 } as const;
@@ -101,7 +104,7 @@ export type Collections = {
   >;
 };
 
-const context = createContext<Resource<Collections>>();
+const context = createContext<() => Collections | undefined>();
 
 export function Provider(props: { children: JSX.Element }) {
   const database = useDatabase();
@@ -111,17 +114,27 @@ export function Provider(props: { children: JSX.Element }) {
       collectionCreators
     );
 
-    onCleanup(() => {
-      for (const [_, collection] of Object.entries(collections)) {
-        collection.destroy();
-      }
-    });
-
     return collections;
   });
 
+  const collectionsWithCleanup = () => {
+    const cols = collections();
+
+    // if (cols) {
+    //   onCleanup(() => {
+    //     for (const [_, collection] of Object.entries(cols)) {
+    //       collection.destroy();
+    //     }
+    //   });
+    // }
+
+    return cols;
+  };
+
   return (
-    <context.Provider value={collections}>{props.children}</context.Provider>
+    <context.Provider value={collectionsWithCleanup}>
+      {props.children}
+    </context.Provider>
   );
 }
 

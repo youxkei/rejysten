@@ -6,10 +6,16 @@ import {
   batch,
 } from "solid-js";
 import { createStore, produce } from "solid-js/store";
-import { RxCouchDBReplicationState } from "rxdb";
+import { addRxPlugin } from "rxdb";
+import {
+  RxDBReplicationCouchDBNewPlugin,
+  RxCouchDBNewReplicationState,
+} from "rxdb/plugins/replication-couchdb-new";
 import { toSnakeCase } from "js-convert-case";
 
 import { useCollections } from "@/rxdb/collections";
+
+addRxPlugin(RxDBReplicationCouchDBNewPlugin);
 
 const [configStore, setConfigStore] = createStore({
   domain: "",
@@ -56,7 +62,7 @@ function useSyncConfigToLocalStorage() {
       batch(() => {
         setConfigStore(JSON.parse(config));
         startSyncing();
-      })
+      });
     }
   });
 
@@ -87,17 +93,14 @@ export function useSync() {
       return;
     }
 
-    const syncStates = [] as RxCouchDBReplicationState[];
+    const syncStates = [] as RxCouchDBNewReplicationState<any>[];
 
     for (const [collectionName, collection] of Object.entries(cols)) {
       const collectionNameSnakeCase = toSnakeCase(collectionName);
 
-      const syncState = collection.syncCouchDB({
-        remote: `https://${configStore.user}:${configStore.pass}@${configStore.domain}/${collectionNameSnakeCase}`,
-        options: {
-          live: true,
-          retry: true,
-        },
+      const syncState = collection.syncCouchDBNew({
+        url: `https://${configStore.user}:${configStore.pass}@${configStore.domain}/${collectionNameSnakeCase}`,
+        live: true,
       });
 
       syncState.error$.subscribe((error) => {

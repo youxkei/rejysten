@@ -18,13 +18,16 @@ export function Lazy() {
   return (
     <>
       <LazyComponent message={message()} />
-      <p>
+      <span>
         {"Lazy: "}
         <input
           value={message()}
-          onInput={(e) => { const newMessage = e.currentTarget.value; startTransition(() => setMessage(newMessage)); }}
+          onInput={(e) => {
+            const newMessage = e.currentTarget.value;
+            startTransition(() => setMessage(newMessage));
+          }}
         />
-      </p>
+      </span>
     </>
   );
 }

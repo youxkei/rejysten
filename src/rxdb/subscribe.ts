@@ -21,9 +21,9 @@ function useSubscribeBase<T, I>(
         setResource = mutateResource;
       });
 
-      onCleanup(() => {
+      /* onCleanup(() => {
         subscription?.unsubscribe();
-      });
+      }); */
 
       return new Promise<{ content: T | I }>((resolve) => {
         setResource = resolve as (value: { content: T }) => void;

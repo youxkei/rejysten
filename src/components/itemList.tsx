@@ -1,4 +1,4 @@
-import { Show, For, createMemo, createEffect } from "solid-js";
+import { Show, For, createMemo } from "solid-js";
 
 import { useCollections, useSubscribe, useSubscribeAll } from "@/rxdb";
 import { BulletList } from "@/components/bulletList";
@@ -98,7 +98,7 @@ import { TestWithRxDB, createCollections } from "@/rxdb/test";
 if (import.meta.vitest) {
   describe.each([
     {
-      name: "swapped",
+      name: "swapped items",
       listItems: [
         {
           id: "001",
@@ -124,7 +124,7 @@ if (import.meta.vitest) {
       ],
     },
     {
-      name: "nested",
+      name: "nested items",
       listItems: [
         {
           id: "001",
