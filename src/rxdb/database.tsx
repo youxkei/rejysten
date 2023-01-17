@@ -24,23 +24,15 @@ export function Provider(props: {
     }
   );
 
-  const databaseWithCleanup = () => {
+  onCleanup(() => {
     const db = database();
 
     if (db) {
-      onCleanup(() => {
-        db.destroy();
-      });
+      db.destroy();
     }
+  });
 
-    return db;
-  };
-
-  return (
-    <context.Provider value={databaseWithCleanup}>
-      {props.children}
-    </context.Provider>
-  );
+  return <context.Provider value={database}>{props.children}</context.Provider>;
 }
 
 export function useDatabase() {

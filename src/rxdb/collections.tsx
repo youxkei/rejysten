@@ -1,5 +1,11 @@
 import { RxCollection, ExtractDocumentTypeFromTypedRxJsonSchema } from "rxdb";
-import { JSX, createResource, createContext, useContext } from "solid-js";
+import {
+  JSX,
+  createResource,
+  createContext,
+  useContext,
+  onCleanup,
+} from "solid-js";
 
 import { useDatabase } from "@/rxdb/database";
 
@@ -117,24 +123,18 @@ export function Provider(props: { children: JSX.Element }) {
     return collections;
   });
 
-  const collectionsWithCleanup = () => {
+  onCleanup(() => {
     const cols = collections();
 
-    // if (cols) {
-    //   onCleanup(() => {
-    //     for (const [_, collection] of Object.entries(cols)) {
-    //       collection.destroy();
-    //     }
-    //   });
-    // }
-
-    return cols;
-  };
+    if (cols) {
+      for (const [_, collection] of Object.entries(cols)) {
+        collection.destroy();
+      }
+    }
+  });
 
   return (
-    <context.Provider value={collectionsWithCleanup}>
-      {props.children}
-    </context.Provider>
+    <context.Provider value={collections}>{props.children}</context.Provider>
   );
 }
 
