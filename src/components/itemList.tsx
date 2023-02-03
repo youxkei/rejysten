@@ -91,7 +91,7 @@ import {
   waitForElementToBeRemoved,
   queryByText,
   findByText,
-} from "solid-testing-library";
+} from "@solidjs/testing-library";
 
 import { TestWithRxDB, createCollections } from "@/rxdb/test";
 

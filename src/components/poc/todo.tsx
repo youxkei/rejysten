@@ -58,7 +58,7 @@ import {
   waitForElementToBeRemoved,
   findByText,
   queryByText,
-} from "solid-testing-library";
+} from "@solidjs/testing-library";
 import userEvent from "@testing-library/user-event";
 
 import { TestWithRxDB, createCollections } from "@/rxdb/test";

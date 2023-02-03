@@ -32,10 +32,10 @@ export default defineConfig({
     globals: true,
     environment: "happy-dom",
     transformMode: {
-      web: [/\.[jt]sx$/],
+      //web: [/\.[jt]sx$/],
     },
     deps: {
-      registerNodeLoader: true,
+      registerNodeLoader: false,
     },
     threads: true,
     isolate: true,

@@ -99,8 +99,22 @@ export function useSync() {
       const collectionNameSnakeCase = toSnakeCase(collectionName);
 
       const syncState = collection.syncCouchDBNew({
-        url: `https://${configStore.user}:${configStore.pass}@${configStore.domain}/${collectionNameSnakeCase}`,
+        url: `https://${configStore.domain}/${collectionNameSnakeCase}`,
         live: true,
+        push: {},
+        pull: {},
+
+        fetch(input, options) {
+          return fetch(input, {
+            ...options,
+            headers: {
+              ...options?.headers,
+              Authorization: `Basic ${window.btoa(
+                `${configStore.user}:${configStore.pass}`
+              )}`,
+            },
+          });
+        },
       });
 
       syncState.error$.subscribe((error) => {

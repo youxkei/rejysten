@@ -32,7 +32,7 @@ export function RxdbSync() {
           start sync
         </button>
       </div>
-      <pre>{syncErrors()}</pre>
+      <pre>{syncErrors().join("\n")}</pre>
     </>
   );
 }
