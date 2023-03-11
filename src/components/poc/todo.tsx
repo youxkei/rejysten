@@ -85,8 +85,7 @@ if (import.meta.vitest) {
     unmount();
   });
 
-  // skip due to unstability of user.keyboard
-  test.skip("add todos", async (ctx) => {
+  test("add todos", async (ctx) => {
     const tid = ctx.meta.id;
     const collections = await createCollections(tid);
     const user = userEvent.setup();

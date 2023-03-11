@@ -20,30 +20,30 @@
   },
   "homepage": "https://github.com/youxkei/rejysten#readme",
   "devDependencies": {
-    "@solidjs/testing-library": "^0.6.0",
+    "@solidjs/testing-library": "^0.6.1",
     "@testing-library/user-event": "^14.4.3",
-    "@vanilla-extract/vite-plugin": "^3.7.1",
-    "babel-preset-solid": "^1.6.10",
+    "@vanilla-extract/vite-plugin": "^3.8.0",
+    "babel-preset-solid": "^1.6.13",
     "fake-indexeddb": "^4.0.1",
-    "happy-dom": "^8.2.4",
+    "happy-dom": "^8.9.0",
     "patch-package": "^6.5.1",
     "typescript": "^4.9.5",
     "vite": "^3.2.5",
-    "vite-plugin-checker": "^0.5.5",
+    "vite-plugin-checker": "^0.5.6",
     "vite-plugin-node-stdlib-browser": "^0.1.1",
-    "vite-plugin-solid": "^2.5.0",
+    "vite-plugin-solid": "^2.6.1",
     "vite-tsconfig-paths": "^3.6.0",
-    "vitest": "^0.28.4"
+    "vitest": "^0.28.5"
   },
   "dependencies": {
-    "@vanilla-extract/css": "^1.9.3",
+    "@vanilla-extract/css": "^1.10.0",
     "dexie": "4.0.0-alpha.4",
     "id128": "^1.6.6",
     "js-convert-case": "^4.2.0",
     "node-stdlib-browser": "^1.2.0",
     "rxdb": "^13.17.1",
     "rxjs": "^7.8.0",
-    "solid-js": "^1.6.10"
+    "solid-js": "^1.6.13"
   },
   "overrides": {
     "@vanilla-extract/vite-plugin": {
