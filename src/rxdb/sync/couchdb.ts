@@ -49,7 +49,7 @@ export function startSyncing() {
   });
 }
 
-const localStorageKey = "rejysten.rxdbSyncConfig";
+const localStorageKey = "rejysten.rxdb.sync.couchdb.config";
 
 function useSyncConfigToLocalStorage() {
   onMount(() => {

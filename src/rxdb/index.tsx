@@ -7,7 +7,7 @@ import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
 
 import { Provider as DatabaseProvider } from "@/rxdb/database";
 import { Provider as CollectionsProvider } from "@/rxdb/collections";
-import { useSync } from "@/rxdb/sync";
+import { useSync } from "@/rxdb/sync/couchdb";
 
 export type {
   Collections,
@@ -23,7 +23,7 @@ export {
   syncing,
   startSyncing,
   errors as syncErrors,
-} from "@/rxdb/sync";
+} from "@/rxdb/sync/couchdb";
 
 addRxPlugin(RxDBLeaderElectionPlugin);
 addRxPlugin(RxDBUpdatePlugin);
