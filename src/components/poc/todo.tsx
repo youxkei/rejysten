@@ -113,10 +113,10 @@ if (import.meta.vitest) {
     ctx.expect(container).toMatchSnapshot();
 
     await user.click(button);
-    await findByText(container.querySelector("ul")!, "baz");
     await waitForElementToBeRemoved(() =>
       queryByText(container.querySelector("p")!, "baz")
     );
+    await findByText(container.querySelector("ul")!, "baz");
     ctx.expect(container).toMatchSnapshot();
 
     unmount();

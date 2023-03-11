@@ -1,7 +1,7 @@
 import { JSX, Suspense } from "solid-js";
 import { createRxDatabase, addRxPlugin } from "rxdb";
 import { RxDBUpdatePlugin } from "rxdb/plugins/update";
-import { getRxStorageDexie } from "rxdb/plugins/dexie";
+import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
 
 import { indexedDB, IDBKeyRange } from "fake-indexeddb";
 

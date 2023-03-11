@@ -37,7 +37,7 @@ export async function acquireLock(collections: Collections) {
 }
 
 export async function releaseLock(lock: RxDocument<Lock>) {
-  await lock.atomicPatch({
+  await lock.incrementalPatch({
     isLocked: false,
   });
 }

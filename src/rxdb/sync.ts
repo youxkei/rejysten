@@ -6,16 +6,13 @@ import {
   batch,
 } from "solid-js";
 import { createStore, produce } from "solid-js/store";
-import { addRxPlugin } from "rxdb";
 import {
-  RxDBReplicationCouchDBNewPlugin,
-  RxCouchDBNewReplicationState,
-} from "rxdb/plugins/replication-couchdb-new";
+  RxCouchDBReplicationState,
+  replicateCouchDB,
+} from "rxdb/plugins/replication-couchdb";
 import { toSnakeCase } from "js-convert-case";
 
 import { useCollections } from "@/rxdb/collections";
-
-addRxPlugin(RxDBReplicationCouchDBNewPlugin);
 
 const [configStore, setConfigStore] = createStore({
   domain: "",
@@ -93,12 +90,13 @@ export function useSync() {
       return;
     }
 
-    const syncStates = [] as RxCouchDBNewReplicationState<any>[];
+    const syncStates = [] as RxCouchDBReplicationState<any>[];
 
     for (const [collectionName, collection] of Object.entries(cols)) {
       const collectionNameSnakeCase = toSnakeCase(collectionName);
 
-      const syncState = collection.syncCouchDBNew({
+      const syncState = replicateCouchDB({
+        collection: collection,
         url: `https://${configStore.domain}/${collectionNameSnakeCase}`,
         live: true,
         push: {},

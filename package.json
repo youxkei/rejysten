@@ -41,7 +41,7 @@
     "id128": "^1.6.6",
     "js-convert-case": "^4.2.0",
     "node-stdlib-browser": "^1.2.0",
-    "rxdb": "^13.17.1",
+    "rxdb": "^14.2.3",
     "rxjs": "^7.8.0",
     "solid-js": "^1.6.13"
   },

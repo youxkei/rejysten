@@ -171,14 +171,18 @@ if (import.meta.vitest) {
       await waitForElementToBeRemoved(() => queryByText(container, tid));
       ctx.expect(container).toMatchSnapshot();
 
-      await (await collections.listItems.findOne("001").exec())!.atomicPatch({
+      await (await collections.listItems
+        .findOne("001")
+        .exec())!.incrementalPatch({
         text: "changed root",
       });
 
       await findByText(container, "changed root");
       ctx.expect(container).toMatchSnapshot();
 
-      await (await collections.listItems.findOne("002").exec())!.atomicPatch({
+      await (await collections.listItems
+        .findOne("002")
+        .exec())!.incrementalPatch({
         text: "changed foo",
       });
 

@@ -1,10 +1,9 @@
 import { JSX } from "solid-js";
 import { RxDatabaseCreator, addRxPlugin } from "rxdb";
-import { RxDBReplicationCouchDBPlugin } from "rxdb/plugins/replication-couchdb";
 import { RxDBLeaderElectionPlugin } from "rxdb/plugins/leader-election";
 import { RxDBUpdatePlugin } from "rxdb/plugins/update";
 import { RxDBMigrationPlugin } from "rxdb/plugins/migration";
-import { getRxStorageDexie } from "rxdb/plugins/dexie";
+import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
 
 import { Provider as DatabaseProvider } from "@/rxdb/database";
 import { Provider as CollectionsProvider } from "@/rxdb/collections";
@@ -27,7 +26,6 @@ export {
 } from "@/rxdb/sync";
 
 addRxPlugin(RxDBLeaderElectionPlugin);
-addRxPlugin(RxDBReplicationCouchDBPlugin);
 addRxPlugin(RxDBUpdatePlugin);
 addRxPlugin(RxDBMigrationPlugin);
 
