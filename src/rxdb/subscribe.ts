@@ -1,52 +1,43 @@
 import type { RxQuery, RxDocument } from "rxdb";
 
-import { createMemo, createResource, onCleanup } from "solid-js";
+import { createMemo, onCleanup } from "solid-js";
 
-function useSubscribeBase<T, I>(
-  query: () => RxQuery<any, T> | undefined,
-  initialValue: I
-) {
-  let setResource: (value: { content: T }) => void;
-  let mutateResource: (value: { content: T }) => void;
+import { createSubscribeResource } from "@/solid/subscribe";
 
-  const [resource, { mutate }] = createResource<
-    { content: T | I },
-    RxQuery<any, T>,
-    unknown
-  >(
+export function useSubscribe<T>(query: () => RxQuery<any, T> | undefined) {
+  const resource = createSubscribeResource(
     query,
-    (query) => {
+    (query, setValue: (value: { content: T }) => void) => {
       const subscription = query.$.subscribe((result) => {
-        setResource({ content: result });
-        setResource = mutateResource;
+        setValue({ content: result });
       });
 
       onCleanup(() => {
-        subscription?.unsubscribe();
-      });
-
-      return new Promise<{ content: T | I }>((resolve) => {
-        setResource = resolve as (value: { content: T }) => void;
+        subscription.unsubscribe();
       });
     },
-    {
-      initialValue: { content: initialValue },
-    }
+    undefined
   );
 
-  mutateResource = mutate;
-
-  return createMemo(() => resource().content, initialValue, { equals: false });
-}
-
-export function useSubscribe<T>(query: () => RxQuery<any, T> | undefined) {
-  return useSubscribeBase(query, null);
+  return () => resource()?.content;
 }
 
 export function useSubscribeAll<T, U>(
   query: () => RxQuery<any, RxDocument<T, U>[]> | undefined
 ) {
-  const items = useSubscribeBase(query, []);
+  const items = createSubscribeResource(
+    query,
+    (query, setValue: (value: RxDocument<T, U>[]) => void) => {
+      const subscription = query.$.subscribe((result) => {
+        setValue(result);
+      });
+
+      onCleanup(() => {
+        subscription.unsubscribe();
+      });
+    },
+    []
+  );
 
   const itemsWithRevisions = createMemo(
     () =>

@@ -1,7 +1,8 @@
 import { Ulid } from "id128";
 import { For } from "solid-js";
 
-import { useCollections, useSubscribe, useSubscribeAll } from "@/rxdb";
+import { useCollections } from "@/rxdb/collections";
+import { useSubscribe, useSubscribeAll } from "@/rxdb/subscribe";
 
 export function Todo() {
   const collections = useCollections();
@@ -42,14 +43,14 @@ export function Todo() {
   };
 
   return (
-    <>
+    <div>
       <ul>
         <For each={todos()}>{(todo, _) => <li>{todo.text}</li>}</For>
       </ul>
       <p>{text()}</p>
       <input value={text()} onInput={onInput} />
       <button onClick={onClick}>add</button>
-    </>
+    </div>
   );
 }
 

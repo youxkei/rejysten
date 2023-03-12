@@ -7,6 +7,7 @@
     "build": "vite build",
     "dev": "vite",
     "test": "vitest run",
+    "test/update": "vitest run -u",
     "postinstall": "patch-package"
   },
   "repository": {
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@solidjs/testing-library": "^0.6.1",
     "@testing-library/user-event": "^14.4.3",
+    "@types/js-yaml": "^4.0.5",
     "@vanilla-extract/vite-plugin": "^3.8.0",
     "babel-preset-solid": "^1.6.13",
     "fake-indexeddb": "^4.0.1",
@@ -38,12 +40,15 @@
   "dependencies": {
     "@vanilla-extract/css": "^1.10.0",
     "dexie": "4.0.0-alpha.4",
+    "firebase": "^9.17.2",
     "id128": "^1.6.6",
     "js-convert-case": "^4.2.0",
+    "js-yaml": "^4.1.0",
     "node-stdlib-browser": "^1.2.0",
     "rxdb": "^14.2.3",
     "rxjs": "^7.8.0",
-    "solid-js": "^1.6.13"
+    "solid-js": "^1.6.13",
+    "superstruct": "^1.0.3"
   },
   "overrides": {
     "@vanilla-extract/vite-plugin": {

@@ -2,79 +2,87 @@
 
 exports[`add todos 1`] = `
 <div>
-  <ul>
-    <li>
-      foo
-    </li>
-    <li>
-      bar
-    </li>
-  </ul>
-  <p />
-  <input />
-  <button>
-    add
-  </button>
+  <div>
+    <ul>
+      <li>
+        foo
+      </li>
+      <li>
+        bar
+      </li>
+    </ul>
+    <p />
+    <input />
+    <button>
+      add
+    </button>
+  </div>
 </div>
 `;
 
 exports[`add todos 2`] = `
 <div>
-  <ul>
-    <li>
-      foo
-    </li>
-    <li>
-      bar
-    </li>
-  </ul>
-  <p>
-    baz
-  </p>
-  <input />
-  <button>
-    add
-  </button>
+  <div>
+    <ul>
+      <li>
+        foo
+      </li>
+      <li>
+        bar
+      </li>
+    </ul>
+    <p>
+      baz
+    </p>
+    <input />
+    <button>
+      add
+    </button>
+  </div>
 </div>
 `;
 
 exports[`add todos 3`] = `
 <div>
-  <ul>
-    <li>
-      foo
-    </li>
-    <li>
-      bar
-    </li>
-    <li>
-      baz
-    </li>
-  </ul>
-  <p>
-    
-  </p>
-  <input />
-  <button>
-    add
-  </button>
+  <div>
+    <ul>
+      <li>
+        foo
+      </li>
+      <li>
+        bar
+      </li>
+      <li>
+        baz
+      </li>
+    </ul>
+    <p>
+      
+    </p>
+    <input />
+    <button>
+      add
+    </button>
+  </div>
 </div>
 `;
 
 exports[`renders 1`] = `
 <div>
-  <ul>
-    <li>
-      foo
-    </li>
-    <li>
-      bar
-    </li>
-  </ul>
-  <p />
-  <input />
-  <button>
-    add
-  </button>
+  <div>
+    <ul>
+      <li>
+        foo
+      </li>
+      <li>
+        bar
+      </li>
+    </ul>
+    <p />
+    <input />
+    <button>
+      add
+    </button>
+  </div>
 </div>
 `;

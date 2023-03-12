@@ -1,6 +1,7 @@
 import { Show, For, createMemo } from "solid-js";
 
-import { useCollections, useSubscribe, useSubscribeAll } from "@/rxdb";
+import { useCollections } from "@/rxdb/collections";
+import { useSubscribe, useSubscribeAll } from "@/rxdb/subscribe";
 import { BulletList } from "@/components/bulletList";
 
 export function ItemList(props: { id: string }) {
@@ -174,8 +175,8 @@ if (import.meta.vitest) {
       await (await collections.listItems
         .findOne("001")
         .exec())!.incrementalPatch({
-        text: "changed root",
-      });
+          text: "changed root",
+        });
 
       await findByText(container, "changed root");
       ctx.expect(container).toMatchSnapshot();
@@ -183,8 +184,8 @@ if (import.meta.vitest) {
       await (await collections.listItems
         .findOne("002")
         .exec())!.incrementalPatch({
-        text: "changed foo",
-      });
+          text: "changed foo",
+        });
 
       await findByText(container, "changed foo");
       ctx.expect(container).toMatchSnapshot();

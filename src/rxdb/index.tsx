@@ -7,33 +7,10 @@ import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
 
 import { Provider as DatabaseProvider } from "@/rxdb/database";
 import { Provider as CollectionsProvider } from "@/rxdb/collections";
-import { useSync } from "@/rxdb/sync/couchdb";
-
-export type {
-  Collections,
-  CollectionNameToDocumentType,
-} from "@/rxdb/collections";
-
-export { useDatabase } from "@/rxdb/database";
-export { useCollections } from "@/rxdb/collections";
-export { useSubscribe, useSubscribeAll } from "@/rxdb/subscribe";
-export {
-  configStore as syncConfigStore,
-  setConfigWithStopSyncing as setSyncConfigWithStopSyncing,
-  syncing,
-  startSyncing,
-  errors as syncErrors,
-} from "@/rxdb/sync/couchdb";
 
 addRxPlugin(RxDBLeaderElectionPlugin);
 addRxPlugin(RxDBUpdatePlugin);
 addRxPlugin(RxDBMigrationPlugin);
-
-function Sync() {
-  useSync();
-
-  return null;
-}
 
 export function Provider(props: {
   databaseCreator?: RxDatabaseCreator;
@@ -49,10 +26,7 @@ export function Provider(props: {
       }
     >
       <CollectionsProvider>
-        <>
-          <Sync />
-          {props.children}
-        </>
+        <>{props.children}</>
       </CollectionsProvider>
     </DatabaseProvider>
   );

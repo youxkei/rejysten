@@ -6,10 +6,7 @@ import {
   batch,
 } from "solid-js";
 import { createStore, produce } from "solid-js/store";
-import {
-  RxCouchDBReplicationState,
-  replicateCouchDB,
-} from "rxdb/plugins/replication-couchdb";
+import { replicateCouchDB } from "rxdb/plugins/replication-couchdb";
 import { toSnakeCase } from "js-convert-case";
 
 import { useCollections } from "@/rxdb/collections";
@@ -75,7 +72,7 @@ function useSyncConfigToLocalStorage() {
   });
 }
 
-export function useSync() {
+function useSync() {
   useSyncConfigToLocalStorage();
 
   const collections = useCollections();
@@ -89,8 +86,6 @@ export function useSync() {
     if (!syncing()) {
       return;
     }
-
-    const syncStates = [] as RxCouchDBReplicationState<any>[];
 
     for (const [collectionName, collection] of Object.entries(cols)) {
       const collectionNameSnakeCase = toSnakeCase(collectionName);
@@ -119,13 +114,15 @@ export function useSync() {
         setErrors([...errors(), `${collectionName}: ${error}`]);
       });
 
-      syncStates.push(syncState);
-    }
-
-    onCleanup(() => {
-      for (const syncState of syncStates) {
+      onCleanup(() => {
         syncState.cancel();
-      }
-    });
+      });
+    }
   });
+}
+
+export function Sync() {
+  useSync();
+
+  return null;
 }
