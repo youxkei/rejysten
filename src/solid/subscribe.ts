@@ -1,4 +1,4 @@
-import { createResource } from "solid-js";
+import { createSignal, createEffect, createResource } from "solid-js";
 
 export function createSubscribeResource<Source, Value, InitialValue>(
   sourceSignal: () => Source | undefined,
@@ -32,4 +32,19 @@ export function createSubscribeResource<Source, Value, InitialValue>(
   mutateResource = mutate;
 
   return resource;
+}
+
+export function createSubscribeSignal<Value, InitialValue>(
+  subscriber: (setValue: (value: Value) => void) => void,
+  initialValue: InitialValue
+) {
+  const [signal, setSignal] = createSignal<Value | InitialValue>(initialValue);
+
+  createEffect(() => {
+    subscriber((value) => {
+      setSignal(() => value);
+    });
+  });
+
+  return signal;
 }

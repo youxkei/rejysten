@@ -21,7 +21,7 @@ import { replicateFirestore } from "rxdb/plugins/replication-firestore";
 import { toSnakeCase } from "js-convert-case";
 
 import { useCollections } from "@/rxdb/collections";
-import { createSubscribeResource } from "@/solid/subscribe";
+import { createSubscribeSignal } from "@/solid/subscribe";
 
 const [configYaml, setConfigYaml] = createSignal("");
 export { configYaml };
@@ -51,8 +51,8 @@ export function setConfigYamlWithStopSyncing(configYaml: string) {
 
 export function startSyncing() {
   batch(() => {
-    setSyncing(true);
     setErrors([]);
+    setSyncing(true);
   });
 }
 
@@ -87,31 +87,21 @@ function useSync() {
 
   const collectionsSignal = useCollections();
 
-  const parsedConfigSignal = createMemo(() => {
-    if (!syncing()) return;
+  const configSignal = createMemo(() => {
+    try {
+      if (!syncing()) return;
 
-    return YAML.load(configYaml());
-  });
+      const config = YAML.load(configYaml());
 
-  createEffect(() => {
-    const config = parsedConfigSignal();
-    if (!config) return;
+      s.assert(config, FirebaseConfig);
 
-    const [err] = s.validate(config, FirebaseConfig);
-
-    if (err) {
-      addErrorWithStopSyncing(`${err}`);
+      return config;
+    } catch (err) {
+      createEffect(() => {
+        addErrorWithStopSyncing(`${err}`);
+      });
     }
   });
-
-  const configSignal = () => {
-    const config = parsedConfigSignal();
-    if (!config) return;
-
-    if (!s.is(config, FirebaseConfig)) return;
-
-    return config;
-  };
 
   const firebaseSignal = createMemo(() => {
     const config = configSignal();
@@ -126,14 +116,16 @@ function useSync() {
     return app;
   });
 
-  const signedInResource = createSubscribeResource(
-    firebaseSignal,
-    (firebase, setValue: (value: boolean) => void) => {
+  const authStatusSignal = createSubscribeSignal(
+    (setValue: (value: { signedIn: boolean }) => void) => {
+      const firebase = firebaseSignal();
+      if (!firebase) return;
+
       const unsubscribe = onAuthStateChanged(getAuth(firebase), (user) => {
         if (user) {
-          setValue(true);
+          setValue({ signedIn: true });
         } else {
-          setValue(false);
+          setValue({ signedIn: false });
         }
       });
 
@@ -142,18 +134,18 @@ function useSync() {
     undefined
   );
 
-  const [authResource] = createResource(
+  const [authedSignal] = createResource(
     () => {
       const firebase = firebaseSignal();
       if (!firebase) return;
 
-      const signedIn = signedInResource();
-      if (signedIn === undefined) return;
+      const authStatus = authStatusSignal();
+      if (!authStatus) return;
 
-      return [firebase, signedIn] as const;
+      return [firebase, authStatus] as const;
     },
-    async ([firebase, signedIn]) => {
-      if (signedIn) {
+    async ([firebase, authStatus]) => {
+      if (authStatus.signedIn) {
         return true;
       }
 
@@ -161,43 +153,31 @@ function useSync() {
         await signInWithPopup(getAuth(firebase), new GoogleAuthProvider());
         return true;
       } catch (err) {
-        return `${err}`;
+        createEffect(() => {
+          addErrorWithStopSyncing(`${err}`);
+        });
       }
     }
   );
 
   createEffect(() => {
     try {
-      if (!syncing()) {
-        return;
-      }
+      if (!syncing()) return;
 
-      const collecitons = collectionsSignal();
-      if (!collecitons) {
-        return;
-      }
+      const collections = collectionsSignal();
+      if (!collections) return;
 
       const config = configSignal();
-      if (!config) {
-        return;
-      }
+      if (!config) return;
 
       const firebase = firebaseSignal();
-      if (!firebase) {
-        return;
-      }
+      if (!firebase) return;
 
-      const auth = authResource();
-      if (auth === undefined) {
-        return;
-      } else if (auth !== true) {
-        addErrorWithStopSyncing(auth);
-        return;
-      }
+      if (!authedSignal()) return;
 
       const firestore = getFirestore(firebase);
 
-      for (const [collectionName, collection] of Object.entries(collecitons)) {
+      for (const [collectionName, collection] of Object.entries(collections)) {
         const collectionNameSnakeCase = toSnakeCase(collectionName);
         const firestoreCollection = getCollection(
           firestore,

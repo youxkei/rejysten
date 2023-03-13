@@ -5,9 +5,15 @@ import {
   startSyncing,
   errors as syncErrors,
 } from "@/rxdb/sync/firestore";
-import { startTransition } from "solid-js";
+import { createEffect, createSignal, startTransition } from "solid-js";
 
 export function RxdbFirestoreSyncConfig() {
+  const [syncButtonDisabledSignal, setSyncButtonDisabled] = createSignal(false);
+
+  createEffect(() => {
+    setSyncButtonDisabled(syncing());
+  });
+
   return (
     <>
       <div>
@@ -19,8 +25,13 @@ export function RxdbFirestoreSyncConfig() {
         />
       </div>
       <button
-        disabled={syncing()}
-        onClick={() => startTransition(() => startSyncing())}
+        disabled={syncButtonDisabledSignal()}
+        onClick={() => {
+          setSyncButtonDisabled(true);
+          startTransition(() => {
+            startSyncing();
+          });
+        }}
       >
         start sync
       </button>
