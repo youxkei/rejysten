@@ -1,7 +1,10 @@
 import { Show, For, createMemo } from "solid-js";
 
-import { useCollections } from "@/rxdb/collections";
-import { useSubscribe, useSubscribeAll } from "@/rxdb/subscribe";
+import { useCollectionsSignal } from "@/rxdb/collections";
+import {
+  createSubscribeSignal,
+  createSubscribeAllSignal,
+} from "@/rxdb/subscribe";
 import { BulletList } from "@/components/bulletList";
 
 export function ItemList(props: { id: string }) {
@@ -15,45 +18,47 @@ export function ItemList(props: { id: string }) {
 }
 
 export function ItemListItem(props: { id: string }) {
-  const collections = useCollections();
-  const listItem = useSubscribe(() =>
-    collections()?.listItems.findOne(props.id)
+  const collections$ = useCollectionsSignal();
+  const listItem$ = createSubscribeSignal(() =>
+    collections$()?.listItems.findOne(props.id)
   );
 
   return (
-    <Show when={listItem()}>
-      <span>{listItem()!.text}</span>
+    <Show when={listItem$()}>
+      <span>{listItem$()!.text}</span>
     </Show>
   );
 }
 
 export function ItemListChildren(props: { parentId: string }) {
-  const collections = useCollections();
-  const children = useSubscribeAll(() =>
-    collections()?.listItems.find({ selector: { parentId: props.parentId } })
+  const collections$ = useCollectionsSignal();
+  const children$ = createSubscribeAllSignal(() =>
+    collections$()?.listItems.find({
+      selector: { parentId: props.parentId },
+    })
   );
 
-  const sortedChildren = createMemo(
+  const sortedChildren$ = createMemo(
     () => {
-      type ListItem = ReturnType<typeof children>[0];
+      type ListItem = ReturnType<typeof children$>[0];
 
-      const unsortedChildren = children();
-      if (unsortedChildren.length === 0) {
-        return { inconsistent: false, children: unsortedChildren };
+      const children = children$();
+      if (children.length === 0) {
+        return { inconsistent: false, children };
       }
 
       const sortedChildren = [] as ListItem[];
       const childMap = new Map<string, ListItem>();
-      let currentChildId: string | null = null;
+      let currentChildId: string | undefined;
 
-      for (const child of unsortedChildren) {
+      for (const child of children) {
         if (child.prevId === "") {
           currentChildId = child.id;
         }
         childMap.set(child.id, child);
       }
 
-      if (currentChildId === null) {
+      if (currentChildId === undefined) {
         return { inconsistent: true, children: [] };
       }
 
@@ -68,7 +73,7 @@ export function ItemListChildren(props: { parentId: string }) {
         currentChildId = currentChild.nextId;
       }
 
-      if (unsortedChildren.length != sortedChildren.length) {
+      if (children.length != sortedChildren.length) {
         return { inconsistent: true, children: [] };
       }
 
@@ -80,7 +85,7 @@ export function ItemListChildren(props: { parentId: string }) {
 
   return (
     <>
-      <For each={sortedChildren().children}>
+      <For each={sortedChildren$().children}>
         {(child) => <ItemList id={child.id} />}
       </For>
     </>
@@ -174,18 +179,14 @@ if (import.meta.vitest) {
 
       await (await collections.listItems
         .findOne("001")
-        .exec())!.incrementalPatch({
-          text: "changed root",
-        });
+        .exec())!.incrementalPatch({ text: "changed root" });
 
       await findByText(container, "changed root");
       ctx.expect(container).toMatchSnapshot();
 
       await (await collections.listItems
         .findOne("002")
-        .exec())!.incrementalPatch({
-          text: "changed foo",
-        });
+        .exec())!.incrementalPatch({ text: "changed foo" });
 
       await findByText(container, "changed foo");
       ctx.expect(container).toMatchSnapshot();

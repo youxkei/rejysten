@@ -7,7 +7,7 @@ import {
   onCleanup,
 } from "solid-js";
 
-import { useDatabase } from "@/rxdb/database";
+import { useDatabaseSignal } from "@/rxdb/database";
 
 export const collectionCreators = {
   todos: {
@@ -100,7 +100,7 @@ export const collectionCreators = {
 
 export type CollectionNameToDocumentType = {
   [CollectionName in keyof typeof collectionCreators]: ExtractDocumentTypeFromTypedRxJsonSchema<
-    typeof collectionCreators[CollectionName]["schema"]
+    (typeof collectionCreators)[CollectionName]["schema"]
   >;
 };
 
@@ -113,31 +113,29 @@ export type Collections = {
 const context = createContext<() => Collections | undefined>();
 
 export function Provider(props: { children: JSX.Element }) {
-  const database = useDatabase();
+  const database$ = useDatabaseSignal();
 
-  const [collections] = createResource(database, async (database) => {
-    const collections: Collections = await database.addCollections(
-      collectionCreators
-    );
+  const [collections$] = createResource(database$, async (database) => {
+    let collections: Collections | undefined;
+
+    onCleanup(() => {
+      if (collections) {
+        for (const [_, collection] of Object.entries(collections)) {
+          collection.destroy();
+        }
+      }
+    });
+
+    collections = await database.addCollections(collectionCreators);
 
     return collections;
   });
 
-  onCleanup(() => {
-    const cols = collections();
-
-    if (cols) {
-      for (const [_, collection] of Object.entries(cols)) {
-        collection.destroy();
-      }
-    }
-  });
-
   return (
-    <context.Provider value={collections}>{props.children}</context.Provider>
+    <context.Provider value={collections$}>{props.children}</context.Provider>
   );
 }
 
-export function useCollections() {
+export function useCollectionsSignal() {
   return useContext(context)!;
 }

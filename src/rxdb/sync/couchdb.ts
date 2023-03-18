@@ -9,7 +9,7 @@ import { createStore, produce } from "solid-js/store";
 import { replicateCouchDB } from "rxdb/plugins/replication-couchdb";
 import { toSnakeCase } from "js-convert-case";
 
-import { useCollections } from "@/rxdb/collections";
+import { useCollectionsSignal } from "@/rxdb/collections";
 
 const [configStore, setConfigStore] = createStore({
   domain: "",
@@ -19,13 +19,13 @@ const [configStore, setConfigStore] = createStore({
 
 export { configStore };
 
-const [syncing, setSyncing] = createSignal(false);
+const [syncing$, setSyncing] = createSignal(false);
 
-export { syncing };
+export { syncing$ as syncing$ };
 
-const [errors, setErrors] = createSignal([] as string[]);
+const [errors$, setErrors] = createSignal([] as string[]);
 
-export { errors };
+export { errors$ as errors$ };
 
 export function setConfigWithStopSyncing(fields: Partial<typeof configStore>) {
   batch(() => {
@@ -75,19 +75,19 @@ function useSyncConfigToLocalStorage() {
 function useSync() {
   useSyncConfigToLocalStorage();
 
-  const collections = useCollections();
+  const collections$ = useCollectionsSignal();
 
   createEffect(() => {
-    const cols = collections();
-    if (!cols) {
+    const collections = collections$();
+    if (!collections) {
       return;
     }
 
-    if (!syncing()) {
+    if (!syncing$()) {
       return;
     }
 
-    for (const [collectionName, collection] of Object.entries(cols)) {
+    for (const [collectionName, collection] of Object.entries(collections)) {
       const collectionNameSnakeCase = toSnakeCase(collectionName);
 
       const syncState = replicateCouchDB({
@@ -111,7 +111,7 @@ function useSync() {
       });
 
       syncState.error$.subscribe((error) => {
-        setErrors([...errors(), `${collectionName}: ${error}`]);
+        setErrors([...errors$(), `${collectionName}: ${error}`]);
       });
 
       onCleanup(() => {

@@ -15,26 +15,28 @@ export function Provider(props: {
   databaseCreator: RxDatabaseCreator;
   children: JSX.Element;
 }) {
-  const [database] = createResource(
+  const [database$] = createResource(
     props.databaseCreator,
     async (databaseCreator) => {
-      const database = await createRxDatabase<Collections>(databaseCreator);
+      let database: RxDatabase<Collections> | undefined;
+
+      onCleanup(() => {
+        if (database) {
+          database.destroy();
+        }
+      });
+
+      database = await createRxDatabase<Collections>(databaseCreator);
 
       return database;
     }
   );
 
-  onCleanup(() => {
-    const db = database();
-
-    if (db) {
-      db.destroy();
-    }
-  });
-
-  return <context.Provider value={database}>{props.children}</context.Provider>;
+  return (
+    <context.Provider value={database$}>{props.children}</context.Provider>
+  );
 }
 
-export function useDatabase() {
+export function useDatabaseSignal() {
   return useContext(context)!;
 }

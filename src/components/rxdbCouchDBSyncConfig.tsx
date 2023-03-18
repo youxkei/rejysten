@@ -1,9 +1,9 @@
 import {
   configStore,
   setConfigWithStopSyncing,
-  syncing,
+  syncing$,
   startSyncing,
-  errors as syncErrors,
+  errors$ as syncErrors$,
 } from "@/rxdb/sync/couchdb";
 
 export function RxdbCouchDBSyncConfig() {
@@ -28,11 +28,11 @@ export function RxdbCouchDBSyncConfig() {
             setConfigWithStopSyncing({ pass: e.currentTarget.value })
           }
         />
-        <button disabled={syncing()} onClick={() => startSyncing()}>
+        <button disabled={syncing$()} onClick={() => startSyncing()}>
           start sync
         </button>
       </div>
-      <pre>{syncErrors().join("\n")}</pre>
+      <pre>{syncErrors$().join("\n")}</pre>
     </>
   );
 }

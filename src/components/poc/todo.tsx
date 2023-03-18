@@ -1,54 +1,60 @@
 import { Ulid } from "id128";
 import { For } from "solid-js";
 
-import { useCollections } from "@/rxdb/collections";
-import { useSubscribe, useSubscribeAll } from "@/rxdb/subscribe";
+import { useCollectionsSignal } from "@/rxdb/collections";
+import {
+  createSubscribeSignal,
+  createSubscribeAllSignal,
+} from "@/rxdb/subscribe";
 
 export function Todo() {
-  const collections = useCollections();
+  const collections$ = useCollectionsSignal();
 
-  const originalTodos = useSubscribeAll(() => collections()?.todos.find());
-  const todos = () => {
-    const todos = originalTodos();
+  const todos$ = createSubscribeAllSignal(() => collections$()?.todos.find());
 
-    return todos;
-  };
+  const editor$ = createSubscribeSignal(() =>
+    collections$()?.editors.findOne("const")
+  );
 
-  const editor = useSubscribe(() => collections()?.editors.findOne("const"));
-
-  const text = () => editor()?.text ?? "";
+  const text$ = () => editor$()?.text ?? "";
 
   const onInput = (event: { currentTarget: HTMLInputElement }) => {
-    collections()?.editors.upsert({
+    collections$()?.editors.upsert({
       id: "const",
       text: event.currentTarget.value,
       updatedAt: Date.now(),
     });
   };
 
-  const onClick = () => {
-    const id = Ulid.generate();
+  const onClick = async () => {
+    const collections = collections$();
+    if (!collections) return;
 
-    collections()?.todos.insert({
+    const text = text$();
+
+    const id = Ulid.generate();
+    const updatedAt = id.time.getTime();
+
+    await collections.todos.insert({
       id: id.toCanonical(),
-      text: text(),
-      updatedAt: id.time.getTime(),
+      text,
+      updatedAt,
     });
 
-    collections()?.editors.upsert({
+    await collections.editors.upsert({
       id: "const",
       text: "",
-      updatedAt: Date.now(),
+      updatedAt,
     });
   };
 
   return (
     <div>
       <ul>
-        <For each={todos()}>{(todo, _) => <li>{todo.text}</li>}</For>
+        <For each={todos$()}>{(todo, _) => <li>{todo.text}</li>}</For>
       </ul>
-      <p>{text()}</p>
-      <input value={text()} onInput={onInput} />
+      <p>{text$()}</p>
+      <input value={text$()} onInput={onInput} />
       <button onClick={onClick}>add</button>
     </div>
   );

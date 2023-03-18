@@ -4,8 +4,10 @@ import { createMemo, onCleanup } from "solid-js";
 
 import { createSubscribeResource } from "@/solid/subscribe";
 
-export function useSubscribe<T>(query: () => RxQuery<any, T> | undefined) {
-  const resource = createSubscribeResource(
+export function createSubscribeSignal<T>(
+  query: () => RxQuery<any, T> | undefined
+) {
+  const document$ = createSubscribeResource(
     query,
     (query, setValue: (value: { content: T }) => void) => {
       const subscription = query.$.subscribe((result) => {
@@ -19,13 +21,13 @@ export function useSubscribe<T>(query: () => RxQuery<any, T> | undefined) {
     undefined
   );
 
-  return () => resource()?.content;
+  return () => document$()?.content;
 }
 
-export function useSubscribeAll<T, U>(
+export function createSubscribeAllSignal<T, U>(
   query: () => RxQuery<any, RxDocument<T, U>[]> | undefined
 ) {
-  const items = createSubscribeResource(
+  const documents$ = createSubscribeResource(
     query,
     (query, setValue: (value: RxDocument<T, U>[]) => void) => {
       const subscription = query.$.subscribe((result) => {
@@ -39,9 +41,9 @@ export function useSubscribeAll<T, U>(
     []
   );
 
-  const itemsWithRevisions = createMemo(
+  const documentsWithRevisions$ = createMemo(
     () =>
-      items().map((item) => ({
+      documents$().map((item) => ({
         revision: item.revision,
         item,
       })),
@@ -63,5 +65,5 @@ export function useSubscribeAll<T, U>(
     }
   );
 
-  return createMemo(() => itemsWithRevisions().map(({ item }) => item));
+  return createMemo(() => documentsWithRevisions$().map(({ item }) => item));
 }
