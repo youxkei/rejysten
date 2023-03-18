@@ -6,6 +6,7 @@ import {
   createSubscribeAllSignal,
 } from "@/rxdb/subscribe";
 import { BulletList } from "@/components/bulletList";
+import { createSignalWithLock } from "@/domain/lock";
 
 export function ItemList(props: { id: string }) {
   return (
@@ -23,9 +24,11 @@ export function ItemListItem(props: { id: string }) {
     collections$()?.listItems.findOne(props.id)
   );
 
+  const listItemWithLock$ = createSignalWithLock(listItem$, undefined);
+
   return (
-    <Show when={listItem$()}>
-      <span>{listItem$()!.text}</span>
+    <Show when={listItemWithLock$()} keyed>
+      {(listItem) => <span>{listItem.text}</span>}
     </Show>
   );
 }
@@ -38,54 +41,58 @@ export function ItemListChildren(props: { parentId: string }) {
     })
   );
 
-  const sortedChildren$ = createMemo(
-    () => {
-      type ListItem = ReturnType<typeof children$>[0];
+  const childrenWithLock$ = createSignalWithLock(children$, []);
 
-      const children = children$();
-      if (children.length === 0) {
-        return { inconsistent: false, children };
+  const sortedChildren$ = () => {
+    const children = childrenWithLock$();
+    if (children.length === 0) {
+      return [];
+    }
+
+    type ListItem = ReturnType<typeof children$>[0];
+
+    const sortedChildren = [] as ListItem[];
+    const childMap = new Map<string, ListItem>();
+    let currentChildId: string | undefined;
+
+    for (const child of children) {
+      if (child.prevId === "") {
+        currentChildId = child.id;
+      }
+      childMap.set(child.id, child);
+    }
+
+    if (currentChildId === undefined) {
+      throw new Error(
+        `there is no first listItem in the children of '${props.parentId}'`
+      );
+    }
+
+    while (currentChildId !== "") {
+      const currentChild = childMap.get(currentChildId);
+
+      if (currentChild === undefined) {
+        throw new Error(
+          `there is an inconsistency in listItem in the children of '${props.parentId}: '${currentChildId}' is not found`
+        );
       }
 
-      const sortedChildren = [] as ListItem[];
-      const childMap = new Map<string, ListItem>();
-      let currentChildId: string | undefined;
+      sortedChildren.push(currentChild);
+      currentChildId = currentChild.nextId;
+    }
 
-      for (const child of children) {
-        if (child.prevId === "") {
-          currentChildId = child.id;
-        }
-        childMap.set(child.id, child);
-      }
+    if (children.length != sortedChildren.length) {
+      throw new Error(
+        `there is an inconsistency in listItem in the children of '${props.parentId}: some listItem is no in linked list`
+      );
+    }
 
-      if (currentChildId === undefined) {
-        return { inconsistent: true, children: [] };
-      }
-
-      while (currentChildId !== "") {
-        const currentChild = childMap.get(currentChildId);
-
-        if (currentChild === undefined) {
-          return { inconsistent: true, children: [] };
-        }
-
-        sortedChildren.push(currentChild);
-        currentChildId = currentChild.nextId;
-      }
-
-      if (children.length != sortedChildren.length) {
-        return { inconsistent: true, children: [] };
-      }
-
-      return { inconsistent: false, children: sortedChildren };
-    },
-    { inconsistent: false, children: [] },
-    { equals: (_, next) => next.inconsistent }
-  );
+    return sortedChildren;
+  };
 
   return (
     <>
-      <For each={sortedChildren$().children}>
+      <For each={sortedChildren$()}>
         {(child) => <ItemList id={child.id} />}
       </For>
     </>
@@ -166,6 +173,7 @@ if (import.meta.vitest) {
     test("text changes", async (ctx) => {
       const tid = ctx.meta.id;
       let collections = await createCollections(tid);
+      await collections.locks.upsert({ id: "lock", isLocked: false });
       await collections.listItems.bulkUpsert(listItems);
 
       const { container, unmount } = render(() => (
@@ -198,6 +206,7 @@ if (import.meta.vitest) {
   test("add child", async (ctx) => {
     const tid = ctx.meta.id;
     let collections = await createCollections(tid);
+    await collections.locks.upsert({ id: "lock", isLocked: false });
     await collections.listItems.bulkUpsert([
       {
         id: "001",
@@ -250,6 +259,42 @@ if (import.meta.vitest) {
 
     await findByText(container, "baz");
     ctx.expect(container).toMatchSnapshot();
+
+    unmount();
+  });
+
+  test("not updated when locked", async (ctx) => {
+    const tid = ctx.meta.id;
+    let collections = await createCollections(tid);
+    await collections.locks.upsert({ id: "lock", isLocked: true });
+    await collections.listItems.bulkUpsert([
+      { id: "01", text: "root", prevId: "", nextId: "", parentId: "" },
+      { id: "02", text: "foo", prevId: "", nextId: "03", parentId: "01" },
+      { id: "03", text: "bar", prevId: "02", nextId: "", parentId: "01" },
+    ]);
+
+    const { container, unmount } = render(() => (
+      <TestWithRxDB tid={tid}>
+        <ItemList id="01" />
+      </TestWithRxDB>
+    ));
+
+    await waitForElementToBeRemoved(() => queryByText(container, tid));
+    ctx.expect(container).toMatchSnapshot("initial");
+
+    await collections.locks.upsert({ id: "lock", isLocked: false });
+    await findByText(container, "foo");
+    ctx.expect(container).toMatchSnapshot("unlocked");
+
+    await collections.locks.upsert({ id: "lock", isLocked: true });
+    await collections.listItems.bulkUpsert([
+      { id: "01", text: "*root", prevId: "", nextId: "", parentId: "" },
+      { id: "02", text: "*foo", prevId: "03", nextId: "", parentId: "01" },
+      { id: "03", text: "*bar", prevId: "", nextId: "02", parentId: "01" },
+    ]);
+    await collections.locks.upsert({ id: "lock", isLocked: false });
+    await findByText(container, "*foo");
+    ctx.expect(container).toMatchSnapshot("updated with lock");
 
     unmount();
   });

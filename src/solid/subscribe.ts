@@ -1,28 +1,44 @@
 import { createSignal, createEffect, createResource } from "solid-js";
 
 export function createSubscribeResource<Source, Value, InitialValue>(
-  sourceSignal: () => Source | undefined,
+  source$: () => Source | undefined,
   subscriber: (source: Source, setValue: (value: Value) => void) => void,
   initialValue: InitialValue
 ) {
-  let setResource: (value: Value) => void;
-  let mutateResource: (value: Value) => void;
+  let setResource: ((value: Value) => void) | undefined;
+  let mutateResource: ((value: Value) => void) | undefined;
 
   const [resource, { mutate }] = createResource<
     Value | InitialValue,
     Source,
     unknown
   >(
-    sourceSignal,
+    source$,
     (source) => {
+      let firstValue: { value: Value } | undefined;
+
       subscriber(source, (value) => {
-        setResource(value);
-        setResource = mutateResource;
+        if (!firstValue) {
+          firstValue = { value };
+        }
+
+        if (setResource) {
+          setResource(value);
+          setResource = undefined;
+
+          return;
+        }
+
+        mutateResource?.(value);
       });
 
-      return new Promise<Value | InitialValue>((resolve) => {
-        setResource = resolve as (value: Value) => void;
-      });
+      if (firstValue) {
+        return Promise.resolve(firstValue.value);
+      } else {
+        return new Promise<Value | InitialValue>((resolve) => {
+          setResource = resolve as (value: Value) => void;
+        });
+      }
     },
     {
       initialValue,
