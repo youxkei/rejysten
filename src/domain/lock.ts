@@ -7,14 +7,14 @@ import { createMemo } from "solid-js";
 
 export type Lock = CollectionNameToDocumentType["locks"];
 
-export function useLockSignal() {
+export function createLockSignal() {
   const collections$ = useCollectionsSignal();
 
   return createSubscribeSignal(() => collections$()?.locks.findOne("lock"));
 }
 
 export function createSignalWithLock<T>(value$: () => T, initialValue: T) {
-  const lock$ = useLockSignal();
+  const lock$ = createLockSignal();
 
   const valueNotUpdatedWhenLocked$ = createMemo(
     () => {
