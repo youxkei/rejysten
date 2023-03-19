@@ -1,5 +1,4 @@
 import {
-  Collections,
   CollectionNameToDocumentType,
   useCollectionsSignal,
 } from "@/rxdb/collections";

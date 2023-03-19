@@ -583,6 +583,156 @@ exports[`add child 2`] = `
 </div>
 `;
 
+exports[`inconsistent error > an item is not in linked list > error 1`] = `
+<div>
+  Error: there is an inconsistency in listItem in the children of '01': some listItems are no in linked list
+</div>
+`;
+
+exports[`inconsistent error > an item is not in linked list > initial 1`] = `
+<div>
+  <div
+    class="styles_styles_bulletList_container__1am92eo0"
+  >
+    <div
+      class="styles_styles_bulletList_bullet__1am92eo1"
+    >
+      •
+    </div>
+    <div
+      class="styles_styles_bulletList_item__1am92eo2"
+    >
+      <span>
+        root
+      </span>
+    </div>
+    <div
+      class="styles_styles_bulletList_child__1am92eo3"
+    >
+      <div
+        class="styles_styles_bulletList_container__1am92eo0"
+      >
+        <div
+          class="styles_styles_bulletList_bullet__1am92eo1"
+        >
+          •
+        </div>
+        <div
+          class="styles_styles_bulletList_item__1am92eo2"
+        >
+          <span>
+            foo
+          </span>
+        </div>
+        <div
+          class="styles_styles_bulletList_child__1am92eo3"
+        />
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`inconsistent error > first item not found > error 1`] = `
+<div>
+  Error: there is an inconsistency in listItem in the children of '01': no listItem with prevId = ''
+</div>
+`;
+
+exports[`inconsistent error > first item not found > initial 1`] = `
+<div>
+  <div
+    class="styles_styles_bulletList_container__1am92eo0"
+  >
+    <div
+      class="styles_styles_bulletList_bullet__1am92eo1"
+    >
+      •
+    </div>
+    <div
+      class="styles_styles_bulletList_item__1am92eo2"
+    >
+      <span>
+        root
+      </span>
+    </div>
+    <div
+      class="styles_styles_bulletList_child__1am92eo3"
+    >
+      <div
+        class="styles_styles_bulletList_container__1am92eo0"
+      >
+        <div
+          class="styles_styles_bulletList_bullet__1am92eo1"
+        >
+          •
+        </div>
+        <div
+          class="styles_styles_bulletList_item__1am92eo2"
+        >
+          <span>
+            foo
+          </span>
+        </div>
+        <div
+          class="styles_styles_bulletList_child__1am92eo3"
+        />
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`inconsistent error > next item not found > error 1`] = `
+<div>
+  Error: there is an inconsistency in listItem in the children of '01': no listItem with id = '03'
+</div>
+`;
+
+exports[`inconsistent error > next item not found > initial 1`] = `
+<div>
+  <div
+    class="styles_styles_bulletList_container__1am92eo0"
+  >
+    <div
+      class="styles_styles_bulletList_bullet__1am92eo1"
+    >
+      •
+    </div>
+    <div
+      class="styles_styles_bulletList_item__1am92eo2"
+    >
+      <span>
+        root
+      </span>
+    </div>
+    <div
+      class="styles_styles_bulletList_child__1am92eo3"
+    >
+      <div
+        class="styles_styles_bulletList_container__1am92eo0"
+      >
+        <div
+          class="styles_styles_bulletList_bullet__1am92eo1"
+        >
+          •
+        </div>
+        <div
+          class="styles_styles_bulletList_item__1am92eo2"
+        >
+          <span>
+            foo
+          </span>
+        </div>
+        <div
+          class="styles_styles_bulletList_child__1am92eo3"
+        />
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
 exports[`not updated when locked > initial 1`] = `
 <div>
   <div

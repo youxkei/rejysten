@@ -64,7 +64,7 @@ export function ItemListChildren(props: { parentId: string }) {
 
     if (currentChildId === undefined) {
       throw new Error(
-        `there is no first listItem in the children of '${props.parentId}'`
+        `there is an inconsistency in listItem in the children of '${props.parentId}': no listItem with prevId = ''`
       );
     }
 
@@ -73,7 +73,7 @@ export function ItemListChildren(props: { parentId: string }) {
 
       if (currentChild === undefined) {
         throw new Error(
-          `there is an inconsistency in listItem in the children of '${props.parentId}: '${currentChildId}' is not found`
+          `there is an inconsistency in listItem in the children of '${props.parentId}': no listItem with id = '${currentChildId}'`
         );
       }
 
@@ -83,7 +83,7 @@ export function ItemListChildren(props: { parentId: string }) {
 
     if (children.length != sortedChildren.length) {
       throw new Error(
-        `there is an inconsistency in listItem in the children of '${props.parentId}: some listItem is no in linked list`
+        `there is an inconsistency in listItem in the children of '${props.parentId}': some listItems are no in linked list`
       );
     }
 
@@ -99,6 +99,7 @@ export function ItemListChildren(props: { parentId: string }) {
   );
 }
 
+import { ErrorBoundary } from "solid-js";
 import {
   render,
   waitForElementToBeRemoved,
@@ -297,5 +298,103 @@ if (import.meta.vitest) {
     ctx.expect(container).toMatchSnapshot("updated with lock");
 
     unmount();
+  });
+
+  describe("inconsistent error", () => {
+    test("an item is not in linked list", async (ctx) => {
+      const tid = ctx.meta.id;
+      let collections = await createCollections(tid);
+      await collections.locks.upsert({ id: "lock", isLocked: false });
+      await collections.listItems.bulkUpsert([
+        { id: "01", text: "root", prevId: "", nextId: "", parentId: "" },
+        { id: "02", text: "foo", prevId: "", nextId: "", parentId: "01" },
+      ]);
+
+      const { container, unmount } = render(() => (
+        <ErrorBoundary fallback={(err) => `${err}`}>
+          <TestWithRxDB tid={tid}>
+            <ItemList id="01" />
+          </TestWithRxDB>
+        </ErrorBoundary>
+      ));
+
+      await waitForElementToBeRemoved(() => queryByText(container, tid));
+      ctx.expect(container).toMatchSnapshot("initial");
+
+      await collections.listItems.bulkUpsert([
+        { id: "03", text: "bar", prevId: "", nextId: "", parentId: "01" },
+      ]);
+      await findByText(
+        container,
+        "Error: there is an inconsistency in listItem in the children of '01': some listItems are no in linked list"
+      );
+      ctx.expect(container).toMatchSnapshot("error");
+
+      unmount();
+    });
+
+    test("next item not found", async (ctx) => {
+      const tid = ctx.meta.id;
+      let collections = await createCollections(tid);
+      await collections.locks.upsert({ id: "lock", isLocked: false });
+      await collections.listItems.bulkUpsert([
+        { id: "01", text: "root", prevId: "", nextId: "", parentId: "" },
+        { id: "02", text: "foo", prevId: "", nextId: "", parentId: "01" },
+      ]);
+
+      const { container, unmount } = render(() => (
+        <ErrorBoundary fallback={(err) => `${err}`}>
+          <TestWithRxDB tid={tid}>
+            <ItemList id="01" />
+          </TestWithRxDB>
+        </ErrorBoundary>
+      ));
+
+      await waitForElementToBeRemoved(() => queryByText(container, tid));
+      ctx.expect(container).toMatchSnapshot("initial");
+
+      await collections.listItems.bulkUpsert([
+        { id: "02", text: "foo", prevId: "", nextId: "03", parentId: "01" },
+      ]);
+      await findByText(
+        container,
+        "Error: there is an inconsistency in listItem in the children of '01': no listItem with id = '03'"
+      );
+      ctx.expect(container).toMatchSnapshot("error");
+
+      unmount();
+    });
+
+    test("first item not found", async (ctx) => {
+      const tid = ctx.meta.id;
+      let collections = await createCollections(tid);
+      await collections.locks.upsert({ id: "lock", isLocked: false });
+      await collections.listItems.bulkUpsert([
+        { id: "01", text: "root", prevId: "", nextId: "", parentId: "" },
+        { id: "02", text: "foo", prevId: "", nextId: "", parentId: "01" },
+      ]);
+
+      const { container, unmount } = render(() => (
+        <ErrorBoundary fallback={(err) => `${err}`}>
+          <TestWithRxDB tid={tid}>
+            <ItemList id="01" />
+          </TestWithRxDB>
+        </ErrorBoundary>
+      ));
+
+      await waitForElementToBeRemoved(() => queryByText(container, tid));
+      ctx.expect(container).toMatchSnapshot("initial");
+
+      await collections.listItems.bulkUpsert([
+        { id: "02", text: "foo", prevId: "03", nextId: "03", parentId: "01" },
+      ]);
+      await findByText(
+        container,
+        "Error: there is an inconsistency in listItem in the children of '01': no listItem with prevId = ''"
+      );
+      ctx.expect(container).toMatchSnapshot("error");
+
+      unmount();
+    });
   });
 }
