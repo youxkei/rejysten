@@ -1,12 +1,10 @@
-import { Show, For, createMemo } from "solid-js";
+import { Show, For } from "solid-js";
 
 import { useCollectionsSignal } from "@/rxdb/collections";
-import {
-  createSubscribeSignal,
-  createSubscribeAllSignal,
-} from "@/rxdb/subscribe";
+import { createSubscribeSignal, createSubscribeAllSignal } from "@/rxdb/subscribe";
 import { BulletList } from "@/components/bulletList";
 import { createSignalWithLock } from "@/domain/lock";
+import { ListItem } from "@/domain/listItem";
 
 export function ItemList(props: { id: string }) {
   return (
@@ -20,9 +18,7 @@ export function ItemList(props: { id: string }) {
 
 export function ItemListItem(props: { id: string }) {
   const collections$ = useCollectionsSignal();
-  const listItem$ = createSubscribeSignal(() =>
-    collections$()?.listItems.findOne(props.id)
-  );
+  const listItem$ = createSubscribeSignal(() => collections$()?.listItems.findOne(props.id));
 
   const listItemWithLock$ = createSignalWithLock(listItem$, undefined);
 
@@ -48,8 +44,6 @@ export function ItemListChildren(props: { parentId: string }) {
     if (children.length === 0) {
       return [];
     }
-
-    type ListItem = ReturnType<typeof children$>[0];
 
     const sortedChildren = [] as ListItem[];
     const childMap = new Map<string, ListItem>();
@@ -92,9 +86,7 @@ export function ItemListChildren(props: { parentId: string }) {
 
   return (
     <>
-      <For each={sortedChildren$()}>
-        {(child) => <ItemList id={child.id} />}
-      </For>
+      <For each={sortedChildren$()}>{(child) => <ItemList id={child.id} />}</For>
     </>
   );
 }
@@ -114,60 +106,18 @@ if (import.meta.vitest) {
     {
       name: "swapped items",
       listItems: [
-        {
-          id: "001",
-          text: "root",
-          prevId: "",
-          nextId: "",
-          parentId: "",
-        },
-        {
-          id: "002",
-          text: "foo",
-          prevId: "003",
-          nextId: "",
-          parentId: "001",
-        },
-        {
-          id: "003",
-          text: "bar",
-          prevId: "",
-          nextId: "002",
-          parentId: "001",
-        },
+        { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
+        { id: "2", text: "foo", prevId: "3", nextId: "", parentId: "1" },
+        { id: "3", text: "bar", prevId: "", nextId: "2", parentId: "1" },
       ],
     },
     {
       name: "nested items",
       listItems: [
-        {
-          id: "001",
-          text: "root",
-          prevId: "",
-          nextId: "",
-          parentId: "",
-        },
-        {
-          id: "002",
-          text: "foo",
-          prevId: "",
-          nextId: "003",
-          parentId: "001",
-        },
-        {
-          id: "0021",
-          text: "foofoo",
-          prevId: "",
-          nextId: "",
-          parentId: "002",
-        },
-        {
-          id: "003",
-          text: "bar",
-          prevId: "002",
-          nextId: "",
-          parentId: "001",
-        },
+        { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
+        { id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1" },
+        { id: "2_1", text: "foofoo", prevId: "", nextId: "", parentId: "2" },
+        { id: "3", text: "bar", prevId: "2", nextId: "", parentId: "1" },
       ],
     },
   ])("$name", ({ listItems }) => {
@@ -179,23 +129,23 @@ if (import.meta.vitest) {
 
       const { container, unmount } = render(() => (
         <TestWithRxDB tid={tid}>
-          <ItemList id="001" />
+          <ItemList id="1" />
         </TestWithRxDB>
       ));
 
       await waitForElementToBeRemoved(() => queryByText(container, tid));
       ctx.expect(container).toMatchSnapshot();
 
-      await (await collections.listItems
-        .findOne("001")
-        .exec())!.incrementalPatch({ text: "changed root" });
+      await (await collections.listItems.findOne("1").exec())!.incrementalPatch({
+        text: "changed root",
+      });
 
       await findByText(container, "changed root");
       ctx.expect(container).toMatchSnapshot();
 
-      await (await collections.listItems
-        .findOne("002")
-        .exec())!.incrementalPatch({ text: "changed foo" });
+      await (await collections.listItems.findOne("2").exec())!.incrementalPatch({
+        text: "changed foo",
+      });
 
       await findByText(container, "changed foo");
       ctx.expect(container).toMatchSnapshot();
@@ -209,32 +159,14 @@ if (import.meta.vitest) {
     let collections = await createCollections(tid);
     await collections.locks.upsert({ id: "lock", isLocked: false });
     await collections.listItems.bulkUpsert([
-      {
-        id: "001",
-        text: "root",
-        prevId: "",
-        nextId: "",
-        parentId: "",
-      },
-      {
-        id: "002",
-        text: "foo",
-        prevId: "",
-        nextId: "003",
-        parentId: "001",
-      },
-      {
-        id: "003",
-        text: "bar",
-        prevId: "002",
-        nextId: "",
-        parentId: "001",
-      },
+      { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
+      { id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1" },
+      { id: "3", text: "bar", prevId: "2", nextId: "", parentId: "1" },
     ]);
 
     const { container, unmount } = render(() => (
       <TestWithRxDB tid={tid}>
-        <ItemList id="001" />
+        <ItemList id="1" />
       </TestWithRxDB>
     ));
 
@@ -242,20 +174,8 @@ if (import.meta.vitest) {
     ctx.expect(container).toMatchSnapshot();
 
     await collections.listItems.bulkUpsert([
-      {
-        id: "003",
-        text: "bar",
-        prevId: "002",
-        nextId: "004",
-        parentId: "001",
-      },
-      {
-        id: "004",
-        text: "baz",
-        prevId: "003",
-        nextId: "",
-        parentId: "001",
-      },
+      { id: "3", text: "bar", prevId: "2", nextId: "4", parentId: "1" },
+      { id: "4", text: "baz", prevId: "3", nextId: "", parentId: "1" },
     ]);
 
     await findByText(container, "baz");
@@ -269,14 +189,14 @@ if (import.meta.vitest) {
     let collections = await createCollections(tid);
     await collections.locks.upsert({ id: "lock", isLocked: true });
     await collections.listItems.bulkUpsert([
-      { id: "01", text: "root", prevId: "", nextId: "", parentId: "" },
-      { id: "02", text: "foo", prevId: "", nextId: "03", parentId: "01" },
-      { id: "03", text: "bar", prevId: "02", nextId: "", parentId: "01" },
+      { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
+      { id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1" },
+      { id: "3", text: "bar", prevId: "2", nextId: "", parentId: "1" },
     ]);
 
     const { container, unmount } = render(() => (
       <TestWithRxDB tid={tid}>
-        <ItemList id="01" />
+        <ItemList id="1" />
       </TestWithRxDB>
     ));
 
@@ -289,9 +209,9 @@ if (import.meta.vitest) {
 
     await collections.locks.upsert({ id: "lock", isLocked: true });
     await collections.listItems.bulkUpsert([
-      { id: "01", text: "*root", prevId: "", nextId: "", parentId: "" },
-      { id: "02", text: "*foo", prevId: "03", nextId: "", parentId: "01" },
-      { id: "03", text: "*bar", prevId: "", nextId: "02", parentId: "01" },
+      { id: "1", text: "*root", prevId: "", nextId: "", parentId: "" },
+      { id: "2", text: "*foo", prevId: "3", nextId: "", parentId: "1" },
+      { id: "3", text: "*bar", prevId: "", nextId: "2", parentId: "1" },
     ]);
     await collections.locks.upsert({ id: "lock", isLocked: false });
     await findByText(container, "*foo");
@@ -306,14 +226,14 @@ if (import.meta.vitest) {
       let collections = await createCollections(tid);
       await collections.locks.upsert({ id: "lock", isLocked: false });
       await collections.listItems.bulkUpsert([
-        { id: "01", text: "root", prevId: "", nextId: "", parentId: "" },
-        { id: "02", text: "foo", prevId: "", nextId: "", parentId: "01" },
+        { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
+        { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1" },
       ]);
 
       const { container, unmount } = render(() => (
-        <ErrorBoundary fallback={(err) => `${err}`}>
+        <ErrorBoundary fallback={(error) => `${error}`}>
           <TestWithRxDB tid={tid}>
-            <ItemList id="01" />
+            <ItemList id="1" />
           </TestWithRxDB>
         </ErrorBoundary>
       ));
@@ -322,11 +242,11 @@ if (import.meta.vitest) {
       ctx.expect(container).toMatchSnapshot("initial");
 
       await collections.listItems.bulkUpsert([
-        { id: "03", text: "bar", prevId: "", nextId: "", parentId: "01" },
+        { id: "3", text: "bar", prevId: "", nextId: "", parentId: "1" },
       ]);
       await findByText(
         container,
-        "Error: there is an inconsistency in listItem in the children of '01': some listItems are no in linked list"
+        "Error: there is an inconsistency in listItem in the children of '1': some listItems are no in linked list"
       );
       ctx.expect(container).toMatchSnapshot("error");
 
@@ -338,14 +258,14 @@ if (import.meta.vitest) {
       let collections = await createCollections(tid);
       await collections.locks.upsert({ id: "lock", isLocked: false });
       await collections.listItems.bulkUpsert([
-        { id: "01", text: "root", prevId: "", nextId: "", parentId: "" },
-        { id: "02", text: "foo", prevId: "", nextId: "", parentId: "01" },
+        { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
+        { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1" },
       ]);
 
       const { container, unmount } = render(() => (
-        <ErrorBoundary fallback={(err) => `${err}`}>
+        <ErrorBoundary fallback={(error) => `${error}`}>
           <TestWithRxDB tid={tid}>
-            <ItemList id="01" />
+            <ItemList id="1" />
           </TestWithRxDB>
         </ErrorBoundary>
       ));
@@ -354,11 +274,11 @@ if (import.meta.vitest) {
       ctx.expect(container).toMatchSnapshot("initial");
 
       await collections.listItems.bulkUpsert([
-        { id: "02", text: "foo", prevId: "", nextId: "03", parentId: "01" },
+        { id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1" },
       ]);
       await findByText(
         container,
-        "Error: there is an inconsistency in listItem in the children of '01': no listItem with id = '03'"
+        "Error: there is an inconsistency in listItem in the children of '1': no listItem with id = '3'"
       );
       ctx.expect(container).toMatchSnapshot("error");
 
@@ -370,14 +290,14 @@ if (import.meta.vitest) {
       let collections = await createCollections(tid);
       await collections.locks.upsert({ id: "lock", isLocked: false });
       await collections.listItems.bulkUpsert([
-        { id: "01", text: "root", prevId: "", nextId: "", parentId: "" },
-        { id: "02", text: "foo", prevId: "", nextId: "", parentId: "01" },
+        { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
+        { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1" },
       ]);
 
       const { container, unmount } = render(() => (
-        <ErrorBoundary fallback={(err) => `${err}`}>
+        <ErrorBoundary fallback={(error) => `${error}`}>
           <TestWithRxDB tid={tid}>
-            <ItemList id="01" />
+            <ItemList id="1" />
           </TestWithRxDB>
         </ErrorBoundary>
       ));
@@ -386,11 +306,11 @@ if (import.meta.vitest) {
       ctx.expect(container).toMatchSnapshot("initial");
 
       await collections.listItems.bulkUpsert([
-        { id: "02", text: "foo", prevId: "03", nextId: "03", parentId: "01" },
+        { id: "2", text: "foo", prevId: "3", nextId: "3", parentId: "1" },
       ]);
       await findByText(
         container,
-        "Error: there is an inconsistency in listItem in the children of '01': no listItem with prevId = ''"
+        "Error: there is an inconsistency in listItem in the children of '1': no listItem with prevId = ''"
       );
       ctx.expect(container).toMatchSnapshot("error");
 

@@ -96,9 +96,9 @@ function useSync() {
       s.assert(config, FirebaseConfig);
 
       return config;
-    } catch (err) {
+    } catch (error) {
       createEffect(() => {
-        addErrorWithStopSyncing(`${err}`);
+        addErrorWithStopSyncing(`${error}`);
       });
     }
   });
@@ -152,9 +152,9 @@ function useSync() {
       try {
         await signInWithPopup(getAuth(firebase), new GoogleAuthProvider());
         return true;
-      } catch (err) {
+      } catch (error) {
         createEffect(() => {
-          addErrorWithStopSyncing(`${err}`);
+          addErrorWithStopSyncing(`${error}`);
         });
       }
     }

@@ -3,11 +3,13 @@ import {
   useCollectionsSignal,
 } from "@/rxdb/collections";
 import { createSubscribeSignal } from "@/rxdb/subscribe";
+import { RxDocument } from "rxdb";
 import { createMemo } from "solid-js";
 
 export type Lock = CollectionNameToDocumentType["locks"];
+export type LockDocument = RxDocument<Lock>;
 
-export function createLockSignal() {
+function createLockSignal() {
   const collections$ = useCollectionsSignal();
 
   return createSubscribeSignal(() => collections$()?.locks.findOne("lock"));
@@ -16,7 +18,7 @@ export function createLockSignal() {
 export function createSignalWithLock<T>(value$: () => T, initialValue: T) {
   const lock$ = createLockSignal();
 
-  const valueNotUpdatedWhenLocked$ = createMemo(
+  const valueWithLock$ = createMemo(
     () => {
       const lock = lock$();
       if (!lock || lock.isLocked) {
@@ -29,5 +31,5 @@ export function createSignalWithLock<T>(value$: () => T, initialValue: T) {
     { equals: (_, next) => next.preventUpdate }
   );
 
-  return () => valueNotUpdatedWhenLocked$().value;
+  return () => valueWithLock$().value;
 }

@@ -54,5 +54,8 @@
     "@vanilla-extract/vite-plugin": {
       "vite": "^3"
     }
+  },
+  "prettier": {
+    "printWidth": 100
   }
 }
