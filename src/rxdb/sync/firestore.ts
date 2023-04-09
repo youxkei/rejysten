@@ -9,12 +9,7 @@ import {
 } from "solid-js";
 import YAML from "js-yaml";
 import { deleteApp, initializeApp } from "firebase/app";
-import {
-  getAuth,
-  signInWithPopup,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-} from "firebase/auth";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, collection as getCollection } from "firebase/firestore";
 import * as s from "superstruct";
 import { replicateFirestore } from "rxdb/plugins/replication-firestore";
@@ -116,23 +111,20 @@ function useSync() {
     return app;
   });
 
-  const authStatus$ = createSubscribeSignal(
-    (setValue: (value: { signedIn: boolean }) => void) => {
-      const firebase = firebase$();
-      if (!firebase) return;
+  const authStatus$ = createSubscribeSignal((setValue: (value: { signedIn: boolean }) => void) => {
+    const firebase = firebase$();
+    if (!firebase) return;
 
-      const unsubscribe = onAuthStateChanged(getAuth(firebase), (user) => {
-        if (user) {
-          setValue({ signedIn: true });
-        } else {
-          setValue({ signedIn: false });
-        }
-      });
+    const unsubscribe = onAuthStateChanged(getAuth(firebase), (user) => {
+      if (user) {
+        setValue({ signedIn: true });
+      } else {
+        setValue({ signedIn: false });
+      }
+    });
 
-      onCleanup(unsubscribe);
-    },
-    undefined
-  );
+    onCleanup(unsubscribe);
+  }, undefined);
 
   const [authed$] = createResource(
     () => {
@@ -178,10 +170,7 @@ function useSync() {
 
     for (const [collectionName, collection] of Object.entries(collections)) {
       const collectionNameSnakeCase = toSnakeCase(collectionName);
-      const firestoreCollection = getCollection(
-        firestore,
-        collectionNameSnakeCase
-      );
+      const firestoreCollection = getCollection(firestore, collectionNameSnakeCase);
 
       const syncState = replicateFirestore({
         collection: collection,

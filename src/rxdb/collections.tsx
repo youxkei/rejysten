@@ -1,11 +1,5 @@
 import { RxCollection, ExtractDocumentTypeFromTypedRxJsonSchema } from "rxdb";
-import {
-  JSX,
-  createResource,
-  createContext,
-  useContext,
-  onCleanup,
-} from "solid-js";
+import { JSX, createResource, createContext, useContext, onCleanup } from "solid-js";
 
 import { useDatabaseSignal } from "@/rxdb/database";
 
@@ -131,9 +125,7 @@ export function Provider(props: { children: JSX.Element }) {
     return collections;
   });
 
-  return (
-    <context.Provider value={collections$}>{props.children}</context.Provider>
-  );
+  return <context.Provider value={collections$}>{props.children}</context.Provider>;
 }
 
 export function useCollectionsSignal() {

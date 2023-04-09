@@ -22,11 +22,7 @@ export function ItemListItem(props: { id: string }) {
 
   const listItemWithLock$ = createSignalWithLock(listItem$, undefined);
 
-  return (
-    <Show when={listItemWithLock$()} keyed>
-      {(listItem) => <span>{listItem.text}</span>}
-    </Show>
-  );
+  return <Show when={listItemWithLock$()}>{(listItem) => <span>{listItem().text}</span>}</Show>;
 }
 
 export function ItemListChildren(props: { parentId: string }) {

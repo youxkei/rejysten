@@ -5,6 +5,7 @@ import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 import tsconfigPaths from "vite-tsconfig-paths";
 // @ts-ignore
 import nodePolyfills from "vite-plugin-node-stdlib-browser";
+import devtools from "solid-devtools/vite";
 
 export default defineConfig({
   server: {
@@ -21,6 +22,9 @@ export default defineConfig({
     checker({ typescript: true }),
     vanillaExtractPlugin(),
     tsconfigPaths(),
+    devtools({
+      autoname: true,
+    }),
     ...(process.env.VITEST ? [] : [nodePolyfills()]),
   ],
   define: {

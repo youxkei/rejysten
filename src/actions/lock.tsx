@@ -11,11 +11,7 @@ import { createCollections, TestWithRxDB } from "@/rxdb/test";
 import { RxDocument } from "rxdb";
 
 import { Lock } from "@/domain/lock";
-import {
-  ActionContext,
-  createActionContext,
-  createActionContextSignal,
-} from "@/actions/context";
+import { ActionContext, createActionContext, createActionContextSignal } from "@/actions/context";
 
 async function acquireLock(ctx: ActionContext) {
   let lock = await ctx.collections.locks.findOne("lock").exec();
@@ -99,9 +95,8 @@ if (import.meta.vitest) {
 
       const { container, unmount } = render(() => (
         <TestWithRxDB tid={tid}>
-          {() => {
-            const ctx$ = createActionContextSignal();
-            const doWithLock$ = createDoWithLockSignal(ctx$);
+          {(() => {
+            const doWithLock$ = createDoWithLockSignal(createActionContextSignal());
             const [text$, setText] = createSignal("");
             const onClick$ = () => {
               const doWithLock = doWithLock$();
@@ -134,7 +129,7 @@ if (import.meta.vitest) {
             };
 
             return <button onClick={onClick$()}>{text$()}</button>;
-          }}
+          })()}
         </TestWithRxDB>
       ));
 
