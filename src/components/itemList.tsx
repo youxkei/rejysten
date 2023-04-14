@@ -8,11 +8,7 @@ import { ListItem } from "@/domain/listItem";
 
 export function ItemList(props: { id: string }) {
   return (
-    <BulletList
-      bullet={"•"}
-      item={<ItemListItem id={props.id} />}
-      child={<ItemListChildren parentId={props.id} />}
-    />
+    <BulletList bullet={"•"} item={<ItemListItem id={props.id} />} child={<ItemListChildren parentId={props.id} />} />
   );
 }
 
@@ -88,12 +84,7 @@ export function ItemListChildren(props: { parentId: string }) {
 }
 
 import { ErrorBoundary } from "solid-js";
-import {
-  render,
-  waitForElementToBeRemoved,
-  queryByText,
-  findByText,
-} from "@solidjs/testing-library";
+import { render, waitForElementToBeRemoved, queryByText, findByText } from "@solidjs/testing-library";
 
 import { TestWithRxDB, createCollections } from "@/rxdb/test";
 
@@ -237,9 +228,7 @@ if (import.meta.vitest) {
       await waitForElementToBeRemoved(() => queryByText(container, tid));
       ctx.expect(container).toMatchSnapshot("initial");
 
-      await collections.listItems.bulkUpsert([
-        { id: "3", text: "bar", prevId: "", nextId: "", parentId: "1" },
-      ]);
+      await collections.listItems.bulkUpsert([{ id: "3", text: "bar", prevId: "", nextId: "", parentId: "1" }]);
       await findByText(
         container,
         "Error: there is an inconsistency in listItem in the children of '1': some listItems are no in linked list"
@@ -269,9 +258,7 @@ if (import.meta.vitest) {
       await waitForElementToBeRemoved(() => queryByText(container, tid));
       ctx.expect(container).toMatchSnapshot("initial");
 
-      await collections.listItems.bulkUpsert([
-        { id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1" },
-      ]);
+      await collections.listItems.bulkUpsert([{ id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1" }]);
       await findByText(
         container,
         "Error: there is an inconsistency in listItem in the children of '1': no listItem with id = '3'"
@@ -301,9 +288,7 @@ if (import.meta.vitest) {
       await waitForElementToBeRemoved(() => queryByText(container, tid));
       ctx.expect(container).toMatchSnapshot("initial");
 
-      await collections.listItems.bulkUpsert([
-        { id: "2", text: "foo", prevId: "3", nextId: "3", parentId: "1" },
-      ]);
+      await collections.listItems.bulkUpsert([{ id: "2", text: "foo", prevId: "3", nextId: "3", parentId: "1" }]);
       await findByText(
         container,
         "Error: there is an inconsistency in listItem in the children of '1': no listItem with prevId = ''"

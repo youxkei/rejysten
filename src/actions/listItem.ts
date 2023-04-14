@@ -188,6 +188,56 @@ export async function addPrevSibling(
   ]);
 }
 
+if (import.meta.vitest) {
+  describe("addPrevSibling", () => {
+    test("prepend", async (test) => {
+      const tid = test.meta.id;
+      let collections = await createCollections(tid);
+      let listItems = collections.listItems;
+      let now = Date.now();
+      let ctx = createActionContext(collections, now);
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+
+      await addPrevSibling(ctx, (await collections.listItems.findOne("1").exec())!, {
+        id: "2",
+        text: "new",
+      });
+
+      test.expect((await listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+        { id: "1", text: "base", prevId: "2", nextId: "", parentId: "0", updatedAt: now },
+        { id: "2", text: "new", prevId: "", nextId: "1", parentId: "0", updatedAt: now },
+      ]);
+    });
+
+    test("insert", async (test) => {
+      const tid = test.meta.id;
+      let collections = await createCollections(tid);
+      let listItems = collections.listItems;
+      let now = Date.now();
+      let ctx = createActionContext(collections, now);
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "base", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
+        { id: "2", text: "prev", prevId: "", nextId: "1", parentId: "0", updatedAt: 0 },
+      ]);
+
+      await addPrevSibling(ctx, (await collections.listItems.findOne("1").exec())!, {
+        id: "3",
+        text: "new",
+      });
+
+      test.expect((await listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+        { id: "1", text: "base", prevId: "3", nextId: "", parentId: "0", updatedAt: now },
+        { id: "2", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
+        { id: "3", text: "new", prevId: "2", nextId: "1", parentId: "0", updatedAt: now },
+      ]);
+    });
+  });
+}
+
 export async function addNextSibling(
   ctx: ActionContext,
   baseItem: RxDocument<ListItem>,
@@ -240,85 +290,7 @@ export async function addNextSibling(
   ]);
 }
 
-export async function indent(ctx: ActionContext, item: RxDocument<ListItem>) {
-  const prevItem = await getPrevItem(ctx, item);
-  if (!prevItem) return;
-
-  const lastChildItemOfPrevItem = await getLastChildItem(ctx, prevItem);
-
-  return Promise.all([
-    unlinkFromSiblings(ctx, item),
-    lastChildItemOfPrevItem
-      ? addNextSibling(ctx, lastChildItemOfPrevItem, item)
-      : item.patch({
-        parentId: prevItem.id,
-        prevId: "",
-        nextId: "",
-        updatedAt: ctx.now,
-      }),
-  ]);
-}
-
-export async function dedent(ctx: ActionContext, item: RxDocument<ListItem>) {
-  const parentItem = await getParentItem(ctx, item);
-  if (!parentItem) return;
-
-  return Promise.all([unlinkFromSiblings(ctx, item), addNextSibling(ctx, parentItem, item)]);
-}
-
-export function remove(ctx: ActionContext, item: RxDocument<ListItem>) {
-  return Promise.all([unlinkFromSiblings(ctx, item), item.remove()]);
-}
-
 if (import.meta.vitest) {
-  describe("addPrevSibling", () => {
-    test("prepend", async (test) => {
-      const tid = test.meta.id;
-      let collections = await createCollections(tid);
-      let listItems = collections.listItems;
-      let now = Date.now();
-      let ctx = createActionContext(collections, now);
-
-      await collections.listItems.bulkUpsert([
-        { id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 },
-      ]);
-
-      await addPrevSibling(ctx, (await collections.listItems.findOne("1").exec())!, {
-        id: "2",
-        text: "new",
-      });
-
-      test.expect((await listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "base", prevId: "2", nextId: "", parentId: "0", updatedAt: now },
-        { id: "2", text: "new", prevId: "", nextId: "1", parentId: "0", updatedAt: now },
-      ]);
-    });
-
-    test("insert", async (test) => {
-      const tid = test.meta.id;
-      let collections = await createCollections(tid);
-      let listItems = collections.listItems;
-      let now = Date.now();
-      let ctx = createActionContext(collections, now);
-
-      await collections.listItems.bulkUpsert([
-        { id: "1", text: "base", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "prev", prevId: "", nextId: "1", parentId: "0", updatedAt: 0 },
-      ]);
-
-      await addPrevSibling(ctx, (await collections.listItems.findOne("1").exec())!, {
-        id: "3",
-        text: "new",
-      });
-
-      test.expect((await listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "base", prevId: "3", nextId: "", parentId: "0", updatedAt: now },
-        { id: "2", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
-        { id: "3", text: "new", prevId: "2", nextId: "1", parentId: "0", updatedAt: now },
-      ]);
-    });
-  });
-
   describe("addNextSibling", () => {
     test("append", async (test) => {
       const tid = test.meta.id;
@@ -366,7 +338,28 @@ if (import.meta.vitest) {
       ]);
     });
   });
+}
 
+export async function indent(ctx: ActionContext, item: RxDocument<ListItem>) {
+  const prevItem = await getPrevItem(ctx, item);
+  if (!prevItem) return;
+
+  const lastChildItemOfPrevItem = await getLastChildItem(ctx, prevItem);
+
+  return Promise.all([
+    unlinkFromSiblings(ctx, item),
+    lastChildItemOfPrevItem
+      ? addNextSibling(ctx, lastChildItemOfPrevItem, item)
+      : item.patch({
+        parentId: prevItem.id,
+        prevId: "",
+        nextId: "",
+        updatedAt: ctx.now,
+      }),
+  ]);
+}
+
+if (import.meta.vitest) {
   describe("indent", () => {
     test("cannot indent due to no prev item", async (test) => {
       const tid = test.meta.id;
@@ -430,7 +423,16 @@ if (import.meta.vitest) {
       ]);
     });
   });
+}
 
+export async function dedent(ctx: ActionContext, item: RxDocument<ListItem>) {
+  const parentItem = await getParentItem(ctx, item);
+  if (!parentItem) return;
+
+  return Promise.all([unlinkFromSiblings(ctx, item), addNextSibling(ctx, parentItem, item)]);
+}
+
+if (import.meta.vitest) {
   describe("dedent", () => {
     test("cannot dedent due to no parent item", async (test) => {
       const tid = test.meta.id;
@@ -500,7 +502,13 @@ if (import.meta.vitest) {
       ]);
     });
   });
+}
 
+export function remove(ctx: ActionContext, item: RxDocument<ListItem>) {
+  return Promise.all([unlinkFromSiblings(ctx, item), item.remove()]);
+}
+
+if (import.meta.vitest) {
   describe("remove", () => {
     test("remove item without siblings", async (test) => {
       const tid = test.meta.id;

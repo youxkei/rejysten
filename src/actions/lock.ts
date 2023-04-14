@@ -40,6 +40,25 @@ async function releaseLock(lock: RxDocument<Lock>) {
   });
 }
 
+if (import.meta.vitest) {
+  describe("acquireLock and releaseLock", () => {
+    test("cannot aquice the lock only when the lock is already acquired", async (test) => {
+      const tid = test.meta.id;
+      let collections = await createCollections(tid);
+      let ctx = createActionContext(collections, Date.now());
+
+      const lock = await acquireLock(ctx);
+      test.expect(lock).not.toBeNull();
+
+      test.expect(await acquireLock(ctx)).toBeUndefined();
+
+      await releaseLock(lock!);
+
+      test.expect(await acquireLock(ctx)).not.toBeNull();
+    });
+  });
+}
+
 export function createDoWithLockSignal(ctx$: () => ActionContext | undefined) {
   return () => {
     const ctx = ctx$();
@@ -59,23 +78,6 @@ export function createDoWithLockSignal(ctx$: () => ActionContext | undefined) {
 }
 
 if (import.meta.vitest) {
-  describe("acquireLock and releaseLock", () => {
-    test("cannot aquice the lock only when the lock is already acquired", async (test) => {
-      const tid = test.meta.id;
-      let collections = await createCollections(tid);
-      let ctx = createActionContext(collections, Date.now());
-
-      const lock = await acquireLock(ctx);
-      test.expect(lock).not.toBeNull();
-
-      test.expect(await acquireLock(ctx)).toBeUndefined();
-
-      await releaseLock(lock!);
-
-      test.expect(await acquireLock(ctx)).not.toBeNull();
-    });
-  });
-
   describe("createDoWithLockSignal", () => {
     test("only one function is executed with lock", async (test) => {
       const tid = test.meta.id;
