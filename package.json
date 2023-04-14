@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "fix": "eslint --fix src/**/*.{ts,tsx}; prettier --write src/**/*.{ts,tsx}",
     "build": "vite build",
     "dev": "vite",
     "test": "vitest run",
@@ -24,8 +25,12 @@
     "@solidjs/testing-library": "^0.7.0",
     "@testing-library/user-event": "^14.4.3",
     "@types/js-yaml": "^4.0.5",
+    "@typescript-eslint/eslint-plugin": "^5.58.0",
+    "@typescript-eslint/parser": "^5.58.0",
     "@vanilla-extract/vite-plugin": "^3.8.0",
     "babel-preset-solid": "^1.7.3",
+    "eslint": "^8.38.0",
+    "eslint-plugin-import": "^2.27.5",
     "fake-indexeddb": "^4.0.1",
     "happy-dom": "^9.1.9",
     "patch-package": "^6.5.1",
@@ -58,5 +63,30 @@
   },
   "prettier": {
     "printWidth": 120
+  },
+  "eslintConfig": {
+    "parser": "@typescript-eslint/parser",
+    "plugins": [
+      "@typescript-eslint",
+      "import"
+    ],
+    "root": true,
+    "rules": {
+      "@typescript-eslint/consistent-type-imports": "error",
+      "import/order": [
+        "error",
+        {
+          "groups": [
+            "type",
+            "external",
+            "internal"
+          ],
+          "newlines-between": "always",
+          "alphabetize": {
+            "order": "asc"
+          }
+        }
+      ]
+    }
   }
 }

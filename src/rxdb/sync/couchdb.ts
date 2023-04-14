@@ -1,13 +1,7 @@
-import {
-  createSignal,
-  createEffect,
-  onCleanup,
-  onMount,
-  batch,
-} from "solid-js";
-import { createStore, produce } from "solid-js/store";
-import { replicateCouchDB } from "rxdb/plugins/replication-couchdb";
 import { toSnakeCase } from "js-convert-case";
+import { replicateCouchDB } from "rxdb/plugins/replication-couchdb";
+import { createSignal, createEffect, onCleanup, onMount, batch } from "solid-js";
+import { createStore, produce } from "solid-js/store";
 
 import { useCollectionsSignal } from "@/rxdb/collections";
 
@@ -102,9 +96,7 @@ function useSync() {
             ...options,
             headers: {
               ...options?.headers,
-              Authorization: `Basic ${window.btoa(
-                `${configStore.user}:${configStore.pass}`
-              )}`,
+              Authorization: `Basic ${window.btoa(`${configStore.user}:${configStore.pass}`)}`,
             },
           });
         },

@@ -1,5 +1,7 @@
-import { RxCollection, ExtractDocumentTypeFromTypedRxJsonSchema } from "rxdb";
-import { JSX, createResource, createContext, useContext, onCleanup } from "solid-js";
+import type { RxCollection, ExtractDocumentTypeFromTypedRxJsonSchema } from "rxdb";
+import type { JSX } from "solid-js";
+
+import { createResource, createContext, useContext, onCleanup } from "solid-js";
 
 import { useDatabaseSignal } from "@/rxdb/database";
 
@@ -99,9 +101,7 @@ export type CollectionNameToDocumentType = {
 };
 
 export type Collections = {
-  [DocumentName in keyof CollectionNameToDocumentType]: RxCollection<
-    CollectionNameToDocumentType[DocumentName]
-  >;
+  [DocumentName in keyof CollectionNameToDocumentType]: RxCollection<CollectionNameToDocumentType[DocumentName]>;
 };
 
 const context = createContext<() => Collections | undefined>();

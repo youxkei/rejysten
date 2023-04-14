@@ -1,10 +1,10 @@
-import {
-  CollectionNameToDocumentType,
-  useCollectionsSignal,
-} from "@/rxdb/collections";
-import { createSubscribeSignal } from "@/rxdb/subscribe";
-import { RxDocument } from "rxdb";
+import type { CollectionNameToDocumentType } from "@/rxdb/collections";
+import type { RxDocument } from "rxdb";
+
 import { createMemo } from "solid-js";
+
+import { useCollectionsSignal } from "@/rxdb/collections";
+import { createSubscribeSignal } from "@/rxdb/subscribe";
 
 export type Lock = CollectionNameToDocumentType["locks"];
 export type LockDocument = RxDocument<Lock>;

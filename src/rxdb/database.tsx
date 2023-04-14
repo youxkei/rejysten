@@ -1,40 +1,28 @@
-import { RxDatabase, RxDatabaseCreator, createRxDatabase } from "rxdb";
-import {
-  JSX,
-  createResource,
-  onCleanup,
-  createContext,
-  useContext,
-} from "solid-js";
+import type { Collections } from "@/rxdb/collections";
+import type { RxDatabase, RxDatabaseCreator } from "rxdb";
+import type { JSX } from "solid-js";
 
-import { Collections } from "@/rxdb/collections";
+import { createRxDatabase } from "rxdb";
+import { createResource, onCleanup, createContext, useContext } from "solid-js";
 
 const context = createContext<() => RxDatabase<Collections> | undefined>();
 
-export function Provider(props: {
-  databaseCreator: RxDatabaseCreator;
-  children: JSX.Element;
-}) {
-  const [database$] = createResource(
-    props.databaseCreator,
-    async (databaseCreator) => {
-      let database: RxDatabase<Collections> | undefined;
+export function Provider(props: { databaseCreator: RxDatabaseCreator; children: JSX.Element }) {
+  const [database$] = createResource(props.databaseCreator, async (databaseCreator) => {
+    let database: RxDatabase<Collections> | undefined;
 
-      onCleanup(() => {
-        if (database) {
-          database.destroy();
-        }
-      });
+    onCleanup(() => {
+      if (database) {
+        database.destroy();
+      }
+    });
 
-      database = await createRxDatabase<Collections>(databaseCreator);
+    database = await createRxDatabase<Collections>(databaseCreator);
 
-      return database;
-    }
-  );
+    return database;
+  });
 
-  return (
-    <context.Provider value={database$}>{props.children}</context.Provider>
-  );
+  return <context.Provider value={database$}>{props.children}</context.Provider>;
 }
 
 export function useDatabaseSignal() {

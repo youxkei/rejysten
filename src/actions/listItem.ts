@@ -1,11 +1,10 @@
-import { createCollections } from "@/rxdb/test";
+import type { ActionContext } from "@/actions/context";
+import type { ListItem } from "@/domain/listItem";
+import type { RxDocument } from "rxdb";
+
 import { createActionContext } from "@/actions/context";
-
-import { RxDocument } from "rxdb";
-
-import { ListItem } from "@/domain/listItem";
-import { ActionContext } from "@/actions/context";
 import { InconsistentError } from "@/actions/error";
+import { createCollections } from "@/rxdb/test";
 
 async function getPrevItem(ctx: ActionContext, baseItem: RxDocument<ListItem>) {
   const listItems = ctx.collections.listItems;
@@ -113,19 +112,19 @@ async function unlinkFromSiblings(ctx: ActionContext, item: RxDocument<ListItem>
   return Promise.all([
     ...(prevItem
       ? [
-        prevItem.patch({
-          nextId: nextItem?.id ?? "",
-          updatedAt: ctx.now,
-        }),
-      ]
+          prevItem.patch({
+            nextId: nextItem?.id ?? "",
+            updatedAt: ctx.now,
+          }),
+        ]
       : []),
     ...(nextItem
       ? [
-        nextItem.patch({
-          prevId: prevItem?.id ?? "",
-          updatedAt: ctx.now,
-        }),
-      ]
+          nextItem.patch({
+            prevId: prevItem?.id ?? "",
+            updatedAt: ctx.now,
+          }),
+        ]
       : []),
   ]);
 }
@@ -152,18 +151,18 @@ export async function addPrevSibling(
     return Promise.all([
       isRxDocument(newItem)
         ? newItem.patch({
-          parentId: baseItem.parentId,
-          prevId: "",
-          nextId: baseItem.id,
-          updatedAt: ctx.now,
-        })
+            parentId: baseItem.parentId,
+            prevId: "",
+            nextId: baseItem.id,
+            updatedAt: ctx.now,
+          })
         : listItems.insert({
-          ...newItem,
-          parentId: baseItem.parentId,
-          prevId: "",
-          nextId: baseItem.id,
-          updatedAt: ctx.now,
-        }),
+            ...newItem,
+            parentId: baseItem.parentId,
+            prevId: "",
+            nextId: baseItem.id,
+            updatedAt: ctx.now,
+          }),
       baseItem.patch({ prevId: newItem.id, updatedAt: ctx.now }),
     ]);
   }
@@ -171,18 +170,18 @@ export async function addPrevSibling(
   return Promise.all([
     isRxDocument(newItem)
       ? newItem.patch({
-        parentId: baseItem.parentId,
-        prevId: prevItem.id,
-        nextId: baseItem.id,
-        updatedAt: ctx.now,
-      })
+          parentId: baseItem.parentId,
+          prevId: prevItem.id,
+          nextId: baseItem.id,
+          updatedAt: ctx.now,
+        })
       : listItems.insert({
-        ...newItem,
-        parentId: baseItem.parentId,
-        prevId: prevItem.id,
-        nextId: baseItem.id,
-        updatedAt: ctx.now,
-      }),
+          ...newItem,
+          parentId: baseItem.parentId,
+          prevId: prevItem.id,
+          nextId: baseItem.id,
+          updatedAt: ctx.now,
+        }),
     baseItem.patch({ prevId: newItem.id, updatedAt: ctx.now }),
     prevItem.patch({ nextId: newItem.id, updatedAt: ctx.now }),
   ]);
@@ -254,18 +253,18 @@ export async function addNextSibling(
     return Promise.all([
       isRxDocument(newItem)
         ? newItem.patch({
-          parentId: baseItem.parentId,
-          prevId: baseItem.id,
-          nextId: "",
-          updatedAt: ctx.now,
-        })
+            parentId: baseItem.parentId,
+            prevId: baseItem.id,
+            nextId: "",
+            updatedAt: ctx.now,
+          })
         : listItems.insert({
-          ...newItem,
-          parentId: baseItem.parentId,
-          prevId: baseItem.id,
-          nextId: "",
-          updatedAt: ctx.now,
-        }),
+            ...newItem,
+            parentId: baseItem.parentId,
+            prevId: baseItem.id,
+            nextId: "",
+            updatedAt: ctx.now,
+          }),
       baseItem.patch({ nextId: newItem.id, updatedAt: ctx.now }),
     ]);
   }
@@ -273,18 +272,18 @@ export async function addNextSibling(
   return Promise.all([
     isRxDocument(newItem)
       ? newItem.patch({
-        parentId: baseItem.parentId,
-        prevId: baseItem.id,
-        nextId: nextItem.id,
-        updatedAt: ctx.now,
-      })
+          parentId: baseItem.parentId,
+          prevId: baseItem.id,
+          nextId: nextItem.id,
+          updatedAt: ctx.now,
+        })
       : listItems.insert({
-        ...newItem,
-        parentId: baseItem.parentId,
-        prevId: baseItem.id,
-        nextId: nextItem.id,
-        updatedAt: ctx.now,
-      }),
+          ...newItem,
+          parentId: baseItem.parentId,
+          prevId: baseItem.id,
+          nextId: nextItem.id,
+          updatedAt: ctx.now,
+        }),
     baseItem.patch({ nextId: newItem.id, updatedAt: ctx.now }),
     nextItem.patch({ prevId: newItem.id, updatedAt: ctx.now }),
   ]);
@@ -351,11 +350,11 @@ export async function indent(ctx: ActionContext, item: RxDocument<ListItem>) {
     lastChildItemOfPrevItem
       ? addNextSibling(ctx, lastChildItemOfPrevItem, item)
       : item.patch({
-        parentId: prevItem.id,
-        prevId: "",
-        nextId: "",
-        updatedAt: ctx.now,
-      }),
+          parentId: prevItem.id,
+          prevId: "",
+          nextId: "",
+          updatedAt: ctx.now,
+        }),
   ]);
 }
 

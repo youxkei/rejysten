@@ -1,4 +1,6 @@
-import { Collections, useCollectionsSignal } from "@/rxdb/collections";
+import type { Collections } from "@/rxdb/collections";
+
+import { useCollectionsSignal } from "@/rxdb/collections";
 
 export type ActionContext = {
   collections: Collections;

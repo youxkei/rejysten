@@ -1,9 +1,9 @@
+import type { ActionContext } from "@/actions/context";
+import type { Lock } from "@/domain/lock";
+import type { RxDocument } from "rxdb";
+
+import { createActionContext } from "@/actions/context";
 import { createCollections } from "@/rxdb/test";
-
-import { RxDocument } from "rxdb";
-
-import { Lock } from "@/domain/lock";
-import { ActionContext, createActionContext } from "@/actions/context";
 
 async function acquireLock(ctx: ActionContext) {
   let lock = await ctx.collections.locks.findOne("lock").exec();

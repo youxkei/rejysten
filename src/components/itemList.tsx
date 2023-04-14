@@ -1,10 +1,14 @@
-import { Show, For } from "solid-js";
+import type { ListItem } from "@/domain/listItem";
 
-import { useCollectionsSignal } from "@/rxdb/collections";
-import { createSubscribeSignal, createSubscribeAllSignal } from "@/rxdb/subscribe";
+import { render, waitForElementToBeRemoved, queryByText, findByText } from "@solidjs/testing-library";
+import { Show, For } from "solid-js";
+import { ErrorBoundary } from "solid-js";
+
 import { BulletList } from "@/components/bulletList";
 import { createSignalWithLock } from "@/domain/lock";
-import { ListItem } from "@/domain/listItem";
+import { useCollectionsSignal } from "@/rxdb/collections";
+import { createSubscribeSignal, createSubscribeAllSignal } from "@/rxdb/subscribe";
+import { TestWithRxDB, createCollections } from "@/rxdb/test";
 
 export function ItemList(props: { id: string }) {
   return (
@@ -82,11 +86,6 @@ export function ItemListChildren(props: { parentId: string }) {
     </>
   );
 }
-
-import { ErrorBoundary } from "solid-js";
-import { render, waitForElementToBeRemoved, queryByText, findByText } from "@solidjs/testing-library";
-
-import { TestWithRxDB, createCollections } from "@/rxdb/test";
 
 if (import.meta.vitest) {
   describe.each([

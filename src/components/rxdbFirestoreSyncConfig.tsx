@@ -1,3 +1,5 @@
+import { createEffect, createSignal, startTransition } from "solid-js";
+
 import {
   configYaml$,
   syncing$,
@@ -5,7 +7,6 @@ import {
   setConfigYamlWithStopSyncing,
   startSyncing,
 } from "@/rxdb/sync/firestore";
-import { createEffect, createSignal, startTransition } from "solid-js";
 
 export function RxdbFirestoreSyncConfig() {
   const [syncButtonDisabledSignal, setSyncButtonDisabled] = createSignal(false);
@@ -17,12 +18,7 @@ export function RxdbFirestoreSyncConfig() {
   return (
     <>
       <div>
-        <input
-          onInput={(e) =>
-            setConfigYamlWithStopSyncing(e.currentTarget.value ?? "")
-          }
-          value={configYaml$()}
-        />
+        <input onInput={(e) => setConfigYamlWithStopSyncing(e.currentTarget.value ?? "")} value={configYaml$()} />
       </div>
       <button
         disabled={syncButtonDisabledSignal()}

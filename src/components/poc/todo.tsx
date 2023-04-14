@@ -1,20 +1,18 @@
+import { render, waitForElementToBeRemoved, findByText, queryByText } from "@solidjs/testing-library";
+import userEvent from "@testing-library/user-event";
 import { Ulid } from "id128";
 import { For } from "solid-js";
 
 import { useCollectionsSignal } from "@/rxdb/collections";
-import {
-  createSubscribeSignal,
-  createSubscribeAllSignal,
-} from "@/rxdb/subscribe";
+import { createSubscribeSignal, createSubscribeAllSignal } from "@/rxdb/subscribe";
+import { TestWithRxDB, createCollections } from "@/rxdb/test";
 
 export function Todo() {
   const collections$ = useCollectionsSignal();
 
   const todos$ = createSubscribeAllSignal(() => collections$()?.todos.find());
 
-  const editor$ = createSubscribeSignal(() =>
-    collections$()?.editors.findOne("const")
-  );
+  const editor$ = createSubscribeSignal(() => collections$()?.editors.findOne("const"));
 
   const text$ = () => editor$()?.text ?? "";
 
@@ -59,16 +57,6 @@ export function Todo() {
     </div>
   );
 }
-
-import {
-  render,
-  waitForElementToBeRemoved,
-  findByText,
-  queryByText,
-} from "@solidjs/testing-library";
-import userEvent from "@testing-library/user-event";
-
-import { TestWithRxDB, createCollections } from "@/rxdb/test";
 
 if (import.meta.vitest) {
   test("renders", async (ctx) => {
@@ -120,9 +108,7 @@ if (import.meta.vitest) {
     ctx.expect(container).toMatchSnapshot();
 
     await user.click(button);
-    await waitForElementToBeRemoved(() =>
-      queryByText(container.querySelector("p")!, "baz")
-    );
+    await waitForElementToBeRemoved(() => queryByText(container.querySelector("p")!, "baz"));
     await findByText(container.querySelector("ul")!, "baz");
     ctx.expect(container).toMatchSnapshot();
 

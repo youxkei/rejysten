@@ -1,15 +1,13 @@
-import { JSX, Suspense } from "solid-js";
-import { createRxDatabase, addRxPlugin } from "rxdb";
-import { RxDBUpdatePlugin } from "rxdb/plugins/update";
-import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
+import type { Collections } from "@/rxdb/collections";
+import type { JSX } from "solid-js";
 
 import { indexedDB, IDBKeyRange } from "fake-indexeddb";
+import { createRxDatabase, addRxPlugin } from "rxdb";
+import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
+import { RxDBUpdatePlugin } from "rxdb/plugins/update";
+import { Suspense } from "solid-js";
 
-import {
-  Collections,
-  Provider as CollectionsProvider,
-  collectionCreators,
-} from "@/rxdb/collections";
+import { Provider as CollectionsProvider, collectionCreators } from "@/rxdb/collections";
 import { Provider as DatabaseProvider } from "@/rxdb/database";
 
 addRxPlugin(RxDBUpdatePlugin);

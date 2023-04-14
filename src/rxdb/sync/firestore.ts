@@ -1,19 +1,11 @@
-import {
-  batch,
-  createEffect,
-  createMemo,
-  createResource,
-  createSignal,
-  onCleanup,
-  onMount,
-} from "solid-js";
-import YAML from "js-yaml";
 import { deleteApp, initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, collection as getCollection } from "firebase/firestore";
-import * as s from "superstruct";
-import { replicateFirestore } from "rxdb/plugins/replication-firestore";
 import { toSnakeCase } from "js-convert-case";
+import YAML from "js-yaml";
+import { replicateFirestore } from "rxdb/plugins/replication-firestore";
+import { batch, createEffect, createMemo, createResource, createSignal, onCleanup, onMount } from "solid-js";
+import * as s from "superstruct";
 
 import { useCollectionsSignal } from "@/rxdb/collections";
 import { createSubscribeSignal } from "@/solid/subscribe";

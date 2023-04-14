@@ -19,7 +19,7 @@ export default defineConfig({
     solidPlugin({
       hot: !process.env.VITEST,
     }),
-    checker({ typescript: true }),
+    checker({ typescript: true, eslint: { lintCommand: "eslint './src/**/*.{ts,tsx}'" } }),
     vanillaExtractPlugin(),
     tsconfigPaths(),
     devtools({

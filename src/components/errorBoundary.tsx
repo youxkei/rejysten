@@ -1,4 +1,6 @@
-import { JSX, ErrorBoundary as SolidErrorBoundary } from "solid-js";
+import type { JSX } from "solid-js";
+
+import { ErrorBoundary as SolidErrorBoundary } from "solid-js";
 
 export function ErrorBoundary(props: { children: JSX.Element }) {
   return (
