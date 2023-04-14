@@ -73,7 +73,8 @@ async function getParentItem(ctx: ActionContext, baseItem: RxDocument<ListItem>)
     parentItem = (await listItems.findOne(baseItem.parentId).exec()) ?? undefined;
 
     if (!parentItem) {
-      throw new InconsistentError("baseItem.parentId is invalid", { baseItem: baseItem.toJSON() });
+      // this is normal situation because parentId may refer to an item of another collection
+      return;
     }
   }
 
@@ -106,26 +107,25 @@ async function getLastChildItem(ctx: ActionContext, baseItem: RxDocument<ListIte
   return lastChildItems[0];
 }
 
-export async function remove(ctx: ActionContext, item: RxDocument<ListItem>) {
-  const prevItem = await getPrevItem(ctx, item);
-  const nextItem = await getNextItem(ctx, item);
+async function unlinkFromSiblings(ctx: ActionContext, item: RxDocument<ListItem>) {
+  const [prevItem, nextItem] = await Promise.all([getPrevItem(ctx, item), getNextItem(ctx, item)]);
 
   return Promise.all([
     ...(prevItem
       ? [
-          prevItem.patch({
-            nextId: nextItem?.id ?? "",
-            updatedAt: ctx.updateTime.getTime(),
-          }),
-        ]
+        prevItem.patch({
+          nextId: nextItem?.id ?? "",
+          updatedAt: ctx.updateTime.getTime(),
+        }),
+      ]
       : []),
     ...(nextItem
       ? [
-          nextItem.patch({
-            prevId: prevItem?.id ?? "",
-            updatedAt: ctx.updateTime.getTime(),
-          }),
-        ]
+        nextItem.patch({
+          prevId: prevItem?.id ?? "",
+          updatedAt: ctx.updateTime.getTime(),
+        }),
+      ]
       : []),
   ]);
 }
@@ -152,18 +152,18 @@ export async function addPrevSibling(
     return Promise.all([
       isRxDocument(newItem)
         ? newItem.patch({
-            parentId: baseItem.parentId,
-            prevId: "",
-            nextId: baseItem.id,
-            updatedAt: ctx.updateTime.getTime(),
-          })
+          parentId: baseItem.parentId,
+          prevId: "",
+          nextId: baseItem.id,
+          updatedAt: ctx.updateTime.getTime(),
+        })
         : listItems.insert({
-            ...newItem,
-            parentId: baseItem.parentId,
-            prevId: "",
-            nextId: baseItem.id,
-            updatedAt: ctx.updateTime.getTime(),
-          }),
+          ...newItem,
+          parentId: baseItem.parentId,
+          prevId: "",
+          nextId: baseItem.id,
+          updatedAt: ctx.updateTime.getTime(),
+        }),
       baseItem.update({ $set: { prevId: newItem.id, updatedAt: ctx.updateTime.getTime() } }),
     ]);
   }
@@ -171,18 +171,18 @@ export async function addPrevSibling(
   return Promise.all([
     isRxDocument(newItem)
       ? newItem.patch({
-          parentId: baseItem.parentId,
-          prevId: prevItem.id,
-          nextId: baseItem.id,
-          updatedAt: ctx.updateTime.getTime(),
-        })
+        parentId: baseItem.parentId,
+        prevId: prevItem.id,
+        nextId: baseItem.id,
+        updatedAt: ctx.updateTime.getTime(),
+      })
       : listItems.insert({
-          ...newItem,
-          parentId: baseItem.parentId,
-          prevId: prevItem.id,
-          nextId: baseItem.id,
-          updatedAt: ctx.updateTime.getTime(),
-        }),
+        ...newItem,
+        parentId: baseItem.parentId,
+        prevId: prevItem.id,
+        nextId: baseItem.id,
+        updatedAt: ctx.updateTime.getTime(),
+      }),
     baseItem.update({ $set: { prevId: newItem.id, updatedAt: ctx.updateTime.getTime() } }),
     prevItem.update({ $set: { nextId: newItem.id, updatedAt: ctx.updateTime.getTime() } }),
   ]);
@@ -204,18 +204,18 @@ export async function addNextSibling(
     return Promise.all([
       isRxDocument(newItem)
         ? newItem.patch({
-            parentId: baseItem.parentId,
-            prevId: baseItem.id,
-            nextId: "",
-            updatedAt: ctx.updateTime.getTime(),
-          })
+          parentId: baseItem.parentId,
+          prevId: baseItem.id,
+          nextId: "",
+          updatedAt: ctx.updateTime.getTime(),
+        })
         : listItems.insert({
-            ...newItem,
-            parentId: baseItem.parentId,
-            prevId: baseItem.id,
-            nextId: "",
-            updatedAt: ctx.updateTime.getTime(),
-          }),
+          ...newItem,
+          parentId: baseItem.parentId,
+          prevId: baseItem.id,
+          nextId: "",
+          updatedAt: ctx.updateTime.getTime(),
+        }),
       baseItem.update({ $set: { nextId: newItem.id, updatedAt: ctx.updateTime.getTime() } }),
     ]);
   }
@@ -223,18 +223,18 @@ export async function addNextSibling(
   return Promise.all([
     isRxDocument(newItem)
       ? newItem.patch({
-          parentId: baseItem.parentId,
-          prevId: baseItem.id,
-          nextId: nextItem.id,
-          updatedAt: ctx.updateTime.getTime(),
-        })
+        parentId: baseItem.parentId,
+        prevId: baseItem.id,
+        nextId: nextItem.id,
+        updatedAt: ctx.updateTime.getTime(),
+      })
       : listItems.insert({
-          ...newItem,
-          parentId: baseItem.parentId,
-          prevId: baseItem.id,
-          nextId: nextItem.id,
-          updatedAt: ctx.updateTime.getTime(),
-        }),
+        ...newItem,
+        parentId: baseItem.parentId,
+        prevId: baseItem.id,
+        nextId: nextItem.id,
+        updatedAt: ctx.updateTime.getTime(),
+      }),
     baseItem.update({ $set: { nextId: newItem.id, updatedAt: ctx.updateTime.getTime() } }),
     nextItem.update({ $set: { prevId: newItem.id, updatedAt: ctx.updateTime.getTime() } }),
   ]);
@@ -247,15 +247,15 @@ export async function indent(ctx: ActionContext, item: RxDocument<ListItem>) {
   const lastChildItemOfPrevItem = await getLastChildItem(ctx, prevItem);
 
   return Promise.all([
-    remove(ctx, item),
+    unlinkFromSiblings(ctx, item),
     lastChildItemOfPrevItem
       ? addNextSibling(ctx, lastChildItemOfPrevItem, item)
       : item.patch({
-          parentId: prevItem.id,
-          prevId: "",
-          nextId: "",
-          updatedAt: ctx.updateTime.getTime(),
-        }),
+        parentId: prevItem.id,
+        prevId: "",
+        nextId: "",
+        updatedAt: ctx.updateTime.getTime(),
+      }),
   ]);
 }
 
@@ -263,7 +263,11 @@ export async function dedent(ctx: ActionContext, item: RxDocument<ListItem>) {
   const parentItem = await getParentItem(ctx, item);
   if (!parentItem) return;
 
-  return Promise.all([remove(ctx, item), addNextSibling(ctx, parentItem, item)]);
+  return Promise.all([unlinkFromSiblings(ctx, item), addNextSibling(ctx, parentItem, item)]);
+}
+
+export function remove(ctx: ActionContext, item: RxDocument<ListItem>) {
+  return Promise.all([unlinkFromSiblings(ctx, item), item.remove()]);
 }
 
 if (import.meta.vitest) {
@@ -359,6 +363,212 @@ if (import.meta.vitest) {
         { id: "1", text: "base", prevId: "", nextId: "3", parentId: "0", updatedAt: updateTime },
         { id: "2", text: "next", prevId: "3", nextId: "", parentId: "0", updatedAt: updateTime },
         { id: "3", text: "new", prevId: "1", nextId: "2", parentId: "0", updatedAt: updateTime },
+      ]);
+    });
+  });
+
+  describe("indent", () => {
+    test("cannot indent due to no prev item", async (test) => {
+      const tid = test.meta.id;
+      let collections = await createCollections(tid);
+      let ctx = createActionContext(collections);
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "target", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
+        { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+
+      await indent(ctx, (await collections.listItems.findOne("1").exec())!);
+
+      test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+        { id: "1", text: "target", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
+        { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+    });
+
+    test("indent with prev item without children", async (test) => {
+      const tid = test.meta.id;
+      let collections = await createCollections(tid);
+      let ctx = createActionContext(collections);
+      let updateTime = ctx.updateTime.getTime();
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
+        { id: "2", text: "target", prevId: "1", nextId: "3", parentId: "0", updatedAt: 0 },
+        { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+
+      await indent(ctx, (await collections.listItems.findOne("2").exec())!);
+
+      test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+        { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: updateTime },
+        { id: "2", text: "target", prevId: "", nextId: "", parentId: "1", updatedAt: updateTime },
+        { id: "3", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: updateTime },
+      ]);
+    });
+
+    test("indent with prev item with children", async (test) => {
+      const tid = test.meta.id;
+      let collections = await createCollections(tid);
+      let ctx = createActionContext(collections);
+      let updateTime = ctx.updateTime.getTime();
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: 0 },
+        { id: "2", text: "child of prev", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
+        { id: "3", text: "target", prevId: "1", nextId: "4", parentId: "0", updatedAt: 0 },
+        { id: "4", text: "next", prevId: "3", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+
+      await indent(ctx, (await collections.listItems.findOne("3").exec())!);
+
+      test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+        { id: "1", text: "prev", prevId: "", nextId: "4", parentId: "0", updatedAt: updateTime },
+        { id: "2", text: "child of prev", prevId: "", nextId: "3", parentId: "1", updatedAt: updateTime },
+        { id: "3", text: "target", prevId: "2", nextId: "", parentId: "1", updatedAt: updateTime },
+        { id: "4", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: updateTime },
+      ]);
+    });
+  });
+
+  describe("dedent", () => {
+    test("cannot dedent due to no parent item", async (test) => {
+      const tid = test.meta.id;
+      let collections = await createCollections(tid);
+      let ctx = createActionContext(collections);
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
+        { id: "2", text: "target", prevId: "1", nextId: "3", parentId: "0", updatedAt: 0 },
+        { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+
+      await dedent(ctx, (await collections.listItems.findOne("2").exec())!);
+
+      test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+        { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
+        { id: "2", text: "target", prevId: "1", nextId: "3", parentId: "0", updatedAt: 0 },
+        { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+    });
+
+    test("dedent with parent item without next item", async (test) => {
+      const tid = test.meta.id;
+      let collections = await createCollections(tid);
+      let ctx = createActionContext(collections);
+      let updateTime = ctx.updateTime.getTime();
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "parent", prevId: "", nextId: "", parentId: "0", updatedAt: 0 },
+        { id: "2", text: "prev", prevId: "", nextId: "3", parentId: "1", updatedAt: 0 },
+        { id: "3", text: "target", prevId: "2", nextId: "4", parentId: "1", updatedAt: 0 },
+        { id: "4", text: "next", prevId: "3", nextId: "", parentId: "1", updatedAt: 0 },
+      ]);
+
+      await dedent(ctx, (await collections.listItems.findOne("3").exec())!);
+
+      test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+        { id: "1", text: "parent", prevId: "", nextId: "3", parentId: "0", updatedAt: updateTime },
+        { id: "2", text: "prev", prevId: "", nextId: "4", parentId: "1", updatedAt: updateTime },
+        { id: "3", text: "target", prevId: "1", nextId: "", parentId: "0", updatedAt: updateTime },
+        { id: "4", text: "next", prevId: "2", nextId: "", parentId: "1", updatedAt: updateTime },
+      ]);
+    });
+
+    test("dedent with parent item with next item", async (test) => {
+      const tid = test.meta.id;
+      let collections = await createCollections(tid);
+      let ctx = createActionContext(collections);
+      let updateTime = ctx.updateTime.getTime();
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "parent", prevId: "", nextId: "5", parentId: "0", updatedAt: 0 },
+        { id: "2", text: "prev", prevId: "", nextId: "3", parentId: "1", updatedAt: 0 },
+        { id: "3", text: "target", prevId: "2", nextId: "4", parentId: "1", updatedAt: 0 },
+        { id: "4", text: "next", prevId: "3", nextId: "", parentId: "1", updatedAt: 0 },
+        { id: "5", text: "next of parent", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+
+      await dedent(ctx, (await collections.listItems.findOne("3").exec())!);
+
+      test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+        { id: "1", text: "parent", prevId: "", nextId: "3", parentId: "0", updatedAt: updateTime },
+        { id: "2", text: "prev", prevId: "", nextId: "4", parentId: "1", updatedAt: updateTime },
+        { id: "3", text: "target", prevId: "1", nextId: "5", parentId: "0", updatedAt: updateTime },
+        { id: "4", text: "next", prevId: "2", nextId: "", parentId: "1", updatedAt: updateTime },
+        { id: "5", text: "next of parent", prevId: "3", nextId: "", parentId: "0", updatedAt: updateTime },
+      ]);
+    });
+  });
+
+  describe("remove", () => {
+    test("remove item without siblings", async (test) => {
+      const tid = test.meta.id;
+      let collections = await createCollections(tid);
+      let ctx = createActionContext(collections);
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "target", prevId: "", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+
+      await remove(ctx, (await collections.listItems.findOne("1").exec())!);
+
+      test.expect(await collections.listItems.find().exec()).toEqual([]);
+    });
+
+    test("remove item with prev item without next item", async (test) => {
+      const tid = test.meta.id;
+      let collections = await createCollections(tid);
+      let ctx = createActionContext(collections);
+      let updateTime = ctx.updateTime.getTime();
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
+        { id: "2", text: "target", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+
+      await remove(ctx, (await collections.listItems.findOne("2").exec())!);
+
+      test
+        .expect((await collections.listItems.find().exec()).map((x) => x.toJSON()))
+        .toEqual([{ id: "1", text: "prev", prevId: "", nextId: "", parentId: "0", updatedAt: updateTime }]);
+    });
+
+    test("remove item with next item without prev item", async (test) => {
+      const tid = test.meta.id;
+      let collections = await createCollections(tid);
+      let ctx = createActionContext(collections);
+      let updateTime = ctx.updateTime.getTime();
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "target", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
+        { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+
+      await remove(ctx, (await collections.listItems.findOne("1").exec())!);
+
+      test
+        .expect((await collections.listItems.find().exec()).map((x) => x.toJSON()))
+        .toEqual([{ id: "2", text: "next", prevId: "", nextId: "", parentId: "0", updatedAt: updateTime }]);
+    });
+
+    test("remove item with siblings", async (test) => {
+      const tid = test.meta.id;
+      let collections = await createCollections(tid);
+      let ctx = createActionContext(collections);
+      let updateTime = ctx.updateTime.getTime();
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
+        { id: "2", text: "target", prevId: "1", nextId: "3", parentId: "0", updatedAt: 0 },
+        { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+
+      await remove(ctx, (await collections.listItems.findOne("2").exec())!);
+
+      test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+        { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: updateTime },
+        { id: "3", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: updateTime },
       ]);
     });
   });
