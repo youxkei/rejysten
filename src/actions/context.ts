@@ -2,13 +2,13 @@ import { Collections, useCollectionsSignal } from "@/rxdb/collections";
 
 export type ActionContext = {
   collections: Collections;
-  updateTime: Date;
+  now: number;
 };
 
-export function createActionContext(collections: Collections): ActionContext {
+export function createActionContext(collections: Collections, now: number): ActionContext {
   return {
     collections,
-    updateTime: new Date(),
+    now,
   };
 }
 
@@ -19,6 +19,6 @@ export function createActionContextSignal(): () => ActionContext | undefined {
     const collections = collections$();
     if (!collections) return;
 
-    return createActionContext(collections);
+    return createActionContext(collections, Date.now());
   };
 }

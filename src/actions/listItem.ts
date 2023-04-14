@@ -115,7 +115,7 @@ async function unlinkFromSiblings(ctx: ActionContext, item: RxDocument<ListItem>
       ? [
         prevItem.patch({
           nextId: nextItem?.id ?? "",
-          updatedAt: ctx.updateTime.getTime(),
+          updatedAt: ctx.now,
         }),
       ]
       : []),
@@ -123,7 +123,7 @@ async function unlinkFromSiblings(ctx: ActionContext, item: RxDocument<ListItem>
       ? [
         nextItem.patch({
           prevId: prevItem?.id ?? "",
-          updatedAt: ctx.updateTime.getTime(),
+          updatedAt: ctx.now,
         }),
       ]
       : []),
@@ -155,16 +155,16 @@ export async function addPrevSibling(
           parentId: baseItem.parentId,
           prevId: "",
           nextId: baseItem.id,
-          updatedAt: ctx.updateTime.getTime(),
+          updatedAt: ctx.now,
         })
         : listItems.insert({
           ...newItem,
           parentId: baseItem.parentId,
           prevId: "",
           nextId: baseItem.id,
-          updatedAt: ctx.updateTime.getTime(),
+          updatedAt: ctx.now,
         }),
-      baseItem.update({ $set: { prevId: newItem.id, updatedAt: ctx.updateTime.getTime() } }),
+      baseItem.patch({ prevId: newItem.id, updatedAt: ctx.now }),
     ]);
   }
 
@@ -174,17 +174,17 @@ export async function addPrevSibling(
         parentId: baseItem.parentId,
         prevId: prevItem.id,
         nextId: baseItem.id,
-        updatedAt: ctx.updateTime.getTime(),
+        updatedAt: ctx.now,
       })
       : listItems.insert({
         ...newItem,
         parentId: baseItem.parentId,
         prevId: prevItem.id,
         nextId: baseItem.id,
-        updatedAt: ctx.updateTime.getTime(),
+        updatedAt: ctx.now,
       }),
-    baseItem.update({ $set: { prevId: newItem.id, updatedAt: ctx.updateTime.getTime() } }),
-    prevItem.update({ $set: { nextId: newItem.id, updatedAt: ctx.updateTime.getTime() } }),
+    baseItem.patch({ prevId: newItem.id, updatedAt: ctx.now }),
+    prevItem.patch({ nextId: newItem.id, updatedAt: ctx.now }),
   ]);
 }
 
@@ -207,16 +207,16 @@ export async function addNextSibling(
           parentId: baseItem.parentId,
           prevId: baseItem.id,
           nextId: "",
-          updatedAt: ctx.updateTime.getTime(),
+          updatedAt: ctx.now,
         })
         : listItems.insert({
           ...newItem,
           parentId: baseItem.parentId,
           prevId: baseItem.id,
           nextId: "",
-          updatedAt: ctx.updateTime.getTime(),
+          updatedAt: ctx.now,
         }),
-      baseItem.update({ $set: { nextId: newItem.id, updatedAt: ctx.updateTime.getTime() } }),
+      baseItem.patch({ nextId: newItem.id, updatedAt: ctx.now }),
     ]);
   }
 
@@ -226,17 +226,17 @@ export async function addNextSibling(
         parentId: baseItem.parentId,
         prevId: baseItem.id,
         nextId: nextItem.id,
-        updatedAt: ctx.updateTime.getTime(),
+        updatedAt: ctx.now,
       })
       : listItems.insert({
         ...newItem,
         parentId: baseItem.parentId,
         prevId: baseItem.id,
         nextId: nextItem.id,
-        updatedAt: ctx.updateTime.getTime(),
+        updatedAt: ctx.now,
       }),
-    baseItem.update({ $set: { nextId: newItem.id, updatedAt: ctx.updateTime.getTime() } }),
-    nextItem.update({ $set: { prevId: newItem.id, updatedAt: ctx.updateTime.getTime() } }),
+    baseItem.patch({ nextId: newItem.id, updatedAt: ctx.now }),
+    nextItem.patch({ prevId: newItem.id, updatedAt: ctx.now }),
   ]);
 }
 
@@ -254,7 +254,7 @@ export async function indent(ctx: ActionContext, item: RxDocument<ListItem>) {
         parentId: prevItem.id,
         prevId: "",
         nextId: "",
-        updatedAt: ctx.updateTime.getTime(),
+        updatedAt: ctx.now,
       }),
   ]);
 }
@@ -276,8 +276,8 @@ if (import.meta.vitest) {
       const tid = test.meta.id;
       let collections = await createCollections(tid);
       let listItems = collections.listItems;
-      let ctx = createActionContext(collections);
-      let updateTime = ctx.updateTime.getTime();
+      let now = Date.now();
+      let ctx = createActionContext(collections, now);
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 },
@@ -289,8 +289,8 @@ if (import.meta.vitest) {
       });
 
       test.expect((await listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "base", prevId: "2", nextId: "", parentId: "0", updatedAt: updateTime },
-        { id: "2", text: "new", prevId: "", nextId: "1", parentId: "0", updatedAt: updateTime },
+        { id: "1", text: "base", prevId: "2", nextId: "", parentId: "0", updatedAt: now },
+        { id: "2", text: "new", prevId: "", nextId: "1", parentId: "0", updatedAt: now },
       ]);
     });
 
@@ -298,8 +298,8 @@ if (import.meta.vitest) {
       const tid = test.meta.id;
       let collections = await createCollections(tid);
       let listItems = collections.listItems;
-      let ctx = createActionContext(collections);
-      let updateTime = ctx.updateTime.getTime();
+      let now = Date.now();
+      let ctx = createActionContext(collections, now);
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "base", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
@@ -312,9 +312,9 @@ if (import.meta.vitest) {
       });
 
       test.expect((await listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "base", prevId: "3", nextId: "", parentId: "0", updatedAt: updateTime },
-        { id: "2", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: updateTime },
-        { id: "3", text: "new", prevId: "2", nextId: "1", parentId: "0", updatedAt: updateTime },
+        { id: "1", text: "base", prevId: "3", nextId: "", parentId: "0", updatedAt: now },
+        { id: "2", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
+        { id: "3", text: "new", prevId: "2", nextId: "1", parentId: "0", updatedAt: now },
       ]);
     });
   });
@@ -324,8 +324,8 @@ if (import.meta.vitest) {
       const tid = test.meta.id;
       let collections = await createCollections(tid);
       let listItems = collections.listItems;
-      let ctx = createActionContext(collections);
-      let updateTime = ctx.updateTime.getTime();
+      let now = Date.now();
+      let ctx = createActionContext(collections, now);
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 },
@@ -337,8 +337,8 @@ if (import.meta.vitest) {
       });
 
       test.expect((await listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "base", prevId: "", nextId: "2", parentId: "0", updatedAt: updateTime },
-        { id: "2", text: "new", prevId: "1", nextId: "", parentId: "0", updatedAt: updateTime },
+        { id: "1", text: "base", prevId: "", nextId: "2", parentId: "0", updatedAt: now },
+        { id: "2", text: "new", prevId: "1", nextId: "", parentId: "0", updatedAt: now },
       ]);
     });
 
@@ -346,8 +346,8 @@ if (import.meta.vitest) {
       const tid = test.meta.id;
       let collections = await createCollections(tid);
       let listItems = collections.listItems;
-      let ctx = createActionContext(collections);
-      let updateTime = ctx.updateTime.getTime();
+      let now = Date.now();
+      let ctx = createActionContext(collections, now);
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "base", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
@@ -360,9 +360,9 @@ if (import.meta.vitest) {
       });
 
       test.expect((await listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "base", prevId: "", nextId: "3", parentId: "0", updatedAt: updateTime },
-        { id: "2", text: "next", prevId: "3", nextId: "", parentId: "0", updatedAt: updateTime },
-        { id: "3", text: "new", prevId: "1", nextId: "2", parentId: "0", updatedAt: updateTime },
+        { id: "1", text: "base", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
+        { id: "2", text: "next", prevId: "3", nextId: "", parentId: "0", updatedAt: now },
+        { id: "3", text: "new", prevId: "1", nextId: "2", parentId: "0", updatedAt: now },
       ]);
     });
   });
@@ -371,7 +371,7 @@ if (import.meta.vitest) {
     test("cannot indent due to no prev item", async (test) => {
       const tid = test.meta.id;
       let collections = await createCollections(tid);
-      let ctx = createActionContext(collections);
+      let ctx = createActionContext(collections, Date.now());
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "target", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
@@ -389,8 +389,8 @@ if (import.meta.vitest) {
     test("indent with prev item without children", async (test) => {
       const tid = test.meta.id;
       let collections = await createCollections(tid);
-      let ctx = createActionContext(collections);
-      let updateTime = ctx.updateTime.getTime();
+      let now = Date.now();
+      let ctx = createActionContext(collections, now);
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
@@ -401,17 +401,17 @@ if (import.meta.vitest) {
       await indent(ctx, (await collections.listItems.findOne("2").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: updateTime },
-        { id: "2", text: "target", prevId: "", nextId: "", parentId: "1", updatedAt: updateTime },
-        { id: "3", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: updateTime },
+        { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
+        { id: "2", text: "target", prevId: "", nextId: "", parentId: "1", updatedAt: now },
+        { id: "3", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: now },
       ]);
     });
 
     test("indent with prev item with children", async (test) => {
       const tid = test.meta.id;
       let collections = await createCollections(tid);
-      let ctx = createActionContext(collections);
-      let updateTime = ctx.updateTime.getTime();
+      let now = Date.now();
+      let ctx = createActionContext(collections, now);
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: 0 },
@@ -423,10 +423,10 @@ if (import.meta.vitest) {
       await indent(ctx, (await collections.listItems.findOne("3").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "prev", prevId: "", nextId: "4", parentId: "0", updatedAt: updateTime },
-        { id: "2", text: "child of prev", prevId: "", nextId: "3", parentId: "1", updatedAt: updateTime },
-        { id: "3", text: "target", prevId: "2", nextId: "", parentId: "1", updatedAt: updateTime },
-        { id: "4", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: updateTime },
+        { id: "1", text: "prev", prevId: "", nextId: "4", parentId: "0", updatedAt: now },
+        { id: "2", text: "child of prev", prevId: "", nextId: "3", parentId: "1", updatedAt: now },
+        { id: "3", text: "target", prevId: "2", nextId: "", parentId: "1", updatedAt: now },
+        { id: "4", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: now },
       ]);
     });
   });
@@ -435,7 +435,7 @@ if (import.meta.vitest) {
     test("cannot dedent due to no parent item", async (test) => {
       const tid = test.meta.id;
       let collections = await createCollections(tid);
-      let ctx = createActionContext(collections);
+      let ctx = createActionContext(collections, Date.now());
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
@@ -455,8 +455,8 @@ if (import.meta.vitest) {
     test("dedent with parent item without next item", async (test) => {
       const tid = test.meta.id;
       let collections = await createCollections(tid);
-      let ctx = createActionContext(collections);
-      let updateTime = ctx.updateTime.getTime();
+      let now = Date.now();
+      let ctx = createActionContext(collections, now);
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "parent", prevId: "", nextId: "", parentId: "0", updatedAt: 0 },
@@ -468,18 +468,18 @@ if (import.meta.vitest) {
       await dedent(ctx, (await collections.listItems.findOne("3").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "parent", prevId: "", nextId: "3", parentId: "0", updatedAt: updateTime },
-        { id: "2", text: "prev", prevId: "", nextId: "4", parentId: "1", updatedAt: updateTime },
-        { id: "3", text: "target", prevId: "1", nextId: "", parentId: "0", updatedAt: updateTime },
-        { id: "4", text: "next", prevId: "2", nextId: "", parentId: "1", updatedAt: updateTime },
+        { id: "1", text: "parent", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
+        { id: "2", text: "prev", prevId: "", nextId: "4", parentId: "1", updatedAt: now },
+        { id: "3", text: "target", prevId: "1", nextId: "", parentId: "0", updatedAt: now },
+        { id: "4", text: "next", prevId: "2", nextId: "", parentId: "1", updatedAt: now },
       ]);
     });
 
     test("dedent with parent item with next item", async (test) => {
       const tid = test.meta.id;
       let collections = await createCollections(tid);
-      let ctx = createActionContext(collections);
-      let updateTime = ctx.updateTime.getTime();
+      let now = Date.now();
+      let ctx = createActionContext(collections, now);
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "parent", prevId: "", nextId: "5", parentId: "0", updatedAt: 0 },
@@ -492,11 +492,11 @@ if (import.meta.vitest) {
       await dedent(ctx, (await collections.listItems.findOne("3").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "parent", prevId: "", nextId: "3", parentId: "0", updatedAt: updateTime },
-        { id: "2", text: "prev", prevId: "", nextId: "4", parentId: "1", updatedAt: updateTime },
-        { id: "3", text: "target", prevId: "1", nextId: "5", parentId: "0", updatedAt: updateTime },
-        { id: "4", text: "next", prevId: "2", nextId: "", parentId: "1", updatedAt: updateTime },
-        { id: "5", text: "next of parent", prevId: "3", nextId: "", parentId: "0", updatedAt: updateTime },
+        { id: "1", text: "parent", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
+        { id: "2", text: "prev", prevId: "", nextId: "4", parentId: "1", updatedAt: now },
+        { id: "3", text: "target", prevId: "1", nextId: "5", parentId: "0", updatedAt: now },
+        { id: "4", text: "next", prevId: "2", nextId: "", parentId: "1", updatedAt: now },
+        { id: "5", text: "next of parent", prevId: "3", nextId: "", parentId: "0", updatedAt: now },
       ]);
     });
   });
@@ -505,7 +505,7 @@ if (import.meta.vitest) {
     test("remove item without siblings", async (test) => {
       const tid = test.meta.id;
       let collections = await createCollections(tid);
-      let ctx = createActionContext(collections);
+      let ctx = createActionContext(collections, Date.now());
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "target", prevId: "", nextId: "", parentId: "0", updatedAt: 0 },
@@ -519,8 +519,8 @@ if (import.meta.vitest) {
     test("remove item with prev item without next item", async (test) => {
       const tid = test.meta.id;
       let collections = await createCollections(tid);
-      let ctx = createActionContext(collections);
-      let updateTime = ctx.updateTime.getTime();
+      let now = Date.now();
+      let ctx = createActionContext(collections, now);
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
@@ -531,14 +531,14 @@ if (import.meta.vitest) {
 
       test
         .expect((await collections.listItems.find().exec()).map((x) => x.toJSON()))
-        .toEqual([{ id: "1", text: "prev", prevId: "", nextId: "", parentId: "0", updatedAt: updateTime }]);
+        .toEqual([{ id: "1", text: "prev", prevId: "", nextId: "", parentId: "0", updatedAt: now }]);
     });
 
     test("remove item with next item without prev item", async (test) => {
       const tid = test.meta.id;
       let collections = await createCollections(tid);
-      let ctx = createActionContext(collections);
-      let updateTime = ctx.updateTime.getTime();
+      let now = Date.now();
+      let ctx = createActionContext(collections, now);
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "target", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
@@ -549,14 +549,14 @@ if (import.meta.vitest) {
 
       test
         .expect((await collections.listItems.find().exec()).map((x) => x.toJSON()))
-        .toEqual([{ id: "2", text: "next", prevId: "", nextId: "", parentId: "0", updatedAt: updateTime }]);
+        .toEqual([{ id: "2", text: "next", prevId: "", nextId: "", parentId: "0", updatedAt: now }]);
     });
 
     test("remove item with siblings", async (test) => {
       const tid = test.meta.id;
       let collections = await createCollections(tid);
-      let ctx = createActionContext(collections);
-      let updateTime = ctx.updateTime.getTime();
+      let now = Date.now();
+      let ctx = createActionContext(collections, now);
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
@@ -567,8 +567,8 @@ if (import.meta.vitest) {
       await remove(ctx, (await collections.listItems.findOne("2").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: updateTime },
-        { id: "3", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: updateTime },
+        { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
+        { id: "3", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: now },
       ]);
     });
   });
