@@ -4,7 +4,7 @@ import { useRxDBSyncFirestoreService } from "@/services/rxdbSync/firestore";
 
 export function RxdbFirestoreSyncConfig() {
   const { configYAML$, syncing$, errors$, setConfigYAMLWithStopSyncing, startSyncing } = useRxDBSyncFirestoreService();
-  const [syncButtonDisabledSignal, setSyncButtonDisabled] = createSignal(false);
+  const [syncButtonDisabled$, setSyncButtonDisabled] = createSignal(false);
 
   createEffect(() => {
     setSyncButtonDisabled(syncing$());
@@ -16,7 +16,7 @@ export function RxdbFirestoreSyncConfig() {
         <input onInput={(e) => setConfigYAMLWithStopSyncing(e.currentTarget.value ?? "")} value={configYAML$()} />
       </div>
       <button
-        disabled={syncButtonDisabledSignal()}
+        disabled={syncButtonDisabled$()}
         onClick={() => {
           setSyncButtonDisabled(true);
           startTransition(() => {
