@@ -1,14 +1,9 @@
 import { createEffect, createSignal, startTransition } from "solid-js";
 
-import {
-  configYaml$,
-  syncing$,
-  errors$ as syncErrors$,
-  setConfigYamlWithStopSyncing,
-  startSyncing,
-} from "@/rxdb/sync/firestore";
+import { useRxDBSyncFirestoreService } from "@/services/rxdbSync/firestore";
 
 export function RxdbFirestoreSyncConfig() {
+  const { configYAML$, syncing$, errors$, setConfigYAMLWithStopSyncing, startSyncing } = useRxDBSyncFirestoreService();
   const [syncButtonDisabledSignal, setSyncButtonDisabled] = createSignal(false);
 
   createEffect(() => {
@@ -18,7 +13,7 @@ export function RxdbFirestoreSyncConfig() {
   return (
     <>
       <div>
-        <input onInput={(e) => setConfigYamlWithStopSyncing(e.currentTarget.value ?? "")} value={configYaml$()} />
+        <input onInput={(e) => setConfigYAMLWithStopSyncing(e.currentTarget.value ?? "")} value={configYAML$()} />
       </div>
       <button
         disabled={syncButtonDisabledSignal()}
@@ -31,7 +26,7 @@ export function RxdbFirestoreSyncConfig() {
       >
         start sync
       </button>
-      <pre>{syncErrors$().join("\n")}</pre>
+      <pre>{errors$().join("\n")}</pre>
     </>
   );
 }

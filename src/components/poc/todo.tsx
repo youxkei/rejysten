@@ -3,12 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { Ulid } from "id128";
 import { For } from "solid-js";
 
-import { useCollectionsSignal } from "@/rxdb/collections";
-import { createSubscribeSignal, createSubscribeAllSignal } from "@/rxdb/subscribe";
-import { TestWithRxDB, createCollections } from "@/rxdb/test";
+import { TestWithRxDBService, createCollectionsForTest } from "@/components/test";
+import { useRxDBService } from "@/services/rxdb";
+import { createSubscribeSignal, createSubscribeAllSignal } from "@/services/rxdb/subscribe";
 
 export function Todo() {
-  const collections$ = useCollectionsSignal();
+  const { collections$ } = useRxDBService();
 
   const todos$ = createSubscribeAllSignal(() => collections$()?.todos.find());
 
@@ -61,7 +61,7 @@ export function Todo() {
 if (import.meta.vitest) {
   test("renders", async (ctx) => {
     const tid = ctx.meta.id;
-    let collections = await createCollections(tid);
+    let collections = await createCollectionsForTest(tid);
 
     await collections.todos.bulkUpsert([
       { id: "001", text: "foo", updatedAt: 1 },
@@ -69,9 +69,9 @@ if (import.meta.vitest) {
     ]);
 
     const { container, unmount } = render(() => (
-      <TestWithRxDB tid={tid}>
+      <TestWithRxDBService tid={tid}>
         <Todo />
-      </TestWithRxDB>
+      </TestWithRxDBService>
     ));
 
     await waitForElementToBeRemoved(() => queryByText(container, tid));
@@ -82,7 +82,7 @@ if (import.meta.vitest) {
 
   test("add todos", async (ctx) => {
     const tid = ctx.meta.id;
-    const collections = await createCollections(tid);
+    const collections = await createCollectionsForTest(tid);
     const user = userEvent.setup();
 
     await collections.todos.bulkUpsert([
@@ -91,9 +91,9 @@ if (import.meta.vitest) {
     ]);
 
     const { container, unmount } = render(() => (
-      <TestWithRxDB tid={tid}>
+      <TestWithRxDBService tid={tid}>
         <Todo />
-      </TestWithRxDB>
+      </TestWithRxDBService>
     ));
 
     await waitForElementToBeRemoved(() => queryByText(container, tid));

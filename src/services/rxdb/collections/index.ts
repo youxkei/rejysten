@@ -1,11 +1,6 @@
 import type { RxCollection, ExtractDocumentTypeFromTypedRxJsonSchema } from "rxdb";
-import type { JSX } from "solid-js";
 
-import { createResource, createContext, useContext, onCleanup } from "solid-js";
-
-import { useDatabaseSignal } from "@/rxdb/database";
-
-export const collectionCreators = {
+export const schema = {
   todos: {
     schema: {
       title: "todo schema",
@@ -95,39 +90,11 @@ export const collectionCreators = {
 } as const;
 
 export type CollectionNameToDocumentType = {
-  [CollectionName in keyof typeof collectionCreators]: ExtractDocumentTypeFromTypedRxJsonSchema<
-    (typeof collectionCreators)[CollectionName]["schema"]
+  [CollectionName in keyof typeof schema]: ExtractDocumentTypeFromTypedRxJsonSchema<
+    (typeof schema)[CollectionName]["schema"]
   >;
 };
 
 export type Collections = {
   [DocumentName in keyof CollectionNameToDocumentType]: RxCollection<CollectionNameToDocumentType[DocumentName]>;
 };
-
-const context = createContext<() => Collections | undefined>();
-
-export function Provider(props: { children: JSX.Element }) {
-  const database$ = useDatabaseSignal();
-
-  const [collections$] = createResource(database$, async (database) => {
-    let collections: Collections | undefined;
-
-    onCleanup(() => {
-      if (collections) {
-        for (const [_, collection] of Object.entries(collections)) {
-          collection.destroy();
-        }
-      }
-    });
-
-    collections = await database.addCollections(collectionCreators);
-
-    return collections;
-  });
-
-  return <context.Provider value={collections$}>{props.children}</context.Provider>;
-}
-
-export function useCollectionsSignal() {
-  return useContext(context)!;
-}

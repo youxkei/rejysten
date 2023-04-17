@@ -1,23 +1,35 @@
+import type { JSXElement } from "solid-js";
+
 import { deleteApp, initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, collection as getCollection } from "firebase/firestore";
 import { toSnakeCase } from "js-convert-case";
 import YAML from "js-yaml";
 import { replicateFirestore } from "rxdb/plugins/replication-firestore";
-import { batch, createEffect, createMemo, createResource, createSignal, onCleanup, onMount } from "solid-js";
+import {
+  batch,
+  createContext,
+  createEffect,
+  createMemo,
+  createSignal,
+  onMount,
+  useContext,
+  onCleanup,
+  createResource,
+} from "solid-js";
 import * as s from "superstruct";
 
-import { useCollectionsSignal } from "@/rxdb/collections";
+import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeSignal } from "@/solid/subscribe";
 
-const [configYaml$, setConfigYaml] = createSignal("");
-export { configYaml$ };
+export type RxDBSyncFirestoreService = {
+  configYAML$: () => string;
+  syncing$: () => boolean;
+  errors$: () => string[];
 
-const [syncing$, setSyncing] = createSignal(false);
-export { syncing$ };
-
-const [errors$, setErrors] = createSignal([] as string[]);
-export { errors$ };
+  setConfigYAMLWithStopSyncing: (configYAML: string) => void;
+  startSyncing: () => void;
+};
 
 const FirebaseConfig = s.object({
   apiKey: s.string(),
@@ -29,64 +41,60 @@ const FirebaseConfig = s.object({
   measurementId: s.string(),
 });
 
-export function setConfigYamlWithStopSyncing(configYaml: string) {
-  batch(() => {
-    setSyncing(false);
-    setConfigYaml(configYaml);
-  });
-}
+const localStorageKey = "rejysten.service.rxdbSync.firestore.config";
 
-export function startSyncing() {
-  batch(() => {
-    setErrors([]);
-    setSyncing(true);
-  });
-}
+const context = createContext<RxDBSyncFirestoreService>();
 
-function addErrorWithStopSyncing(error: string) {
-  batch(() => {
+export function RxDBSyncFirestoreServiceProvider(props: { children: JSXElement }) {
+  const { collections$ } = useRxDBService();
+
+  const [configYAML$, setConfigYAML] = createSignal("");
+  const [syncing$, setSyncing] = createSignal(false);
+  const [errors$, setErrors] = createSignal([] as string[]);
+
+  function startSyncing() {
+    batch(() => {
+      setSyncing(true);
+      setErrors([]);
+    });
+  }
+
+  function setConfigYAMLWithStopSyncing(configYAML: string) {
+    batch(() => {
+      setSyncing(false);
+      setConfigYAML(configYAML);
+    });
+  }
+
+  function stopSyncingWithError(error: string) {
     setSyncing(false);
     setErrors((errors) => [...errors, error]);
-  });
-}
+  }
 
-const localStorageKey = "rejysten.rxdb.sync.firestore.config";
-
-function useSyncConfigToLocalStorage() {
   onMount(() => {
-    const configYaml = window.localStorage.getItem(localStorageKey);
+    const configYAML = window.localStorage.getItem(localStorageKey);
 
-    if (configYaml) {
-      batch(() => {
-        setConfigYaml(configYaml);
-        startSyncing();
-      });
+    if (configYAML) {
+      setConfigYAML(configYAML);
+      startSyncing();
     }
   });
 
   createEffect(() => {
-    window.localStorage.setItem(localStorageKey, configYaml$());
+    window.localStorage.setItem(localStorageKey, configYAML$());
   });
-}
-
-function useSync() {
-  useSyncConfigToLocalStorage();
-
-  const collections$ = useCollectionsSignal();
 
   const config$ = createMemo(() => {
     if (!syncing$()) return;
 
     try {
-      const config = YAML.load(configYaml$());
+      const config = YAML.load(configYAML$());
 
       s.assert(config, FirebaseConfig);
 
       return config;
     } catch (error) {
-      createEffect(() => {
-        addErrorWithStopSyncing(`${error}`);
-      });
+      createEffect(() => stopSyncingWithError(`${error}`));
     }
   });
 
@@ -137,9 +145,7 @@ function useSync() {
         await signInWithPopup(getAuth(firebase), new GoogleAuthProvider());
         return true;
       } catch (error) {
-        createEffect(() => {
-          addErrorWithStopSyncing(`${error}`);
-        });
+        createEffect(() => stopSyncingWithError(`${error}`));
       }
     }
   );
@@ -177,7 +183,7 @@ function useSync() {
       });
 
       syncState.error$.subscribe((error) => {
-        addErrorWithStopSyncing(`${collectionName}: ${error}`);
+        stopSyncingWithError(`${collectionName}: ${error}`);
       });
 
       onCleanup(() => {
@@ -185,10 +191,25 @@ function useSync() {
       });
     }
   });
+
+  return (
+    <context.Provider
+      value={{
+        configYAML$,
+        syncing$,
+        errors$,
+        setConfigYAMLWithStopSyncing,
+        startSyncing,
+      }}
+    >
+      {props.children}
+    </context.Provider>
+  );
 }
 
-export function Sync() {
-  useSync();
+export function useRxDBSyncFirestoreService() {
+  const service = useContext(context);
+  if (!service) throw new Error("useRxDBSyncFirestoreService must be used within RxDBSyncFirestoreProvider");
 
-  return null;
+  return service;
 }

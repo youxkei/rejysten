@@ -1,28 +1,28 @@
+import { MultiProvider } from "@solid-primitives/context";
 import { render, Suspense } from "solid-js/web";
 
-import { Todo } from "./components/poc/todo";
-import { RxdbFirestoreSyncConfig } from "./components/rxdbFirestoreSyncConfig";
 import { ErrorBoundary } from "@/components/errorBoundary";
 import { Broken } from "@/components/poc/broken";
 import { Context } from "@/components/poc/context";
 import { Lazy } from "@/components/poc/lazy";
 import { ShowItemList } from "@/components/poc/showItemList";
-import { Provider as RxdbProvider } from "@/rxdb";
-import { Sync as RxdbFirestoreSync } from "@/rxdb/sync/firestore";
+import { Todo } from "@/components/poc/todo";
+import { RxdbFirestoreSyncConfig } from "@/components/rxdbFirestoreSyncConfig";
+import { RxDBServiceProvider } from "@/services/rxdb";
+import { RxDBSyncFirestoreServiceProvider } from "@/services/rxdbSync/firestore";
 
 function App() {
   return (
     <ErrorBoundary>
       <Suspense fallback={<p>loading</p>}>
-        <RxdbProvider>
-          <RxdbFirestoreSync />
+        <MultiProvider values={[RxDBServiceProvider, RxDBSyncFirestoreServiceProvider]}>
           <Todo />
           <ShowItemList />
           <Broken />
           <Lazy />
           <RxdbFirestoreSyncConfig />
           <Context />
-        </RxdbProvider>
+        </MultiProvider>
       </Suspense>
     </ErrorBoundary>
   );

@@ -1,14 +1,14 @@
-import type { ListItem } from "@/domain/listItem";
+import type { ListItem } from "@/services/rxdb/collections/listItem";
 
 import { render, waitForElementToBeRemoved, queryByText, findByText } from "@solidjs/testing-library";
 import { Show, For } from "solid-js";
 import { ErrorBoundary } from "solid-js";
 
 import { BulletList } from "@/components/bulletList";
-import { createSignalWithLock } from "@/domain/lock";
-import { useCollectionsSignal } from "@/rxdb/collections";
-import { createSubscribeSignal, createSubscribeAllSignal } from "@/rxdb/subscribe";
-import { TestWithRxDB, createCollections } from "@/rxdb/test";
+import { TestWithRxDBService, createCollectionsForTest } from "@/components/test";
+import { useRxDBService } from "@/services/rxdb";
+import { createSignalWithLock } from "@/services/rxdb/collections/lock";
+import { createSubscribeSignal, createSubscribeAllSignal } from "@/services/rxdb/subscribe";
 
 export function ItemList(props: { id: string }) {
   return (
@@ -17,23 +17,22 @@ export function ItemList(props: { id: string }) {
 }
 
 export function ItemListItem(props: { id: string }) {
-  const collections$ = useCollectionsSignal();
-  const listItem$ = createSubscribeSignal(() => collections$()?.listItems.findOne(props.id));
-
-  const listItemWithLock$ = createSignalWithLock(listItem$, undefined);
+  const rxdbService = useRxDBService();
+  const listItem$ = createSubscribeSignal(() => rxdbService.collections$()?.listItems.findOne(props.id));
+  const listItemWithLock$ = createSignalWithLock(rxdbService, listItem$, undefined);
 
   return <Show when={listItemWithLock$()}>{(listItem) => <span>{listItem().text}</span>}</Show>;
 }
 
 export function ItemListChildren(props: { parentId: string }) {
-  const collections$ = useCollectionsSignal();
+  const rxdbService = useRxDBService();
   const children$ = createSubscribeAllSignal(() =>
-    collections$()?.listItems.find({
+    rxdbService.collections$()?.listItems.find({
       selector: { parentId: props.parentId },
     })
   );
 
-  const childrenWithLock$ = createSignalWithLock(children$, []);
+  const childrenWithLock$ = createSignalWithLock(rxdbService, children$, []);
 
   const sortedChildren$ = () => {
     const children = childrenWithLock$();
@@ -80,11 +79,7 @@ export function ItemListChildren(props: { parentId: string }) {
     return sortedChildren;
   };
 
-  return (
-    <>
-      <For each={sortedChildren$()}>{(child) => <ItemList id={child.id} />}</For>
-    </>
-  );
+  return <For each={sortedChildren$()}>{(child) => <ItemList id={child.id} />}</For>;
 }
 
 if (import.meta.vitest) {
@@ -109,14 +104,14 @@ if (import.meta.vitest) {
   ])("$name", ({ listItems }) => {
     test("text changes", async (ctx) => {
       const tid = ctx.meta.id;
-      let collections = await createCollections(tid);
+      let collections = await createCollectionsForTest(tid);
       await collections.locks.upsert({ id: "lock", isLocked: false });
       await collections.listItems.bulkUpsert(listItems);
 
       const { container, unmount } = render(() => (
-        <TestWithRxDB tid={tid}>
+        <TestWithRxDBService tid={tid}>
           <ItemList id="1" />
-        </TestWithRxDB>
+        </TestWithRxDBService>
       ));
 
       await waitForElementToBeRemoved(() => queryByText(container, tid));
@@ -142,7 +137,7 @@ if (import.meta.vitest) {
 
   test("add child", async (ctx) => {
     const tid = ctx.meta.id;
-    let collections = await createCollections(tid);
+    let collections = await createCollectionsForTest(tid);
     await collections.locks.upsert({ id: "lock", isLocked: false });
     await collections.listItems.bulkUpsert([
       { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
@@ -151,9 +146,9 @@ if (import.meta.vitest) {
     ]);
 
     const { container, unmount } = render(() => (
-      <TestWithRxDB tid={tid}>
+      <TestWithRxDBService tid={tid}>
         <ItemList id="1" />
-      </TestWithRxDB>
+      </TestWithRxDBService>
     ));
 
     await waitForElementToBeRemoved(() => queryByText(container, tid));
@@ -172,7 +167,7 @@ if (import.meta.vitest) {
 
   test("not updated when locked", async (ctx) => {
     const tid = ctx.meta.id;
-    let collections = await createCollections(tid);
+    let collections = await createCollectionsForTest(tid);
     await collections.locks.upsert({ id: "lock", isLocked: true });
     await collections.listItems.bulkUpsert([
       { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
@@ -181,9 +176,9 @@ if (import.meta.vitest) {
     ]);
 
     const { container, unmount } = render(() => (
-      <TestWithRxDB tid={tid}>
+      <TestWithRxDBService tid={tid}>
         <ItemList id="1" />
-      </TestWithRxDB>
+      </TestWithRxDBService>
     ));
 
     await waitForElementToBeRemoved(() => queryByText(container, tid));
@@ -209,7 +204,7 @@ if (import.meta.vitest) {
   describe("inconsistent error", () => {
     test("an item is not in linked list", async (ctx) => {
       const tid = ctx.meta.id;
-      let collections = await createCollections(tid);
+      let collections = await createCollectionsForTest(tid);
       await collections.locks.upsert({ id: "lock", isLocked: false });
       await collections.listItems.bulkUpsert([
         { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
@@ -218,9 +213,9 @@ if (import.meta.vitest) {
 
       const { container, unmount } = render(() => (
         <ErrorBoundary fallback={(error) => `${error}`}>
-          <TestWithRxDB tid={tid}>
+          <TestWithRxDBService tid={tid}>
             <ItemList id="1" />
-          </TestWithRxDB>
+          </TestWithRxDBService>
         </ErrorBoundary>
       ));
 
@@ -239,7 +234,7 @@ if (import.meta.vitest) {
 
     test("next item not found", async (ctx) => {
       const tid = ctx.meta.id;
-      let collections = await createCollections(tid);
+      let collections = await createCollectionsForTest(tid);
       await collections.locks.upsert({ id: "lock", isLocked: false });
       await collections.listItems.bulkUpsert([
         { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
@@ -248,9 +243,9 @@ if (import.meta.vitest) {
 
       const { container, unmount } = render(() => (
         <ErrorBoundary fallback={(error) => `${error}`}>
-          <TestWithRxDB tid={tid}>
+          <TestWithRxDBService tid={tid}>
             <ItemList id="1" />
-          </TestWithRxDB>
+          </TestWithRxDBService>
         </ErrorBoundary>
       ));
 
@@ -269,7 +264,7 @@ if (import.meta.vitest) {
 
     test("first item not found", async (ctx) => {
       const tid = ctx.meta.id;
-      let collections = await createCollections(tid);
+      let collections = await createCollectionsForTest(tid);
       await collections.locks.upsert({ id: "lock", isLocked: false });
       await collections.listItems.bulkUpsert([
         { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
@@ -278,9 +273,9 @@ if (import.meta.vitest) {
 
       const { container, unmount } = render(() => (
         <ErrorBoundary fallback={(error) => `${error}`}>
-          <TestWithRxDB tid={tid}>
+          <TestWithRxDBService tid={tid}>
             <ItemList id="1" />
-          </TestWithRxDB>
+          </TestWithRxDBService>
         </ErrorBoundary>
       ));
 
