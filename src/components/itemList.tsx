@@ -1,19 +1,16 @@
 import type { ListItem } from "@/services/rxdb/collections/listItem";
 
-import { render, waitForElementToBeRemoved, queryByText, findByText } from "@solidjs/testing-library";
 import { Show, For } from "solid-js";
 import { ErrorBoundary } from "solid-js";
 
 import { BulletList } from "@/components/bulletList";
-import { TestWithRxDBService, createCollectionsForTest } from "@/components/test";
 import { useRxDBService } from "@/services/rxdb";
 import { createSignalWithLock } from "@/services/rxdb/collections/lock";
 import { createSubscribeSignal, createSubscribeAllSignal } from "@/services/rxdb/subscribe";
+import { renderWithRxDBServiceForTest } from "@/services/rxdb/test";
 
 export function ItemList(props: { id: string }) {
-  return (
-    <BulletList bullet={"•"} item={<ItemListItem id={props.id} />} child={<ItemListChildren parentId={props.id} />} />
-  );
+  return <BulletList bullet={"•"} item={<ItemListItem id={props.id} />} child={<ItemListChildren parentId={props.id} />} />;
 }
 
 export function ItemListItem(props: { id: string }) {
@@ -52,9 +49,7 @@ export function ItemListChildren(props: { parentId: string }) {
     }
 
     if (currentChildId === undefined) {
-      throw new Error(
-        `there is an inconsistency in listItem in the children of '${props.parentId}': no listItem with prevId = ''`
-      );
+      throw new Error(`there is an inconsistency in listItem in the children of '${props.parentId}': no listItem with prevId = ''`);
     }
 
     while (currentChildId !== "") {
@@ -71,9 +66,7 @@ export function ItemListChildren(props: { parentId: string }) {
     }
 
     if (children.length != sortedChildren.length) {
-      throw new Error(
-        `there is an inconsistency in listItem in the children of '${props.parentId}': some listItems are no in linked list`
-      );
+      throw new Error(`there is an inconsistency in listItem in the children of '${props.parentId}': some listItems are no in linked list`);
     }
 
     return sortedChildren;
@@ -87,48 +80,49 @@ if (import.meta.vitest) {
     {
       name: "swapped items",
       listItems: [
-        { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
-        { id: "2", text: "foo", prevId: "3", nextId: "", parentId: "1" },
-        { id: "3", text: "bar", prevId: "", nextId: "2", parentId: "1" },
+        { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
+        { id: "2", text: "foo", prevId: "3", nextId: "", parentId: "1", updatedAt: 0 },
+        { id: "3", text: "bar", prevId: "", nextId: "2", parentId: "1", updatedAt: 0 },
       ],
     },
     {
       name: "nested items",
       listItems: [
-        { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
-        { id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1" },
-        { id: "2_1", text: "foofoo", prevId: "", nextId: "", parentId: "2" },
-        { id: "3", text: "bar", prevId: "2", nextId: "", parentId: "1" },
+        { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
+        { id: "2", text: "foo", prevId: "", nextId: "4", parentId: "1", updatedAt: 0 },
+        { id: "3", text: "foofoo", prevId: "", nextId: "", parentId: "2", updatedAt: 0 },
+        { id: "4", text: "bar", prevId: "2", nextId: "", parentId: "1", updatedAt: 0 },
       ],
     },
   ])("$name", ({ listItems }) => {
     test("text changes", async (ctx) => {
-      const tid = ctx.meta.id;
-      let collections = await createCollectionsForTest(tid);
-      await collections.locks.upsert({ id: "lock", isLocked: false });
-      await collections.listItems.bulkUpsert(listItems);
-
-      const { container, unmount } = render(() => (
-        <TestWithRxDBService tid={tid}>
+      const { container, unmount, collections, findByText } = await renderWithRxDBServiceForTest(ctx.meta.id, (props) => (
+        <>
           <ItemList id="1" />
-        </TestWithRxDBService>
+          {props.children}
+        </>
       ));
 
-      await waitForElementToBeRemoved(() => queryByText(container, tid));
+      await collections.locks.insert({ id: "lock", isLocked: false });
+      await collections.listItems.bulkInsert(listItems);
+      for (const listItem of listItems) {
+        await findByText(listItem.text);
+      }
+
       ctx.expect(container).toMatchSnapshot();
 
-      await (await collections.listItems.findOne("1").exec())!.incrementalPatch({
+      await (await collections.listItems.findOne("1").exec())!.patch({
         text: "changed root",
       });
+      await findByText("changed root");
 
-      await findByText(container, "changed root");
       ctx.expect(container).toMatchSnapshot();
 
-      await (await collections.listItems.findOne("2").exec())!.incrementalPatch({
+      await (await collections.listItems.findOne("2").exec())!.patch({
         text: "changed foo",
       });
+      await findByText("changed foo");
 
-      await findByText(container, "changed foo");
       ctx.expect(container).toMatchSnapshot();
 
       unmount();
@@ -136,157 +130,122 @@ if (import.meta.vitest) {
   });
 
   test("add child", async (ctx) => {
-    const tid = ctx.meta.id;
-    let collections = await createCollectionsForTest(tid);
-    await collections.locks.upsert({ id: "lock", isLocked: false });
-    await collections.listItems.bulkUpsert([
-      { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
-      { id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1" },
-      { id: "3", text: "bar", prevId: "2", nextId: "", parentId: "1" },
-    ]);
-
-    const { container, unmount } = render(() => (
-      <TestWithRxDBService tid={tid}>
+    const { container, unmount, collections, findByText } = await renderWithRxDBServiceForTest(ctx.meta.id, (props) => (
+      <>
         <ItemList id="1" />
-      </TestWithRxDBService>
+        {props.children}
+      </>
     ));
 
-    await waitForElementToBeRemoved(() => queryByText(container, tid));
-    ctx.expect(container).toMatchSnapshot();
+    const listItems = [
+      { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
+      { id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1", updatedAt: 0 },
+      { id: "3", text: "bar", prevId: "2", nextId: "", parentId: "1", updatedAt: 0 },
+    ];
 
-    await collections.listItems.bulkUpsert([
-      { id: "3", text: "bar", prevId: "2", nextId: "4", parentId: "1" },
-      { id: "4", text: "baz", prevId: "3", nextId: "", parentId: "1" },
-    ]);
+    await collections.locks.insert({ id: "lock", isLocked: false });
+    await collections.listItems.bulkInsert(listItems);
+    for (const listItem of listItems) {
+      await findByText(listItem.text);
+    }
 
-    await findByText(container, "baz");
-    ctx.expect(container).toMatchSnapshot();
-
-    unmount();
-  });
-
-  test("not updated when locked", async (ctx) => {
-    const tid = ctx.meta.id;
-    let collections = await createCollectionsForTest(tid);
-    await collections.locks.upsert({ id: "lock", isLocked: true });
-    await collections.listItems.bulkUpsert([
-      { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
-      { id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1" },
-      { id: "3", text: "bar", prevId: "2", nextId: "", parentId: "1" },
-    ]);
-
-    const { container, unmount } = render(() => (
-      <TestWithRxDBService tid={tid}>
-        <ItemList id="1" />
-      </TestWithRxDBService>
-    ));
-
-    await waitForElementToBeRemoved(() => queryByText(container, tid));
     ctx.expect(container).toMatchSnapshot("initial");
 
-    await collections.locks.upsert({ id: "lock", isLocked: false });
-    await findByText(container, "foo");
-    ctx.expect(container).toMatchSnapshot("unlocked");
-
     await collections.locks.upsert({ id: "lock", isLocked: true });
     await collections.listItems.bulkUpsert([
-      { id: "1", text: "*root", prevId: "", nextId: "", parentId: "" },
-      { id: "2", text: "*foo", prevId: "3", nextId: "", parentId: "1" },
-      { id: "3", text: "*bar", prevId: "", nextId: "2", parentId: "1" },
+      { id: "3", text: "bar", prevId: "2", nextId: "4", parentId: "1", updatedAt: 1 },
+      { id: "4", text: "baz", prevId: "3", nextId: "", parentId: "1", updatedAt: 1 },
     ]);
     await collections.locks.upsert({ id: "lock", isLocked: false });
-    await findByText(container, "*foo");
-    ctx.expect(container).toMatchSnapshot("updated with lock");
+    await findByText("baz");
+
+    ctx.expect(container).toMatchSnapshot("baz added");
 
     unmount();
   });
 
   describe("inconsistent error", () => {
     test("an item is not in linked list", async (ctx) => {
-      const tid = ctx.meta.id;
-      let collections = await createCollectionsForTest(tid);
-      await collections.locks.upsert({ id: "lock", isLocked: false });
-      await collections.listItems.bulkUpsert([
-        { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
-        { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1" },
-      ]);
-
-      const { container, unmount } = render(() => (
+      const { container, unmount, collections, findByText } = await renderWithRxDBServiceForTest(ctx.meta.id, (props) => (
         <ErrorBoundary fallback={(error) => `${error}`}>
-          <TestWithRxDBService tid={tid}>
-            <ItemList id="1" />
-          </TestWithRxDBService>
+          <ItemList id="1" />
+          {props.children}
         </ErrorBoundary>
       ));
 
-      await waitForElementToBeRemoved(() => queryByText(container, tid));
+      const listItems = [
+        { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
+        { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
+      ];
+
+      await collections.locks.insert({ id: "lock", isLocked: false });
+      await collections.listItems.bulkInsert(listItems);
+      for (const listItem of listItems) {
+        await findByText(listItem.text);
+      }
+
       ctx.expect(container).toMatchSnapshot("initial");
 
-      await collections.listItems.bulkUpsert([{ id: "3", text: "bar", prevId: "", nextId: "", parentId: "1" }]);
-      await findByText(
-        container,
-        "Error: there is an inconsistency in listItem in the children of '1': some listItems are no in linked list"
-      );
+      await collections.listItems.insert({ id: "3", text: "bar", prevId: "", nextId: "", parentId: "1", updatedAt: 1 });
+      await findByText("Error: there is an inconsistency in listItem in the children of '1': some listItems are no in linked list");
       ctx.expect(container).toMatchSnapshot("error");
 
       unmount();
     });
 
     test("next item not found", async (ctx) => {
-      const tid = ctx.meta.id;
-      let collections = await createCollectionsForTest(tid);
-      await collections.locks.upsert({ id: "lock", isLocked: false });
-      await collections.listItems.bulkUpsert([
-        { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
-        { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1" },
-      ]);
-
-      const { container, unmount } = render(() => (
+      const { container, unmount, collections, findByText } = await renderWithRxDBServiceForTest(ctx.meta.id, (props) => (
         <ErrorBoundary fallback={(error) => `${error}`}>
-          <TestWithRxDBService tid={tid}>
-            <ItemList id="1" />
-          </TestWithRxDBService>
+          <ItemList id="1" />
+          {props.children}
         </ErrorBoundary>
       ));
 
-      await waitForElementToBeRemoved(() => queryByText(container, tid));
+      const listItems = [
+        { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
+        { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
+      ];
+
+      await collections.locks.insert({ id: "lock", isLocked: false });
+      await collections.listItems.bulkInsert(listItems);
+      for (const listItem of listItems) {
+        await findByText(listItem.text);
+      }
+
       ctx.expect(container).toMatchSnapshot("initial");
 
-      await collections.listItems.bulkUpsert([{ id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1" }]);
-      await findByText(
-        container,
-        "Error: there is an inconsistency in listItem in the children of '1': no listItem with id = '3'"
-      );
+      await collections.listItems.upsert({ id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1", updatedAt: 1 });
+      await findByText("Error: there is an inconsistency in listItem in the children of '1': no listItem with id = '3'");
+
       ctx.expect(container).toMatchSnapshot("error");
 
       unmount();
     });
 
     test("first item not found", async (ctx) => {
-      const tid = ctx.meta.id;
-      let collections = await createCollectionsForTest(tid);
-      await collections.locks.upsert({ id: "lock", isLocked: false });
-      await collections.listItems.bulkUpsert([
-        { id: "1", text: "root", prevId: "", nextId: "", parentId: "" },
-        { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1" },
-      ]);
-
-      const { container, unmount } = render(() => (
+      const { container, unmount, collections, findByText } = await renderWithRxDBServiceForTest(ctx.meta.id, (props) => (
         <ErrorBoundary fallback={(error) => `${error}`}>
-          <TestWithRxDBService tid={tid}>
-            <ItemList id="1" />
-          </TestWithRxDBService>
+          <ItemList id="1" />
+          {props.children}
         </ErrorBoundary>
       ));
 
-      await waitForElementToBeRemoved(() => queryByText(container, tid));
+      const listItems = [
+        { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
+        { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
+      ];
+
+      await collections.locks.insert({ id: "lock", isLocked: false });
+      await collections.listItems.bulkInsert(listItems);
+      for (const listItem of listItems) {
+        await findByText(listItem.text);
+      }
+
       ctx.expect(container).toMatchSnapshot("initial");
 
-      await collections.listItems.bulkUpsert([{ id: "2", text: "foo", prevId: "3", nextId: "3", parentId: "1" }]);
-      await findByText(
-        container,
-        "Error: there is an inconsistency in listItem in the children of '1': no listItem with prevId = ''"
-      );
+      await collections.listItems.upsert({ id: "2", text: "foo", prevId: "3", nextId: "3", parentId: "1", updatedAt: 1 });
+      await findByText("Error: there is an inconsistency in listItem in the children of '1': no listItem with prevId = ''");
+
       ctx.expect(container).toMatchSnapshot("error");
 
       unmount();

@@ -6,21 +6,11 @@ import { getFirestore, collection as getCollection } from "firebase/firestore";
 import { toSnakeCase } from "js-convert-case";
 import YAML from "js-yaml";
 import { replicateFirestore } from "rxdb/plugins/replication-firestore";
-import {
-  batch,
-  createContext,
-  createEffect,
-  createMemo,
-  createSignal,
-  onMount,
-  useContext,
-  onCleanup,
-  createResource,
-} from "solid-js";
+import { batch, createContext, createEffect, createMemo, createSignal, onMount, useContext, onCleanup, createResource } from "solid-js";
 import * as s from "superstruct";
 
 import { useRxDBService } from "@/services/rxdb";
-import { createSubscribeSignal } from "@/solid/subscribe";
+import { createSubscribeWithSignal } from "@/solid/subscribe";
 
 export type RxDBSyncFirestoreService = {
   configYAML$: () => string;
@@ -111,7 +101,7 @@ export function RxDBSyncFirestoreServiceProvider(props: { children: JSXElement }
     return app;
   });
 
-  const authStatus$ = createSubscribeSignal((setValue: (value: { signedIn: boolean }) => void) => {
+  const authStatus$ = createSubscribeWithSignal((setValue: (value: { signedIn: boolean }) => void) => {
     const firebase = firebase$();
     if (!firebase) return;
 

@@ -138,9 +138,7 @@ async function unlinkFromSiblings(service: RxDBService, updatedAt: number, item:
   ]);
 }
 
-function isRxDocument<T>(
-  document: Omit<T, "parentId" | "prevId" | "nextId" | "updatedAt"> | RxDocument<T>
-): document is RxDocument<T> {
+function isRxDocument<T>(document: Omit<T, "parentId" | "prevId" | "nextId" | "updatedAt"> | RxDocument<T>): document is RxDocument<T> {
   return "isInstanceOfRxDocument" in document;
 }
 
@@ -209,9 +207,7 @@ if (import.meta.vitest) {
       const now = Date.now();
       const service = { database$: () => undefined, collections$: () => collections };
 
-      await collections.listItems.bulkUpsert([
-        { id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 },
-      ]);
+      await collections.listItems.bulkUpsert([{ id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
 
       await addPrevSibling(service, now, (await collections.listItems.findOne("1").exec())!, {
         id: "2",
@@ -315,9 +311,7 @@ if (import.meta.vitest) {
       const now = Date.now();
       const service = { database$: () => undefined, collections$: () => collections };
 
-      await collections.listItems.bulkUpsert([
-        { id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 },
-      ]);
+      await collections.listItems.bulkUpsert([{ id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
 
       await addNextSibling(service, now, (await collections.listItems.findOne("1").exec())!, {
         id: "2",
@@ -445,10 +439,7 @@ export async function dedent(service: RxDBService, updatedAt: number, item: RxDo
   const parentItem = await getParentItem(service, item);
   if (!parentItem) return;
 
-  return Promise.all([
-    unlinkFromSiblings(service, updatedAt, item),
-    addNextSibling(service, updatedAt, parentItem, item),
-  ]);
+  return Promise.all([unlinkFromSiblings(service, updatedAt, item), addNextSibling(service, updatedAt, parentItem, item)]);
 }
 
 if (import.meta.vitest) {
@@ -534,9 +525,7 @@ if (import.meta.vitest) {
       const collections = await createCollectionsForTest(tid);
       const service = { database$: () => undefined, collections$: () => collections };
 
-      await collections.listItems.bulkUpsert([
-        { id: "1", text: "target", prevId: "", nextId: "", parentId: "0", updatedAt: 0 },
-      ]);
+      await collections.listItems.bulkUpsert([{ id: "1", text: "target", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
 
       await remove(service, Date.now(), (await collections.listItems.findOne("1").exec())!);
 

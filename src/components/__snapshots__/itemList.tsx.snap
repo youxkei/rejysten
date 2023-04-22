@@ -438,70 +438,7 @@ exports[`'swapped items' > text changes 3`] = `
 </div>
 `;
 
-exports[`add child 1`] = `
-<div>
-  <div
-    class="styles_styles_bulletList_container__1am92eo0"
-  >
-    <div
-      class="styles_styles_bulletList_bullet__1am92eo1"
-    >
-      •
-    </div>
-    <div
-      class="styles_styles_bulletList_item__1am92eo2"
-    >
-      <span>
-        root
-      </span>
-    </div>
-    <div
-      class="styles_styles_bulletList_child__1am92eo3"
-    >
-      <div
-        class="styles_styles_bulletList_container__1am92eo0"
-      >
-        <div
-          class="styles_styles_bulletList_bullet__1am92eo1"
-        >
-          •
-        </div>
-        <div
-          class="styles_styles_bulletList_item__1am92eo2"
-        >
-          <span>
-            foo
-          </span>
-        </div>
-        <div
-          class="styles_styles_bulletList_child__1am92eo3"
-        />
-      </div>
-      <div
-        class="styles_styles_bulletList_container__1am92eo0"
-      >
-        <div
-          class="styles_styles_bulletList_bullet__1am92eo1"
-        >
-          •
-        </div>
-        <div
-          class="styles_styles_bulletList_item__1am92eo2"
-        >
-          <span>
-            bar
-          </span>
-        </div>
-        <div
-          class="styles_styles_bulletList_child__1am92eo3"
-        />
-      </div>
-    </div>
-  </div>
-</div>
-`;
-
-exports[`add child 2`] = `
+exports[`add child > baz added 1`] = `
 <div>
   <div
     class="styles_styles_bulletList_container__1am92eo0"
@@ -572,6 +509,69 @@ exports[`add child 2`] = `
         >
           <span>
             baz
+          </span>
+        </div>
+        <div
+          class="styles_styles_bulletList_child__1am92eo3"
+        />
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`add child > initial 1`] = `
+<div>
+  <div
+    class="styles_styles_bulletList_container__1am92eo0"
+  >
+    <div
+      class="styles_styles_bulletList_bullet__1am92eo1"
+    >
+      •
+    </div>
+    <div
+      class="styles_styles_bulletList_item__1am92eo2"
+    >
+      <span>
+        root
+      </span>
+    </div>
+    <div
+      class="styles_styles_bulletList_child__1am92eo3"
+    >
+      <div
+        class="styles_styles_bulletList_container__1am92eo0"
+      >
+        <div
+          class="styles_styles_bulletList_bullet__1am92eo1"
+        >
+          •
+        </div>
+        <div
+          class="styles_styles_bulletList_item__1am92eo2"
+        >
+          <span>
+            foo
+          </span>
+        </div>
+        <div
+          class="styles_styles_bulletList_child__1am92eo3"
+        />
+      </div>
+      <div
+        class="styles_styles_bulletList_container__1am92eo0"
+      >
+        <div
+          class="styles_styles_bulletList_bullet__1am92eo1"
+        >
+          •
+        </div>
+        <div
+          class="styles_styles_bulletList_item__1am92eo2"
+        >
+          <span>
+            bar
           </span>
         </div>
         <div
@@ -722,152 +722,6 @@ exports[`inconsistent error > next item not found > initial 1`] = `
         >
           <span>
             foo
-          </span>
-        </div>
-        <div
-          class="styles_styles_bulletList_child__1am92eo3"
-        />
-      </div>
-    </div>
-  </div>
-</div>
-`;
-
-exports[`not updated when locked > initial 1`] = `
-<div>
-  <div
-    class="styles_styles_bulletList_container__1am92eo0"
-  >
-    <div
-      class="styles_styles_bulletList_bullet__1am92eo1"
-    >
-      •
-    </div>
-    <div
-      class="styles_styles_bulletList_item__1am92eo2"
-    />
-    <div
-      class="styles_styles_bulletList_child__1am92eo3"
-    />
-  </div>
-</div>
-`;
-
-exports[`not updated when locked > unlocked 1`] = `
-<div>
-  <div
-    class="styles_styles_bulletList_container__1am92eo0"
-  >
-    <div
-      class="styles_styles_bulletList_bullet__1am92eo1"
-    >
-      •
-    </div>
-    <div
-      class="styles_styles_bulletList_item__1am92eo2"
-    >
-      <span>
-        root
-      </span>
-    </div>
-    <div
-      class="styles_styles_bulletList_child__1am92eo3"
-    >
-      <div
-        class="styles_styles_bulletList_container__1am92eo0"
-      >
-        <div
-          class="styles_styles_bulletList_bullet__1am92eo1"
-        >
-          •
-        </div>
-        <div
-          class="styles_styles_bulletList_item__1am92eo2"
-        >
-          <span>
-            foo
-          </span>
-        </div>
-        <div
-          class="styles_styles_bulletList_child__1am92eo3"
-        />
-      </div>
-      <div
-        class="styles_styles_bulletList_container__1am92eo0"
-      >
-        <div
-          class="styles_styles_bulletList_bullet__1am92eo1"
-        >
-          •
-        </div>
-        <div
-          class="styles_styles_bulletList_item__1am92eo2"
-        >
-          <span>
-            bar
-          </span>
-        </div>
-        <div
-          class="styles_styles_bulletList_child__1am92eo3"
-        />
-      </div>
-    </div>
-  </div>
-</div>
-`;
-
-exports[`not updated when locked > updated with lock 1`] = `
-<div>
-  <div
-    class="styles_styles_bulletList_container__1am92eo0"
-  >
-    <div
-      class="styles_styles_bulletList_bullet__1am92eo1"
-    >
-      •
-    </div>
-    <div
-      class="styles_styles_bulletList_item__1am92eo2"
-    >
-      <span>
-        *root
-      </span>
-    </div>
-    <div
-      class="styles_styles_bulletList_child__1am92eo3"
-    >
-      <div
-        class="styles_styles_bulletList_container__1am92eo0"
-      >
-        <div
-          class="styles_styles_bulletList_bullet__1am92eo1"
-        >
-          •
-        </div>
-        <div
-          class="styles_styles_bulletList_item__1am92eo2"
-        >
-          <span>
-            *bar
-          </span>
-        </div>
-        <div
-          class="styles_styles_bulletList_child__1am92eo3"
-        />
-      </div>
-      <div
-        class="styles_styles_bulletList_container__1am92eo0"
-      >
-        <div
-          class="styles_styles_bulletList_bullet__1am92eo1"
-        >
-          •
-        </div>
-        <div
-          class="styles_styles_bulletList_item__1am92eo2"
-        >
-          <span>
-            *foo
           </span>
         </div>
         <div

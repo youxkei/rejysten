@@ -1,11 +1,11 @@
-import { render, waitForElementToBeRemoved, findByText, queryByText } from "@solidjs/testing-library";
+import { waitForElementToBeRemoved } from "@solidjs/testing-library";
 import userEvent from "@testing-library/user-event";
 import { Ulid } from "id128";
 import { For } from "solid-js";
 
-import { TestWithRxDBService, createCollectionsForTest } from "@/components/test";
 import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeSignal, createSubscribeAllSignal } from "@/services/rxdb/subscribe";
+import { renderWithRxDBServiceForTest } from "@/services/rxdb/test";
 
 export function Todo() {
   const { collections$ } = useRxDBService();
@@ -60,43 +60,47 @@ export function Todo() {
 
 if (import.meta.vitest) {
   test("renders", async (ctx) => {
-    const tid = ctx.meta.id;
-    let collections = await createCollectionsForTest(tid);
-
-    await collections.todos.bulkUpsert([
-      { id: "001", text: "foo", updatedAt: 1 },
-      { id: "002", text: "bar", updatedAt: 2 },
-    ]);
-
-    const { container, unmount } = render(() => (
-      <TestWithRxDBService tid={tid}>
+    const { container, unmount, collections, findByText } = await renderWithRxDBServiceForTest(ctx.meta.id, (props) => (
+      <>
         <Todo />
-      </TestWithRxDBService>
+        {props.children}
+      </>
     ));
 
-    await waitForElementToBeRemoved(() => queryByText(container, tid));
+    const todos = [
+      { id: "001", text: "foo", updatedAt: 1 },
+      { id: "002", text: "bar", updatedAt: 1 },
+    ];
+
+    await collections.todos.bulkInsert(todos);
+    for (const todo of todos) {
+      await findByText(todo.text);
+    }
+
     ctx.expect(container).toMatchSnapshot();
 
     unmount();
   });
 
   test("add todos", async (ctx) => {
-    const tid = ctx.meta.id;
-    const collections = await createCollectionsForTest(tid);
     const user = userEvent.setup();
-
-    await collections.todos.bulkUpsert([
-      { id: "001", text: "foo", updatedAt: 1 },
-      { id: "002", text: "bar", updatedAt: 2 },
-    ]);
-
-    const { container, unmount } = render(() => (
-      <TestWithRxDBService tid={tid}>
+    const { container, unmount, collections, findByText, queryByText } = await renderWithRxDBServiceForTest(ctx.meta.id, (props) => (
+      <>
         <Todo />
-      </TestWithRxDBService>
+        {props.children}
+      </>
     ));
 
-    await waitForElementToBeRemoved(() => queryByText(container, tid));
+    const todos = [
+      { id: "001", text: "foo", updatedAt: 1 },
+      { id: "002", text: "bar", updatedAt: 1 },
+    ];
+
+    await collections.todos.bulkInsert(todos);
+    for (const todo of todos) {
+      await findByText(todo.text);
+    }
+
     ctx.expect(container).toMatchSnapshot();
 
     const input = container.querySelector("input")!;
@@ -104,12 +108,12 @@ if (import.meta.vitest) {
 
     await user.click(input);
     await user.keyboard("baz");
-    await findByText(container, "baz");
+    await findByText("baz");
     ctx.expect(container).toMatchSnapshot();
 
     await user.click(button);
-    await waitForElementToBeRemoved(() => queryByText(container.querySelector("p")!, "baz"));
-    await findByText(container.querySelector("ul")!, "baz");
+    await waitForElementToBeRemoved(() => queryByText("baz", { selector: "p" }));
+    await findByText("baz");
     ctx.expect(container).toMatchSnapshot();
 
     unmount();

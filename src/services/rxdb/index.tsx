@@ -1,5 +1,6 @@
 import type { Collections } from "@/services/rxdb/collections";
 import type { RxDatabase, RxDatabaseCreator } from "rxdb";
+import type { DexieStorageInternals } from "rxdb/dist/types/types";
 import type { JSXElement } from "solid-js";
 
 import { addRxPlugin, createRxDatabase } from "rxdb";
@@ -10,13 +11,13 @@ import { createContext, createResource, onCleanup, useContext } from "solid-js";
 import { schema } from "@/services/rxdb/collections";
 
 export type RxDBService = {
-  database$: () => RxDatabase<Collections> | undefined;
+  database$: () => RxDatabase<Collections, DexieStorageInternals> | undefined;
   collections$: () => Collections | undefined;
 };
 
 const context = createContext<RxDBService>();
 
-function createRxDBService(databaseCreator: RxDatabaseCreator) {
+function createRxDBService(databaseCreator: RxDatabaseCreator<DexieStorageInternals>) {
   addRxPlugin(RxDBMigrationPlugin);
 
   const [database$] = createResource(async () => {
@@ -55,7 +56,7 @@ function createRxDBService(databaseCreator: RxDatabaseCreator) {
   };
 }
 
-export function RxDBServiceProvider(props: { children: JSXElement; databaseCreator?: RxDatabaseCreator }) {
+export function RxDBServiceProvider(props: { children: JSXElement; databaseCreator?: RxDatabaseCreator<DexieStorageInternals> }) {
   return (
     <context.Provider
       value={createRxDBService(

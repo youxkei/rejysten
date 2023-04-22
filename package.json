@@ -8,7 +8,6 @@
     "build": "vite build",
     "dev": "vite",
     "test": "vitest run",
-    "test/update": "vitest run -u",
     "postinstall": "patch-package"
   },
   "repository": {
@@ -63,7 +62,7 @@
     }
   },
   "prettier": {
-    "printWidth": 120
+    "printWidth": 140
   },
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",
