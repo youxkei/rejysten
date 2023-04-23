@@ -5,6 +5,7 @@ import { ErrorBoundary } from "@/components/errorBoundary";
 import { Broken } from "@/components/poc/broken";
 import { Context } from "@/components/poc/context";
 import { Lazy } from "@/components/poc/lazy";
+import { PreventClick } from "@/components/poc/preventClick";
 import { ShowItemList } from "@/components/poc/showItemList";
 import { Todo } from "@/components/poc/todo";
 import { RxdbFirestoreSyncConfig } from "@/components/rxdbFirestoreSyncConfig";
@@ -22,6 +23,7 @@ function App() {
           <Lazy />
           <RxdbFirestoreSyncConfig />
           <Context />
+          <PreventClick />
         </MultiProvider>
       </Suspense>
     </ErrorBoundary>
