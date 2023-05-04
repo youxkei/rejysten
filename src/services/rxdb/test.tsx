@@ -27,7 +27,7 @@ export function createDatabaseCreatorForTest(tid: string) {
 export async function createCollectionsForTest(tid: string) {
   const database = await createRxDatabase<Collections>(createDatabaseCreatorForTest(tid));
 
-  return database.addCollections(schema) as Promise<Collections>;
+  return database.addCollections(schema as any) as Promise<Collections>; // TODO: somehow type check fails so far
 }
 
 export function RxDBServiceProviderForTest(props: { tid: string; children: JSXElement }) {

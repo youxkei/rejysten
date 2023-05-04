@@ -45,7 +45,7 @@ function createRxDBService(databaseCreator: RxDatabaseCreator<DexieStorageIntern
       }
     });
 
-    collections = await database.addCollections(schema);
+    collections = await database.addCollections(schema as any); // TODO: somehow type check fails so far
 
     return collections;
   });

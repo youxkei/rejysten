@@ -87,6 +87,34 @@ export const schema = {
       required: ["id", "isLocked"],
     },
   },
+  stores: {
+    schema: {
+      title: "store schema",
+      description: "store",
+      version: 0,
+      primaryKey: "id",
+      type: "object",
+      properties: {
+        id: { type: "string", maxLength: 5, enum: ["const"] },
+        currentPage: { type: "string", enum: ["actionLogList", "actionLog"] },
+        actionLogListPage: {
+          type: "object",
+          properties: {
+            currentActionLogId: { type: "string" },
+          },
+          required: ["currentActionLogId"],
+        },
+        actionLogPage: {
+          type: "object",
+          properties: {
+            currentListItemId: { type: "string" },
+          },
+          required: ["currentListItemId"],
+        },
+      },
+      required: ["id", "currentPage", "actionLogListPage", "actionLogPage"],
+    },
+  },
 } as const;
 
 export type CollectionNameToDocumentType = {
