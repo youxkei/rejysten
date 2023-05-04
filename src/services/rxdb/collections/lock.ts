@@ -11,7 +11,7 @@ export type Lock = CollectionNameToDocumentType["locks"];
 export type LockDocument = RxDocument<Lock>;
 
 function createLockSignal(service: RxDBService) {
-  return createSubscribeSignal(() => service.collections$()?.locks.findOne("lock"));
+  return createSubscribeSignal(() => service.collections$()?.locks.findOne("const"));
 }
 
 export function createSignalWithLock<T>(service: RxDBService, value$: () => T, initialValue: T) {
@@ -34,12 +34,12 @@ export function createSignalWithLock<T>(service: RxDBService, value$: () => T, i
 }
 
 async function acquireLock(collections: Collections) {
-  let lock = await collections.locks.findOne("lock").exec();
+  let lock = await collections.locks.findOne("const").exec();
 
   if (lock === null) {
     try {
       lock = await collections.locks.insert({
-        id: "lock",
+        id: "const",
         isLocked: true,
       });
 

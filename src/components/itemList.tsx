@@ -103,7 +103,7 @@ if (import.meta.vitest) {
         </>
       ));
 
-      await collections.locks.insert({ id: "lock", isLocked: false });
+      await collections.locks.insert({ id: "const", isLocked: false });
       await collections.listItems.bulkInsert(listItems);
       for (const listItem of listItems) {
         await findByText(listItem.text);
@@ -143,7 +143,7 @@ if (import.meta.vitest) {
       { id: "3", text: "bar", prevId: "2", nextId: "", parentId: "1", updatedAt: 0 },
     ];
 
-    await collections.locks.insert({ id: "lock", isLocked: false });
+    await collections.locks.insert({ id: "const", isLocked: false });
     await collections.listItems.bulkInsert(listItems);
     for (const listItem of listItems) {
       await findByText(listItem.text);
@@ -151,12 +151,12 @@ if (import.meta.vitest) {
 
     ctx.expect(container).toMatchSnapshot("initial");
 
-    await collections.locks.upsert({ id: "lock", isLocked: true });
+    await collections.locks.upsert({ id: "const", isLocked: true });
     await collections.listItems.bulkUpsert([
       { id: "3", text: "bar", prevId: "2", nextId: "4", parentId: "1", updatedAt: 1 },
       { id: "4", text: "baz", prevId: "3", nextId: "", parentId: "1", updatedAt: 1 },
     ]);
-    await collections.locks.upsert({ id: "lock", isLocked: false });
+    await collections.locks.upsert({ id: "const", isLocked: false });
     await findByText("baz");
 
     ctx.expect(container).toMatchSnapshot("baz added");
@@ -178,7 +178,7 @@ if (import.meta.vitest) {
         { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
       ];
 
-      await collections.locks.insert({ id: "lock", isLocked: false });
+      await collections.locks.insert({ id: "const", isLocked: false });
       await collections.listItems.bulkInsert(listItems);
       for (const listItem of listItems) {
         await findByText(listItem.text);
@@ -206,7 +206,7 @@ if (import.meta.vitest) {
         { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
       ];
 
-      await collections.locks.insert({ id: "lock", isLocked: false });
+      await collections.locks.insert({ id: "const", isLocked: false });
       await collections.listItems.bulkInsert(listItems);
       for (const listItem of listItems) {
         await findByText(listItem.text);
@@ -235,7 +235,7 @@ if (import.meta.vitest) {
         { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
       ];
 
-      await collections.locks.insert({ id: "lock", isLocked: false });
+      await collections.locks.insert({ id: "const", isLocked: false });
       await collections.listItems.bulkInsert(listItems);
       for (const listItem of listItems) {
         await findByText(listItem.text);

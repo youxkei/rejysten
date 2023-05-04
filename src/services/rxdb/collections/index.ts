@@ -81,7 +81,7 @@ export const schema = {
       primaryKey: "id",
       type: "object",
       properties: {
-        id: { type: "string", maxLength: 4 },
+        id: { type: "string", maxLength: 5, enum: ["const"] },
         isLocked: { type: "boolean" },
       },
       required: ["id", "isLocked"],
