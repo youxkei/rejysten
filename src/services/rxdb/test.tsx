@@ -9,9 +9,9 @@ import { createRxDatabase } from "rxdb";
 import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
 import { createEffect } from "solid-js";
 
-import { createSubscribeSignal } from "./subscribe";
 import { RxDBServiceProvider, useRxDBService } from "@/services/rxdb";
 import { schema } from "@/services/rxdb/collections";
+import { createSubscribeSignal } from "@/services/rxdb/subscribe";
 import { renderAsync } from "@/test";
 
 type Wait = { promise: Promise<Wait> };

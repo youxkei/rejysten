@@ -31,6 +31,7 @@
     "babel-preset-solid": "^1.7.3",
     "eslint": "^8.38.0",
     "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-no-relative-import-paths": "^1.5.2",
     "fake-indexeddb": "^4.0.1",
     "happy-dom": "^9.1.9",
     "patch-package": "^6.5.1",
@@ -64,13 +65,14 @@
     }
   },
   "prettier": {
-    "printWidth": 140
+    "printWidth": 160
   },
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",
     "plugins": [
       "@typescript-eslint",
-      "import"
+      "import",
+      "eslint-plugin-no-relative-import-paths"
     ],
     "root": true,
     "rules": {
@@ -87,6 +89,14 @@
           "alphabetize": {
             "order": "asc"
           }
+        }
+      ],
+      "no-relative-import-paths/no-relative-import-paths": [
+        "error",
+        {
+          "allowSameFolder": false,
+          "rootDir": "src",
+          "prefix": "@"
         }
       ]
     }

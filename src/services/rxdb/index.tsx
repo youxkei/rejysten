@@ -69,9 +69,7 @@ export function RxDBServiceProvider(props: { children: JSXElement; databaseCreat
       }
   );
 
-  return (
-    <Show when={rxdbService$()}>{(rxdbService$) => <context.Provider value={rxdbService$()}>{props.children}</context.Provider>}</Show>
-  );
+  return <Show when={rxdbService$()}>{(rxdbService$) => <context.Provider value={rxdbService$()}>{props.children}</context.Provider>}</Show>;
 }
 
 export function useRxDBService() {

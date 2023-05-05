@@ -1,11 +1,11 @@
-import type { RxDBService } from "./rxdb";
 import type { LockService } from "@/services/lock";
+import type { RxDBService } from "@/services/rxdb";
 import type { JSXElement } from "solid-js";
 
 import { Suspense } from "solid-js";
 
-import { useRxDBService } from "./rxdb";
 import { LockServiceProvider, useLockService } from "@/services/lock";
+import { useRxDBService } from "@/services/rxdb";
 import { RxDBServiceProviderForTest } from "@/services/rxdb/test";
 import { renderAsync } from "@/test";
 

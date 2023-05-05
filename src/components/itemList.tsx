@@ -67,9 +67,7 @@ export function ItemListChildren(props: { parentId: string; selectedId: string }
       const currentChild = childMap.get(currentChildId);
 
       if (currentChild === undefined) {
-        throw new Error(
-          `there is an inconsistency in listItem in the children of '${props.parentId}': no listItem with id = '${currentChildId}'`
-        );
+        throw new Error(`there is an inconsistency in listItem in the children of '${props.parentId}': no listItem with id = '${currentChildId}'`);
       }
 
       sortedChildren.push(currentChild);
@@ -77,9 +75,7 @@ export function ItemListChildren(props: { parentId: string; selectedId: string }
     }
 
     if (children.length != sortedChildren.length) {
-      throw new Error(
-        `there is an inconsistency in listItem in the children of '${props.parentId}': some listItems are not in linked list`
-      );
+      throw new Error(`there is an inconsistency in listItem in the children of '${props.parentId}': some listItems are not in linked list`);
     }
 
     return sortedChildren;

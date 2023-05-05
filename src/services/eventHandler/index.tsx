@@ -1,17 +1,16 @@
-import type { LockService } from "../lock";
 import type { Event, ActionLogListPageEvent, ActionLogPageEvent } from "@/services/event";
+import type { LockService } from "@/services/lock";
 import type { RxDBService } from "@/services/rxdb";
-import type { Collections } from "@/services/rxdb/collections";
-import type { Store, StoreService } from "@/services/store";
+import type { Store } from "@/services/store";
 import type { JSXElement } from "solid-js";
 
 import { Ulid } from "id128";
 import { createEffect, untrack } from "solid-js";
 
-import { runWithLock, useLockService } from "../lock";
-import { addNextSibling, addPrevSibling, dedent, getNextItem, getPrevItem, indent } from "../rxdb/collections/listItem";
 import { useEventService } from "@/services/event";
+import { runWithLock, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
+import { addNextSibling, addPrevSibling, dedent, getBelowItem, getAboveItem, indent } from "@/services/rxdb/collections/listItem";
 import { useStoreService } from "@/services/store";
 
 type Context = {
@@ -109,7 +108,7 @@ async function handleActionLogPageEvent(ctx: Context, event: ActionLogPageEvent)
     }
 
     case "moveToPrev": {
-      const prevItem = await getPrevItem(ctx.rxdbService.collections, currentListItem);
+      const prevItem = await getAboveItem(ctx.rxdbService.collections, currentListItem);
       if (prevItem) {
         ctx.updateStore((store) => {
           store.actionLogPage.currentListItemId = prevItem.id;
@@ -120,7 +119,7 @@ async function handleActionLogPageEvent(ctx: Context, event: ActionLogPageEvent)
     }
 
     case "moveToNext": {
-      const nextItem = await getNextItem(ctx.rxdbService.collections, currentListItem);
+      const nextItem = await getBelowItem(ctx.rxdbService.collections, currentListItem);
       if (nextItem) {
         ctx.updateStore((store) => {
           store.actionLogPage.currentListItemId = nextItem.id;

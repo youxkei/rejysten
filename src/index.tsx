@@ -1,13 +1,13 @@
 import { MultiProvider } from "@solid-primitives/context";
 import { render, Suspense } from "solid-js/web";
 
-import { LockServiceProvider } from "./services/lock";
 import { ErrorBoundary } from "@/components/errorBoundary";
 import { ShowItemList } from "@/components/poc/showItemList";
 import { RxdbFirestoreSyncConfig } from "@/components/rxdbFirestoreSyncConfig";
 import { EventServiceProvider } from "@/services/event";
 import { EventEmitterServiceProvider } from "@/services/eventEmitter";
 import { EventHandlerServiceProvider } from "@/services/eventHandler";
+import { LockServiceProvider } from "@/services/lock";
 import { RxDBServiceProvider } from "@/services/rxdb";
 import { RxDBSyncFirestoreServiceProvider } from "@/services/rxdbSync/firestore";
 import { StoreServiceProvider } from "@/services/store";

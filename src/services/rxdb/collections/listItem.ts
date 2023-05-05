@@ -8,7 +8,7 @@ import { createCollectionsForTest } from "@/services/rxdb/test";
 export type ListItem = CollectionNameToDocumentType["listItems"];
 export type ListItemDocument = RxDocument<ListItem>;
 
-async function getPrevSiblingItem(collections: Collections, baseItem: RxDocument<ListItem>) {
+async function getPrevItem(collections: Collections, baseItem: RxDocument<ListItem>) {
   let prevItem: ListItemDocument | undefined;
 
   if (baseItem.prevId !== "") {
@@ -36,7 +36,7 @@ async function getPrevSiblingItem(collections: Collections, baseItem: RxDocument
   return prevItem;
 }
 
-async function getNextSiblingItem(collections: Collections, baseItem: RxDocument<ListItem>) {
+async function getNextItem(collections: Collections, baseItem: RxDocument<ListItem>) {
   let nextItem: ListItemDocument | undefined;
 
   if (baseItem.nextId !== "") {
@@ -128,21 +128,18 @@ async function getLastChildItem(collections: Collections, baseItem: RxDocument<L
 }
 
 async function unlinkFromSiblings(collections: Collections, updatedAt: number, item: RxDocument<ListItem>) {
-  const [prevSiblingItem, nextSiblingItem] = await Promise.all([
-    getPrevSiblingItem(collections, item),
-    getNextSiblingItem(collections, item),
-  ]);
+  const [prevItem, nextItem] = await Promise.all([getPrevItem(collections, item), getNextItem(collections, item)]);
 
-  if (prevSiblingItem) {
-    await prevSiblingItem.patch({
-      nextId: nextSiblingItem?.id ?? "",
+  if (prevItem) {
+    await prevItem.patch({
+      nextId: nextItem?.id ?? "",
       updatedAt,
     });
   }
 
-  if (nextSiblingItem) {
-    nextSiblingItem.patch({
-      prevId: prevSiblingItem?.id ?? "",
+  if (nextItem) {
+    nextItem.patch({
+      prevId: prevItem?.id ?? "",
       updatedAt,
     });
   }
@@ -152,175 +149,233 @@ function isRxDocument<T>(document: Omit<T, "parentId" | "prevId" | "nextId" | "u
   return "isInstanceOfRxDocument" in document;
 }
 
-export async function getPrevItem(collections: Collections, baseItem: RxDocument<ListItem>) {
-  // TODO
-  const prevSiblingItem = await getPrevSiblingItem(collections, baseItem);
-  if (prevSiblingItem) {
-    const lastChildItem = await getLastChildItem(collections, prevSiblingItem);
+export async function getAboveItem(collections: Collections, baseItem: RxDocument<ListItem>) {
+  const prevItem = await getPrevItem(collections, baseItem);
+  if (prevItem) {
+    let currentItem = prevItem;
 
-    return lastChildItem ?? prevSiblingItem;
+    while (true) {
+      const lastChildItem = await getLastChildItem(collections, currentItem);
+      if (!lastChildItem) return currentItem;
+
+      currentItem = lastChildItem;
+    }
   }
 
   return getParentItem(collections, baseItem);
 }
 
 if (import.meta.vitest) {
-  describe("getPrevItem", () => {
-    test("no prevSiblingItem and no parentItem", async (test) => {
+  describe("getAboveItem", () => {
+    test("no prev and no parent", async (test) => {
       const collections = await createCollectionsForTest(test.meta.id);
 
-      await collections.listItems.bulkUpsert([{ id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
-      const baseItem = (await collections.listItems.findOne("1").exec())!;
+      await collections.listItems.bulkUpsert([{ id: "base", text: "", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
+      const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect(await getPrevItem(collections, baseItem)).toBeUndefined();
+      test.expect(await getAboveItem(collections, baseItem)).toBeUndefined();
     });
 
-    test("no prevSiblingItem and has parentItem", async (test) => {
+    test("no prev and has parent", async (test) => {
       const collections = await createCollectionsForTest(test.meta.id);
 
       await collections.listItems.bulkUpsert([
-        { id: "1", text: "parent", prevId: "", nextId: "", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "base", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
+        { id: "parent", text: "", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
+        /**/ { id: "base", text: "", prevId: "", nextId: "", parentId: "parent", updatedAt: 0 },
       ]);
-      const baseItem = (await collections.listItems.findOne("2").exec())!;
+      const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getPrevItem(collections, baseItem))?.toJSON()).toEqual({
-        id: "1",
-        text: "parent",
+      test.expect((await getAboveItem(collections, baseItem))?.toJSON()).toEqual({
+        id: "parent",
+        text: "",
         prevId: "",
         nextId: "",
-        parentId: "0",
+        parentId: "",
         updatedAt: 0,
       });
     });
 
-    test("no childItem of prevSiblingItem", async (test) => {
+    test("has prev and no children of prev", async (test) => {
       const collections = await createCollectionsForTest(test.meta.id);
 
       await collections.listItems.bulkUpsert([
-        { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "base", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
+        { id: "prev", text: "", prevId: "", nextId: "base", parentId: "", updatedAt: 0 },
+        { id: "base", text: "", prevId: "prev", nextId: "", parentId: "", updatedAt: 0 },
       ]);
-      const baseItem = (await collections.listItems.findOne("2").exec())!;
+      const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getPrevItem(collections, baseItem))?.toJSON()).toEqual({
-        id: "1",
-        text: "prev",
+      test.expect((await getAboveItem(collections, baseItem))?.toJSON()).toEqual({
+        id: "prev",
+        text: "",
         prevId: "",
-        nextId: "2",
-        parentId: "0",
+        nextId: "base",
+        parentId: "",
         updatedAt: 0,
       });
     });
 
-    test("has childrenItems of prevSiblingItem", async (test) => {
+    test("has prev and has children of prev and no children of children of prev", async (test) => {
       const collections = await createCollectionsForTest(test.meta.id);
       await collections.listItems.bulkUpsert([
-        { id: "1", text: "prev", prevId: "", nextId: "4", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "prev-child1", prevId: "", nextId: "3", parentId: "1", updatedAt: 0 },
-        { id: "3", text: "prev-child2", prevId: "2", nextId: "", parentId: "1", updatedAt: 0 },
-        { id: "4", text: "base", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
+        { id: "prev", text: "", prevId: "", nextId: "base", parentId: "", updatedAt: 0 },
+        /**/ { id: "child1 of prev", text: "", prevId: "", nextId: "child2 of prev", parentId: "prev", updatedAt: 0 },
+        /**/ { id: "child2 of prev", text: "", prevId: "child1 of prev", nextId: "", parentId: "prev", updatedAt: 0 },
+        { id: "base", text: "", prevId: "prev", nextId: "", parentId: "", updatedAt: 0 },
       ]);
-      const baseItem = (await collections.listItems.findOne("4").exec())!;
+      const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getPrevItem(collections, baseItem))?.toJSON()).toEqual({
-        id: "3",
-        text: "prev-child2",
-        prevId: "2",
+      test.expect((await getAboveItem(collections, baseItem))?.toJSON()).toEqual({
+        id: "child2 of prev",
+        text: "",
+        prevId: "child1 of prev",
         nextId: "",
-        parentId: "1",
+        parentId: "prev",
+        updatedAt: 0,
+      });
+    });
+
+    test("has prev and has children of prev and has children of children of prev", async (test) => {
+      const collections = await createCollectionsForTest(test.meta.id);
+      await collections.listItems.bulkUpsert([
+        { id: "prev", text: "", prevId: "", nextId: "base", parentId: "", updatedAt: 0 },
+        /**/ { id: "child1 of prev", text: "", prevId: "", nextId: "child2 of prev", parentId: "prev", updatedAt: 0 },
+        /**/ { id: "child2 of prev", text: "", prevId: "child1 of prev", nextId: "", parentId: "prev", updatedAt: 0 },
+        /*     */ { id: "child1 of child2 of prev", text: "", prevId: "", nextId: "child2 of child2 of prev", parentId: "child2 of prev", updatedAt: 0 },
+        /*     */ { id: "child2 of child2 of prev", text: "", prevId: "child1 of child2 of prev", nextId: "", parentId: "child2 of prev", updatedAt: 0 },
+        { id: "base", text: "", prevId: "prev", nextId: "", parentId: "", updatedAt: 0 },
+      ]);
+      const baseItem = (await collections.listItems.findOne("base").exec())!;
+
+      test.expect((await getAboveItem(collections, baseItem))?.toJSON()).toEqual({
+        id: "child2 of child2 of prev",
+        text: "",
+        prevId: "child1 of child2 of prev",
+        nextId: "",
+        parentId: "child2 of prev",
         updatedAt: 0,
       });
     });
   });
 }
 
-export async function getNextItem(collections: Collections, baseItem: RxDocument<ListItem>) {
+export async function getBelowItem(collections: Collections, baseItem: RxDocument<ListItem>) {
   // TODO
   const firstChildItem = await getFirstChildItem(collections, baseItem);
   if (firstChildItem) return firstChildItem;
 
-  const nextSiblingItem = await getNextSiblingItem(collections, baseItem);
-  if (nextSiblingItem) return nextSiblingItem;
+  let currentItem: ListItemDocument | undefined = baseItem;
+  while (currentItem) {
+    const nextItem = await getNextItem(collections, currentItem);
+    if (nextItem) return nextItem;
 
-  const parentItem = await getParentItem(collections, baseItem);
-  if (parentItem) {
-    return getNextSiblingItem(collections, parentItem);
+    currentItem = await getParentItem(collections, currentItem);
   }
 }
 
 if (import.meta.vitest) {
-  describe("getNextItem", () => {
-    test("has childrenItems and has nextSiblingItem and has nextSiblingItem of parentItem", async (test) => {
+  describe("getBelowItem", () => {
+    test("has children", async (test) => {
       const collections = await createCollectionsForTest(test.meta.id);
 
       await collections.listItems.bulkUpsert([
-        { id: "1", text: "parent", prevId: "", nextId: "5", parentId: "0", updatedAt: 0 },
-        { id: "base", text: "base", prevId: "", nextId: "4", parentId: "1", updatedAt: 0 },
-        { id: "2", text: "child1", prevId: "", nextId: "3", parentId: "base", updatedAt: 0 },
-        { id: "3", text: "child2", prevId: "2", nextId: "", parentId: "base", updatedAt: 0 },
-        { id: "4", text: "next", prevId: "1", nextId: "", parentId: "1", updatedAt: 0 },
-        { id: "5", text: "next of parent", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
+        { id: "parent of parent", text: "", prevId: "", nextId: "next of parent of parent", parentId: "", updatedAt: 0 },
+        /**/ { id: "parent", text: "", prevId: "", nextId: "next of parent", parentId: "parent of parent", updatedAt: 0 },
+        /*     */ { id: "base", text: "", prevId: "", nextId: "next", parentId: "parent", updatedAt: 0 },
+        /*          */ { id: "child1", text: "", prevId: "", nextId: "child2", parentId: "base", updatedAt: 0 },
+        /*          */ { id: "child2", text: "", prevId: "child1", nextId: "", parentId: "base", updatedAt: 0 },
+        /*     */ { id: "next", text: "", prevId: "base", nextId: "", parentId: "parent", updatedAt: 0 },
+        /**/ { id: "next of parent", text: "", prevId: "parent", nextId: "", parentId: "parent of parent", updatedAt: 0 },
+        { id: "next of parent of parent", text: "", prevId: "parent of parent", nextId: "", parentId: "", updatedAt: 0 },
       ]);
       const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getNextItem(collections, baseItem))?.toJSON()).toEqual({
-        id: "2",
-        text: "child1",
+      test.expect((await getBelowItem(collections, baseItem))?.toJSON()).toEqual({
+        id: "child1",
+        text: "",
         prevId: "",
-        nextId: "3",
+        nextId: "child2",
         parentId: "base",
         updatedAt: 0,
       });
     });
 
-    test("no childrenItems and has nextSiblingItem and has nextSiblingItem of parentItem", async (test) => {
+    test("no children and has next", async (test) => {
       const collections = await createCollectionsForTest(test.meta.id);
 
       await collections.listItems.bulkUpsert([
-        { id: "1", text: "parent", prevId: "", nextId: "5", parentId: "0", updatedAt: 0 },
-        { id: "base", text: "base", prevId: "", nextId: "4", parentId: "1", updatedAt: 0 },
-        { id: "4", text: "next", prevId: "1", nextId: "", parentId: "1", updatedAt: 0 },
-        { id: "5", text: "next of parent", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
+        { id: "parent of parent", text: "", prevId: "", nextId: "next of parent of parent", parentId: "", updatedAt: 0 },
+        /**/ { id: "parent", text: "", prevId: "", nextId: "next of parent", parentId: "parent of parent", updatedAt: 0 },
+        /*     */ { id: "base", text: "", prevId: "", nextId: "next", parentId: "parent", updatedAt: 0 },
+        /*     */ { id: "next", text: "", prevId: "base", nextId: "", parentId: "parent", updatedAt: 0 },
+        /**/ { id: "next of parent", text: "", prevId: "parent", nextId: "", parentId: "parent of parent", updatedAt: 0 },
+        { id: "next of parent of parent", text: "", prevId: "parent of parent", nextId: "", parentId: "", updatedAt: 0 },
       ]);
       const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getNextItem(collections, baseItem))?.toJSON()).toEqual({
-        id: "4",
-        text: "next",
-        prevId: "1",
+      test.expect((await getBelowItem(collections, baseItem))?.toJSON()).toEqual({
+        id: "next",
+        text: "",
+        prevId: "base",
         nextId: "",
-        parentId: "1",
+        parentId: "parent",
         updatedAt: 0,
       });
     });
 
-    test("no childItem and no nextSiblingItem and no parentItem", async (test) => {
-      const collections = await createCollectionsForTest(test.meta.id);
-
-      await collections.listItems.bulkUpsert([{ id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
-      const baseItem = (await collections.listItems.findOne("1").exec())!;
-
-      test.expect(await getNextItem(collections, baseItem)).toBeUndefined();
-    });
-
-    test("no childItem and has nextSiblingItem", async (test) => {
+    test("no children and no next and has next of parent", async (test) => {
       const collections = await createCollectionsForTest(test.meta.id);
 
       await collections.listItems.bulkUpsert([
-        { id: "1", text: "base", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
+        { id: "parent of parent", text: "", prevId: "", nextId: "next of parent of parent", parentId: "", updatedAt: 0 },
+        /**/ { id: "parent", text: "", prevId: "", nextId: "next of parent", parentId: "parent of parent", updatedAt: 0 },
+        /*     */ { id: "base", text: "", prevId: "", nextId: "", parentId: "parent", updatedAt: 0 },
+        /**/ { id: "next of parent", text: "", prevId: "parent", nextId: "", parentId: "parent of parent", updatedAt: 0 },
+        { id: "next of parent of parent", text: "", prevId: "parent of parent", nextId: "", parentId: "", updatedAt: 0 },
       ]);
-      const baseItem = (await collections.listItems.findOne("1").exec())!;
+      const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getNextItem(collections, baseItem))?.toJSON()).toEqual({
-        id: "2",
-        text: "next",
-        prevId: "1",
+      test.expect((await getBelowItem(collections, baseItem))?.toJSON()).toEqual({
+        id: "next of parent",
+        text: "",
+        prevId: "parent",
         nextId: "",
-        parentId: "0",
+        parentId: "parent of parent",
         updatedAt: 0,
       });
+    });
+
+    test("no children and no next and no next of parent and has next of parent of parent", async (test) => {
+      const collections = await createCollectionsForTest(test.meta.id);
+
+      await collections.listItems.bulkUpsert([
+        { id: "parent of parent", text: "", prevId: "", nextId: "next of parent of parent", parentId: "", updatedAt: 0 },
+        /**/ { id: "parent", text: "", prevId: "", nextId: "", parentId: "parent of parent", updatedAt: 0 },
+        /*     */ { id: "base", text: "", prevId: "", nextId: "", parentId: "parent", updatedAt: 0 },
+        { id: "next of parent of parent", text: "", prevId: "parent of parent", nextId: "", parentId: "", updatedAt: 0 },
+      ]);
+      const baseItem = (await collections.listItems.findOne("base").exec())!;
+
+      test.expect((await getBelowItem(collections, baseItem))?.toJSON()).toEqual({
+        id: "next of parent of parent",
+        text: "",
+        prevId: "parent of parent",
+        nextId: "",
+        parentId: "",
+        updatedAt: 0,
+      });
+    });
+
+    test("no children and no next and no next of parent and no next of parent of parent", async (test) => {
+      const collections = await createCollectionsForTest(test.meta.id);
+
+      await collections.listItems.bulkUpsert([
+        { id: "parent of parent", text: "", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
+        /**/ { id: "parent", text: "", prevId: "", nextId: "", parentId: "parent of parent", updatedAt: 0 },
+        /*     */ { id: "base", text: "", prevId: "", nextId: "", parentId: "parent", updatedAt: 0 },
+      ]);
+      const baseItem = (await collections.listItems.findOne("base").exec())!;
+
+      test.expect((await getBelowItem(collections, baseItem))?.toJSON()).toBeUndefined();
     });
   });
 }
@@ -336,9 +391,9 @@ export async function addPrevSibling(
   }
 
   const listItems = collections.listItems;
-  const prevSiblingItem = await getPrevSiblingItem(collections, baseItem);
+  const prevItem = await getPrevItem(collections, baseItem);
 
-  if (!prevSiblingItem) {
+  if (!prevItem) {
     if (isRxDocument(newItem)) {
       await newItem.patch({
         parentId: baseItem.parentId,
@@ -363,7 +418,7 @@ export async function addPrevSibling(
   if (isRxDocument(newItem)) {
     await newItem.patch({
       parentId: baseItem.parentId,
-      prevId: prevSiblingItem.id,
+      prevId: prevItem.id,
       nextId: baseItem.id,
       updatedAt,
     });
@@ -371,14 +426,14 @@ export async function addPrevSibling(
     await listItems.insert({
       ...newItem,
       parentId: baseItem.parentId,
-      prevId: prevSiblingItem.id,
+      prevId: prevItem.id,
       nextId: baseItem.id,
       updatedAt,
     });
   }
 
   await baseItem.patch({ prevId: newItem.id, updatedAt });
-  await prevSiblingItem.patch({ nextId: newItem.id, updatedAt });
+  await prevItem.patch({ nextId: newItem.id, updatedAt });
 }
 
 if (import.meta.vitest) {
@@ -438,9 +493,9 @@ export async function addNextSibling(
   }
 
   const listItems = collections.listItems;
-  const nextSiblingItem = await getNextSiblingItem(collections, baseItem);
+  const nextItem = await getNextItem(collections, baseItem);
 
-  if (!nextSiblingItem) {
+  if (!nextItem) {
     if (isRxDocument(newItem)) {
       await newItem.patch({
         parentId: baseItem.parentId,
@@ -466,7 +521,7 @@ export async function addNextSibling(
     await newItem.patch({
       parentId: baseItem.parentId,
       prevId: baseItem.id,
-      nextId: nextSiblingItem.id,
+      nextId: nextItem.id,
       updatedAt,
     });
   } else {
@@ -474,12 +529,12 @@ export async function addNextSibling(
       ...newItem,
       parentId: baseItem.parentId,
       prevId: baseItem.id,
-      nextId: nextSiblingItem.id,
+      nextId: nextItem.id,
       updatedAt,
     });
   }
   await baseItem.patch({ nextId: newItem.id, updatedAt });
-  await nextSiblingItem.patch({ prevId: newItem.id, updatedAt });
+  await nextItem.patch({ prevId: newItem.id, updatedAt });
 }
 
 if (import.meta.vitest) {
@@ -529,17 +584,17 @@ if (import.meta.vitest) {
 }
 
 export async function indent(collections: Collections, updatedAt: number, item: RxDocument<ListItem>) {
-  const prevSiblingItem = await getPrevSiblingItem(collections, item);
-  if (!prevSiblingItem) return;
+  const prevItem = await getPrevItem(collections, item);
+  if (!prevItem) return;
 
-  const lastChildItemOfPrevItem = await getLastChildItem(collections, prevSiblingItem);
+  const lastChildItemOfPrevItem = await getLastChildItem(collections, prevItem);
 
   await unlinkFromSiblings(collections, updatedAt, item);
   if (lastChildItemOfPrevItem) {
     await addNextSibling(collections, updatedAt, lastChildItemOfPrevItem, item);
   } else {
     await item.patch({
-      parentId: prevSiblingItem.id,
+      parentId: prevItem.id,
       prevId: "",
       nextId: "",
       updatedAt,

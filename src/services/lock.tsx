@@ -4,8 +4,8 @@ import type { JSXElement } from "solid-js";
 import userEvent from "@testing-library/user-event";
 import { createContext, createMemo, createSignal, startTransition, untrack, useContext } from "solid-js";
 
-import { RxDBServiceProviderForTest } from "./rxdb/test";
 import { useRxDBService } from "@/services/rxdb";
+import { RxDBServiceProviderForTest } from "@/services/rxdb/test";
 import { renderAsync } from "@/test";
 
 export type LockService = {
