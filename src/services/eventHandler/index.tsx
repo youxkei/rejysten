@@ -70,13 +70,13 @@ async function handleActionLogPageEvent(ctx: Context, event: ActionLogPageEvent)
 
   switch (event.type) {
     case "indent": {
-      await runWithLock(ctx.lockService, () => indent(ctx.rxdbService.collections, ctx.now, currentListItem));
+      await runWithLock(ctx.lockService, () => indent(ctx.rxdbService, ctx.now, currentListItem));
 
       break;
     }
 
     case "dedent": {
-      await runWithLock(ctx.lockService, () => dedent(ctx.rxdbService.collections, ctx.now, currentListItem));
+      await runWithLock(ctx.lockService, () => dedent(ctx.rxdbService, ctx.now, currentListItem));
 
       break;
     }
@@ -85,7 +85,7 @@ async function handleActionLogPageEvent(ctx: Context, event: ActionLogPageEvent)
       await runWithLock(ctx.lockService, async () => {
         const id = Ulid.generate({ time: ctx.now }).toCanonical();
 
-        await addPrevSibling(ctx.rxdbService.collections, ctx.now, currentListItem, { id, text: "" });
+        await addPrevSibling(ctx.rxdbService, ctx.now, currentListItem, { id, text: "" });
         ctx.updateStore((store) => {
           store.actionLogPage.currentListItemId = id;
         });
@@ -98,7 +98,7 @@ async function handleActionLogPageEvent(ctx: Context, event: ActionLogPageEvent)
       await runWithLock(ctx.lockService, async () => {
         const id = Ulid.generate({ time: ctx.now }).toCanonical();
 
-        await addNextSibling(ctx.rxdbService.collections, ctx.now, currentListItem, { id, text: "" });
+        await addNextSibling(ctx.rxdbService, ctx.now, currentListItem, { id, text: "" });
         ctx.updateStore((store) => {
           store.actionLogPage.currentListItemId = id;
         });
@@ -108,7 +108,7 @@ async function handleActionLogPageEvent(ctx: Context, event: ActionLogPageEvent)
     }
 
     case "moveToPrev": {
-      const prevItem = await getAboveItem(ctx.rxdbService.collections, currentListItem);
+      const prevItem = await getAboveItem(ctx.rxdbService, currentListItem);
       if (prevItem) {
         ctx.updateStore((store) => {
           store.actionLogPage.currentListItemId = prevItem.id;
@@ -119,7 +119,7 @@ async function handleActionLogPageEvent(ctx: Context, event: ActionLogPageEvent)
     }
 
     case "moveToNext": {
-      const nextItem = await getBelowItem(ctx.rxdbService.collections, currentListItem);
+      const nextItem = await getBelowItem(ctx.rxdbService, currentListItem);
       if (nextItem) {
         ctx.updateStore((store) => {
           store.actionLogPage.currentListItemId = nextItem.id;

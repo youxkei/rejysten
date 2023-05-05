@@ -1,3 +1,4 @@
+import type { RxDBService } from "..";
 import type { CollectionNameToDocumentType } from "@/services/rxdb/collections";
 import type { Collections } from "@/services/rxdb/collections";
 import type { RxDocument } from "rxdb";
@@ -8,11 +9,11 @@ import { createCollectionsForTest } from "@/services/rxdb/test";
 export type ListItem = CollectionNameToDocumentType["listItems"];
 export type ListItemDocument = RxDocument<ListItem>;
 
-async function getPrevItem(collections: Collections, baseItem: RxDocument<ListItem>) {
+async function getPrevItem(service: RxDBService, baseItem: RxDocument<ListItem>) {
   let prevItem: ListItemDocument | undefined;
 
   if (baseItem.prevId !== "") {
-    prevItem = (await collections.listItems.findOne(baseItem.prevId).exec()) ?? undefined;
+    prevItem = (await service.collections.listItems.findOne(baseItem.prevId).exec()) ?? undefined;
 
     if (!prevItem) {
       throw new InconsistentError("baseItem.prevId is invalid", { baseItem: baseItem.toJSON() });
@@ -36,11 +37,11 @@ async function getPrevItem(collections: Collections, baseItem: RxDocument<ListIt
   return prevItem;
 }
 
-async function getNextItem(collections: Collections, baseItem: RxDocument<ListItem>) {
+async function getNextItem(service: RxDBService, baseItem: RxDocument<ListItem>) {
   let nextItem: ListItemDocument | undefined;
 
   if (baseItem.nextId !== "") {
-    nextItem = (await collections.listItems.findOne(baseItem.nextId).exec()) ?? undefined;
+    nextItem = (await service.collections.listItems.findOne(baseItem.nextId).exec()) ?? undefined;
 
     if (!nextItem) {
       throw new InconsistentError("baseItem.nextId is invalid", { baseItem: baseItem.toJSON() });
@@ -64,11 +65,11 @@ async function getNextItem(collections: Collections, baseItem: RxDocument<ListIt
   return nextItem;
 }
 
-async function getParentItem(collections: Collections, baseItem: RxDocument<ListItem>) {
+async function getParentItem(service: RxDBService, baseItem: RxDocument<ListItem>) {
   let parentItem: RxDocument<ListItem> | undefined;
 
   if (baseItem.parentId !== "") {
-    parentItem = (await collections.listItems.findOne(baseItem.parentId).exec()) ?? undefined;
+    parentItem = (await service.collections.listItems.findOne(baseItem.parentId).exec()) ?? undefined;
 
     if (!parentItem) {
       // this is normal situation because parentId may refer to an item of another collection
@@ -79,8 +80,8 @@ async function getParentItem(collections: Collections, baseItem: RxDocument<List
   return parentItem;
 }
 
-async function getFirstChildItem(collections: Collections, baseItem: RxDocument<ListItem>) {
-  const firstChildItems = await collections.listItems
+async function getFirstChildItem(service: RxDBService, baseItem: RxDocument<ListItem>) {
+  const firstChildItems = await service.collections.listItems
     .find({
       selector: {
         parentId: baseItem.id,
@@ -103,8 +104,8 @@ async function getFirstChildItem(collections: Collections, baseItem: RxDocument<
   return firstChildItems[0];
 }
 
-async function getLastChildItem(collections: Collections, baseItem: RxDocument<ListItem>) {
-  const lastChildItems = await collections.listItems
+async function getLastChildItem(service: RxDBService, baseItem: RxDocument<ListItem>) {
+  const lastChildItems = await service.collections.listItems
     .find({
       selector: {
         parentId: baseItem.id,
@@ -127,8 +128,8 @@ async function getLastChildItem(collections: Collections, baseItem: RxDocument<L
   return lastChildItems[0];
 }
 
-async function unlinkFromSiblings(collections: Collections, updatedAt: number, item: RxDocument<ListItem>) {
-  const [prevItem, nextItem] = await Promise.all([getPrevItem(collections, item), getNextItem(collections, item)]);
+async function unlinkFromSiblings(service: RxDBService, updatedAt: number, item: RxDocument<ListItem>) {
+  const [prevItem, nextItem] = await Promise.all([getPrevItem(service, item), getNextItem(service, item)]);
 
   if (prevItem) {
     await prevItem.patch({
@@ -149,20 +150,20 @@ function isRxDocument<T>(document: Omit<T, "parentId" | "prevId" | "nextId" | "u
   return "isInstanceOfRxDocument" in document;
 }
 
-export async function getAboveItem(collections: Collections, baseItem: RxDocument<ListItem>) {
-  const prevItem = await getPrevItem(collections, baseItem);
+export async function getAboveItem(service: RxDBService, baseItem: RxDocument<ListItem>) {
+  const prevItem = await getPrevItem(service, baseItem);
   if (prevItem) {
     let currentItem = prevItem;
 
     while (true) {
-      const lastChildItem = await getLastChildItem(collections, currentItem);
+      const lastChildItem = await getLastChildItem(service, currentItem);
       if (!lastChildItem) return currentItem;
 
       currentItem = lastChildItem;
     }
   }
 
-  return getParentItem(collections, baseItem);
+  return getParentItem(service, baseItem);
 }
 
 if (import.meta.vitest) {
@@ -173,7 +174,7 @@ if (import.meta.vitest) {
       await collections.listItems.bulkUpsert([{ id: "base", text: "", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
       const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect(await getAboveItem(collections, baseItem)).toBeUndefined();
+      test.expect(await getAboveItem({ collections }, baseItem)).toBeUndefined();
     });
 
     test("no prev and has parent", async (test) => {
@@ -185,7 +186,7 @@ if (import.meta.vitest) {
       ]);
       const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getAboveItem(collections, baseItem))?.toJSON()).toEqual({
+      test.expect((await getAboveItem({ collections }, baseItem))?.toJSON()).toEqual({
         id: "parent",
         text: "",
         prevId: "",
@@ -204,7 +205,7 @@ if (import.meta.vitest) {
       ]);
       const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getAboveItem(collections, baseItem))?.toJSON()).toEqual({
+      test.expect((await getAboveItem({ collections }, baseItem))?.toJSON()).toEqual({
         id: "prev",
         text: "",
         prevId: "",
@@ -224,7 +225,7 @@ if (import.meta.vitest) {
       ]);
       const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getAboveItem(collections, baseItem))?.toJSON()).toEqual({
+      test.expect((await getAboveItem({ collections }, baseItem))?.toJSON()).toEqual({
         id: "child2 of prev",
         text: "",
         prevId: "child1 of prev",
@@ -246,7 +247,7 @@ if (import.meta.vitest) {
       ]);
       const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getAboveItem(collections, baseItem))?.toJSON()).toEqual({
+      test.expect((await getAboveItem({ collections }, baseItem))?.toJSON()).toEqual({
         id: "child2 of child2 of prev",
         text: "",
         prevId: "child1 of child2 of prev",
@@ -258,17 +259,17 @@ if (import.meta.vitest) {
   });
 }
 
-export async function getBelowItem(collections: Collections, baseItem: RxDocument<ListItem>) {
+export async function getBelowItem(service: RxDBService, baseItem: RxDocument<ListItem>) {
   // TODO
-  const firstChildItem = await getFirstChildItem(collections, baseItem);
+  const firstChildItem = await getFirstChildItem(service, baseItem);
   if (firstChildItem) return firstChildItem;
 
   let currentItem: ListItemDocument | undefined = baseItem;
   while (currentItem) {
-    const nextItem = await getNextItem(collections, currentItem);
+    const nextItem = await getNextItem(service, currentItem);
     if (nextItem) return nextItem;
 
-    currentItem = await getParentItem(collections, currentItem);
+    currentItem = await getParentItem(service, currentItem);
   }
 }
 
@@ -289,7 +290,7 @@ if (import.meta.vitest) {
       ]);
       const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getBelowItem(collections, baseItem))?.toJSON()).toEqual({
+      test.expect((await getBelowItem({ collections }, baseItem))?.toJSON()).toEqual({
         id: "child1",
         text: "",
         prevId: "",
@@ -312,7 +313,7 @@ if (import.meta.vitest) {
       ]);
       const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getBelowItem(collections, baseItem))?.toJSON()).toEqual({
+      test.expect((await getBelowItem({ collections }, baseItem))?.toJSON()).toEqual({
         id: "next",
         text: "",
         prevId: "base",
@@ -334,7 +335,7 @@ if (import.meta.vitest) {
       ]);
       const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getBelowItem(collections, baseItem))?.toJSON()).toEqual({
+      test.expect((await getBelowItem({ collections }, baseItem))?.toJSON()).toEqual({
         id: "next of parent",
         text: "",
         prevId: "parent",
@@ -355,7 +356,7 @@ if (import.meta.vitest) {
       ]);
       const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getBelowItem(collections, baseItem))?.toJSON()).toEqual({
+      test.expect((await getBelowItem({ collections }, baseItem))?.toJSON()).toEqual({
         id: "next of parent of parent",
         text: "",
         prevId: "parent of parent",
@@ -375,13 +376,13 @@ if (import.meta.vitest) {
       ]);
       const baseItem = (await collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getBelowItem(collections, baseItem))?.toJSON()).toBeUndefined();
+      test.expect((await getBelowItem({ collections }, baseItem))?.toJSON()).toBeUndefined();
     });
   });
 }
 
 export async function addPrevSibling(
-  collections: Collections,
+  service: RxDBService,
   updatedAt: number,
   baseItem: RxDocument<ListItem>,
   newItem: Omit<ListItem, "parentId" | "prevId" | "nextId" | "updatedAt"> | RxDocument<ListItem>
@@ -390,8 +391,8 @@ export async function addPrevSibling(
     throw new Error(`newItem.id is empty. newItem: ${newItem}`);
   }
 
-  const listItems = collections.listItems;
-  const prevItem = await getPrevItem(collections, baseItem);
+  const listItems = service.collections.listItems;
+  const prevItem = await getPrevItem(service, baseItem);
 
   if (!prevItem) {
     if (isRxDocument(newItem)) {
@@ -446,7 +447,7 @@ if (import.meta.vitest) {
 
       await collections.listItems.bulkUpsert([{ id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
 
-      await addPrevSibling(collections, now, (await collections.listItems.findOne("1").exec())!, {
+      await addPrevSibling({ collections }, now, (await collections.listItems.findOne("1").exec())!, {
         id: "2",
         text: "new",
       });
@@ -468,7 +469,7 @@ if (import.meta.vitest) {
         { id: "2", text: "prev", prevId: "", nextId: "1", parentId: "0", updatedAt: 0 },
       ]);
 
-      await addPrevSibling(collections, now, (await collections.listItems.findOne("1").exec())!, {
+      await addPrevSibling({ collections }, now, (await collections.listItems.findOne("1").exec())!, {
         id: "3",
         text: "new",
       });
@@ -483,7 +484,7 @@ if (import.meta.vitest) {
 }
 
 export async function addNextSibling(
-  collections: Collections,
+  service: RxDBService,
   updatedAt: number,
   baseItem: RxDocument<ListItem>,
   newItem: Omit<ListItem, "parentId" | "prevId" | "nextId" | "updatedAt"> | RxDocument<ListItem>
@@ -492,8 +493,8 @@ export async function addNextSibling(
     throw new Error(`newItem.id is empty. newItem: ${newItem}`);
   }
 
-  const listItems = collections.listItems;
-  const nextItem = await getNextItem(collections, baseItem);
+  const listItems = service.collections.listItems;
+  const nextItem = await getNextItem(service, baseItem);
 
   if (!nextItem) {
     if (isRxDocument(newItem)) {
@@ -547,7 +548,7 @@ if (import.meta.vitest) {
 
       await collections.listItems.bulkUpsert([{ id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
 
-      await addNextSibling(collections, now, (await collections.listItems.findOne("1").exec())!, {
+      await addNextSibling({ collections }, now, (await collections.listItems.findOne("1").exec())!, {
         id: "2",
         text: "new",
       });
@@ -569,7 +570,7 @@ if (import.meta.vitest) {
         { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await addNextSibling(collections, now, (await collections.listItems.findOne("1").exec())!, {
+      await addNextSibling({ collections }, now, (await collections.listItems.findOne("1").exec())!, {
         id: "3",
         text: "new",
       });
@@ -583,15 +584,15 @@ if (import.meta.vitest) {
   });
 }
 
-export async function indent(collections: Collections, updatedAt: number, item: RxDocument<ListItem>) {
-  const prevItem = await getPrevItem(collections, item);
+export async function indent(service: RxDBService, updatedAt: number, item: RxDocument<ListItem>) {
+  const prevItem = await getPrevItem(service, item);
   if (!prevItem) return;
 
-  const lastChildItemOfPrevItem = await getLastChildItem(collections, prevItem);
+  const lastChildItemOfPrevItem = await getLastChildItem(service, prevItem);
 
-  await unlinkFromSiblings(collections, updatedAt, item);
+  await unlinkFromSiblings(service, updatedAt, item);
   if (lastChildItemOfPrevItem) {
-    await addNextSibling(collections, updatedAt, lastChildItemOfPrevItem, item);
+    await addNextSibling(service, updatedAt, lastChildItemOfPrevItem, item);
   } else {
     await item.patch({
       parentId: prevItem.id,
@@ -613,7 +614,7 @@ if (import.meta.vitest) {
         { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await indent(collections, Date.now(), (await collections.listItems.findOne("1").exec())!);
+      await indent({ collections }, Date.now(), (await collections.listItems.findOne("1").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "target", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
@@ -632,7 +633,7 @@ if (import.meta.vitest) {
         { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await indent(collections, now, (await collections.listItems.findOne("2").exec())!);
+      await indent({ collections }, now, (await collections.listItems.findOne("2").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
@@ -653,7 +654,7 @@ if (import.meta.vitest) {
         { id: "4", text: "next", prevId: "3", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await indent(collections, now, (await collections.listItems.findOne("3").exec())!);
+      await indent({ collections }, now, (await collections.listItems.findOne("3").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "prev", prevId: "", nextId: "4", parentId: "0", updatedAt: now },
@@ -665,12 +666,12 @@ if (import.meta.vitest) {
   });
 }
 
-export async function dedent(collections: Collections, updatedAt: number, item: RxDocument<ListItem>) {
-  const parentItem = await getParentItem(collections, item);
+export async function dedent(service: RxDBService, updatedAt: number, item: RxDocument<ListItem>) {
+  const parentItem = await getParentItem(service, item);
   if (!parentItem) return;
 
-  await unlinkFromSiblings(collections, updatedAt, item);
-  await addNextSibling(collections, updatedAt, parentItem, item);
+  await unlinkFromSiblings(service, updatedAt, item);
+  await addNextSibling(service, updatedAt, parentItem, item);
 }
 
 if (import.meta.vitest) {
@@ -685,7 +686,7 @@ if (import.meta.vitest) {
         { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await dedent(collections, Date.now(), (await collections.listItems.findOne("2").exec())!);
+      await dedent({ collections }, Date.now(), (await collections.listItems.findOne("2").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
@@ -706,7 +707,7 @@ if (import.meta.vitest) {
         { id: "4", text: "next", prevId: "3", nextId: "", parentId: "1", updatedAt: 0 },
       ]);
 
-      await dedent(collections, now, (await collections.listItems.findOne("3").exec())!);
+      await dedent({ collections }, now, (await collections.listItems.findOne("3").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "parent", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
@@ -729,7 +730,7 @@ if (import.meta.vitest) {
         { id: "5", text: "next of parent", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await dedent(collections, now, (await collections.listItems.findOne("3").exec())!);
+      await dedent({ collections }, now, (await collections.listItems.findOne("3").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "parent", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
@@ -742,8 +743,8 @@ if (import.meta.vitest) {
   });
 }
 
-export async function remove(collections: Collections, updatedAt: number, item: RxDocument<ListItem>) {
-  await unlinkFromSiblings(collections, updatedAt, item);
+export async function remove(service: RxDBService, updatedAt: number, item: RxDocument<ListItem>) {
+  await unlinkFromSiblings(service, updatedAt, item);
   await item.remove();
 }
 
@@ -755,7 +756,7 @@ if (import.meta.vitest) {
 
       await collections.listItems.bulkUpsert([{ id: "1", text: "target", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
 
-      await remove(collections, Date.now(), (await collections.listItems.findOne("1").exec())!);
+      await remove({ collections }, Date.now(), (await collections.listItems.findOne("1").exec())!);
 
       test.expect(await collections.listItems.find().exec()).toEqual([]);
     });
@@ -770,7 +771,7 @@ if (import.meta.vitest) {
         { id: "2", text: "target", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await remove(collections, now, (await collections.listItems.findOne("2").exec())!);
+      await remove({ collections }, now, (await collections.listItems.findOne("2").exec())!);
 
       test
         .expect((await collections.listItems.find().exec()).map((x) => x.toJSON()))
@@ -787,7 +788,7 @@ if (import.meta.vitest) {
         { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await remove(collections, now, (await collections.listItems.findOne("1").exec())!);
+      await remove({ collections }, now, (await collections.listItems.findOne("1").exec())!);
 
       test
         .expect((await collections.listItems.find().exec()).map((x) => x.toJSON()))
@@ -805,7 +806,7 @@ if (import.meta.vitest) {
         { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await remove(collections, now, (await collections.listItems.findOne("2").exec())!);
+      await remove({ collections }, now, (await collections.listItems.findOne("2").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
