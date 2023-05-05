@@ -1,0 +1,113 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`createSignalWithLock and runWithLock > updated separately with createSignalWithLock without runWithLock > initial 1`] = `
+<div>
+  <p>
+    x
+  </p>
+  <p>
+    y
+  </p>
+  <button>
+    update
+  </button>
+</div>
+`;
+
+exports[`createSignalWithLock and runWithLock > updated separately with createSignalWithLock without runWithLock > updated x 1`] = `
+<div>
+  <p>
+    updated x
+  </p>
+  <p>
+    y
+  </p>
+  <button>
+    update
+  </button>
+</div>
+`;
+
+exports[`createSignalWithLock and runWithLock > updated separately with createSignalWithLock without runWithLock > updated y 1`] = `
+<div>
+  <p>
+    updated x
+  </p>
+  <p>
+    updated y
+  </p>
+  <button>
+    update
+  </button>
+</div>
+`;
+
+exports[`createSignalWithLock and runWithLock > updated separately without lock > initial 1`] = `
+<div>
+  <p>
+    x
+  </p>
+  <p>
+    y
+  </p>
+  <button>
+    update
+  </button>
+</div>
+`;
+
+exports[`createSignalWithLock and runWithLock > updated separately without lock > updated x 1`] = `
+<div>
+  <p>
+    updated x
+  </p>
+  <p>
+    y
+  </p>
+  <button>
+    update
+  </button>
+</div>
+`;
+
+exports[`createSignalWithLock and runWithLock > updated separately without lock > updated y 1`] = `
+<div>
+  <p>
+    updated x
+  </p>
+  <p>
+    updated y
+  </p>
+  <button>
+    update
+  </button>
+</div>
+`;
+
+exports[`createSignalWithLock and runWithLock > updated simultaneously with createSignalWithLock and runWithLock > initial 1`] = `
+<div>
+  <p>
+    x
+  </p>
+  <p>
+    y
+  </p>
+  <button>
+    update
+  </button>
+</div>
+`;
+
+exports[`createSignalWithLock and runWithLock > updated simultaneously with createSignalWithLock and runWithLock > updated x 1`] = `
+<div>
+  <p>
+    updated x
+  </p>
+  <p>
+    updated y
+  </p>
+  <button>
+    update
+  </button>
+</div>
+`;
