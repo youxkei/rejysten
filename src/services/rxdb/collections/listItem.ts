@@ -1,6 +1,5 @@
-import type { RxDBService } from "..";
+import type { RxDBService } from "@/services/rxdb";
 import type { CollectionNameToDocumentType } from "@/services/rxdb/collections";
-import type { Collections } from "@/services/rxdb/collections";
 import type { RxDocument } from "rxdb";
 
 import { InconsistentError } from "@/services/rxdb/error";

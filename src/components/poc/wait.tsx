@@ -1,7 +1,4 @@
-import { createComputed, createResource, createSignal, startTransition, Suspense } from "solid-js";
-
-import { useRxDBService } from "@/services/rxdb";
-import { createSubscribeSignal } from "@/services/rxdb/subscribe";
+import { createResource, createSignal, Suspense } from "solid-js";
 
 export function Wait() {
   const [reloadTrigger$, reload] = createSignal(0);

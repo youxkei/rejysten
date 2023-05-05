@@ -1,7 +1,6 @@
 import type { ListItem } from "@/services/rxdb/collections/listItem";
 
-import { Show, For } from "solid-js";
-import { ErrorBoundary } from "solid-js";
+import { Show, For, ErrorBoundary } from "solid-js";
 
 import { BulletList } from "@/components/bulletList";
 import { createSignalWithLock, runWithLock, useLockService } from "@/services/lock";

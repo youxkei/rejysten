@@ -6,8 +6,7 @@ import type { JSXElement } from "solid-js";
 import { addRxPlugin, createRxDatabase } from "rxdb";
 import { RxDBMigrationPlugin } from "rxdb/plugins/migration";
 import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
-import { Show } from "solid-js";
-import { createContext, createResource, onCleanup, useContext } from "solid-js";
+import { Show, createContext, createResource, onCleanup, useContext } from "solid-js";
 
 import { schema } from "@/services/rxdb/collections";
 

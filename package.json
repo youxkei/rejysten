@@ -32,6 +32,7 @@
     "eslint": "^8.38.0",
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-no-relative-import-paths": "^1.5.2",
+    "eslint-plugin-unused-imports": "^2.0.0",
     "fake-indexeddb": "^4.0.1",
     "happy-dom": "^9.1.9",
     "patch-package": "^6.5.1",
@@ -72,7 +73,8 @@
     "plugins": [
       "@typescript-eslint",
       "import",
-      "eslint-plugin-no-relative-import-paths"
+      "no-relative-import-paths",
+      "unused-imports"
     ],
     "root": true,
     "rules": {
@@ -91,6 +93,7 @@
           }
         }
       ],
+      "import/no-duplicates": "error",
       "no-relative-import-paths/no-relative-import-paths": [
         "error",
         {
@@ -98,7 +101,8 @@
           "rootDir": "src",
           "prefix": "@"
         }
-      ]
+      ],
+      "unused-imports/no-unused-imports": "error"
     }
   }
 }

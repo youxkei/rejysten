@@ -1,10 +1,9 @@
 import type { Collections } from "@/services/rxdb/collections";
-import type { Store as StoreWithId, StoreDocument } from "@/services/rxdb/collections/store";
+import type { Store as StoreWithId } from "@/services/rxdb/collections/store";
 import type { JSXElement } from "solid-js";
 
 import { produce } from "immer";
-import { createRoot, useContext, createEffect } from "solid-js";
-import { createContext } from "solid-js";
+import { createRoot, useContext, createEffect, createContext } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
 
 import { useRxDBService } from "@/services/rxdb";

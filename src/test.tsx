@@ -1,9 +1,7 @@
 import type { JSXElement } from "solid-js";
 
 import { render } from "@solidjs/testing-library";
-import { createEffect, Owner } from "solid-js";
-import { getOwner } from "solid-js";
-import { onMount, Suspense } from "solid-js";
+import { createEffect, Suspense } from "solid-js";
 
 export async function renderAsync<T extends object>(
   Component: (props: { children: JSXElement }) => JSXElement,

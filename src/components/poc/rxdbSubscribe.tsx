@@ -1,5 +1,3 @@
-import { produce } from "immer";
-
 import { useRxDBService } from "@/services/rxdb";
 
 export function RxDBSubscribe() {

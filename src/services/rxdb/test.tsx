@@ -1,18 +1,12 @@
-import type { RxDBService } from ".";
 import type { Collections } from "@/services/rxdb/collections";
 import type { JSXElement } from "solid-js";
-import type { TestContext } from "vitest";
 
-import { render } from "@solidjs/testing-library";
 import { indexedDB, IDBKeyRange } from "fake-indexeddb";
 import { createRxDatabase } from "rxdb";
 import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
-import { createEffect } from "solid-js";
 
-import { RxDBServiceProvider, useRxDBService } from "@/services/rxdb";
+import { RxDBServiceProvider } from "@/services/rxdb";
 import { schema } from "@/services/rxdb/collections";
-import { createSubscribeSignal } from "@/services/rxdb/subscribe";
-import { renderAsync } from "@/test";
 
 type Wait = { promise: Promise<Wait> };
 
