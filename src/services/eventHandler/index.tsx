@@ -107,7 +107,7 @@ async function handleActionLogPageEvent(ctx: Context, event: ActionLogPageEvent)
       break;
     }
 
-    case "moveToPrev": {
+    case "moveAbove": {
       const prevItem = await getAboveItem(ctx.rxdbService, currentListItem);
       if (prevItem) {
         ctx.updateStore((store) => {
@@ -118,7 +118,7 @@ async function handleActionLogPageEvent(ctx: Context, event: ActionLogPageEvent)
       break;
     }
 
-    case "moveToNext": {
+    case "moveBelow": {
       const nextItem = await getBelowItem(ctx.rxdbService, currentListItem);
       if (nextItem) {
         ctx.updateStore((store) => {

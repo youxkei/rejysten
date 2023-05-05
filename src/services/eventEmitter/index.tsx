@@ -51,7 +51,7 @@ function emitActionLogPageEvent(ctx: Context, event: KeyboardEvent) {
   switch (event.code) {
     case "KeyK": {
       if (!shiftKey) {
-        ctx.emitEvent({ page: "actionLog", type: "moveToPrev" });
+        ctx.emitEvent({ page: "actionLog", type: "moveAbove" });
         event.preventDefault();
       }
 
@@ -60,7 +60,7 @@ function emitActionLogPageEvent(ctx: Context, event: KeyboardEvent) {
 
     case "KeyJ": {
       if (!shiftKey) {
-        ctx.emitEvent({ page: "actionLog", type: "moveToNext" });
+        ctx.emitEvent({ page: "actionLog", type: "moveBelow" });
         event.preventDefault();
       }
 

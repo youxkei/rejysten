@@ -6,7 +6,7 @@ export type InitialEvent = { page: "initial" };
 
 export type ActionLogListPageEvent = { page: "actionLogList"; type: "add" | "enter" };
 
-export type ActionLogPageEvent = { page: "actionLog"; type: "indent" | "dedent" | "addPrev" | "addNext" | "moveToPrev" | "moveToNext" };
+export type ActionLogPageEvent = { page: "actionLog"; type: "indent" | "dedent" | "addPrev" | "addNext" | "moveAbove" | "moveBelow" };
 
 export type Event = InitialEvent | ActionLogListPageEvent | ActionLogPageEvent;
 
