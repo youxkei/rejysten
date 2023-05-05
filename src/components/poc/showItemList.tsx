@@ -1,21 +1,26 @@
-import { Show, createSignal, startTransition } from "solid-js";
+import { Show, createSignal, startTransition, createEffect } from "solid-js";
 
-import { ItemList } from "@/components/itemList";
+import { ItemList, ItemListChildren } from "@/components/itemList";
+import { useRxDBService } from "@/services/rxdb";
+import { useStoreService } from "@/services/store";
 
 export function ShowItemList() {
-  const [id, setId] = createSignal("");
+  const { store, updateStore$ } = useStoreService();
+  const { collections } = useRxDBService();
+
+  async function onClick() {
+    console.log("store:", (await collections.stores.findOne("const").exec())?.toJSON());
+    console.log("locks:", (await collections.locks.findOne("const").exec())?.toJSON());
+    console.log(
+      "listItems:",
+      (await collections.listItems.find().exec())?.map((item) => item.toJSON())
+    );
+  }
 
   return (
     <>
-      <Show when={id()}>
-        <ItemList id={id()} />
-      </Show>
-      <input
-        onInput={(e) => {
-          const id = e.currentTarget.value;
-          startTransition(() => setId(id));
-        }}
-      />
+      <ItemListChildren parentId="__testItemList" selectedId={store.actionLogPage.currentListItemId} />
+      <button onClick={onClick}>check</button>
     </>
   );
 }

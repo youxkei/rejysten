@@ -6,21 +6,21 @@ import type { JSXElement } from "solid-js";
 import { addRxPlugin, createRxDatabase } from "rxdb";
 import { RxDBMigrationPlugin } from "rxdb/plugins/migration";
 import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
+import { Show } from "solid-js";
 import { createContext, createResource, onCleanup, useContext } from "solid-js";
 
 import { schema } from "@/services/rxdb/collections";
 
 export type RxDBService = {
-  database$: () => RxDatabase<Collections, DexieStorageInternals> | undefined;
-  collections$: () => Collections | undefined;
+  collections: Collections;
 };
 
 const context = createContext<RxDBService>();
 
-function createRxDBService(databaseCreator: RxDatabaseCreator<DexieStorageInternals>) {
+function createRxDBServiceSignal(databaseCreator$: () => RxDatabaseCreator<DexieStorageInternals>) {
   addRxPlugin(RxDBMigrationPlugin);
 
-  const [database$] = createResource(async () => {
+  const [database$] = createResource(databaseCreator$, async (databaseCreator) => {
     let database: RxDatabase<Collections> | undefined;
 
     onCleanup(() => {
@@ -50,24 +50,27 @@ function createRxDBService(databaseCreator: RxDatabaseCreator<DexieStorageIntern
     return collections;
   });
 
-  return {
-    database$,
-    collections$,
+  return () => {
+    const collections = collections$();
+    if (!collections) return;
+
+    return {
+      collections,
+    };
   };
 }
 
 export function RxDBServiceProvider(props: { children: JSXElement; databaseCreator?: RxDatabaseCreator<DexieStorageInternals> }) {
+  const rxdbService$ = createRxDBServiceSignal(
+    () =>
+      props.databaseCreator ?? {
+        name: "rejysten",
+        storage: getRxStorageDexie(),
+      }
+  );
+
   return (
-    <context.Provider
-      value={createRxDBService(
-        props.databaseCreator ?? {
-          name: "rejysten",
-          storage: getRxStorageDexie(),
-        }
-      )}
-    >
-      {props.children}
-    </context.Provider>
+    <Show when={rxdbService$()}>{(rxdbService$) => <context.Provider value={rxdbService$()}>{props.children}</context.Provider>}</Show>
   );
 }
 

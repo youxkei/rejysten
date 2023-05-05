@@ -7,7 +7,8 @@
     "fix": "eslint --fix src/**/*.{ts,tsx}; prettier --write src/**/*.{ts,tsx}",
     "build": "vite build",
     "dev": "vite",
-    "test": "vitest run",
+    "test": "tsc --noEmit && vitest run",
+    "test/nocheck": "vitest run",
     "postinstall": "patch-package"
   },
   "repository": {
@@ -44,12 +45,12 @@
   },
   "dependencies": {
     "@solid-primitives/context": "^0.2.1",
+    "@solid-primitives/keyboard": "^1.2.0",
     "@vanilla-extract/css": "^1.11.0",
     "dexie": "4.0.0-alpha.4",
     "firebase": "9.17.2",
     "id128": "^1.6.6",
     "immer": "^10.0.1",
-    "js-convert-case": "^4.2.0",
     "js-yaml": "^4.1.0",
     "node-stdlib-browser": "^1.2.0",
     "rxdb": "^14.6.4",

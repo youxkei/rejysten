@@ -2,38 +2,40 @@ import type { RxQuery, RxDocument } from "rxdb";
 
 import { createMemo, onCleanup } from "solid-js";
 
-import { createSubscribeWithSignal } from "@/solid/subscribe";
+import { createSubscribeWithResource } from "@/solid/subscribe";
 
 export function createSubscribeSignal<T, U>(query$: () => RxQuery<any, RxDocument<T, U> | null> | undefined) {
-  const document$ = createSubscribeWithSignal((setValue: (value: { content: RxDocument<T, U> | null }) => void) => {
-    const query = query$();
-    if (!query) return;
+  const document$ = createSubscribeWithResource(
+    query$,
+    (query, setValue: (value: { content: RxDocument<T, U> | null }) => void) => {
+      const subscription = query.$.subscribe((result) => {
+        setValue({ content: result });
+      });
 
-    const subscription = query.$.subscribe((result) => {
-      setValue({ content: result });
-    });
-
-    onCleanup(() => {
-      subscription.unsubscribe();
-    });
-  }, undefined);
+      onCleanup(() => {
+        subscription.unsubscribe();
+      });
+    },
+    undefined
+  );
 
   return () => document$()?.content;
 }
 
 export function createSubscribeAllSignal<T, U>(query$: () => RxQuery<any, RxDocument<T, U>[]> | undefined) {
-  const documents$ = createSubscribeWithSignal((setValue: (value: RxDocument<T, U>[]) => void) => {
-    const query = query$();
-    if (!query) return;
+  const documents$ = createSubscribeWithResource(
+    query$,
+    (query, setValue: (value: RxDocument<T, U>[]) => void) => {
+      const subscription = query.$.subscribe((result) => {
+        setValue(result);
+      });
 
-    const subscription = query.$.subscribe((result) => {
-      setValue(result);
-    });
-
-    onCleanup(() => {
-      subscription.unsubscribe();
-    });
-  }, []);
+      onCleanup(() => {
+        subscription.unsubscribe();
+      });
+    },
+    []
+  );
 
   const documentsWithRevisions$ = createMemo(
     () =>

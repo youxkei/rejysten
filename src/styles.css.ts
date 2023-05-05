@@ -1,4 +1,24 @@
-import { style } from "@vanilla-extract/css";
+import { style, globalStyle } from "@vanilla-extract/css";
+
+// from https://www.nordtheme.com/docs/colors-and-palettes
+const nord = [
+  "#2E3440",
+  "#3B4252",
+  "#434C5E",
+  "#4C566A",
+  "#D8DEE9",
+  "#E5E9F0",
+  "#ECEFF4",
+  "#8FBCBB",
+  "#88C0D0",
+  "#81A1C1",
+  "#5E81AC",
+  "#BF616A",
+  "#D08770",
+  "#EBCB8B",
+  "#A3BE8C",
+  "#B48EAD",
+];
 
 const bulletListItemMinHeight = 27;
 
@@ -31,5 +51,14 @@ export const styles = {
       gridRowStart: 2,
       width: "100%",
     }),
+
+    selected: style({
+      backgroundColor: nord[1],
+    }),
   },
 };
+
+globalStyle("body", {
+  color: nord[5],
+  backgroundColor: nord[0],
+});

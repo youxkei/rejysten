@@ -1,5 +1,5 @@
-import type { RxDBService } from "@/services/rxdb";
 import type { CollectionNameToDocumentType } from "@/services/rxdb/collections";
+import type { Collections } from "@/services/rxdb/collections";
 import type { RxDocument } from "rxdb";
 
 import { InconsistentError } from "@/services/rxdb/error";
@@ -8,10 +8,7 @@ import { createCollectionsForTest } from "@/services/rxdb/test";
 export type ListItem = CollectionNameToDocumentType["listItems"];
 export type ListItemDocument = RxDocument<ListItem>;
 
-async function getPrevItem(service: RxDBService, baseItem: RxDocument<ListItem>) {
-  const collections = service.collections$();
-  if (!collections) return;
-
+async function getPrevSiblingItem(collections: Collections, baseItem: RxDocument<ListItem>) {
   let prevItem: ListItemDocument | undefined;
 
   if (baseItem.prevId !== "") {
@@ -39,10 +36,7 @@ async function getPrevItem(service: RxDBService, baseItem: RxDocument<ListItem>)
   return prevItem;
 }
 
-async function getNextItem(service: RxDBService, baseItem: RxDocument<ListItem>) {
-  const collections = service.collections$();
-  if (!collections) return;
-
+async function getNextSiblingItem(collections: Collections, baseItem: RxDocument<ListItem>) {
   let nextItem: ListItemDocument | undefined;
 
   if (baseItem.nextId !== "") {
@@ -70,10 +64,7 @@ async function getNextItem(service: RxDBService, baseItem: RxDocument<ListItem>)
   return nextItem;
 }
 
-async function getParentItem(service: RxDBService, baseItem: RxDocument<ListItem>) {
-  const collections = service.collections$();
-  if (!collections) return;
-
+async function getParentItem(collections: Collections, baseItem: RxDocument<ListItem>) {
   let parentItem: RxDocument<ListItem> | undefined;
 
   if (baseItem.parentId !== "") {
@@ -88,10 +79,31 @@ async function getParentItem(service: RxDBService, baseItem: RxDocument<ListItem
   return parentItem;
 }
 
-async function getLastChildItem(service: RxDBService, baseItem: RxDocument<ListItem>) {
-  const collections = service.collections$();
-  if (!collections) return;
+async function getFirstChildItem(collections: Collections, baseItem: RxDocument<ListItem>) {
+  const firstChildItems = await collections.listItems
+    .find({
+      selector: {
+        parentId: baseItem.id,
+        prevId: "",
+      },
+    })
+    .exec();
 
+  if (firstChildItems.length > 1) {
+    throw new InconsistentError("there are many first child items", {
+      baseItem: baseItem.toJSON(),
+      firstChildItems: firstChildItems.map((item) => item.toJSON()),
+    });
+  }
+
+  if (firstChildItems.length === 0) {
+    return;
+  }
+
+  return firstChildItems[0];
+}
+
+async function getLastChildItem(collections: Collections, baseItem: RxDocument<ListItem>) {
   const lastChildItems = await collections.listItems
     .find({
       selector: {
@@ -115,35 +127,206 @@ async function getLastChildItem(service: RxDBService, baseItem: RxDocument<ListI
   return lastChildItems[0];
 }
 
-async function unlinkFromSiblings(service: RxDBService, updatedAt: number, item: RxDocument<ListItem>) {
-  const [prevItem, nextItem] = await Promise.all([getPrevItem(service, item), getNextItem(service, item)]);
-
-  return Promise.all([
-    ...(prevItem
-      ? [
-          prevItem.patch({
-            nextId: nextItem?.id ?? "",
-            updatedAt,
-          }),
-        ]
-      : []),
-    ...(nextItem
-      ? [
-          nextItem.patch({
-            prevId: prevItem?.id ?? "",
-            updatedAt,
-          }),
-        ]
-      : []),
+async function unlinkFromSiblings(collections: Collections, updatedAt: number, item: RxDocument<ListItem>) {
+  const [prevSiblingItem, nextSiblingItem] = await Promise.all([
+    getPrevSiblingItem(collections, item),
+    getNextSiblingItem(collections, item),
   ]);
+
+  if (prevSiblingItem) {
+    await prevSiblingItem.patch({
+      nextId: nextSiblingItem?.id ?? "",
+      updatedAt,
+    });
+  }
+
+  if (nextSiblingItem) {
+    nextSiblingItem.patch({
+      prevId: prevSiblingItem?.id ?? "",
+      updatedAt,
+    });
+  }
 }
 
 function isRxDocument<T>(document: Omit<T, "parentId" | "prevId" | "nextId" | "updatedAt"> | RxDocument<T>): document is RxDocument<T> {
   return "isInstanceOfRxDocument" in document;
 }
 
+export async function getPrevItem(collections: Collections, baseItem: RxDocument<ListItem>) {
+  // TODO
+  const prevSiblingItem = await getPrevSiblingItem(collections, baseItem);
+  if (prevSiblingItem) {
+    const lastChildItem = await getLastChildItem(collections, prevSiblingItem);
+
+    return lastChildItem ?? prevSiblingItem;
+  }
+
+  return getParentItem(collections, baseItem);
+}
+
+if (import.meta.vitest) {
+  describe("getPrevItem", () => {
+    test("no prevSiblingItem and no parentItem", async (test) => {
+      const collections = await createCollectionsForTest(test.meta.id);
+
+      await collections.listItems.bulkUpsert([{ id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
+      const baseItem = (await collections.listItems.findOne("1").exec())!;
+
+      test.expect(await getPrevItem(collections, baseItem)).toBeUndefined();
+    });
+
+    test("no prevSiblingItem and has parentItem", async (test) => {
+      const collections = await createCollectionsForTest(test.meta.id);
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "parent", prevId: "", nextId: "", parentId: "0", updatedAt: 0 },
+        { id: "2", text: "base", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
+      ]);
+      const baseItem = (await collections.listItems.findOne("2").exec())!;
+
+      test.expect((await getPrevItem(collections, baseItem))?.toJSON()).toEqual({
+        id: "1",
+        text: "parent",
+        prevId: "",
+        nextId: "",
+        parentId: "0",
+        updatedAt: 0,
+      });
+    });
+
+    test("no childItem of prevSiblingItem", async (test) => {
+      const collections = await createCollectionsForTest(test.meta.id);
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
+        { id: "2", text: "base", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+      const baseItem = (await collections.listItems.findOne("2").exec())!;
+
+      test.expect((await getPrevItem(collections, baseItem))?.toJSON()).toEqual({
+        id: "1",
+        text: "prev",
+        prevId: "",
+        nextId: "2",
+        parentId: "0",
+        updatedAt: 0,
+      });
+    });
+
+    test("has childrenItems of prevSiblingItem", async (test) => {
+      const collections = await createCollectionsForTest(test.meta.id);
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "prev", prevId: "", nextId: "4", parentId: "0", updatedAt: 0 },
+        { id: "2", text: "prev-child1", prevId: "", nextId: "3", parentId: "1", updatedAt: 0 },
+        { id: "3", text: "prev-child2", prevId: "2", nextId: "", parentId: "1", updatedAt: 0 },
+        { id: "4", text: "base", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+      const baseItem = (await collections.listItems.findOne("4").exec())!;
+
+      test.expect((await getPrevItem(collections, baseItem))?.toJSON()).toEqual({
+        id: "3",
+        text: "prev-child2",
+        prevId: "2",
+        nextId: "",
+        parentId: "1",
+        updatedAt: 0,
+      });
+    });
+  });
+}
+
+export async function getNextItem(collections: Collections, baseItem: RxDocument<ListItem>) {
+  // TODO
+  const firstChildItem = await getFirstChildItem(collections, baseItem);
+  if (firstChildItem) return firstChildItem;
+
+  const nextSiblingItem = await getNextSiblingItem(collections, baseItem);
+  if (nextSiblingItem) return nextSiblingItem;
+
+  const parentItem = await getParentItem(collections, baseItem);
+  if (parentItem) {
+    return getNextSiblingItem(collections, parentItem);
+  }
+}
+
+if (import.meta.vitest) {
+  describe("getNextItem", () => {
+    test("has childrenItems and has nextSiblingItem and has nextSiblingItem of parentItem", async (test) => {
+      const collections = await createCollectionsForTest(test.meta.id);
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "parent", prevId: "", nextId: "5", parentId: "0", updatedAt: 0 },
+        { id: "base", text: "base", prevId: "", nextId: "4", parentId: "1", updatedAt: 0 },
+        { id: "2", text: "child1", prevId: "", nextId: "3", parentId: "base", updatedAt: 0 },
+        { id: "3", text: "child2", prevId: "2", nextId: "", parentId: "base", updatedAt: 0 },
+        { id: "4", text: "next", prevId: "1", nextId: "", parentId: "1", updatedAt: 0 },
+        { id: "5", text: "next of parent", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+      const baseItem = (await collections.listItems.findOne("base").exec())!;
+
+      test.expect((await getNextItem(collections, baseItem))?.toJSON()).toEqual({
+        id: "2",
+        text: "child1",
+        prevId: "",
+        nextId: "3",
+        parentId: "base",
+        updatedAt: 0,
+      });
+    });
+
+    test("no childrenItems and has nextSiblingItem and has nextSiblingItem of parentItem", async (test) => {
+      const collections = await createCollectionsForTest(test.meta.id);
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "parent", prevId: "", nextId: "5", parentId: "0", updatedAt: 0 },
+        { id: "base", text: "base", prevId: "", nextId: "4", parentId: "1", updatedAt: 0 },
+        { id: "4", text: "next", prevId: "1", nextId: "", parentId: "1", updatedAt: 0 },
+        { id: "5", text: "next of parent", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+      const baseItem = (await collections.listItems.findOne("base").exec())!;
+
+      test.expect((await getNextItem(collections, baseItem))?.toJSON()).toEqual({
+        id: "4",
+        text: "next",
+        prevId: "1",
+        nextId: "",
+        parentId: "1",
+        updatedAt: 0,
+      });
+    });
+
+    test("no childItem and no nextSiblingItem and no parentItem", async (test) => {
+      const collections = await createCollectionsForTest(test.meta.id);
+
+      await collections.listItems.bulkUpsert([{ id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
+      const baseItem = (await collections.listItems.findOne("1").exec())!;
+
+      test.expect(await getNextItem(collections, baseItem)).toBeUndefined();
+    });
+
+    test("no childItem and has nextSiblingItem", async (test) => {
+      const collections = await createCollectionsForTest(test.meta.id);
+
+      await collections.listItems.bulkUpsert([
+        { id: "1", text: "base", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
+        { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
+      ]);
+      const baseItem = (await collections.listItems.findOne("1").exec())!;
+
+      test.expect((await getNextItem(collections, baseItem))?.toJSON()).toEqual({
+        id: "2",
+        text: "next",
+        prevId: "1",
+        nextId: "",
+        parentId: "0",
+        updatedAt: 0,
+      });
+    });
+  });
+}
+
 export async function addPrevSibling(
-  service: RxDBService,
+  collections: Collections,
   updatedAt: number,
   baseItem: RxDocument<ListItem>,
   newItem: Omit<ListItem, "parentId" | "prevId" | "nextId" | "updatedAt"> | RxDocument<ListItem>
@@ -152,50 +335,50 @@ export async function addPrevSibling(
     throw new Error(`newItem.id is empty. newItem: ${newItem}`);
   }
 
-  const collections = service.collections$();
-  if (!collections) return;
-
   const listItems = collections.listItems;
-  const prevItem = await getPrevItem(service, baseItem);
+  const prevSiblingItem = await getPrevSiblingItem(collections, baseItem);
 
-  if (!prevItem) {
-    return Promise.all([
-      isRxDocument(newItem)
-        ? newItem.patch({
-            parentId: baseItem.parentId,
-            prevId: "",
-            nextId: baseItem.id,
-            updatedAt,
-          })
-        : listItems.insert({
-            ...newItem,
-            parentId: baseItem.parentId,
-            prevId: "",
-            nextId: baseItem.id,
-            updatedAt,
-          }),
-      baseItem.patch({ prevId: newItem.id, updatedAt }),
-    ]);
+  if (!prevSiblingItem) {
+    if (isRxDocument(newItem)) {
+      await newItem.patch({
+        parentId: baseItem.parentId,
+        prevId: "",
+        nextId: baseItem.id,
+        updatedAt,
+      });
+    } else {
+      await listItems.insert({
+        ...newItem,
+        parentId: baseItem.parentId,
+        prevId: "",
+        nextId: baseItem.id,
+        updatedAt,
+      });
+    }
+    await baseItem.patch({ prevId: newItem.id, updatedAt });
+
+    return;
   }
 
-  return Promise.all([
-    isRxDocument(newItem)
-      ? newItem.patch({
-          parentId: baseItem.parentId,
-          prevId: prevItem.id,
-          nextId: baseItem.id,
-          updatedAt,
-        })
-      : listItems.insert({
-          ...newItem,
-          parentId: baseItem.parentId,
-          prevId: prevItem.id,
-          nextId: baseItem.id,
-          updatedAt,
-        }),
-    baseItem.patch({ prevId: newItem.id, updatedAt }),
-    prevItem.patch({ nextId: newItem.id, updatedAt }),
-  ]);
+  if (isRxDocument(newItem)) {
+    await newItem.patch({
+      parentId: baseItem.parentId,
+      prevId: prevSiblingItem.id,
+      nextId: baseItem.id,
+      updatedAt,
+    });
+  } else {
+    await listItems.insert({
+      ...newItem,
+      parentId: baseItem.parentId,
+      prevId: prevSiblingItem.id,
+      nextId: baseItem.id,
+      updatedAt,
+    });
+  }
+
+  await baseItem.patch({ prevId: newItem.id, updatedAt });
+  await prevSiblingItem.patch({ nextId: newItem.id, updatedAt });
 }
 
 if (import.meta.vitest) {
@@ -205,11 +388,10 @@ if (import.meta.vitest) {
       const collections = await createCollectionsForTest(tid);
       const listItems = collections.listItems;
       const now = Date.now();
-      const service = { database$: () => undefined, collections$: () => collections };
 
       await collections.listItems.bulkUpsert([{ id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
 
-      await addPrevSibling(service, now, (await collections.listItems.findOne("1").exec())!, {
+      await addPrevSibling(collections, now, (await collections.listItems.findOne("1").exec())!, {
         id: "2",
         text: "new",
       });
@@ -225,14 +407,13 @@ if (import.meta.vitest) {
       const collections = await createCollectionsForTest(tid);
       const listItems = collections.listItems;
       const now = Date.now();
-      const service = { database$: () => undefined, collections$: () => collections };
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "base", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
         { id: "2", text: "prev", prevId: "", nextId: "1", parentId: "0", updatedAt: 0 },
       ]);
 
-      await addPrevSibling(service, now, (await collections.listItems.findOne("1").exec())!, {
+      await addPrevSibling(collections, now, (await collections.listItems.findOne("1").exec())!, {
         id: "3",
         text: "new",
       });
@@ -247,7 +428,7 @@ if (import.meta.vitest) {
 }
 
 export async function addNextSibling(
-  service: RxDBService,
+  collections: Collections,
   updatedAt: number,
   baseItem: RxDocument<ListItem>,
   newItem: Omit<ListItem, "parentId" | "prevId" | "nextId" | "updatedAt"> | RxDocument<ListItem>
@@ -256,50 +437,49 @@ export async function addNextSibling(
     throw new Error(`newItem.id is empty. newItem: ${newItem}`);
   }
 
-  const collections = service.collections$();
-  if (!collections) return;
-
   const listItems = collections.listItems;
-  const nextItem = await getNextItem(service, baseItem);
+  const nextSiblingItem = await getNextSiblingItem(collections, baseItem);
 
-  if (!nextItem) {
-    return Promise.all([
-      isRxDocument(newItem)
-        ? newItem.patch({
-            parentId: baseItem.parentId,
-            prevId: baseItem.id,
-            nextId: "",
-            updatedAt,
-          })
-        : listItems.insert({
-            ...newItem,
-            parentId: baseItem.parentId,
-            prevId: baseItem.id,
-            nextId: "",
-            updatedAt,
-          }),
-      baseItem.patch({ nextId: newItem.id, updatedAt }),
-    ]);
+  if (!nextSiblingItem) {
+    if (isRxDocument(newItem)) {
+      await newItem.patch({
+        parentId: baseItem.parentId,
+        prevId: baseItem.id,
+        nextId: "",
+        updatedAt,
+      });
+    } else {
+      await listItems.insert({
+        ...newItem,
+        parentId: baseItem.parentId,
+        prevId: baseItem.id,
+        nextId: "",
+        updatedAt,
+      });
+    }
+    await baseItem.patch({ nextId: newItem.id, updatedAt });
+
+    return;
   }
 
-  return Promise.all([
-    isRxDocument(newItem)
-      ? newItem.patch({
-          parentId: baseItem.parentId,
-          prevId: baseItem.id,
-          nextId: nextItem.id,
-          updatedAt,
-        })
-      : listItems.insert({
-          ...newItem,
-          parentId: baseItem.parentId,
-          prevId: baseItem.id,
-          nextId: nextItem.id,
-          updatedAt,
-        }),
-    baseItem.patch({ nextId: newItem.id, updatedAt }),
-    nextItem.patch({ prevId: newItem.id, updatedAt }),
-  ]);
+  if (isRxDocument(newItem)) {
+    await newItem.patch({
+      parentId: baseItem.parentId,
+      prevId: baseItem.id,
+      nextId: nextSiblingItem.id,
+      updatedAt,
+    });
+  } else {
+    await listItems.insert({
+      ...newItem,
+      parentId: baseItem.parentId,
+      prevId: baseItem.id,
+      nextId: nextSiblingItem.id,
+      updatedAt,
+    });
+  }
+  await baseItem.patch({ nextId: newItem.id, updatedAt });
+  await nextSiblingItem.patch({ prevId: newItem.id, updatedAt });
 }
 
 if (import.meta.vitest) {
@@ -309,11 +489,10 @@ if (import.meta.vitest) {
       const collections = await createCollectionsForTest(tid);
       const listItems = collections.listItems;
       const now = Date.now();
-      const service = { database$: () => undefined, collections$: () => collections };
 
       await collections.listItems.bulkUpsert([{ id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
 
-      await addNextSibling(service, now, (await collections.listItems.findOne("1").exec())!, {
+      await addNextSibling(collections, now, (await collections.listItems.findOne("1").exec())!, {
         id: "2",
         text: "new",
       });
@@ -329,14 +508,13 @@ if (import.meta.vitest) {
       const collections = await createCollectionsForTest(tid);
       const listItems = collections.listItems;
       const now = Date.now();
-      const service = { database$: () => undefined, collections$: () => collections };
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "base", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
         { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await addNextSibling(service, now, (await collections.listItems.findOne("1").exec())!, {
+      await addNextSibling(collections, now, (await collections.listItems.findOne("1").exec())!, {
         id: "3",
         text: "new",
       });
@@ -350,23 +528,23 @@ if (import.meta.vitest) {
   });
 }
 
-export async function indent(service: RxDBService, updatedAt: number, item: RxDocument<ListItem>) {
-  const prevItem = await getPrevItem(service, item);
-  if (!prevItem) return;
+export async function indent(collections: Collections, updatedAt: number, item: RxDocument<ListItem>) {
+  const prevSiblingItem = await getPrevSiblingItem(collections, item);
+  if (!prevSiblingItem) return;
 
-  const lastChildItemOfPrevItem = await getLastChildItem(service, prevItem);
+  const lastChildItemOfPrevItem = await getLastChildItem(collections, prevSiblingItem);
 
-  return Promise.all([
-    unlinkFromSiblings(service, updatedAt, item),
-    lastChildItemOfPrevItem
-      ? addNextSibling(service, updatedAt, lastChildItemOfPrevItem, item)
-      : item.patch({
-          parentId: prevItem.id,
-          prevId: "",
-          nextId: "",
-          updatedAt,
-        }),
-  ]);
+  await unlinkFromSiblings(collections, updatedAt, item);
+  if (lastChildItemOfPrevItem) {
+    await addNextSibling(collections, updatedAt, lastChildItemOfPrevItem, item);
+  } else {
+    await item.patch({
+      parentId: prevSiblingItem.id,
+      prevId: "",
+      nextId: "",
+      updatedAt,
+    });
+  }
 }
 
 if (import.meta.vitest) {
@@ -374,14 +552,13 @@ if (import.meta.vitest) {
     test("cannot indent due to no prev item", async (test) => {
       const tid = test.meta.id;
       const collections = await createCollectionsForTest(tid);
-      const service = { database$: () => undefined, collections$: () => collections };
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "target", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
         { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await indent(service, Date.now(), (await collections.listItems.findOne("1").exec())!);
+      await indent(collections, Date.now(), (await collections.listItems.findOne("1").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "target", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
@@ -393,7 +570,6 @@ if (import.meta.vitest) {
       const tid = test.meta.id;
       const collections = await createCollectionsForTest(tid);
       const now = Date.now();
-      const service = { database$: () => undefined, collections$: () => collections };
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
@@ -401,7 +577,7 @@ if (import.meta.vitest) {
         { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await indent(service, now, (await collections.listItems.findOne("2").exec())!);
+      await indent(collections, now, (await collections.listItems.findOne("2").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
@@ -414,7 +590,6 @@ if (import.meta.vitest) {
       const tid = test.meta.id;
       const collections = await createCollectionsForTest(tid);
       const now = Date.now();
-      const service = { database$: () => undefined, collections$: () => collections };
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: 0 },
@@ -423,7 +598,7 @@ if (import.meta.vitest) {
         { id: "4", text: "next", prevId: "3", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await indent(service, now, (await collections.listItems.findOne("3").exec())!);
+      await indent(collections, now, (await collections.listItems.findOne("3").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "prev", prevId: "", nextId: "4", parentId: "0", updatedAt: now },
@@ -435,11 +610,12 @@ if (import.meta.vitest) {
   });
 }
 
-export async function dedent(service: RxDBService, updatedAt: number, item: RxDocument<ListItem>) {
-  const parentItem = await getParentItem(service, item);
+export async function dedent(collections: Collections, updatedAt: number, item: RxDocument<ListItem>) {
+  const parentItem = await getParentItem(collections, item);
   if (!parentItem) return;
 
-  return Promise.all([unlinkFromSiblings(service, updatedAt, item), addNextSibling(service, updatedAt, parentItem, item)]);
+  await unlinkFromSiblings(collections, updatedAt, item);
+  await addNextSibling(collections, updatedAt, parentItem, item);
 }
 
 if (import.meta.vitest) {
@@ -447,7 +623,6 @@ if (import.meta.vitest) {
     test("cannot dedent due to no parent item", async (test) => {
       const tid = test.meta.id;
       const collections = await createCollectionsForTest(tid);
-      const service = { database$: () => undefined, collections$: () => collections };
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
@@ -455,7 +630,7 @@ if (import.meta.vitest) {
         { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await dedent(service, Date.now(), (await collections.listItems.findOne("2").exec())!);
+      await dedent(collections, Date.now(), (await collections.listItems.findOne("2").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
@@ -468,7 +643,6 @@ if (import.meta.vitest) {
       const tid = test.meta.id;
       const collections = await createCollectionsForTest(tid);
       const now = Date.now();
-      const service = { database$: () => undefined, collections$: () => collections };
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "parent", prevId: "", nextId: "", parentId: "0", updatedAt: 0 },
@@ -477,7 +651,7 @@ if (import.meta.vitest) {
         { id: "4", text: "next", prevId: "3", nextId: "", parentId: "1", updatedAt: 0 },
       ]);
 
-      await dedent(service, now, (await collections.listItems.findOne("3").exec())!);
+      await dedent(collections, now, (await collections.listItems.findOne("3").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "parent", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
@@ -491,7 +665,6 @@ if (import.meta.vitest) {
       const tid = test.meta.id;
       const collections = await createCollectionsForTest(tid);
       const now = Date.now();
-      const service = { database$: () => undefined, collections$: () => collections };
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "parent", prevId: "", nextId: "5", parentId: "0", updatedAt: 0 },
@@ -501,7 +674,7 @@ if (import.meta.vitest) {
         { id: "5", text: "next of parent", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await dedent(service, now, (await collections.listItems.findOne("3").exec())!);
+      await dedent(collections, now, (await collections.listItems.findOne("3").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "parent", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
@@ -514,8 +687,9 @@ if (import.meta.vitest) {
   });
 }
 
-export function remove(service: RxDBService, updatedAt: number, item: RxDocument<ListItem>) {
-  return Promise.all([unlinkFromSiblings(service, updatedAt, item), item.remove()]);
+export async function remove(collections: Collections, updatedAt: number, item: RxDocument<ListItem>) {
+  await unlinkFromSiblings(collections, updatedAt, item);
+  await item.remove();
 }
 
 if (import.meta.vitest) {
@@ -523,11 +697,10 @@ if (import.meta.vitest) {
     test("remove item without siblings", async (test) => {
       const tid = test.meta.id;
       const collections = await createCollectionsForTest(tid);
-      const service = { database$: () => undefined, collections$: () => collections };
 
       await collections.listItems.bulkUpsert([{ id: "1", text: "target", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
 
-      await remove(service, Date.now(), (await collections.listItems.findOne("1").exec())!);
+      await remove(collections, Date.now(), (await collections.listItems.findOne("1").exec())!);
 
       test.expect(await collections.listItems.find().exec()).toEqual([]);
     });
@@ -536,14 +709,13 @@ if (import.meta.vitest) {
       const tid = test.meta.id;
       const collections = await createCollectionsForTest(tid);
       const now = Date.now();
-      const service = { database$: () => undefined, collections$: () => collections };
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
         { id: "2", text: "target", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await remove(service, now, (await collections.listItems.findOne("2").exec())!);
+      await remove(collections, now, (await collections.listItems.findOne("2").exec())!);
 
       test
         .expect((await collections.listItems.find().exec()).map((x) => x.toJSON()))
@@ -554,14 +726,13 @@ if (import.meta.vitest) {
       const tid = test.meta.id;
       const collections = await createCollectionsForTest(tid);
       const now = Date.now();
-      const service = { database$: () => undefined, collections$: () => collections };
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "target", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
         { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await remove(service, now, (await collections.listItems.findOne("1").exec())!);
+      await remove(collections, now, (await collections.listItems.findOne("1").exec())!);
 
       test
         .expect((await collections.listItems.find().exec()).map((x) => x.toJSON()))
@@ -572,7 +743,6 @@ if (import.meta.vitest) {
       const tid = test.meta.id;
       const collections = await createCollectionsForTest(tid);
       const now = Date.now();
-      const service = { database$: () => undefined, collections$: () => collections };
 
       await collections.listItems.bulkUpsert([
         { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
@@ -580,7 +750,7 @@ if (import.meta.vitest) {
         { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await remove(service, now, (await collections.listItems.findOne("2").exec())!);
+      await remove(collections, now, (await collections.listItems.findOne("2").exec())!);
 
       test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: now },

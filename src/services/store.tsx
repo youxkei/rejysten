@@ -32,16 +32,13 @@ export type StoreService = {
 const context = createContext<StoreService>();
 
 export function StoreServiceProvider(props: { children: JSXElement }) {
-  const { collections$ } = useRxDBService();
+  const { collections } = useRxDBService();
 
   const [store, setStore] = createStore<Store>(structuredClone(initialStore));
 
-  const storeDocument$ = createSubscribeSignal(() => collections$()?.stores.findOne("const"));
+  const storeDocument$ = createSubscribeSignal(() => collections.stores.findOne("const"));
 
   const updateStore$ = () => {
-    const collections = collections$();
-    if (!collections) return;
-
     const storeDocument = storeDocument$();
     if (storeDocument === undefined) return;
 
@@ -100,8 +97,7 @@ if (import.meta.vitest) {
         </RxDBServiceProviderForTest>
       ),
       (resolve: (value: { collections: Collections; store: Store; updateStore: (updater: (store: Store) => void) => void }) => void) => {
-        const collections = useRxDBService().collections$();
-        if (!collections) return;
+        const { collections } = useRxDBService();
 
         const { store, updateStore$ } = useStoreService();
         const updateStore = updateStore$();
@@ -154,8 +150,7 @@ if (import.meta.vitest) {
         </RxDBServiceProviderForTest>
       ),
       (resolve: (value: { collections: Collections; store: Store; updateStore: (updater: (store: Store) => void) => void }) => void) => {
-        const collections = useRxDBService().collections$();
-        if (!collections) return;
+        const { collections } = useRxDBService();
 
         const { store, updateStore$ } = useStoreService();
         const updateStore = updateStore$();

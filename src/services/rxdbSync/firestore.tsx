@@ -3,7 +3,6 @@ import type { JSXElement } from "solid-js";
 import { deleteApp, initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, collection as getCollection } from "firebase/firestore";
-import { toSnakeCase } from "js-convert-case";
 import YAML from "js-yaml";
 import { replicateFirestore } from "rxdb/plugins/replication-firestore";
 import { batch, createContext, createEffect, createMemo, createSignal, onMount, useContext, onCleanup, createResource } from "solid-js";
@@ -36,7 +35,7 @@ const localStorageKey = "rejysten.service.rxdbSync.firestore.config";
 const context = createContext<RxDBSyncFirestoreService>();
 
 export function RxDBSyncFirestoreServiceProvider(props: { children: JSXElement }) {
-  const { collections$ } = useRxDBService();
+  const { collections } = useRxDBService();
 
   const [configYAML$, setConfigYAML] = createSignal("");
   const [syncing$, setSyncing] = createSignal(false);
@@ -143,9 +142,6 @@ export function RxDBSyncFirestoreServiceProvider(props: { children: JSXElement }
   createEffect(() => {
     if (!syncing$()) return;
 
-    const collections = collections$();
-    if (!collections) return;
-
     const config = config$();
     if (!config) return;
 
@@ -157,8 +153,7 @@ export function RxDBSyncFirestoreServiceProvider(props: { children: JSXElement }
     const firestore = getFirestore(firebase);
 
     for (const [collectionName, collection] of Object.entries(collections)) {
-      const collectionNameSnakeCase = toSnakeCase(collectionName);
-      const firestoreCollection = getCollection(firestore, collectionNameSnakeCase);
+      const firestoreCollection = getCollection(firestore, collectionName);
 
       const syncState = replicateFirestore({
         collection: collection,

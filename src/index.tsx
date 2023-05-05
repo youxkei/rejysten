@@ -1,29 +1,34 @@
 import { MultiProvider } from "@solid-primitives/context";
 import { render, Suspense } from "solid-js/web";
 
+import { LockServiceProvider } from "./services/lock";
 import { ErrorBoundary } from "@/components/errorBoundary";
-import { Broken } from "@/components/poc/broken";
-import { Context } from "@/components/poc/context";
-import { Lazy } from "@/components/poc/lazy";
-import { PreventClick } from "@/components/poc/preventClick";
 import { ShowItemList } from "@/components/poc/showItemList";
-import { Todo } from "@/components/poc/todo";
 import { RxdbFirestoreSyncConfig } from "@/components/rxdbFirestoreSyncConfig";
+import { EventServiceProvider } from "@/services/event";
+import { EventEmitterServiceProvider } from "@/services/eventEmitter";
+import { EventHandlerServiceProvider } from "@/services/eventHandler";
 import { RxDBServiceProvider } from "@/services/rxdb";
 import { RxDBSyncFirestoreServiceProvider } from "@/services/rxdbSync/firestore";
+import { StoreServiceProvider } from "@/services/store";
 
 function App() {
   return (
     <ErrorBoundary>
       <Suspense fallback={<p>loading</p>}>
-        <MultiProvider values={[RxDBServiceProvider, RxDBSyncFirestoreServiceProvider]}>
-          <Todo />
-          <ShowItemList />
-          <Broken />
-          <Lazy />
+        <MultiProvider
+          values={[
+            RxDBServiceProvider,
+            RxDBSyncFirestoreServiceProvider,
+            StoreServiceProvider,
+            LockServiceProvider,
+            EventServiceProvider,
+            EventHandlerServiceProvider,
+            EventEmitterServiceProvider,
+          ]}
+        >
           <RxdbFirestoreSyncConfig />
-          <Context />
-          <PreventClick />
+          <ShowItemList />
         </MultiProvider>
       </Suspense>
     </ErrorBoundary>

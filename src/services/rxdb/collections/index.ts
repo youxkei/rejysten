@@ -82,9 +82,8 @@ export const schema = {
       type: "object",
       properties: {
         id: { type: "string", maxLength: 5, enum: ["const"] },
-        isLocked: { type: "boolean" },
       },
-      required: ["id", "isLocked"],
+      required: ["id"],
     },
   },
   stores: {
@@ -113,6 +112,20 @@ export const schema = {
         },
       },
       required: ["id", "currentPage", "actionLogListPage", "actionLogPage"],
+    },
+  },
+  tests: {
+    schema: {
+      title: "test schema",
+      description: "test",
+      version: 0,
+      primaryKey: "id",
+      type: "object",
+      properties: {
+        id: { type: "string", maxLength: 5, enum: ["const"] },
+        num: { type: "number" },
+      },
+      required: ["id", "num"],
     },
   },
 } as const;

@@ -34,18 +34,18 @@ export function RxDBServiceProviderForTest(props: { tid: string; children: JSXEl
   return <RxDBServiceProvider databaseCreator={createDatabaseCreatorForTest(props.tid)}>{props.children}</RxDBServiceProvider>;
 }
 
-export function renderWithRxDBServiceForTest(tid: string, Component: (props: { children: JSXElement }) => JSXElement) {
-  return renderAsync(
-    (props) => (
-      <RxDBServiceProviderForTest tid={tid}>
-        <Component>{props.children}</Component>
-      </RxDBServiceProviderForTest>
-    ),
-    (resolve: (value: { collections: Collections }) => void) => {
-      const collections = useRxDBService().collections$();
-      if (!collections) return;
+// export function renderWithRxDBServiceForTest(tid: string, Component: (props: { children: JSXElement }) => JSXElement) {
+//   return renderAsync(
+//     (props) => (
+//       <RxDBServiceProviderForTest tid={tid}>
+//         <Component>{props.children}</Component>
+//       </RxDBServiceProviderForTest>
+//     ),
+//     (resolve: (value: { collections: Collections }) => void) => {
+//       const collections = useRxDBService().collections$();
+//       if (!collections) return;
 
-      resolve({ collections });
-    }
-  );
-}
+//       resolve({ collections });
+//     }
+//   );
+// }

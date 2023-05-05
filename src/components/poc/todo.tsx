@@ -5,19 +5,19 @@ import { For } from "solid-js";
 
 import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeSignal, createSubscribeAllSignal } from "@/services/rxdb/subscribe";
-import { renderWithRxDBServiceForTest } from "@/services/rxdb/test";
+import { renderWithServicesForTest } from "@/services/test";
 
 export function Todo() {
-  const { collections$ } = useRxDBService();
+  const { collections } = useRxDBService();
 
-  const todos$ = createSubscribeAllSignal(() => collections$()?.todos.find());
+  const todos$ = createSubscribeAllSignal(() => collections.todos.find());
 
-  const editor$ = createSubscribeSignal(() => collections$()?.editors.findOne("const"));
+  const editor$ = createSubscribeSignal(() => collections.editors.findOne("const"));
 
   const text$ = () => editor$()?.text ?? "";
 
   const onInput = (event: { currentTarget: HTMLInputElement }) => {
-    collections$()?.editors.upsert({
+    collections.editors.upsert({
       id: "const",
       text: event.currentTarget.value,
       updatedAt: Date.now(),
@@ -25,9 +25,6 @@ export function Todo() {
   };
 
   const onClick = async () => {
-    const collections = collections$();
-    if (!collections) return;
-
     const text = text$();
 
     const id = Ulid.generate();
@@ -60,7 +57,12 @@ export function Todo() {
 
 if (import.meta.vitest) {
   test("renders", async (ctx) => {
-    const { container, unmount, collections, findByText } = await renderWithRxDBServiceForTest(ctx.meta.id, (props) => (
+    const {
+      container,
+      unmount,
+      rxdbService: { collections },
+      findByText,
+    } = await renderWithServicesForTest(ctx.meta.id, (props) => (
       <>
         <Todo />
         {props.children}
@@ -84,7 +86,13 @@ if (import.meta.vitest) {
 
   test("add todos", async (ctx) => {
     const user = userEvent.setup();
-    const { container, unmount, collections, findByText, queryByText } = await renderWithRxDBServiceForTest(ctx.meta.id, (props) => (
+    const {
+      container,
+      unmount,
+      rxdbService: { collections },
+      findByText,
+      queryByText,
+    } = await renderWithServicesForTest(ctx.meta.id, (props) => (
       <>
         <Todo />
         {props.children}

@@ -1,35 +1,46 @@
 import type { ListItem } from "@/services/rxdb/collections/listItem";
 
-import { Show, For } from "solid-js";
+import { Show, For, createComputed } from "solid-js";
 import { ErrorBoundary } from "solid-js";
 
 import { BulletList } from "@/components/bulletList";
+import { createSignalWithLock, runWithLock, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
-import { createSignalWithLock } from "@/services/rxdb/collections/lock";
 import { createSubscribeSignal, createSubscribeAllSignal } from "@/services/rxdb/subscribe";
-import { renderWithRxDBServiceForTest } from "@/services/rxdb/test";
+import { renderWithServicesForTest } from "@/services/test";
 
-export function ItemList(props: { id: string }) {
-  return <BulletList bullet={"•"} item={<ItemListItem id={props.id} />} child={<ItemListChildren parentId={props.id} />} />;
+export function ItemList(props: { id: string; selectedId: string }) {
+  return (
+    <BulletList
+      bullet={"•"}
+      item={<ItemListItem id={props.id} selectedId={props.selectedId} />}
+      child={<ItemListChildren parentId={props.id} selectedId={props.selectedId} />}
+      isSelected={props.id === props.selectedId}
+    />
+  );
 }
 
-export function ItemListItem(props: { id: string }) {
+export function ItemListItem(props: { id: string; selectedId: string }) {
   const rxdbService = useRxDBService();
-  const listItem$ = createSubscribeSignal(() => rxdbService.collections$()?.listItems.findOne(props.id));
-  const listItemWithLock$ = createSignalWithLock(rxdbService, listItem$, undefined);
+  const lockService = useLockService();
+
+  const listItem$ = createSubscribeSignal(() => rxdbService.collections.listItems.findOne(props.id));
+  const listItemWithLock$ = createSignalWithLock(lockService, listItem$, undefined);
 
   return <Show when={listItemWithLock$()}>{(listItem) => <span>{listItem().text}</span>}</Show>;
 }
 
-export function ItemListChildren(props: { parentId: string }) {
+export function ItemListChildren(props: { parentId: string; selectedId: string }) {
+  const lockService = useLockService();
   const rxdbService = useRxDBService();
+
   const children$ = createSubscribeAllSignal(() =>
-    rxdbService.collections$()?.listItems.find({
+    rxdbService.collections.listItems.find({
       selector: { parentId: props.parentId },
     })
   );
 
-  const childrenWithLock$ = createSignalWithLock(rxdbService, children$, []);
+  const childrenWithLock$ = createSignalWithLock(lockService, children$, []);
 
   const sortedChildren$ = () => {
     const children = childrenWithLock$();
@@ -66,13 +77,15 @@ export function ItemListChildren(props: { parentId: string }) {
     }
 
     if (children.length != sortedChildren.length) {
-      throw new Error(`there is an inconsistency in listItem in the children of '${props.parentId}': some listItems are no in linked list`);
+      throw new Error(
+        `there is an inconsistency in listItem in the children of '${props.parentId}': some listItems are not in linked list`
+      );
     }
 
     return sortedChildren;
   };
 
-  return <For each={sortedChildren$()}>{(child) => <ItemList id={child.id} />}</For>;
+  return <For each={sortedChildren$()}>{(child) => <ItemList id={child.id} selectedId={props.selectedId} />}</For>;
 }
 
 if (import.meta.vitest) {
@@ -96,14 +109,18 @@ if (import.meta.vitest) {
     },
   ])("$name", ({ listItems }) => {
     test("text changes", async (ctx) => {
-      const { container, unmount, collections, findByText } = await renderWithRxDBServiceForTest(ctx.meta.id, (props) => (
+      const {
+        container,
+        unmount,
+        rxdbService: { collections },
+        findByText,
+      } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <>
-          <ItemList id="1" />
+          <ItemList id="1" selectedId="" />
           {props.children}
         </>
       ));
 
-      await collections.locks.insert({ id: "const", isLocked: false });
       await collections.listItems.bulkInsert(listItems);
       for (const listItem of listItems) {
         await findByText(listItem.text);
@@ -130,9 +147,15 @@ if (import.meta.vitest) {
   });
 
   test("add child", async (ctx) => {
-    const { container, unmount, collections, findByText } = await renderWithRxDBServiceForTest(ctx.meta.id, (props) => (
+    const {
+      container,
+      unmount,
+      rxdbService: { collections },
+      lockService,
+      findByText,
+    } = await renderWithServicesForTest(ctx.meta.id, (props) => (
       <>
-        <ItemList id="1" />
+        <ItemList id="1" selectedId="" />
         {props.children}
       </>
     ));
@@ -143,7 +166,6 @@ if (import.meta.vitest) {
       { id: "3", text: "bar", prevId: "2", nextId: "", parentId: "1", updatedAt: 0 },
     ];
 
-    await collections.locks.insert({ id: "const", isLocked: false });
     await collections.listItems.bulkInsert(listItems);
     for (const listItem of listItems) {
       await findByText(listItem.text);
@@ -151,12 +173,12 @@ if (import.meta.vitest) {
 
     ctx.expect(container).toMatchSnapshot("initial");
 
-    await collections.locks.upsert({ id: "const", isLocked: true });
-    await collections.listItems.bulkUpsert([
-      { id: "3", text: "bar", prevId: "2", nextId: "4", parentId: "1", updatedAt: 1 },
-      { id: "4", text: "baz", prevId: "3", nextId: "", parentId: "1", updatedAt: 1 },
-    ]);
-    await collections.locks.upsert({ id: "const", isLocked: false });
+    await runWithLock(lockService, async () => {
+      await collections.listItems.bulkUpsert([
+        { id: "3", text: "bar", prevId: "2", nextId: "4", parentId: "1", updatedAt: 1 },
+        { id: "4", text: "baz", prevId: "3", nextId: "", parentId: "1", updatedAt: 1 },
+      ]);
+    });
     await findByText("baz");
 
     ctx.expect(container).toMatchSnapshot("baz added");
@@ -166,9 +188,14 @@ if (import.meta.vitest) {
 
   describe("inconsistent error", () => {
     test("an item is not in linked list", async (ctx) => {
-      const { container, unmount, collections, findByText } = await renderWithRxDBServiceForTest(ctx.meta.id, (props) => (
+      const {
+        container,
+        unmount,
+        rxdbService: { collections },
+        findByText,
+      } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <ErrorBoundary fallback={(error) => `${error}`}>
-          <ItemList id="1" />
+          <ItemList id="1" selectedId="" />
           {props.children}
         </ErrorBoundary>
       ));
@@ -178,7 +205,6 @@ if (import.meta.vitest) {
         { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
       ];
 
-      await collections.locks.insert({ id: "const", isLocked: false });
       await collections.listItems.bulkInsert(listItems);
       for (const listItem of listItems) {
         await findByText(listItem.text);
@@ -187,16 +213,21 @@ if (import.meta.vitest) {
       ctx.expect(container).toMatchSnapshot("initial");
 
       await collections.listItems.insert({ id: "3", text: "bar", prevId: "", nextId: "", parentId: "1", updatedAt: 1 });
-      await findByText("Error: there is an inconsistency in listItem in the children of '1': some listItems are no in linked list");
+      await findByText("Error: there is an inconsistency in listItem in the children of '1': some listItems are not in linked list");
       ctx.expect(container).toMatchSnapshot("error");
 
       unmount();
     });
 
     test("next item not found", async (ctx) => {
-      const { container, unmount, collections, findByText } = await renderWithRxDBServiceForTest(ctx.meta.id, (props) => (
+      const {
+        container,
+        unmount,
+        rxdbService: { collections },
+        findByText,
+      } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <ErrorBoundary fallback={(error) => `${error}`}>
-          <ItemList id="1" />
+          <ItemList id="1" selectedId="" />
           {props.children}
         </ErrorBoundary>
       ));
@@ -206,7 +237,6 @@ if (import.meta.vitest) {
         { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
       ];
 
-      await collections.locks.insert({ id: "const", isLocked: false });
       await collections.listItems.bulkInsert(listItems);
       for (const listItem of listItems) {
         await findByText(listItem.text);
@@ -223,9 +253,14 @@ if (import.meta.vitest) {
     });
 
     test("first item not found", async (ctx) => {
-      const { container, unmount, collections, findByText } = await renderWithRxDBServiceForTest(ctx.meta.id, (props) => (
+      const {
+        container,
+        unmount,
+        rxdbService: { collections },
+        findByText,
+      } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <ErrorBoundary fallback={(error) => `${error}`}>
-          <ItemList id="1" />
+          <ItemList id="1" selectedId="" />
           {props.children}
         </ErrorBoundary>
       ));
@@ -235,7 +270,6 @@ if (import.meta.vitest) {
         { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
       ];
 
-      await collections.locks.insert({ id: "const", isLocked: false });
       await collections.listItems.bulkInsert(listItems);
       for (const listItem of listItems) {
         await findByText(listItem.text);

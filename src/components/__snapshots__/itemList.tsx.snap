@@ -11,7 +11,7 @@ exports[`'nested items' > text changes 1`] = `
       •
     </div>
     <div
-      class="styles_styles_bulletList_item__1am92eo2"
+      class="styles_styles_bulletList_item__1am92eo2 "
     >
       <span>
         root
@@ -29,7 +29,7 @@ exports[`'nested items' > text changes 1`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             foo
@@ -47,7 +47,7 @@ exports[`'nested items' > text changes 1`] = `
               •
             </div>
             <div
-              class="styles_styles_bulletList_item__1am92eo2"
+              class="styles_styles_bulletList_item__1am92eo2 "
             >
               <span>
                 foofoo
@@ -68,7 +68,7 @@ exports[`'nested items' > text changes 1`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             bar
@@ -94,7 +94,7 @@ exports[`'nested items' > text changes 2`] = `
       •
     </div>
     <div
-      class="styles_styles_bulletList_item__1am92eo2"
+      class="styles_styles_bulletList_item__1am92eo2 "
     >
       <span>
         changed root
@@ -112,7 +112,7 @@ exports[`'nested items' > text changes 2`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             foo
@@ -130,7 +130,7 @@ exports[`'nested items' > text changes 2`] = `
               •
             </div>
             <div
-              class="styles_styles_bulletList_item__1am92eo2"
+              class="styles_styles_bulletList_item__1am92eo2 "
             >
               <span>
                 foofoo
@@ -151,7 +151,7 @@ exports[`'nested items' > text changes 2`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             bar
@@ -177,7 +177,7 @@ exports[`'nested items' > text changes 3`] = `
       •
     </div>
     <div
-      class="styles_styles_bulletList_item__1am92eo2"
+      class="styles_styles_bulletList_item__1am92eo2 "
     >
       <span>
         changed root
@@ -195,7 +195,7 @@ exports[`'nested items' > text changes 3`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             changed foo
@@ -213,7 +213,7 @@ exports[`'nested items' > text changes 3`] = `
               •
             </div>
             <div
-              class="styles_styles_bulletList_item__1am92eo2"
+              class="styles_styles_bulletList_item__1am92eo2 "
             >
               <span>
                 foofoo
@@ -234,7 +234,7 @@ exports[`'nested items' > text changes 3`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             bar
@@ -260,7 +260,7 @@ exports[`'swapped items' > text changes 1`] = `
       •
     </div>
     <div
-      class="styles_styles_bulletList_item__1am92eo2"
+      class="styles_styles_bulletList_item__1am92eo2 "
     >
       <span>
         root
@@ -278,7 +278,7 @@ exports[`'swapped items' > text changes 1`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             bar
@@ -297,7 +297,7 @@ exports[`'swapped items' > text changes 1`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             foo
@@ -323,7 +323,7 @@ exports[`'swapped items' > text changes 2`] = `
       •
     </div>
     <div
-      class="styles_styles_bulletList_item__1am92eo2"
+      class="styles_styles_bulletList_item__1am92eo2 "
     >
       <span>
         changed root
@@ -341,7 +341,7 @@ exports[`'swapped items' > text changes 2`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             bar
@@ -360,7 +360,7 @@ exports[`'swapped items' > text changes 2`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             foo
@@ -386,7 +386,7 @@ exports[`'swapped items' > text changes 3`] = `
       •
     </div>
     <div
-      class="styles_styles_bulletList_item__1am92eo2"
+      class="styles_styles_bulletList_item__1am92eo2 "
     >
       <span>
         changed root
@@ -404,7 +404,7 @@ exports[`'swapped items' > text changes 3`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             bar
@@ -423,7 +423,7 @@ exports[`'swapped items' > text changes 3`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             changed foo
@@ -449,7 +449,7 @@ exports[`add child > baz added 1`] = `
       •
     </div>
     <div
-      class="styles_styles_bulletList_item__1am92eo2"
+      class="styles_styles_bulletList_item__1am92eo2 "
     >
       <span>
         root
@@ -467,7 +467,7 @@ exports[`add child > baz added 1`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             foo
@@ -486,7 +486,7 @@ exports[`add child > baz added 1`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             bar
@@ -505,7 +505,7 @@ exports[`add child > baz added 1`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             baz
@@ -531,7 +531,7 @@ exports[`add child > initial 1`] = `
       •
     </div>
     <div
-      class="styles_styles_bulletList_item__1am92eo2"
+      class="styles_styles_bulletList_item__1am92eo2 "
     >
       <span>
         root
@@ -549,7 +549,7 @@ exports[`add child > initial 1`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             foo
@@ -568,7 +568,7 @@ exports[`add child > initial 1`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             bar
@@ -585,7 +585,7 @@ exports[`add child > initial 1`] = `
 
 exports[`inconsistent error > an item is not in linked list > error 1`] = `
 <div>
-  Error: there is an inconsistency in listItem in the children of '1': some listItems are no in linked list
+  Error: there is an inconsistency in listItem in the children of '1': some listItems are not in linked list
 </div>
 `;
 
@@ -600,7 +600,7 @@ exports[`inconsistent error > an item is not in linked list > initial 1`] = `
       •
     </div>
     <div
-      class="styles_styles_bulletList_item__1am92eo2"
+      class="styles_styles_bulletList_item__1am92eo2 "
     >
       <span>
         root
@@ -618,7 +618,7 @@ exports[`inconsistent error > an item is not in linked list > initial 1`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             foo
@@ -650,7 +650,7 @@ exports[`inconsistent error > first item not found > initial 1`] = `
       •
     </div>
     <div
-      class="styles_styles_bulletList_item__1am92eo2"
+      class="styles_styles_bulletList_item__1am92eo2 "
     >
       <span>
         root
@@ -668,7 +668,7 @@ exports[`inconsistent error > first item not found > initial 1`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             foo
@@ -700,7 +700,7 @@ exports[`inconsistent error > next item not found > initial 1`] = `
       •
     </div>
     <div
-      class="styles_styles_bulletList_item__1am92eo2"
+      class="styles_styles_bulletList_item__1am92eo2 "
     >
       <span>
         root
@@ -718,7 +718,7 @@ exports[`inconsistent error > next item not found > initial 1`] = `
           •
         </div>
         <div
-          class="styles_styles_bulletList_item__1am92eo2"
+          class="styles_styles_bulletList_item__1am92eo2 "
         >
           <span>
             foo
