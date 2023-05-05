@@ -1,6 +1,6 @@
 import type { ListItem } from "@/services/rxdb/collections/listItem";
 
-import { Show, For, createComputed } from "solid-js";
+import { Show, For } from "solid-js";
 import { ErrorBoundary } from "solid-js";
 
 import { BulletList } from "@/components/bulletList";
@@ -10,24 +10,24 @@ import { createSubscribeSignal, createSubscribeAllSignal } from "@/services/rxdb
 import { renderWithServicesForTest } from "@/services/test";
 
 export function ItemList(props: { id: string; selectedId: string }) {
-  return (
-    <BulletList
-      bullet={"•"}
-      item={<ItemListItem id={props.id} selectedId={props.selectedId} />}
-      child={<ItemListChildren parentId={props.id} selectedId={props.selectedId} />}
-      isSelected={props.id === props.selectedId}
-    />
-  );
-}
-
-export function ItemListItem(props: { id: string; selectedId: string }) {
   const rxdbService = useRxDBService();
   const lockService = useLockService();
 
   const listItem$ = createSubscribeSignal(() => rxdbService.collections.listItems.findOne(props.id));
   const listItemWithLock$ = createSignalWithLock(lockService, listItem$, undefined);
 
-  return <Show when={listItemWithLock$()}>{(listItem) => <span>{listItem().text}</span>}</Show>;
+  return (
+    <Show when={listItemWithLock$()}>
+      {(listItem) => (
+        <BulletList
+          bullet={"•"}
+          item={<span>{listItem().text}</span>}
+          child={<ItemListChildren parentId={props.id} selectedId={props.selectedId} />}
+          isSelected={props.id === props.selectedId}
+        />
+      )}
+    </Show>
+  );
 }
 
 export function ItemListChildren(props: { parentId: string; selectedId: string }) {
