@@ -17,10 +17,10 @@ export function ItemList(props: { id: string; selectedId: string }) {
 
   return (
     <Show when={listItemWithLock$()}>
-      {(listItem) => (
+      {(listItem$) => (
         <BulletList
           bullet={"•"}
-          item={<span>{listItem().text}</span>}
+          item={<span>{listItem$().text}</span>}
           child={<ItemListChildren parentId={props.id} selectedId={props.selectedId} />}
           isSelected={props.id === props.selectedId}
         />

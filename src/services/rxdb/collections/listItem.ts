@@ -3,7 +3,7 @@ import type { CollectionNameToDocumentType } from "@/services/rxdb/collections";
 import type { RxDocument } from "rxdb";
 
 import { InconsistentError } from "@/services/rxdb/error";
-import { createCollectionsForTest } from "@/services/rxdb/test";
+import { createRxDBServiceForTest } from "@/services/rxdb/test";
 
 export type ListItem = CollectionNameToDocumentType["listItems"];
 export type ListItemDocument = RxDocument<ListItem>;
@@ -168,24 +168,24 @@ export async function getAboveItem(service: RxDBService, baseItem: RxDocument<Li
 if (import.meta.vitest) {
   describe("getAboveItem", () => {
     test("no prev and no parent", async (test) => {
-      const collections = await createCollectionsForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.meta.id);
 
-      await collections.listItems.bulkUpsert([{ id: "base", text: "", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
-      const baseItem = (await collections.listItems.findOne("base").exec())!;
+      await service.collections.listItems.bulkUpsert([{ id: "base", text: "", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
+      const baseItem = (await service.collections.listItems.findOne("base").exec())!;
 
-      test.expect(await getAboveItem({ collections }, baseItem)).toBeUndefined();
+      test.expect(await getAboveItem(service, baseItem)).toBeUndefined();
     });
 
     test("no prev and has parent", async (test) => {
-      const collections = await createCollectionsForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.meta.id);
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "parent", text: "", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
         /**/ { id: "base", text: "", prevId: "", nextId: "", parentId: "parent", updatedAt: 0 },
       ]);
-      const baseItem = (await collections.listItems.findOne("base").exec())!;
+      const baseItem = (await service.collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getAboveItem({ collections }, baseItem))?.toJSON()).toEqual({
+      test.expect((await getAboveItem(service, baseItem))?.toJSON()).toEqual({
         id: "parent",
         text: "",
         prevId: "",
@@ -196,15 +196,15 @@ if (import.meta.vitest) {
     });
 
     test("has prev and no children of prev", async (test) => {
-      const collections = await createCollectionsForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.meta.id);
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "prev", text: "", prevId: "", nextId: "base", parentId: "", updatedAt: 0 },
         { id: "base", text: "", prevId: "prev", nextId: "", parentId: "", updatedAt: 0 },
       ]);
-      const baseItem = (await collections.listItems.findOne("base").exec())!;
+      const baseItem = (await service.collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getAboveItem({ collections }, baseItem))?.toJSON()).toEqual({
+      test.expect((await getAboveItem(service, baseItem))?.toJSON()).toEqual({
         id: "prev",
         text: "",
         prevId: "",
@@ -215,16 +215,17 @@ if (import.meta.vitest) {
     });
 
     test("has prev and has children of prev and no children of children of prev", async (test) => {
-      const collections = await createCollectionsForTest(test.meta.id);
-      await collections.listItems.bulkUpsert([
+      const service = await createRxDBServiceForTest(test.meta.id);
+
+      await service.collections.listItems.bulkUpsert([
         { id: "prev", text: "", prevId: "", nextId: "base", parentId: "", updatedAt: 0 },
         /**/ { id: "child1 of prev", text: "", prevId: "", nextId: "child2 of prev", parentId: "prev", updatedAt: 0 },
         /**/ { id: "child2 of prev", text: "", prevId: "child1 of prev", nextId: "", parentId: "prev", updatedAt: 0 },
         { id: "base", text: "", prevId: "prev", nextId: "", parentId: "", updatedAt: 0 },
       ]);
-      const baseItem = (await collections.listItems.findOne("base").exec())!;
+      const baseItem = (await service.collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getAboveItem({ collections }, baseItem))?.toJSON()).toEqual({
+      test.expect((await getAboveItem(service, baseItem))?.toJSON()).toEqual({
         id: "child2 of prev",
         text: "",
         prevId: "child1 of prev",
@@ -235,8 +236,9 @@ if (import.meta.vitest) {
     });
 
     test("has prev and has children of prev and has children of children of prev", async (test) => {
-      const collections = await createCollectionsForTest(test.meta.id);
-      await collections.listItems.bulkUpsert([
+      const service = await createRxDBServiceForTest(test.meta.id);
+
+      await service.collections.listItems.bulkUpsert([
         { id: "prev", text: "", prevId: "", nextId: "base", parentId: "", updatedAt: 0 },
         /**/ { id: "child1 of prev", text: "", prevId: "", nextId: "child2 of prev", parentId: "prev", updatedAt: 0 },
         /**/ { id: "child2 of prev", text: "", prevId: "child1 of prev", nextId: "", parentId: "prev", updatedAt: 0 },
@@ -244,9 +246,9 @@ if (import.meta.vitest) {
         /*     */ { id: "child2 of child2 of prev", text: "", prevId: "child1 of child2 of prev", nextId: "", parentId: "child2 of prev", updatedAt: 0 },
         { id: "base", text: "", prevId: "prev", nextId: "", parentId: "", updatedAt: 0 },
       ]);
-      const baseItem = (await collections.listItems.findOne("base").exec())!;
+      const baseItem = (await service.collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getAboveItem({ collections }, baseItem))?.toJSON()).toEqual({
+      test.expect((await getAboveItem(service, baseItem))?.toJSON()).toEqual({
         id: "child2 of child2 of prev",
         text: "",
         prevId: "child1 of child2 of prev",
@@ -275,9 +277,9 @@ export async function getBelowItem(service: RxDBService, baseItem: RxDocument<Li
 if (import.meta.vitest) {
   describe("getBelowItem", () => {
     test("has children", async (test) => {
-      const collections = await createCollectionsForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.meta.id);
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "parent of parent", text: "", prevId: "", nextId: "next of parent of parent", parentId: "", updatedAt: 0 },
         /**/ { id: "parent", text: "", prevId: "", nextId: "next of parent", parentId: "parent of parent", updatedAt: 0 },
         /*     */ { id: "base", text: "", prevId: "", nextId: "next", parentId: "parent", updatedAt: 0 },
@@ -287,9 +289,9 @@ if (import.meta.vitest) {
         /**/ { id: "next of parent", text: "", prevId: "parent", nextId: "", parentId: "parent of parent", updatedAt: 0 },
         { id: "next of parent of parent", text: "", prevId: "parent of parent", nextId: "", parentId: "", updatedAt: 0 },
       ]);
-      const baseItem = (await collections.listItems.findOne("base").exec())!;
+      const baseItem = (await service.collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getBelowItem({ collections }, baseItem))?.toJSON()).toEqual({
+      test.expect((await getBelowItem(service, baseItem))?.toJSON()).toEqual({
         id: "child1",
         text: "",
         prevId: "",
@@ -300,9 +302,9 @@ if (import.meta.vitest) {
     });
 
     test("no children and has next", async (test) => {
-      const collections = await createCollectionsForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.meta.id);
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "parent of parent", text: "", prevId: "", nextId: "next of parent of parent", parentId: "", updatedAt: 0 },
         /**/ { id: "parent", text: "", prevId: "", nextId: "next of parent", parentId: "parent of parent", updatedAt: 0 },
         /*     */ { id: "base", text: "", prevId: "", nextId: "next", parentId: "parent", updatedAt: 0 },
@@ -310,9 +312,9 @@ if (import.meta.vitest) {
         /**/ { id: "next of parent", text: "", prevId: "parent", nextId: "", parentId: "parent of parent", updatedAt: 0 },
         { id: "next of parent of parent", text: "", prevId: "parent of parent", nextId: "", parentId: "", updatedAt: 0 },
       ]);
-      const baseItem = (await collections.listItems.findOne("base").exec())!;
+      const baseItem = (await service.collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getBelowItem({ collections }, baseItem))?.toJSON()).toEqual({
+      test.expect((await getBelowItem(service, baseItem))?.toJSON()).toEqual({
         id: "next",
         text: "",
         prevId: "base",
@@ -323,18 +325,18 @@ if (import.meta.vitest) {
     });
 
     test("no children and no next and has next of parent", async (test) => {
-      const collections = await createCollectionsForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.meta.id);
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "parent of parent", text: "", prevId: "", nextId: "next of parent of parent", parentId: "", updatedAt: 0 },
         /**/ { id: "parent", text: "", prevId: "", nextId: "next of parent", parentId: "parent of parent", updatedAt: 0 },
         /*     */ { id: "base", text: "", prevId: "", nextId: "", parentId: "parent", updatedAt: 0 },
         /**/ { id: "next of parent", text: "", prevId: "parent", nextId: "", parentId: "parent of parent", updatedAt: 0 },
         { id: "next of parent of parent", text: "", prevId: "parent of parent", nextId: "", parentId: "", updatedAt: 0 },
       ]);
-      const baseItem = (await collections.listItems.findOne("base").exec())!;
+      const baseItem = (await service.collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getBelowItem({ collections }, baseItem))?.toJSON()).toEqual({
+      test.expect((await getBelowItem(service, baseItem))?.toJSON()).toEqual({
         id: "next of parent",
         text: "",
         prevId: "parent",
@@ -345,17 +347,17 @@ if (import.meta.vitest) {
     });
 
     test("no children and no next and no next of parent and has next of parent of parent", async (test) => {
-      const collections = await createCollectionsForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.meta.id);
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "parent of parent", text: "", prevId: "", nextId: "next of parent of parent", parentId: "", updatedAt: 0 },
         /**/ { id: "parent", text: "", prevId: "", nextId: "", parentId: "parent of parent", updatedAt: 0 },
         /*     */ { id: "base", text: "", prevId: "", nextId: "", parentId: "parent", updatedAt: 0 },
         { id: "next of parent of parent", text: "", prevId: "parent of parent", nextId: "", parentId: "", updatedAt: 0 },
       ]);
-      const baseItem = (await collections.listItems.findOne("base").exec())!;
+      const baseItem = (await service.collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getBelowItem({ collections }, baseItem))?.toJSON()).toEqual({
+      test.expect((await getBelowItem(service, baseItem))?.toJSON()).toEqual({
         id: "next of parent of parent",
         text: "",
         prevId: "parent of parent",
@@ -366,16 +368,16 @@ if (import.meta.vitest) {
     });
 
     test("no children and no next and no next of parent and no next of parent of parent", async (test) => {
-      const collections = await createCollectionsForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.meta.id);
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "parent of parent", text: "", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
         /**/ { id: "parent", text: "", prevId: "", nextId: "", parentId: "parent of parent", updatedAt: 0 },
         /*     */ { id: "base", text: "", prevId: "", nextId: "", parentId: "parent", updatedAt: 0 },
       ]);
-      const baseItem = (await collections.listItems.findOne("base").exec())!;
+      const baseItem = (await service.collections.listItems.findOne("base").exec())!;
 
-      test.expect((await getBelowItem({ collections }, baseItem))?.toJSON()).toBeUndefined();
+      test.expect((await getBelowItem(service, baseItem))?.toJSON()).toBeUndefined();
     });
   });
 }
@@ -439,41 +441,37 @@ export async function addPrevSibling(
 if (import.meta.vitest) {
   describe("addPrevSibling", () => {
     test("prepend", async (test) => {
-      const tid = test.meta.id;
-      const collections = await createCollectionsForTest(tid);
-      const listItems = collections.listItems;
+      const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await collections.listItems.bulkUpsert([{ id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
+      await service.collections.listItems.bulkUpsert([{ id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
 
-      await addPrevSibling({ collections }, now, (await collections.listItems.findOne("1").exec())!, {
+      await addPrevSibling(service, now, (await service.collections.listItems.findOne("1").exec())!, {
         id: "2",
         text: "new",
       });
 
-      test.expect((await listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "base", prevId: "2", nextId: "", parentId: "0", updatedAt: now },
         { id: "2", text: "new", prevId: "", nextId: "1", parentId: "0", updatedAt: now },
       ]);
     });
 
     test("insert", async (test) => {
-      const tid = test.meta.id;
-      const collections = await createCollectionsForTest(tid);
-      const listItems = collections.listItems;
+      const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "1", text: "base", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
         { id: "2", text: "prev", prevId: "", nextId: "1", parentId: "0", updatedAt: 0 },
       ]);
 
-      await addPrevSibling({ collections }, now, (await collections.listItems.findOne("1").exec())!, {
+      await addPrevSibling(service, now, (await service.collections.listItems.findOne("1").exec())!, {
         id: "3",
         text: "new",
       });
 
-      test.expect((await listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "base", prevId: "3", nextId: "", parentId: "0", updatedAt: now },
         { id: "2", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
         { id: "3", text: "new", prevId: "2", nextId: "1", parentId: "0", updatedAt: now },
@@ -540,41 +538,37 @@ export async function addNextSibling(
 if (import.meta.vitest) {
   describe("addNextSibling", () => {
     test("append", async (test) => {
-      const tid = test.meta.id;
-      const collections = await createCollectionsForTest(tid);
-      const listItems = collections.listItems;
+      const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await collections.listItems.bulkUpsert([{ id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
+      await service.collections.listItems.bulkUpsert([{ id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
 
-      await addNextSibling({ collections }, now, (await collections.listItems.findOne("1").exec())!, {
+      await addNextSibling(service, now, (await service.collections.listItems.findOne("1").exec())!, {
         id: "2",
         text: "new",
       });
 
-      test.expect((await listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "base", prevId: "", nextId: "2", parentId: "0", updatedAt: now },
         { id: "2", text: "new", prevId: "1", nextId: "", parentId: "0", updatedAt: now },
       ]);
     });
 
     test("insert", async (test) => {
-      const tid = test.meta.id;
-      const collections = await createCollectionsForTest(tid);
-      const listItems = collections.listItems;
+      const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "1", text: "base", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
         { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await addNextSibling({ collections }, now, (await collections.listItems.findOne("1").exec())!, {
+      await addNextSibling(service, now, (await service.collections.listItems.findOne("1").exec())!, {
         id: "3",
         text: "new",
       });
 
-      test.expect((await listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "base", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
         { id: "2", text: "next", prevId: "3", nextId: "", parentId: "0", updatedAt: now },
         { id: "3", text: "new", prevId: "1", nextId: "2", parentId: "0", updatedAt: now },
@@ -605,36 +599,34 @@ export async function indent(service: RxDBService, updatedAt: number, item: RxDo
 if (import.meta.vitest) {
   describe("indent", () => {
     test("cannot indent due to no prev item", async (test) => {
-      const tid = test.meta.id;
-      const collections = await createCollectionsForTest(tid);
+      const service = await createRxDBServiceForTest(test.meta.id);
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "1", text: "target", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
         { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await indent({ collections }, Date.now(), (await collections.listItems.findOne("1").exec())!);
+      await indent(service, Date.now(), (await service.collections.listItems.findOne("1").exec())!);
 
-      test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "target", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
         { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
     });
 
     test("indent with prev item without children", async (test) => {
-      const tid = test.meta.id;
-      const collections = await createCollectionsForTest(tid);
+      const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
         { id: "2", text: "target", prevId: "1", nextId: "3", parentId: "0", updatedAt: 0 },
         { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await indent({ collections }, now, (await collections.listItems.findOne("2").exec())!);
+      await indent(service, now, (await service.collections.listItems.findOne("2").exec())!);
 
-      test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
         { id: "2", text: "target", prevId: "", nextId: "", parentId: "1", updatedAt: now },
         { id: "3", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: now },
@@ -642,20 +634,19 @@ if (import.meta.vitest) {
     });
 
     test("indent with prev item with children", async (test) => {
-      const tid = test.meta.id;
-      const collections = await createCollectionsForTest(tid);
+      const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: 0 },
         { id: "2", text: "child of prev", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
         { id: "3", text: "target", prevId: "1", nextId: "4", parentId: "0", updatedAt: 0 },
         { id: "4", text: "next", prevId: "3", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await indent({ collections }, now, (await collections.listItems.findOne("3").exec())!);
+      await indent(service, now, (await service.collections.listItems.findOne("3").exec())!);
 
-      test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "prev", prevId: "", nextId: "4", parentId: "0", updatedAt: now },
         { id: "2", text: "child of prev", prevId: "", nextId: "3", parentId: "1", updatedAt: now },
         { id: "3", text: "target", prevId: "2", nextId: "", parentId: "1", updatedAt: now },
@@ -676,18 +667,17 @@ export async function dedent(service: RxDBService, updatedAt: number, item: RxDo
 if (import.meta.vitest) {
   describe("dedent", () => {
     test("cannot dedent due to no parent item", async (test) => {
-      const tid = test.meta.id;
-      const collections = await createCollectionsForTest(tid);
+      const service = await createRxDBServiceForTest(test.meta.id);
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
         { id: "2", text: "target", prevId: "1", nextId: "3", parentId: "0", updatedAt: 0 },
         { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await dedent({ collections }, Date.now(), (await collections.listItems.findOne("2").exec())!);
+      await dedent(service, Date.now(), (await service.collections.listItems.findOne("2").exec())!);
 
-      test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
         { id: "2", text: "target", prevId: "1", nextId: "3", parentId: "0", updatedAt: 0 },
         { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
@@ -695,20 +685,19 @@ if (import.meta.vitest) {
     });
 
     test("dedent with parent item without next item", async (test) => {
-      const tid = test.meta.id;
-      const collections = await createCollectionsForTest(tid);
+      const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "1", text: "parent", prevId: "", nextId: "", parentId: "0", updatedAt: 0 },
         { id: "2", text: "prev", prevId: "", nextId: "3", parentId: "1", updatedAt: 0 },
         { id: "3", text: "target", prevId: "2", nextId: "4", parentId: "1", updatedAt: 0 },
         { id: "4", text: "next", prevId: "3", nextId: "", parentId: "1", updatedAt: 0 },
       ]);
 
-      await dedent({ collections }, now, (await collections.listItems.findOne("3").exec())!);
+      await dedent(service, now, (await service.collections.listItems.findOne("3").exec())!);
 
-      test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "parent", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
         { id: "2", text: "prev", prevId: "", nextId: "4", parentId: "1", updatedAt: now },
         { id: "3", text: "target", prevId: "1", nextId: "", parentId: "0", updatedAt: now },
@@ -717,11 +706,10 @@ if (import.meta.vitest) {
     });
 
     test("dedent with parent item with next item", async (test) => {
-      const tid = test.meta.id;
-      const collections = await createCollectionsForTest(tid);
+      const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "1", text: "parent", prevId: "", nextId: "5", parentId: "0", updatedAt: 0 },
         { id: "2", text: "prev", prevId: "", nextId: "3", parentId: "1", updatedAt: 0 },
         { id: "3", text: "target", prevId: "2", nextId: "4", parentId: "1", updatedAt: 0 },
@@ -729,9 +717,9 @@ if (import.meta.vitest) {
         { id: "5", text: "next of parent", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await dedent({ collections }, now, (await collections.listItems.findOne("3").exec())!);
+      await dedent(service, now, (await service.collections.listItems.findOne("3").exec())!);
 
-      test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "parent", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
         { id: "2", text: "prev", prevId: "", nextId: "4", parentId: "1", updatedAt: now },
         { id: "3", text: "target", prevId: "1", nextId: "5", parentId: "0", updatedAt: now },
@@ -750,64 +738,61 @@ export async function remove(service: RxDBService, updatedAt: number, item: RxDo
 if (import.meta.vitest) {
   describe("remove", () => {
     test("remove item without siblings", async (test) => {
-      const tid = test.meta.id;
-      const collections = await createCollectionsForTest(tid);
+      const service = await createRxDBServiceForTest(test.meta.id);
 
-      await collections.listItems.bulkUpsert([{ id: "1", text: "target", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
+      await service.collections.listItems.bulkUpsert([{ id: "1", text: "target", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
 
-      await remove({ collections }, Date.now(), (await collections.listItems.findOne("1").exec())!);
+      await remove(service, Date.now(), (await service.collections.listItems.findOne("1").exec())!);
 
-      test.expect(await collections.listItems.find().exec()).toEqual([]);
+      test.expect(await service.collections.listItems.find().exec()).toEqual([]);
     });
 
     test("remove item with prev item without next item", async (test) => {
-      const tid = test.meta.id;
-      const collections = await createCollectionsForTest(tid);
+      const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
         { id: "2", text: "target", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await remove({ collections }, now, (await collections.listItems.findOne("2").exec())!);
+      await remove(service, now, (await service.collections.listItems.findOne("2").exec())!);
 
       test
-        .expect((await collections.listItems.find().exec()).map((x) => x.toJSON()))
+        .expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON()))
         .toEqual([{ id: "1", text: "prev", prevId: "", nextId: "", parentId: "0", updatedAt: now }]);
     });
 
     test("remove item with next item without prev item", async (test) => {
       const tid = test.meta.id;
-      const collections = await createCollectionsForTest(tid);
+      const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "1", text: "target", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
         { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await remove({ collections }, now, (await collections.listItems.findOne("1").exec())!);
+      await remove(service, now, (await service.collections.listItems.findOne("1").exec())!);
 
       test
-        .expect((await collections.listItems.find().exec()).map((x) => x.toJSON()))
+        .expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON()))
         .toEqual([{ id: "2", text: "next", prevId: "", nextId: "", parentId: "0", updatedAt: now }]);
     });
 
     test("remove item with siblings", async (test) => {
-      const tid = test.meta.id;
-      const collections = await createCollectionsForTest(tid);
+      const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await collections.listItems.bulkUpsert([
+      await service.collections.listItems.bulkUpsert([
         { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
         { id: "2", text: "target", prevId: "1", nextId: "3", parentId: "0", updatedAt: 0 },
         { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
       ]);
 
-      await remove({ collections }, now, (await collections.listItems.findOne("2").exec())!);
+      await remove(service, now, (await service.collections.listItems.findOne("2").exec())!);
 
-      test.expect((await collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
         { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
         { id: "3", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: now },
       ]);

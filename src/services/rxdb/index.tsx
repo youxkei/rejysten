@@ -11,6 +11,7 @@ import { Show, createContext, createResource, onCleanup, useContext } from "soli
 import { schema } from "@/services/rxdb/collections";
 
 export type RxDBService = {
+  database: RxDatabase<Collections>;
   collections: Collections;
 };
 
@@ -50,10 +51,14 @@ function createRxDBServiceSignal(databaseCreator$: () => RxDatabaseCreator<Dexie
   });
 
   return () => {
+    const database = database$();
+    if (!database) return;
+
     const collections = collections$();
     if (!collections) return;
 
     return {
+      database,
       collections,
     };
   };
@@ -68,7 +73,11 @@ export function RxDBServiceProvider(props: { children: JSXElement; databaseCreat
       }
   );
 
-  return <Show when={rxdbService$()}>{(rxdbService$) => <context.Provider value={rxdbService$()}>{props.children}</context.Provider>}</Show>;
+  return (
+    <Show when={rxdbService$()} keyed>
+      {(rxdbService) => <context.Provider value={rxdbService}>{props.children}</context.Provider>}
+    </Show>
+  );
 }
 
 export function useRxDBService() {
