@@ -28,21 +28,3 @@ export async function renderAsync<T extends object>(
 
   return { ...value, ...result! };
 }
-
-/*
-render(
-  (props: { children: JSXElement }) => (
-    <ServiceProvider>
-      <Hoge />
-      {props.children}
-    </ServiceProvider>
-  ),
-  (resolve: (value: T) => void) => {
-    const collections = useRxDBService().collections$()
-    if (!collections) return;
-
-    resolve(collections)
-  },
-)
-
- */

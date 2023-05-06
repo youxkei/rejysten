@@ -5,8 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { createContext, createMemo, createSignal, startTransition, untrack, useContext } from "solid-js";
 
 import { useRxDBService } from "@/services/rxdb";
-import { RxDBServiceProviderForTest } from "@/services/rxdb/test";
-import { renderAsync } from "@/test";
+import { renderWithServicesForTest } from "@/services/test";
 
 export type LockService = {
   rxdbService: RxDBService;
@@ -86,36 +85,25 @@ if (import.meta.vitest) {
   describe("createSignalWithLock and runWithLock", () => {
     test("updated separately without lock", async (test) => {
       const user = userEvent.setup();
-      const { container, unmount, findByText } = await renderAsync(
-        (props) => (
-          <RxDBServiceProviderForTest tid={test.meta.id}>
-            <LockServiceProvider>
-              {(() => {
-                const [x$, setX] = createSignal("x");
-                const [y$, setY] = createSignal("y");
+      const { container, unmount, findByText } = await renderWithServicesForTest(test.meta.id, (props) => {
+        const [x$, setX] = createSignal("x");
+        const [y$, setY] = createSignal("y");
 
-                async function onClick() {
-                  setX("updated x");
-                  await new Promise((resolve) => queueMicrotask(() => resolve(0)));
-                  setY("updated y");
-                }
-
-                return (
-                  <>
-                    <p>{x$()}</p>
-                    <p>{y$()}</p>
-                    <button onClick={onClick}>update</button>
-                  </>
-                );
-              })()}
-              {props.children}
-            </LockServiceProvider>
-          </RxDBServiceProviderForTest>
-        ),
-        (resolve: (value: object) => void) => {
-          resolve({});
+        async function onClick() {
+          setX("updated x");
+          await new Promise((resolve) => queueMicrotask(() => resolve(0)));
+          setY("updated y");
         }
-      );
+
+        return (
+          <>
+            <p>{x$()}</p>
+            <p>{y$()}</p>
+            <button onClick={onClick}>update</button>
+            {props.children}
+          </>
+        );
+      });
 
       test.expect(container).toMatchSnapshot("initial");
 
@@ -132,41 +120,30 @@ if (import.meta.vitest) {
 
     test("updated separately with createSignalWithLock without runWithLock", async (test) => {
       const user = userEvent.setup();
-      const { container, unmount, findByText } = await renderAsync(
-        (props) => (
-          <RxDBServiceProviderForTest tid={test.meta.id}>
-            <LockServiceProvider>
-              {(() => {
-                const service = useLockService();
+      const { container, unmount, findByText } = await renderWithServicesForTest(test.meta.id, (props) => {
+        const service = useLockService();
 
-                const [x$, setX] = createSignal("x");
-                const [y$, setY] = createSignal("y");
+        const [x$, setX] = createSignal("x");
+        const [y$, setY] = createSignal("y");
 
-                const xWithLock$ = createSignalWithLock(service, x$, "x");
-                const yWithLock$ = createSignalWithLock(service, y$, "y");
+        const xWithLock$ = createSignalWithLock(service, x$, "x");
+        const yWithLock$ = createSignalWithLock(service, y$, "y");
 
-                async function onClick() {
-                  setX("updated x");
-                  await new Promise((resolve) => queueMicrotask(() => resolve(0)));
-                  setY("updated y");
-                }
-
-                return (
-                  <>
-                    <p>{xWithLock$()}</p>
-                    <p>{yWithLock$()}</p>
-                    <button onClick={onClick}>update</button>
-                  </>
-                );
-              })()}
-              {props.children}
-            </LockServiceProvider>
-          </RxDBServiceProviderForTest>
-        ),
-        (resolve: (value: object) => void) => {
-          resolve({});
+        async function onClick() {
+          setX("updated x");
+          await new Promise((resolve) => queueMicrotask(() => resolve(0)));
+          setY("updated y");
         }
-      );
+
+        return (
+          <>
+            <p>{xWithLock$()}</p>
+            <p>{yWithLock$()}</p>
+            <button onClick={onClick}>update</button>
+            {props.children}
+          </>
+        );
+      });
 
       test.expect(container).toMatchSnapshot("initial");
 
@@ -183,43 +160,32 @@ if (import.meta.vitest) {
 
     test("updated simultaneously with createSignalWithLock and runWithLock", async (test) => {
       const user = userEvent.setup();
-      const { container, unmount, findByText } = await renderAsync(
-        (props) => (
-          <RxDBServiceProviderForTest tid={test.meta.id}>
-            <LockServiceProvider>
-              {(() => {
-                const service = useLockService();
+      const { container, unmount, findByText } = await renderWithServicesForTest(test.meta.id, (props) => {
+        const service = useLockService();
 
-                const [x$, setX] = createSignal("x");
-                const [y$, setY] = createSignal("y");
+        const [x$, setX] = createSignal("x");
+        const [y$, setY] = createSignal("y");
 
-                const xWithLock$ = createSignalWithLock(service, x$, "x");
-                const yWithLock$ = createSignalWithLock(service, y$, "y");
+        const xWithLock$ = createSignalWithLock(service, x$, "x");
+        const yWithLock$ = createSignalWithLock(service, y$, "y");
 
-                async function onClick() {
-                  await runWithLock(service, async () => {
-                    setX("updated x");
-                    await new Promise((resolve) => queueMicrotask(() => resolve(0)));
-                    setY("updated y");
-                  });
-                }
-
-                return (
-                  <>
-                    <p>{xWithLock$()}</p>
-                    <p>{yWithLock$()}</p>
-                    <button onClick={onClick}>update</button>
-                  </>
-                );
-              })()}
-              {props.children}
-            </LockServiceProvider>
-          </RxDBServiceProviderForTest>
-        ),
-        (resolve: (value: object) => void) => {
-          resolve({});
+        async function onClick() {
+          await runWithLock(service, async () => {
+            setX("updated x");
+            await new Promise((resolve) => queueMicrotask(() => resolve(0)));
+            setY("updated y");
+          });
         }
-      );
+
+        return (
+          <>
+            <p>{xWithLock$()}</p>
+            <p>{yWithLock$()}</p>
+            <button onClick={onClick}>update</button>
+            {props.children}
+          </>
+        );
+      });
 
       test.expect(container).toMatchSnapshot("initial");
 
