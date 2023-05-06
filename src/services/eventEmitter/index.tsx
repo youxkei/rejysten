@@ -23,6 +23,12 @@ export function EventEmitterServiceProvider(props: { children: JSXElement }) {
     const event = keyDownEvent$();
     if (!event) return;
 
+    if (event.code === "AltLeft" || event.code === "AltRight") {
+      // disable alt key to avoid browser menu
+      event.preventDefault();
+      return;
+    }
+
     untrack(() => {
       const ctx = { store, emitEvent };
 
