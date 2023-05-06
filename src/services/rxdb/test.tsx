@@ -12,6 +12,7 @@ export function createDatabaseCreatorForTest(tid: string) {
   return {
     name: tid,
     storage: getRxStorageDexie({ indexedDB, IDBKeyRange }),
+    eventReduce: true,
     ignoreDuplicate: true,
   };
 }

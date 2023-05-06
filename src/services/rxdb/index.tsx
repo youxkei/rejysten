@@ -70,6 +70,7 @@ export function RxDBServiceProvider(props: { children: JSXElement; databaseCreat
       props.databaseCreator ?? {
         name: "rejysten",
         storage: getRxStorageDexie(),
+        eventReduce: true,
       }
   );
 
