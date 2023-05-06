@@ -1,15 +1,13 @@
-import type { Collections } from "@/services/rxdb/collections";
 import type { Store as StoreWithId } from "@/services/rxdb/collections/store";
 import type { JSXElement } from "solid-js";
 
 import { produce } from "immer";
 import { createRoot, useContext, createEffect, createContext } from "solid-js";
-import { createStore, reconcile } from "solid-js/store";
+import { createStore, reconcile, unwrap } from "solid-js/store";
 
 import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeSignal } from "@/services/rxdb/subscribe";
-import { RxDBServiceProviderForTest } from "@/services/rxdb/test";
-import { renderAsync } from "@/test";
+import { renderWithServicesForTest } from "@/services/test";
 
 export type Store = Omit<StoreWithId, "id">;
 
@@ -25,7 +23,7 @@ const initialStore: Store = {
 
 export type StoreService = {
   store: Store;
-  updateStore$: () => ((updater: (store: Store) => void) => void) | undefined;
+  updateStore: (updater: (store: Store) => void) => void;
 };
 
 const context = createContext<StoreService>();
@@ -35,20 +33,11 @@ export function StoreServiceProvider(props: { children: JSXElement }) {
 
   const [store, setStore] = createStore<Store>(structuredClone(initialStore));
 
+  function updateStore(updater: (store: Store) => void) {
+    collections.stores.upsert({ id: "const", ...produce(structuredClone(unwrap(store)), updater) });
+  }
+
   const storeDocument$ = createSubscribeSignal(() => collections.stores.findOne("const"));
-
-  const updateStore$ = () => {
-    const storeDocument = storeDocument$();
-    if (storeDocument === undefined) return;
-
-    return (updater: (store: Store) => void) => {
-      if (storeDocument) {
-        storeDocument.patch(produce(storeDocument.toJSON(), updater));
-      } else {
-        collections.stores.insert({ id: "const", ...produce(initialStore, updater) });
-      }
-    };
-  };
 
   createEffect(() => {
     const storeDocument = storeDocument$();
@@ -58,7 +47,7 @@ export function StoreServiceProvider(props: { children: JSXElement }) {
     setStore(reconcile(newStore));
   });
 
-  return <context.Provider value={{ store, updateStore$ }}>{props.children}</context.Provider>;
+  return <context.Provider value={{ store, updateStore }}>{props.children}</context.Provider>;
 }
 
 export function useStoreService() {
@@ -70,41 +59,26 @@ export function useStoreService() {
 
 if (import.meta.vitest) {
   test("initial store", async (test) => {
-    const { unmount, store } = await renderAsync(
-      (props) => (
-        <RxDBServiceProviderForTest tid={test.meta.id}>
-          <StoreServiceProvider>{props.children}</StoreServiceProvider>
-        </RxDBServiceProviderForTest>
-      ),
-      (resolve: (value: { store: Store }) => void) => {
-        const { store } = useStoreService();
-
-        resolve({ store });
-      }
-    );
+    const {
+      unmount,
+      rxdbService: { collections },
+      storeService: { store },
+    } = await renderWithServicesForTest(test.meta.id, (props) => props.children);
 
     test.expect(store).toEqual(initialStore);
+
+    // there is no store document until the store is updated
+    test.expect(await collections.stores.findOne("const").exec()).toBeNull();
 
     unmount();
   });
 
   test("update store from initial store", async (test) => {
-    const { unmount, collections, store, updateStore } = await renderAsync(
-      (props) => (
-        <RxDBServiceProviderForTest tid={test.meta.id}>
-          <StoreServiceProvider>{props.children}</StoreServiceProvider>
-        </RxDBServiceProviderForTest>
-      ),
-      (resolve: (value: { collections: Collections; store: Store; updateStore: (updater: (store: Store) => void) => void }) => void) => {
-        const { collections } = useRxDBService();
-
-        const { store, updateStore$ } = useStoreService();
-        const updateStore = updateStore$();
-        if (!updateStore) return;
-
-        resolve({ collections, store, updateStore });
-      }
-    );
+    const {
+      unmount,
+      rxdbService: { collections },
+      storeService: { store, updateStore },
+    } = await renderWithServicesForTest(test.meta.id, (props) => props.children);
 
     const storePromise = new Promise<string>((resolve) => {
       let initial = true;
@@ -142,28 +116,25 @@ if (import.meta.vitest) {
   });
 
   test("update store from non-initial store", async (test) => {
-    const { unmount, collections, store, updateStore } = await renderAsync(
-      (props) => (
-        <RxDBServiceProviderForTest tid={test.meta.id}>
-          <StoreServiceProvider>{props.children}</StoreServiceProvider>
-        </RxDBServiceProviderForTest>
-      ),
-      (resolve: (value: { collections: Collections; store: Store; updateStore: (updater: (store: Store) => void) => void }) => void) => {
-        const { collections } = useRxDBService();
+    const {
+      unmount,
+      rxdbService: { collections },
+      storeService: { store, updateStore },
+    } = await renderWithServicesForTest(test.meta.id, (props) => props.children);
 
-        const { store, updateStore$ } = useStoreService();
-        const updateStore = updateStore$();
-        if (!updateStore) return;
+    updateStore((store) => {
+      store.actionLogListPane.currentActionLogId = "placeholderActionLogId";
+    });
 
-        if (store.actionLogListPane.currentActionLogId === "") {
-          updateStore((store) => {
-            store.actionLogListPane.currentActionLogId = "placeholderActionLogId";
-          });
-        } else {
-          resolve({ collections, store, updateStore });
-        }
-      }
-    );
+    await new Promise<void>((resolve) => {
+      createRoot(() => {
+        createEffect(() => {
+          if (store.actionLogListPane.currentActionLogId === "placeholderActionLogId") {
+            resolve();
+          }
+        });
+      });
+    });
 
     const storePromise = new Promise<{ currentPane: string; currentListItemId: string }>((resolve) => {
       let initial = true;
@@ -186,7 +157,7 @@ if (import.meta.vitest) {
       let initial = true;
 
       collections.stores.findOne("const").$.subscribe((storeDocument) => {
-        if (!storeDocument) throw new Error("this should never happen");
+        if (!storeDocument) throw new Error("this should not happen");
 
         if (initial) {
           initial = false;
@@ -209,20 +180,10 @@ if (import.meta.vitest) {
   });
 
   test("granular update notification", async (test) => {
-    const { unmount, store, updateStore } = await renderAsync(
-      (props) => (
-        <RxDBServiceProviderForTest tid={test.meta.id}>
-          <StoreServiceProvider>{props.children}</StoreServiceProvider>
-        </RxDBServiceProviderForTest>
-      ),
-      (resolve: (value: { store: Store; updateStore: (updater: (store: Store) => void) => void }) => void) => {
-        const { store, updateStore$ } = useStoreService();
-        const updateStore = updateStore$();
-        if (!updateStore) return;
-
-        resolve({ store, updateStore });
-      }
-    );
+    const {
+      unmount,
+      storeService: { store, updateStore },
+    } = await renderWithServicesForTest(test.meta.id, (props) => props.children);
 
     const currentActionLogIdPromise = Promise.race([
       new Promise<string>((resolve) => {
