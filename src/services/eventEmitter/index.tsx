@@ -26,14 +26,14 @@ export function EventEmitterServiceProvider(props: { children: JSXElement }) {
     untrack(() => {
       const ctx = { store, emitEvent };
 
-      switch (store.currentPage) {
+      switch (store.currentPane) {
         case "actionLogList": {
-          emitActionLogListPageEvent(ctx, event);
+          emitActionLogListPaneEvent(ctx, event);
           break;
         }
 
         case "actionLog": {
-          emitActionLogPageEvent(ctx, event);
+          emitActionLogPaneEvent(ctx, event);
           break;
         }
       }
@@ -43,15 +43,15 @@ export function EventEmitterServiceProvider(props: { children: JSXElement }) {
   return props.children;
 }
 
-function emitActionLogListPageEvent(ctx: Context, event: KeyboardEvent) {}
+function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {}
 
-function emitActionLogPageEvent(ctx: Context, event: KeyboardEvent) {
+function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent) {
   const { shiftKey } = event;
 
   switch (event.code) {
     case "KeyK": {
       if (!shiftKey) {
-        ctx.emitEvent({ page: "actionLog", type: "moveAbove" });
+        ctx.emitEvent({ pane: "actionLog", type: "moveAbove" });
         event.preventDefault();
       }
 
@@ -60,7 +60,7 @@ function emitActionLogPageEvent(ctx: Context, event: KeyboardEvent) {
 
     case "KeyJ": {
       if (!shiftKey) {
-        ctx.emitEvent({ page: "actionLog", type: "moveBelow" });
+        ctx.emitEvent({ pane: "actionLog", type: "moveBelow" });
         event.preventDefault();
       }
 
@@ -69,10 +69,10 @@ function emitActionLogPageEvent(ctx: Context, event: KeyboardEvent) {
 
     case "KeyO": {
       if (shiftKey) {
-        ctx.emitEvent({ page: "actionLog", type: "addPrev" });
+        ctx.emitEvent({ pane: "actionLog", type: "addPrev" });
       } else {
         console.log("event:", { page: "actionLog", type: "addNext" });
-        ctx.emitEvent({ page: "actionLog", type: "addNext" });
+        ctx.emitEvent({ pane: "actionLog", type: "addNext" });
       }
       event.preventDefault();
 
@@ -81,9 +81,9 @@ function emitActionLogPageEvent(ctx: Context, event: KeyboardEvent) {
 
     case "Tab": {
       if (shiftKey) {
-        ctx.emitEvent({ page: "actionLog", type: "dedent" });
+        ctx.emitEvent({ pane: "actionLog", type: "dedent" });
       } else {
-        ctx.emitEvent({ page: "actionLog", type: "indent" });
+        ctx.emitEvent({ pane: "actionLog", type: "indent" });
       }
       event.preventDefault();
 

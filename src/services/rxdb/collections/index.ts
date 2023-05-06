@@ -95,15 +95,15 @@ export const schema = {
       type: "object",
       properties: {
         id: { type: "string", maxLength: 5, enum: ["const"] },
-        currentPage: { type: "string", enum: ["actionLogList", "actionLog"] },
-        actionLogListPage: {
+        currentPane: { type: "string", enum: ["actionLogList", "actionLog"] },
+        actionLogListPane: {
           type: "object",
           properties: {
             currentActionLogId: { type: "string" },
           },
           required: ["currentActionLogId"],
         },
-        actionLogPage: {
+        actionLogPane: {
           type: "object",
           properties: {
             currentListItemId: { type: "string" },
@@ -111,7 +111,7 @@ export const schema = {
           required: ["currentListItemId"],
         },
       },
-      required: ["id", "currentPage", "actionLogListPage", "actionLogPage"],
+      required: ["id", "currentPane", "actionLogListPane", "actionLogPane"],
     },
   },
   tests: {

@@ -1,4 +1,4 @@
-import type { Event, ActionLogListPageEvent, ActionLogPageEvent } from "@/services/event";
+import type { Event, ActionLogListPaneEvent, ActionLogPaneEvent } from "@/services/event";
 import type { LockService } from "@/services/lock";
 import type { RxDBService } from "@/services/rxdb";
 import type { Store } from "@/services/store";
@@ -45,27 +45,27 @@ export function EventHandlerServiceProvider(props: { children: JSXElement }) {
 }
 
 async function handle(ctx: Context, event: Event) {
-  switch (event.page) {
+  switch (event.pane) {
     case "initial":
       // do nothing
       break;
 
     case "actionLogList":
-      await handleActionLogListPageEvent(ctx, event);
+      await handleActionLogListPaneEvent(ctx, event);
       break;
 
     case "actionLog":
-      await handleActionLogPageEvent(ctx, event);
+      await handleActionLogPaneEvent(ctx, event);
       break;
   }
 }
 
-async function handleActionLogListPageEvent(ctx: Context, event: ActionLogListPageEvent) {}
+async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPaneEvent) {}
 
-async function handleActionLogPageEvent(ctx: Context, event: ActionLogPageEvent) {
-  if (ctx.store.currentPage !== "actionLog") return;
+async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent) {
+  if (ctx.store.currentPane !== "actionLog") return;
 
-  const currentListItem = await ctx.rxdbService.collections.listItems.findOne(ctx.store.actionLogPage.currentListItemId).exec();
+  const currentListItem = await ctx.rxdbService.collections.listItems.findOne(ctx.store.actionLogPane.currentListItemId).exec();
   if (!currentListItem) return;
 
   switch (event.type) {
@@ -87,7 +87,7 @@ async function handleActionLogPageEvent(ctx: Context, event: ActionLogPageEvent)
 
         await addPrevSibling(ctx.rxdbService, ctx.now, currentListItem, { id, text: "" });
         ctx.updateStore((store) => {
-          store.actionLogPage.currentListItemId = id;
+          store.actionLogPane.currentListItemId = id;
         });
       });
 
@@ -100,7 +100,7 @@ async function handleActionLogPageEvent(ctx: Context, event: ActionLogPageEvent)
 
         await addNextSibling(ctx.rxdbService, ctx.now, currentListItem, { id, text: "" });
         ctx.updateStore((store) => {
-          store.actionLogPage.currentListItemId = id;
+          store.actionLogPane.currentListItemId = id;
         });
       });
 
@@ -111,7 +111,7 @@ async function handleActionLogPageEvent(ctx: Context, event: ActionLogPageEvent)
       const prevItem = await getAboveItem(ctx.rxdbService, currentListItem);
       if (prevItem) {
         ctx.updateStore((store) => {
-          store.actionLogPage.currentListItemId = prevItem.id;
+          store.actionLogPane.currentListItemId = prevItem.id;
         });
       }
 
@@ -122,7 +122,7 @@ async function handleActionLogPageEvent(ctx: Context, event: ActionLogPageEvent)
       const nextItem = await getBelowItem(ctx.rxdbService, currentListItem);
       if (nextItem) {
         ctx.updateStore((store) => {
-          store.actionLogPage.currentListItemId = nextItem.id;
+          store.actionLogPane.currentListItemId = nextItem.id;
         });
       }
 

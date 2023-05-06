@@ -14,11 +14,11 @@ import { renderAsync } from "@/test";
 export type Store = Omit<StoreWithId, "id">;
 
 const initialStore: Store = {
-  currentPage: "actionLogList",
-  actionLogListPage: {
+  currentPane: "actionLogList",
+  actionLogListPane: {
     currentActionLogId: "",
   },
-  actionLogPage: {
+  actionLogPane: {
     currentListItemId: "",
   },
 } as const;
@@ -111,14 +111,14 @@ if (import.meta.vitest) {
 
       createRoot(() =>
         createEffect(() => {
-          store.actionLogListPage.currentActionLogId;
+          store.actionLogListPane.currentActionLogId;
 
           if (initial) {
             initial = false;
             return;
           }
 
-          resolve(store.actionLogListPage.currentActionLogId);
+          resolve(store.actionLogListPane.currentActionLogId);
         })
       );
     });
@@ -127,12 +127,12 @@ if (import.meta.vitest) {
       collections.stores.findOne("const").$.subscribe((storeDocument) => {
         if (!storeDocument) return;
 
-        resolve(storeDocument.actionLogListPage.currentActionLogId);
+        resolve(storeDocument.actionLogListPane.currentActionLogId);
       });
     });
 
     updateStore((store) => {
-      store.actionLogListPage.currentActionLogId = "placeholderActionLogId";
+      store.actionLogListPane.currentActionLogId = "placeholderActionLogId";
     });
 
     test.expect(await storePromise).toBe("placeholderActionLogId");
@@ -155,9 +155,9 @@ if (import.meta.vitest) {
         const updateStore = updateStore$();
         if (!updateStore) return;
 
-        if (store.actionLogListPage.currentActionLogId === "") {
+        if (store.actionLogListPane.currentActionLogId === "") {
           updateStore((store) => {
-            store.actionLogListPage.currentActionLogId = "placeholderActionLogId";
+            store.actionLogListPane.currentActionLogId = "placeholderActionLogId";
           });
         } else {
           resolve({ collections, store, updateStore });
@@ -165,24 +165,24 @@ if (import.meta.vitest) {
       }
     );
 
-    const storePromise = new Promise<{ currentPage: string; currentListItemId: string }>((resolve) => {
+    const storePromise = new Promise<{ currentPane: string; currentListItemId: string }>((resolve) => {
       let initial = true;
 
       createRoot(() =>
         createEffect(() => {
-          store.actionLogPage.currentListItemId;
+          store.actionLogPane.currentListItemId;
 
           if (initial) {
             initial = false;
             return;
           }
 
-          resolve({ currentPage: store.currentPage, currentListItemId: store.actionLogPage.currentListItemId });
+          resolve({ currentPane: store.currentPane, currentListItemId: store.actionLogPane.currentListItemId });
         })
       );
     });
 
-    const storeDocumentPromise = new Promise<{ currentPage: string; currentListItemId: string }>((resolve) => {
+    const storeDocumentPromise = new Promise<{ currentPane: string; currentListItemId: string }>((resolve) => {
       let initial = true;
 
       collections.stores.findOne("const").$.subscribe((storeDocument) => {
@@ -193,17 +193,17 @@ if (import.meta.vitest) {
           return;
         }
 
-        resolve({ currentPage: storeDocument.currentPage, currentListItemId: storeDocument.actionLogPage.currentListItemId });
+        resolve({ currentPane: storeDocument.currentPane, currentListItemId: storeDocument.actionLogPane.currentListItemId });
       });
     });
 
     updateStore((store) => {
-      store.currentPage = "actionLog";
-      store.actionLogPage.currentListItemId = "placeholderListItemId";
+      store.currentPane = "actionLog";
+      store.actionLogPane.currentListItemId = "placeholderListItemId";
     });
 
-    test.expect(await storePromise).toEqual({ currentPage: "actionLog", currentListItemId: "placeholderListItemId" });
-    test.expect(await storeDocumentPromise).toEqual({ currentPage: "actionLog", currentListItemId: "placeholderListItemId" });
+    test.expect(await storePromise).toEqual({ currentPane: "actionLog", currentListItemId: "placeholderListItemId" });
+    test.expect(await storeDocumentPromise).toEqual({ currentPane: "actionLog", currentListItemId: "placeholderListItemId" });
 
     unmount();
   });
@@ -233,7 +233,7 @@ if (import.meta.vitest) {
 
         createRoot(() =>
           createEffect(() => {
-            store.actionLogListPage.currentActionLogId;
+            store.actionLogListPane.currentActionLogId;
 
             if (initial) {
               initial = false;
@@ -255,7 +255,7 @@ if (import.meta.vitest) {
 
         createRoot(() =>
           createEffect(() => {
-            store.actionLogPage.currentListItemId;
+            store.actionLogPane.currentListItemId;
 
             if (initial) {
               initial = false;
@@ -269,7 +269,7 @@ if (import.meta.vitest) {
     ]);
 
     updateStore((store) => {
-      store.actionLogListPage.currentActionLogId = "placeholderActionLogId";
+      store.actionLogListPane.currentActionLogId = "placeholderActionLogId";
     });
 
     test.expect(await currentActionLogIdPromise).toBe("currentActionLogId updated");
