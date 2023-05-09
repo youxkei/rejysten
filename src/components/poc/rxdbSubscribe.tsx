@@ -8,15 +8,15 @@ export function RxDBSubscribe() {
       collections.tests.findOne("const").$.subscribe((store) => {
         console.log("test updated", store?.toJSON());
       }),
-      collections.locks.findOne("const").$.subscribe((store) => {
-        console.log("locks updated", store?.toJSON());
+      collections.localEvents.findOne("unlock").$.subscribe((store) => {
+        console.log("unlock event emitted", store?.toJSON());
       }),
     ];
 
     console.log("before bulkUpsert");
 
     await collections.tests.bulkUpsert([{ id: "const", num: 0 }]);
-    await collections.locks.bulkUpsert([{ id: "const" }]);
+    await collections.localEvents.bulkUpsert([{ id: "unlock" }]);
 
     console.log("after bulkUpsert");
 

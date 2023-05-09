@@ -1,4 +1,6 @@
+import type { Collections } from "@/services/rxdb/collections";
 import type { JSXElement } from "solid-js";
+import type { Entries } from "type-fest";
 
 import { deleteApp, initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "firebase/auth";
@@ -152,7 +154,9 @@ export function RxDBSyncFirestoreServiceProvider(props: { children: JSXElement }
 
     const firestore = getFirestore(firebase);
 
-    for (const [collectionName, collection] of Object.entries(collections)) {
+    for (const [collectionName, collection] of Object.entries(collections) as Entries<Collections>) {
+      if (collectionName.startsWith("local")) continue;
+
       const firestoreCollection = getCollection(firestore, collectionName);
 
       const syncState = replicateFirestore({

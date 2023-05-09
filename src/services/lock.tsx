@@ -2,16 +2,17 @@ import type { RxDBService } from "@/services/rxdb";
 import type { JSXElement } from "solid-js";
 
 import userEvent from "@testing-library/user-event";
-import { createContext, createMemo, createSignal, startTransition, untrack, useContext } from "solid-js";
+import { createEffect, createContext, createMemo, createSignal, startTransition, untrack, useContext } from "solid-js";
 
 import { useRxDBService } from "@/services/rxdb";
+import { createSubscribeSignal } from "@/services/rxdb/subscribe";
 import { renderWithServicesForTest } from "@/services/test";
 
 export type LockService = {
   rxdbService: RxDBService;
 
   lock$: () => boolean;
-  setLock: (lock: boolean) => void;
+  setLock: (isLocked: boolean) => Promise<void>;
 };
 
 const context = createContext<LockService>();
@@ -19,6 +20,14 @@ const context = createContext<LockService>();
 export function LockServiceProvider(props: { children: JSXElement }) {
   const rxdbService = useRxDBService();
   const [lock$, setLock] = createSignal(false);
+
+  const unlockEvent$ = createSubscribeSignal(() => rxdbService.collections.localEvents.findOne("unlock"));
+  createEffect(() => {
+    const unlockEvent = unlockEvent$();
+    if (!unlockEvent) return;
+
+    startTransition(() => setLock(false));
+  });
 
   return <context.Provider value={{ rxdbService, lock$, setLock }}>{props.children}</context.Provider>;
 }
@@ -35,34 +44,10 @@ export async function runWithLock({ lock$, setLock, rxdbService: { collections }
 
   setLock(true);
 
-  await collections.locks.upsert({ id: "const" });
-
   try {
     await runner();
   } finally {
-    let unsubscribe = () => {};
-
-    const promise = new Promise<void>((resolve) => {
-      let initial = true;
-
-      const subscription = collections.locks.find().$.subscribe(() => {
-        if (initial) {
-          initial = false;
-        } else {
-          resolve();
-        }
-      });
-
-      unsubscribe = () => subscription.unsubscribe();
-    });
-
-    await collections.locks.upsert({ id: "const" });
-
-    await promise;
-
-    startTransition(() => setLock(false));
-
-    unsubscribe();
+    await collections.localEvents.upsert({ id: "unlock" });
   }
 }
 

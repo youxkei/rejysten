@@ -86,7 +86,10 @@ devDependencies:
     version: 6.5.1
   solid-devtools:
     specifier: ^0.26.0
-    version: 0.26.0(@solidjs/meta@0.28.4)(@solidjs/router@0.8.2)(solid-js@1.7.3)(vite@4.2.1)
+    version: 0.26.0(@solidjs/meta@0.28.4)(@solidjs/router@0.8.2)(solid-js@1.7.3)(typescript@5.0.4)(vite@4.2.1)
+  type-fest:
+    specifier: ^3.10.0
+    version: 3.10.0(typescript@5.0.4)
   typescript:
     specifier: ^5.0.4
     version: 5.0.4
@@ -2516,12 +2519,12 @@ packages:
     resolution: {integrity: sha512-+9jVqKhRSpsc591z5vX+X5Yyw+he/HCB4iQ/RYxw35CEPaY1gnsNE43nf9n9AaYjAQrTiI/mOwKUKdUs9vf7Xg==}
     dev: false
 
-  /@solid-devtools/debugger@0.21.0(solid-js@1.7.3):
+  /@solid-devtools/debugger@0.21.0(solid-js@1.7.3)(typescript@5.0.4):
     resolution: {integrity: sha512-5m7JLkh4WgFm0DZrs9JSzTDdZ68rXMv4ixkz4e529aETfhM/Bmek/6jpWSlxsxAn6EwbKHThYWqOyLDAKVQw5w==}
     peerDependencies:
       solid-js: ^1.6.9
     dependencies:
-      '@solid-devtools/shared': 0.11.0(solid-js@1.7.3)
+      '@solid-devtools/shared': 0.11.0(solid-js@1.7.3)(typescript@5.0.4)
       '@solid-primitives/bounds': 0.0.107(solid-js@1.7.3)
       '@solid-primitives/cursor': 0.0.105(solid-js@1.7.3)
       '@solid-primitives/event-bus': 1.0.4(solid-js@1.7.3)
@@ -2531,10 +2534,12 @@ packages:
       '@solid-primitives/scheduled': 1.3.2(solid-js@1.7.3)
       '@solid-primitives/utils': 5.5.2(solid-js@1.7.3)
       solid-js: 1.7.3
-      type-fest: 3.8.0
+      type-fest: 3.10.0(typescript@5.0.4)
+    transitivePeerDependencies:
+      - typescript
     dev: true
 
-  /@solid-devtools/shared@0.11.0(solid-js@1.7.3):
+  /@solid-devtools/shared@0.11.0(solid-js@1.7.3)(typescript@5.0.4):
     resolution: {integrity: sha512-iAIIgpGUucb+2pVlCEvv44C24Fd7J+stOO1a/Mww9OpfQqgZhCOnozAIdHurcMGyILyYgkI+ZJFBGsH+6tiaCA==}
     peerDependencies:
       solid-js: ^1.6.9
@@ -2548,7 +2553,9 @@ packages:
       '@solid-primitives/styles': 0.0.101(solid-js@1.7.3)
       '@solid-primitives/utils': 5.5.2(solid-js@1.7.3)
       solid-js: 1.7.3
-      type-fest: 3.8.0
+      type-fest: 3.10.0(typescript@5.0.4)
+    transitivePeerDependencies:
+      - typescript
     dev: true
 
   /@solid-primitives/bounds@0.0.107(solid-js@1.7.3):
@@ -6462,7 +6469,7 @@ packages:
       - supports-color
     dev: false
 
-  /solid-devtools@0.26.0(@solidjs/meta@0.28.4)(@solidjs/router@0.8.2)(solid-js@1.7.3)(vite@4.2.1):
+  /solid-devtools@0.26.0(@solidjs/meta@0.28.4)(@solidjs/router@0.8.2)(solid-js@1.7.3)(typescript@5.0.4)(vite@4.2.1):
     resolution: {integrity: sha512-YNvdOj2SsAzArmclh5cdCPQNZlDaYp8TsYQWftCGEA7eQ0UJ2dfz+IDEw7KkW6d44tyfd5iUgjDeoht0+B5klA==}
     peerDependencies:
       solid-js: ^1.6.9
@@ -6471,12 +6478,12 @@ packages:
       '@babel/core': 7.21.4
       '@babel/plugin-syntax-typescript': 7.21.4(@babel/core@7.21.4)
       '@babel/types': 7.21.4
-      '@solid-devtools/debugger': 0.21.0(solid-js@1.7.3)
-      '@solid-devtools/shared': 0.11.0(solid-js@1.7.3)
+      '@solid-devtools/debugger': 0.21.0(solid-js@1.7.3)(typescript@5.0.4)
+      '@solid-devtools/shared': 0.11.0(solid-js@1.7.3)(typescript@5.0.4)
       '@solid-primitives/event-bus': 1.0.4(solid-js@1.7.3)
       '@solid-primitives/utils': 5.5.2(solid-js@1.7.3)
       solid-js: 1.7.3
-      type-fest: 3.8.0
+      type-fest: 3.10.0(typescript@5.0.4)
       vite: 4.2.1(@types/node@18.15.11)
     optionalDependencies:
       solid-start: 0.2.26(@solidjs/meta@0.28.4)(@solidjs/router@0.8.2)(solid-js@1.7.3)(vite@4.2.1)
@@ -6492,6 +6499,7 @@ packages:
       - solid-start-static
       - solid-start-vercel
       - supports-color
+      - typescript
     dev: true
 
   /solid-js@1.7.3:
@@ -6892,9 +6900,13 @@ packages:
     engines: {node: '>=10'}
     dev: true
 
-  /type-fest@3.8.0:
-    resolution: {integrity: sha512-FVNSzGQz9Th+/9R6Lvv7WIAkstylfHN2/JYxkyhhmKFYh9At2DST8t6L6Lref9eYO8PXFTfG9Sg1Agg0K3vq3Q==}
+  /type-fest@3.10.0(typescript@5.0.4):
+    resolution: {integrity: sha512-hmAPf1datm+gt3c2mvu0sJyhFy6lTkIGf0GzyaZWxRLnabQfPUqg6tF95RPg6sLxKI7nFLGdFxBcf2/7+GXI+A==}
     engines: {node: '>=14.16'}
+    peerDependencies:
+      typescript: '>=4.7.0'
+    dependencies:
+      typescript: 5.0.4
     dev: true
 
   /typed-array-length@1.0.4:

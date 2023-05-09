@@ -1,34 +1,32 @@
 import type { RxCollection, ExtractDocumentTypeFromTypedRxJsonSchema } from "rxdb";
 
 export const schema = {
-  todos: {
+  stores: {
     schema: {
-      title: "todo schema",
-      description: "todo items",
+      title: "store schema",
+      description: "store",
       version: 0,
       primaryKey: "id",
       type: "object",
       properties: {
-        id: { type: "string", maxLength: 26 },
-        text: { type: "string" },
-        updatedAt: { type: "integer" },
+        id: { type: "string", maxLength: 5, enum: ["const"] },
+        currentPane: { type: "string", enum: ["actionLogList", "actionLog"] },
+        actionLogListPane: {
+          type: "object",
+          properties: {
+            currentActionLogId: { type: "string" },
+          },
+          required: ["currentActionLogId"],
+        },
+        actionLogPane: {
+          type: "object",
+          properties: {
+            currentListItemId: { type: "string" },
+          },
+          required: ["currentListItemId"],
+        },
       },
-      required: ["id", "text", "updatedAt"],
-    },
-  },
-  editors: {
-    schema: {
-      title: "editor schema",
-      description: "editor",
-      version: 0,
-      primaryKey: "id",
-      type: "object",
-      properties: {
-        id: { type: "string", maxLength: 26 },
-        text: { type: "string" },
-        updatedAt: { type: "integer" },
-      },
-      required: ["id", "text", "updatedAt"],
+      required: ["id", "currentPane", "actionLogListPane", "actionLogPane"],
     },
   },
   listItems: {
@@ -73,45 +71,51 @@ export const schema = {
       indexes: ["beginAt"],
     },
   },
-  locks: {
+
+  // local collections should not be synced to the server
+  localEvents: {
     schema: {
-      title: "lock schema",
-      description: "lock",
+      title: "local event schema",
+      description: "local event",
       version: 0,
       primaryKey: "id",
       type: "object",
       properties: {
-        id: { type: "string", maxLength: 5, enum: ["const"] },
+        id: { type: "string", maxLength: 5, enum: ["unlock"] },
       },
       required: ["id"],
     },
   },
-  stores: {
+
+  // collections for PoCs
+  todos: {
     schema: {
-      title: "store schema",
-      description: "store",
+      title: "todo schema",
+      description: "todo items",
       version: 0,
       primaryKey: "id",
       type: "object",
       properties: {
-        id: { type: "string", maxLength: 5, enum: ["const"] },
-        currentPane: { type: "string", enum: ["actionLogList", "actionLog"] },
-        actionLogListPane: {
-          type: "object",
-          properties: {
-            currentActionLogId: { type: "string" },
-          },
-          required: ["currentActionLogId"],
-        },
-        actionLogPane: {
-          type: "object",
-          properties: {
-            currentListItemId: { type: "string" },
-          },
-          required: ["currentListItemId"],
-        },
+        id: { type: "string", maxLength: 26 },
+        text: { type: "string" },
+        updatedAt: { type: "integer" },
       },
-      required: ["id", "currentPane", "actionLogListPane", "actionLogPane"],
+      required: ["id", "text", "updatedAt"],
+    },
+  },
+  editors: {
+    schema: {
+      title: "editor schema",
+      description: "editor",
+      version: 0,
+      primaryKey: "id",
+      type: "object",
+      properties: {
+        id: { type: "string", maxLength: 26 },
+        text: { type: "string" },
+        updatedAt: { type: "integer" },
+      },
+      required: ["id", "text", "updatedAt"],
     },
   },
   tests: {

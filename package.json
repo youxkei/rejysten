@@ -37,6 +37,7 @@
     "happy-dom": "^9.1.9",
     "patch-package": "^6.5.1",
     "solid-devtools": "^0.26.0",
+    "type-fest": "^3.10.0",
     "typescript": "^5.0.4",
     "vite": "^4.2.1",
     "vite-plugin-checker": "^0.5.6",
