@@ -31,9 +31,11 @@ export function EventHandlerServiceProvider(props: { children: JSXElement }) {
   createEffect(() => {
     const event = currentEvent$();
 
-    untrack(() => {
-      handle({ now: Date.now(), rxdbService, storeService, lockService }, event);
-    });
+    untrack(() =>
+      runWithLock(lockService, async () => {
+        await handle({ now: Date.now(), rxdbService, storeService, lockService }, event);
+      })
+    );
   });
 
   return props.children;
@@ -65,38 +67,34 @@ async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent)
 
   switch (event.type) {
     case "indent": {
-      await runWithLock(ctx.lockService, () => indent(ctx.rxdbService, ctx.now, currentListItem));
+      await indent(ctx.rxdbService, ctx.now, currentListItem);
 
       break;
     }
 
     case "dedent": {
-      await runWithLock(ctx.lockService, () => dedent(ctx.rxdbService, ctx.now, currentListItem));
+      await dedent(ctx.rxdbService, ctx.now, currentListItem);
 
       break;
     }
 
     case "addPrev": {
-      await runWithLock(ctx.lockService, async () => {
-        const id = Ulid.generate({ time: ctx.now }).toCanonical();
+      const id = Ulid.generate({ time: ctx.now }).toCanonical();
 
-        await addPrevSibling(ctx.rxdbService, ctx.now, currentListItem, { id, text: "" });
-        ctx.storeService.updateStore((store) => {
-          store.actionLogPane.currentListItemId = id;
-        });
+      await addPrevSibling(ctx.rxdbService, ctx.now, currentListItem, { id, text: "" });
+      ctx.storeService.updateStore((store) => {
+        store.actionLogPane.currentListItemId = id;
       });
 
       break;
     }
 
     case "addNext": {
-      await runWithLock(ctx.lockService, async () => {
-        const id = Ulid.generate({ time: ctx.now }).toCanonical();
+      const id = Ulid.generate({ time: ctx.now }).toCanonical();
 
-        await addNextSibling(ctx.rxdbService, ctx.now, currentListItem, { id, text: "" });
-        ctx.storeService.updateStore((store) => {
-          store.actionLogPane.currentListItemId = id;
-        });
+      await addNextSibling(ctx.rxdbService, ctx.now, currentListItem, { id, text: "" });
+      ctx.storeService.updateStore((store) => {
+        store.actionLogPane.currentListItemId = id;
       });
 
       break;
