@@ -8,7 +8,7 @@ export async function renderAsync<T extends object>(
   resolver: (resolve: (value: T) => void) => void
 ) {
   let resolve: (value: T) => void;
-  let promise = new Promise<T>((r) => (resolve = r));
+  const promise = new Promise<T>((r) => (resolve = r));
 
   const result = render(() => (
     <Suspense>
@@ -26,5 +26,5 @@ export async function renderAsync<T extends object>(
 
   const value = await promise;
 
-  return { ...value, ...result! };
+  return { ...value, ...result };
 }

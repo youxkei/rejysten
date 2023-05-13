@@ -13,13 +13,13 @@ export function RxdbFirestoreSyncConfig() {
   return (
     <>
       <div>
-        <input onInput={(e) => setConfigYAMLWithStopSyncing(e.currentTarget.value ?? "")} value={configYAML$()} />
+        <input onInput={(e) => setConfigYAMLWithStopSyncing(e.currentTarget.value)} value={configYAML$()} />
       </div>
       <button
         disabled={syncButtonDisabled$()}
-        onClick={() => {
+        onClick={async () => {
           setSyncButtonDisabled(true);
-          startTransition(() => {
+          await startTransition(() => {
             startSyncing();
           });
         }}

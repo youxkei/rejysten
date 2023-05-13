@@ -95,8 +95,8 @@ export function RxDBSyncFirestoreServiceProvider(props: { children: JSXElement }
 
     const app = initializeApp(config);
 
-    onCleanup(() => {
-      deleteApp(app);
+    onCleanup(async () => {
+      await deleteApp(app);
     });
 
     return app;
@@ -175,8 +175,8 @@ export function RxDBSyncFirestoreServiceProvider(props: { children: JSXElement }
         stopSyncingWithError(`${collectionName}: ${error}`);
       });
 
-      onCleanup(() => {
-        syncState.cancel();
+      onCleanup(async () => {
+        await syncState.cancel();
       });
     }
   });

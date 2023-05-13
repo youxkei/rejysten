@@ -3,7 +3,6 @@ import { render, Suspense } from "solid-js/web";
 
 import { ErrorBoundary } from "@/components/errorBoundary";
 import { ShowItemList } from "@/components/poc/showItemList";
-import { ShowRedraw } from "@/components/poc/showRedraw";
 import { RxdbFirestoreSyncConfig } from "@/components/rxdbFirestoreSyncConfig";
 import { EventServiceProvider } from "@/services/event";
 import { EventEmitterServiceProvider } from "@/services/eventEmitter";

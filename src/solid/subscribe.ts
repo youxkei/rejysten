@@ -8,7 +8,7 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
   let setResource: ((value: Value) => void) | undefined;
   let mutateResource: ((value: Value) => void) | undefined;
 
-  const [resource, { mutate }] = createResource<Value | InitialValue, Source, unknown>(
+  const [resource, { mutate }] = createResource<Value | InitialValue, Source>(
     source$,
     (source) => {
       let firstValue: { value: Value } | undefined;

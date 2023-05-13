@@ -12,7 +12,7 @@ export type LockService = {
   rxdbService: RxDBService;
 
   lock$: () => boolean;
-  setLock: (isLocked: boolean) => Promise<void>;
+  setLock: (isLocked: boolean) => void;
 };
 
 const context = createContext<LockService>();
@@ -22,11 +22,11 @@ export function LockServiceProvider(props: { children: JSXElement }) {
   const [lock$, setLock] = createSignal(false);
 
   const unlockEvent$ = createSubscribeSignal(() => rxdbService.collections.localEvents.findOne("unlock"));
-  createEffect(() => {
+  createEffect(async () => {
     const unlockEvent = unlockEvent$();
     if (!unlockEvent) return;
 
-    startTransition(() => setLock(false));
+    await startTransition(() => setLock(false));
   });
 
   return <context.Provider value={{ rxdbService, lock$, setLock }}>{props.children}</context.Provider>;
@@ -92,6 +92,7 @@ if (import.meta.vitest) {
 
       test.expect(container).toMatchSnapshot("initial");
 
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       user.click(container.querySelector("button")!);
 
       await findByText("updated x");
@@ -132,6 +133,7 @@ if (import.meta.vitest) {
 
       test.expect(container).toMatchSnapshot("initial");
 
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       user.click(container.querySelector("button")!);
 
       await findByText("updated x");
@@ -174,6 +176,7 @@ if (import.meta.vitest) {
 
       test.expect(container).toMatchSnapshot("initial");
 
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       user.click(container.querySelector("button")!);
 
       await findByText("updated x");

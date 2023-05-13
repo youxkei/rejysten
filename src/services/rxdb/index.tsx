@@ -23,9 +23,9 @@ function createRxDBServiceSignal(databaseCreator$: () => RxDatabaseCreator<Dexie
   const [database$] = createResource(databaseCreator$, async (databaseCreator) => {
     let database: RxDatabase<Collections> | undefined;
 
-    onCleanup(() => {
+    onCleanup(async () => {
       if (database) {
-        database.destroy();
+        await database.destroy();
       }
     });
 
@@ -37,15 +37,17 @@ function createRxDBServiceSignal(databaseCreator$: () => RxDatabaseCreator<Dexie
   const [collections$] = createResource(database$, async (database) => {
     let collections: Collections | undefined;
 
-    onCleanup(() => {
+    onCleanup(async () => {
       if (collections) {
-        for (const [_, collection] of Object.entries(collections)) {
-          collection.destroy();
+        for (const [, collection] of Object.entries(collections)) {
+          await collection.destroy();
         }
       }
     });
 
-    collections = await database.addCollections(schema as any); // TODO: somehow type check fails so far
+    // TODO: somehow type check fails so far
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+    collections = await database.addCollections(schema as any);
 
     return collections;
   });

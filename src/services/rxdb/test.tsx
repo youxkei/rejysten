@@ -19,6 +19,8 @@ export function createDatabaseCreatorForTest(tid: string) {
 
 export async function createRxDBServiceForTest(tid: string) {
   const database = await createRxDatabase<Collections>(createDatabaseCreatorForTest(tid));
+  // TODO: somehow type check fails so far
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
   const collections = (await database.addCollections(schema as any)) as Collections; // TODO: somehow type check fails so far
 
   return { database, collections };

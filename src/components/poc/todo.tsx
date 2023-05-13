@@ -16,8 +16,8 @@ export function Todo() {
 
   const text$ = () => editor$()?.text ?? "";
 
-  const onInput = (event: { currentTarget: HTMLInputElement }) => {
-    collections.editors.upsert({
+  const onInput = async (event: { currentTarget: HTMLInputElement }) => {
+    await collections.editors.upsert({
       id: "const",
       text: event.currentTarget.value,
       updatedAt: Date.now(),
@@ -46,7 +46,7 @@ export function Todo() {
   return (
     <div>
       <ul>
-        <For each={todos$()}>{(todo, _) => <li>{todo.text}</li>}</For>
+        <For each={todos$()}>{(todo) => <li>{todo.text}</li>}</For>
       </ul>
       <p>{text$()}</p>
       <input value={text$()} onInput={onInput} />

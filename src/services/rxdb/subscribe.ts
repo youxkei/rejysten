@@ -4,7 +4,7 @@ import { createMemo, onCleanup } from "solid-js";
 
 import { createSubscribeWithResource } from "@/solid/subscribe";
 
-export function createSubscribeSignal<T, U>(query$: () => RxQuery<any, RxDocument<T, U> | null> | undefined) {
+export function createSubscribeSignal<T, U>(query$: () => RxQuery<T, RxDocument<T, U> | null> | undefined) {
   const document$ = createSubscribeWithResource(
     query$,
     (query, setValue: (value: { content: RxDocument<T, U> | null }) => void) => {
@@ -22,7 +22,7 @@ export function createSubscribeSignal<T, U>(query$: () => RxQuery<any, RxDocumen
   return () => document$()?.content;
 }
 
-export function createSubscribeAllSignal<T, U>(query$: () => RxQuery<any, RxDocument<T, U>[]> | undefined) {
+export function createSubscribeAllSignal<T, U>(query$: () => RxQuery<T, RxDocument<T, U>[]> | undefined) {
   const documents$ = createSubscribeWithResource(
     query$,
     (query, setValue: (value: RxDocument<T, U>[]) => void) => {

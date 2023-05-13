@@ -49,7 +49,9 @@ export function EventEmitterServiceProvider(props: { children: JSXElement }) {
   return props.children;
 }
 
-function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {}
+function emitActionLogListPaneEvent(_ctx: Context, _event: KeyboardEvent) {
+  // TODO
+}
 
 function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent) {
   const { shiftKey } = event;

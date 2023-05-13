@@ -26,10 +26,10 @@ export function EventHandlerServiceProvider(props: { children: JSXElement }) {
   const lockService = useLockService();
   const eventService = useEventService();
 
-  createEffect(() => {
+  createEffect(async () => {
     const event = eventService.currentEvent$();
 
-    untrack(() => runWithLock(lockService, () => handle({ now: Date.now(), rxdbService, storeService, eventService }, event)));
+    await untrack(() => runWithLock(lockService, () => handle({ now: Date.now(), rxdbService, storeService, eventService }, event)));
   });
 
   return props.children;
@@ -62,7 +62,9 @@ async function handlePaneEvent(ctx: Context, event: PaneEvent) {
   }
 }
 
-async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPaneEvent) {}
+async function handleActionLogListPaneEvent(_ctx: Context, _event: ActionLogListPaneEvent) {
+  // TODO
+}
 
 async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent) {
   if (ctx.storeService.store.currentPane !== "actionLog") return;

@@ -22,9 +22,9 @@ export function Lazy() {
         {"Lazy: "}
         <input
           value={message()}
-          onInput={(e) => {
+          onInput={async (e) => {
             const newMessage = e.currentTarget.value;
-            startTransition(() => setMessage(newMessage));
+            await startTransition(() => setMessage(newMessage));
           }}
         />
       </span>

@@ -138,7 +138,7 @@ async function unlinkFromSiblings(service: RxDBService, updatedAt: number, item:
   }
 
   if (nextItem) {
-    nextItem.patch({
+    await nextItem.patch({
       prevId: prevItem?.id ?? "",
       updatedAt,
     });
@@ -154,7 +154,7 @@ export async function getAboveItem(service: RxDBService, baseItem: RxDocument<Li
   if (prevItem) {
     let currentItem = prevItem;
 
-    while (true) {
+    for (;;) {
       const lastChildItem = await getLastChildItem(service, currentItem);
       if (!lastChildItem) return currentItem;
 
@@ -764,7 +764,6 @@ if (import.meta.vitest) {
     });
 
     test("remove item with next item without prev item", async (test) => {
-      const tid = test.meta.id;
       const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
