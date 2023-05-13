@@ -1,5 +1,4 @@
-import type { Event, ActionLogListPaneEvent, ActionLogPaneEvent } from "@/services/event";
-import type { LockService } from "@/services/lock";
+import type { Event, ActionLogListPaneEvent, ActionLogPaneEvent, PaneEvent, EventService } from "@/services/event";
 import type { RxDBService } from "@/services/rxdb";
 import type { StoreService } from "@/services/store";
 import type { JSXElement } from "solid-js";
@@ -18,42 +17,48 @@ type Context = {
 
   rxdbService: RxDBService;
   storeService: StoreService;
-  lockService: LockService;
+  eventService: EventService;
 };
 
 export function EventHandlerServiceProvider(props: { children: JSXElement }) {
   const rxdbService = useRxDBService();
   const storeService = useStoreService();
   const lockService = useLockService();
-
-  const { currentEvent$ } = useEventService();
+  const eventService = useEventService();
 
   createEffect(() => {
-    const event = currentEvent$();
+    const event = eventService.currentEvent$();
 
-    untrack(() =>
-      runWithLock(lockService, async () => {
-        await handle({ now: Date.now(), rxdbService, storeService, lockService }, event);
-      })
-    );
+    untrack(() => runWithLock(lockService, () => handle({ now: Date.now(), rxdbService, storeService, eventService }, event)));
   });
 
   return props.children;
 }
 
 async function handle(ctx: Context, event: Event) {
-  switch (event.pane) {
+  switch (event.type) {
     case "initial":
       // do nothing
       break;
 
-    case "actionLogList":
+    case "pane":
+      await handlePaneEvent(ctx, event.event);
+
+      break;
+  }
+}
+
+async function handlePaneEvent(ctx: Context, event: PaneEvent) {
+  switch (event.pane) {
+    case "actionLogList": {
       await handleActionLogListPaneEvent(ctx, event);
       break;
+    }
 
-    case "actionLog":
+    case "actionLog": {
       await handleActionLogPaneEvent(ctx, event);
       break;
+    }
   }
 }
 
@@ -118,6 +123,28 @@ async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent)
           store.actionLogPane.currentListItemId = nextItem.id;
         });
       }
+
+      break;
+    }
+
+    case "enterInsertMode": {
+      await ctx.storeService.updateStore((store) => {
+        store.mode = "insert";
+        store.editor.initialPosition = event.initialPosition;
+      });
+      break;
+    }
+
+    case "changeText": {
+      await currentListItem.patch({ text: event.newText });
+
+      break;
+    }
+
+    case "leaveInsertMode": {
+      await ctx.storeService.updateStore((store) => {
+        store.mode = "normal";
+      });
 
       break;
     }

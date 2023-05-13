@@ -10,6 +10,18 @@ export const schema = {
       type: "object",
       properties: {
         id: { type: "string", maxLength: 5, enum: ["const"] },
+
+        mode: { type: "string", enum: ["normal", "insert"] },
+
+        editor: {
+          type: "object",
+          properties: {
+            initialPosition: { type: "string", enum: ["start", "end"] },
+          },
+          required: ["initialPosition"],
+        },
+
+        // pane related states
         currentPane: { type: "string", enum: ["actionLogList", "actionLog"] },
         actionLogListPane: {
           type: "object",
@@ -26,7 +38,7 @@ export const schema = {
           required: ["currentListItemId"],
         },
       },
-      required: ["id", "currentPane", "actionLogListPane", "actionLogPane"],
+      required: ["id", "editor", "currentPane", "actionLogListPane", "actionLogPane"],
     },
   },
   listItems: {

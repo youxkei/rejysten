@@ -1,28 +1,40 @@
-import type { ListItem } from "@/services/rxdb/collections/listItem";
+import type { ListItemDocument } from "@/services/rxdb/collections/listItem";
 
-import { Show, For, ErrorBoundary } from "solid-js";
+import { Show, For, ErrorBoundary, createMemo } from "solid-js";
 
 import { BulletList } from "@/components/bulletList";
+import { Editor } from "@/components/editor";
 import { createSignalWithLock, runWithLock, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeSignal, createSubscribeAllSignal } from "@/services/rxdb/subscribe";
+import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
 
 export function ItemList(props: { id: string; selectedId: string }) {
-  const rxdbService = useRxDBService();
+  const { store } = useStoreService();
+  const { collections } = useRxDBService();
   const lockService = useLockService();
 
-  const listItem$ = createSubscribeSignal(() => rxdbService.collections.listItems.findOne(props.id));
-  const listItemWithLock$ = createSignalWithLock(lockService, listItem$, undefined);
+  const listItem$ = createSignalWithLock(
+    lockService,
+    createSubscribeSignal(() => collections.listItems.findOne(props.id)),
+    undefined
+  );
+  const isSelected$ = createSignalWithLock(lockService, () => props.id === props.selectedId, false);
+  const isEditor$ = () => isSelected$() && store.mode === "insert";
 
   return (
-    <Show when={listItemWithLock$()}>
+    <Show when={listItem$()}>
       {(listItem$) => (
         <BulletList
           bullet={"•"}
-          item={<span>{listItem$().text}</span>}
+          item={
+            <Show when={isEditor$()} fallback={<span>{listItem$().text}</span>}>
+              <Editor text={listItem$().text} />
+            </Show>
+          }
           child={<ItemListChildren parentId={props.id} selectedId={props.selectedId} />}
-          isSelected={props.id === props.selectedId}
+          isSelected={isSelected$()}
         />
       )}
     </Show>
@@ -47,8 +59,8 @@ export function ItemListChildren(props: { parentId: string; selectedId: string }
       return [];
     }
 
-    const sortedChildren = [] as ListItem[];
-    const childMap = new Map<string, ListItem>();
+    const sortedChildren = [] as ListItemDocument[];
+    const childMap = new Map<string, ListItemDocument>();
     let currentChildId: string | undefined;
 
     for (const child of children) {
@@ -80,7 +92,27 @@ export function ItemListChildren(props: { parentId: string; selectedId: string }
     return sortedChildren;
   };
 
-  return <For each={sortedChildren$()}>{(child) => <ItemList id={child.id} selectedId={props.selectedId} />}</For>;
+  const childrenWithMemo$ = createMemo<{ value: ListItemDocument[]; changed: boolean }>(
+    (prev) => {
+      const children = sortedChildren$();
+
+      if (prev.value.length !== children.length) {
+        return { value: children, changed: true };
+      }
+
+      for (let i = 0; i < children.length; i++) {
+        if (prev.value[i].prevId !== children[i].prevId || prev.value[i].nextId !== children[i].nextId) {
+          return { value: children, changed: true };
+        }
+      }
+
+      return { value: prev.value, changed: false };
+    },
+    { value: [], changed: false },
+    { equals: (_, next) => !next.changed }
+  );
+
+  return <For each={childrenWithMemo$().value}>{(child) => <ItemList id={child.id} selectedId={props.selectedId} />}</For>;
 }
 
 if (import.meta.vitest) {

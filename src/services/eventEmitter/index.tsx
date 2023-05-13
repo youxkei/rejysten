@@ -54,44 +54,76 @@ function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {}
 function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent) {
   const { shiftKey } = event;
 
-  switch (event.code) {
-    case "KeyK": {
-      if (!shiftKey) {
-        ctx.emitEvent({ pane: "actionLog", type: "moveAbove" });
-        event.preventDefault();
+  switch (ctx.store.mode) {
+    case "normal": {
+      switch (event.code) {
+        case "KeyK": {
+          if (!shiftKey) {
+            ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "moveAbove" } });
+            event.preventDefault();
+          }
+
+          break;
+        }
+
+        case "KeyJ": {
+          if (!shiftKey) {
+            ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "moveBelow" } });
+            event.preventDefault();
+          }
+
+          break;
+        }
+
+        case "KeyO": {
+          if (shiftKey) {
+            ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "addPrev" } });
+          } else {
+            ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "addNext" } });
+          }
+          event.preventDefault();
+
+          break;
+        }
+
+        case "Tab": {
+          if (shiftKey) {
+            ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "dedent" } });
+          } else {
+            ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "indent" } });
+          }
+          event.preventDefault();
+
+          break;
+        }
+
+        case "KeyI": {
+          ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "enterInsertMode", initialPosition: "start" } });
+          event.preventDefault();
+
+          break;
+        }
+
+        case "KeyA": {
+          ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "enterInsertMode", initialPosition: "end" } });
+          event.preventDefault();
+
+          break;
+        }
       }
 
       break;
     }
 
-    case "KeyJ": {
-      if (!shiftKey) {
-        ctx.emitEvent({ pane: "actionLog", type: "moveBelow" });
-        event.preventDefault();
+    case "insert": {
+      switch (event.code) {
+        case "Escape": {
+          ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "leaveInsertMode" } });
+          event.preventDefault();
+
+          break;
+        }
       }
-
-      break;
-    }
-
-    case "KeyO": {
-      if (shiftKey) {
-        ctx.emitEvent({ pane: "actionLog", type: "addPrev" });
-      } else {
-        console.log("event:", { page: "actionLog", type: "addNext" });
-        ctx.emitEvent({ pane: "actionLog", type: "addNext" });
-      }
-      event.preventDefault();
-
-      break;
-    }
-
-    case "Tab": {
-      if (shiftKey) {
-        ctx.emitEvent({ pane: "actionLog", type: "dedent" });
-      } else {
-        ctx.emitEvent({ pane: "actionLog", type: "indent" });
-      }
-      event.preventDefault();
 
       break;
     }

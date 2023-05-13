@@ -12,6 +12,12 @@ import { renderWithServicesForTest } from "@/services/test";
 export type Store = Omit<StoreWithId, "id">;
 
 const initialStore: Store = {
+  mode: "normal",
+
+  editor: {
+    initialPosition: "start",
+  },
+
   currentPane: "actionLogList",
   actionLogListPane: {
     currentActionLogId: "",
