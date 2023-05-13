@@ -23,7 +23,7 @@ const initialStore: Store = {
 
 export type StoreService = {
   store: Store;
-  updateStore: (updater: (store: Store) => void) => void;
+  updateStore: (updater: (store: Store) => void) => Promise<void>;
 };
 
 const context = createContext<StoreService>();
@@ -33,8 +33,8 @@ export function StoreServiceProvider(props: { children: JSXElement }) {
 
   const [store, setStore] = createStore<Store>(structuredClone(initialStore));
 
-  function updateStore(updater: (store: Store) => void) {
-    collections.stores.upsert({ id: "const", ...produce(structuredClone(unwrap(store)), updater) });
+  async function updateStore(updater: (store: Store) => void) {
+    await collections.stores.upsert({ id: "const", ...produce(structuredClone(unwrap(store)), updater) });
   }
 
   const storeDocument$ = createSubscribeSignal(() => collections.stores.findOne("const"));
@@ -105,7 +105,7 @@ if (import.meta.vitest) {
       });
     });
 
-    updateStore((store) => {
+    await updateStore((store) => {
       store.actionLogListPane.currentActionLogId = "placeholderActionLogId";
     });
 
@@ -122,7 +122,7 @@ if (import.meta.vitest) {
       storeService: { store, updateStore },
     } = await renderWithServicesForTest(test.meta.id, (props) => props.children);
 
-    updateStore((store) => {
+    await updateStore((store) => {
       store.actionLogListPane.currentActionLogId = "placeholderActionLogId";
     });
 
@@ -168,7 +168,7 @@ if (import.meta.vitest) {
       });
     });
 
-    updateStore((store) => {
+    await updateStore((store) => {
       store.currentPane = "actionLog";
       store.actionLogPane.currentListItemId = "placeholderListItemId";
     });
@@ -229,7 +229,7 @@ if (import.meta.vitest) {
       }),
     ]);
 
-    updateStore((store) => {
+    await updateStore((store) => {
       store.actionLogListPane.currentActionLogId = "placeholderActionLogId";
     });
 

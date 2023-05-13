@@ -82,7 +82,7 @@ async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent)
       const id = Ulid.generate({ time: ctx.now }).toCanonical();
 
       await addPrevSibling(ctx.rxdbService, ctx.now, currentListItem, { id, text: "" });
-      ctx.storeService.updateStore((store) => {
+      await ctx.storeService.updateStore((store) => {
         store.actionLogPane.currentListItemId = id;
       });
 
@@ -93,7 +93,7 @@ async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent)
       const id = Ulid.generate({ time: ctx.now }).toCanonical();
 
       await addNextSibling(ctx.rxdbService, ctx.now, currentListItem, { id, text: "" });
-      ctx.storeService.updateStore((store) => {
+      await ctx.storeService.updateStore((store) => {
         store.actionLogPane.currentListItemId = id;
       });
 
@@ -103,7 +103,7 @@ async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent)
     case "moveAbove": {
       const prevItem = await getAboveItem(ctx.rxdbService, currentListItem);
       if (prevItem) {
-        ctx.storeService.updateStore((store) => {
+        await ctx.storeService.updateStore((store) => {
           store.actionLogPane.currentListItemId = prevItem.id;
         });
       }
@@ -114,7 +114,7 @@ async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent)
     case "moveBelow": {
       const nextItem = await getBelowItem(ctx.rxdbService, currentListItem);
       if (nextItem) {
-        ctx.storeService.updateStore((store) => {
+        await ctx.storeService.updateStore((store) => {
           store.actionLogPane.currentListItemId = nextItem.id;
         });
       }
