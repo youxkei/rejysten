@@ -62,12 +62,15 @@ async function handlePaneEvent(ctx: Context, event: PaneEvent) {
   }
 }
 
-async function handleActionLogListPaneEvent(_ctx: Context, _event: ActionLogListPaneEvent) {
+async function handleActionLogListPaneEvent(ctx: Context, _event: ActionLogListPaneEvent) {
+  if (ctx.storeService.store.currentPane !== "actionLogList") throw new Error("ActionLogListPaneEvent must be emitted when currentPane is actionLogList");
+
   // TODO
+  await Promise.resolve();
 }
 
 async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent) {
-  if (ctx.storeService.store.currentPane !== "actionLog") return;
+  if (ctx.storeService.store.currentPane !== "actionLog") throw new Error("ActionLogPaneEvent must be emitted when currentPane is actionLog");
 
   const currentListItem = await ctx.rxdbService.collections.listItems.findOne(ctx.storeService.store.actionLogPane.currentListItemId).exec();
   if (!currentListItem) return;
@@ -137,7 +140,7 @@ async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent)
       break;
     }
 
-    case "changeText": {
+    case "changeEditorText": {
       await currentListItem.patch({ text: event.newText });
 
       break;

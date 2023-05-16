@@ -31,7 +31,7 @@ export function Editor(props: { text: string }) {
   return (
     <input
       ref={input}
-      onInput={(event) => emitEvent({ type: "pane", event: { pane: store.currentPane, type: "changeText", newText: event.currentTarget.value } })}
+      onInput={(event) => emitEvent({ type: "pane", event: { pane: store.currentPane, type: "changeEditorText", newText: event.currentTarget.value } })}
       value={props.text}
     />
   );
