@@ -79,8 +79,8 @@ export const schema = {
 
         updatedAt: { type: "integer" },
       },
-      required: ["id", "text", "endAt", "beginAt", "updatedAt"],
-      indexes: ["beginAt"],
+      required: ["id", "text", "beginAt", "endAt", "updatedAt"],
+      indexes: ["beginAt", "endAt"],
     },
   },
 

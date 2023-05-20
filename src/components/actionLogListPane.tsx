@@ -1,16 +1,32 @@
 import type { ActionLogDocument } from "@/services/rxdb/collections/actionLog";
 
+import { Temporal } from "@js-temporal/polyfill";
 import { For } from "solid-js";
 
 import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeAllSignal } from "@/services/rxdb/subscribe";
 
-export function ActionLogList() {
+function epochMillisecondsToString(epochMilliseconds: number) {
+  if (epochMilliseconds === 0) {
+    return "N/A";
+  }
+
+  return Temporal.Instant.fromEpochMilliseconds(epochMilliseconds).toZonedDateTimeISO("Asia/Tokyo").toPlainTime().toString({ smallestUnit: "second" });
+}
+
+export function ActionLogListPane() {
   const { collections } = useRxDBService();
 
   const actionLogs$ = createSubscribeAllSignal(() =>
     collections.actionLogs.find({
-      selector: { beginAt: { $gt: 0 } },
+      selector: { beginAt: { $gt: 0 }, endAt: { $gt: 0 } },
+      sort: [{ beginAt: "asc" }],
+    })
+  );
+
+  const ongoingActionLogs$ = createSubscribeAllSignal(() =>
+    collections.actionLogs.find({
+      selector: { beginAt: { $gt: 0 }, endAt: 0 },
       sort: [{ beginAt: "asc" }],
     })
   );
@@ -20,6 +36,7 @@ export function ActionLogList() {
   return (
     <>
       <For each={actionLogs$()}>{(actionLog) => <ActionLog actionLog={actionLog} />}</For>
+      <For each={ongoingActionLogs$()}>{(actionLog) => <ActionLog actionLog={actionLog} />}</For>
       <For each={tentativeActionLogs$()}>{(actionLog) => <ActionLog actionLog={actionLog} />}</For>
     </>
   );
@@ -28,9 +45,9 @@ export function ActionLogList() {
 function ActionLog(props: { actionLog: ActionLogDocument }) {
   return (
     <div>
-      <span>{props.actionLog.beginAt}</span>
-      <span>→</span>
-      <span>{props.actionLog.endAt}</span>
+      <span>{epochMillisecondsToString(props.actionLog.beginAt)}</span>
+      <span>～</span>
+      <span>{epochMillisecondsToString(props.actionLog.endAt)}</span>
       <span>：</span>
       <span>{props.actionLog.text}</span>
     </div>
