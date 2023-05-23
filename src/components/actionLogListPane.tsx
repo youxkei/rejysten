@@ -16,7 +16,10 @@ function epochMillisecondsToString(epochMilliseconds: number) {
     return "N/A";
   }
 
-  return Temporal.Instant.fromEpochMilliseconds(epochMilliseconds).toZonedDateTimeISO("Asia/Tokyo").toPlainTime().toString({ smallestUnit: "second" });
+  return Temporal.Instant.fromEpochMilliseconds(epochMilliseconds)
+    .toZonedDateTimeISO(Temporal.Now.timeZoneId())
+    .toPlainTime()
+    .toString({ smallestUnit: "second" });
 }
 
 function ActionLog(props: { actionLog: ActionLogDocument }) {
