@@ -56,6 +56,31 @@ export const styles = {
       backgroundColor: nord[1],
     }),
   },
+
+  actionLogList: {
+    container: style({
+      display: "grid",
+      gridTemplateColumns: "8ch 2ch 8ch auto",
+      gridGap: "0.5ch 0.5ch",
+    }),
+  },
+  actionLog: {
+    beginAt: style({
+      gridColumnStart: 1,
+      justifySelf: "center",
+    }),
+    waveDash: style({
+      gridColumnStart: 2,
+      justifySelf: "center",
+    }),
+    endAt: style({
+      gridColumnStart: 3,
+      justifySelf: "center",
+    }),
+    text: style({
+      gridColumnStart: 4,
+    }),
+  },
 };
 
 globalStyle("body", {
