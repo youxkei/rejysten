@@ -6,7 +6,7 @@ export function BulletList(props: { bullet: JSX.Element; item: JSX.Element; chil
   return (
     <div class={styles.bulletList.container}>
       <div class={styles.bulletList.bullet}>{props.bullet}</div>
-      <div class={`${styles.bulletList.item} ${props.isSelected ? styles.bulletList.selected : ""}`}>{props.item}</div>
+      <div classList={{ [styles.bulletList.item]: true, [styles.selected]: props.isSelected }}>{props.item}</div>
       <div class={styles.bulletList.child}>{props.child}</div>
     </div>
   );

@@ -11,7 +11,7 @@ exports[`'nested items' > text changes 1`] = `
       •
     </div>
     <div
-      class="bulletList_item "
+      class="bulletList_item"
     >
       <span>
         root
@@ -29,7 +29,7 @@ exports[`'nested items' > text changes 1`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             foo
@@ -47,7 +47,7 @@ exports[`'nested items' > text changes 1`] = `
               •
             </div>
             <div
-              class="bulletList_item "
+              class="bulletList_item"
             >
               <span>
                 foofoo
@@ -68,7 +68,7 @@ exports[`'nested items' > text changes 1`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             bar
@@ -94,7 +94,7 @@ exports[`'nested items' > text changes 2`] = `
       •
     </div>
     <div
-      class="bulletList_item "
+      class="bulletList_item"
     >
       <span>
         changed root
@@ -112,7 +112,7 @@ exports[`'nested items' > text changes 2`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             foo
@@ -130,7 +130,7 @@ exports[`'nested items' > text changes 2`] = `
               •
             </div>
             <div
-              class="bulletList_item "
+              class="bulletList_item"
             >
               <span>
                 foofoo
@@ -151,7 +151,7 @@ exports[`'nested items' > text changes 2`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             bar
@@ -177,7 +177,7 @@ exports[`'nested items' > text changes 3`] = `
       •
     </div>
     <div
-      class="bulletList_item "
+      class="bulletList_item"
     >
       <span>
         changed root
@@ -195,7 +195,7 @@ exports[`'nested items' > text changes 3`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             changed foo
@@ -213,7 +213,7 @@ exports[`'nested items' > text changes 3`] = `
               •
             </div>
             <div
-              class="bulletList_item "
+              class="bulletList_item"
             >
               <span>
                 foofoo
@@ -234,7 +234,7 @@ exports[`'nested items' > text changes 3`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             bar
@@ -260,7 +260,7 @@ exports[`'swapped items' > text changes 1`] = `
       •
     </div>
     <div
-      class="bulletList_item "
+      class="bulletList_item"
     >
       <span>
         root
@@ -278,7 +278,7 @@ exports[`'swapped items' > text changes 1`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             bar
@@ -297,7 +297,7 @@ exports[`'swapped items' > text changes 1`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             foo
@@ -323,7 +323,7 @@ exports[`'swapped items' > text changes 2`] = `
       •
     </div>
     <div
-      class="bulletList_item "
+      class="bulletList_item"
     >
       <span>
         changed root
@@ -341,7 +341,7 @@ exports[`'swapped items' > text changes 2`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             bar
@@ -360,7 +360,7 @@ exports[`'swapped items' > text changes 2`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             foo
@@ -386,7 +386,7 @@ exports[`'swapped items' > text changes 3`] = `
       •
     </div>
     <div
-      class="bulletList_item "
+      class="bulletList_item"
     >
       <span>
         changed root
@@ -404,7 +404,7 @@ exports[`'swapped items' > text changes 3`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             bar
@@ -423,7 +423,7 @@ exports[`'swapped items' > text changes 3`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             changed foo
@@ -449,7 +449,7 @@ exports[`add child > baz added 1`] = `
       •
     </div>
     <div
-      class="bulletList_item "
+      class="bulletList_item"
     >
       <span>
         root
@@ -467,7 +467,7 @@ exports[`add child > baz added 1`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             foo
@@ -486,7 +486,7 @@ exports[`add child > baz added 1`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             bar
@@ -505,7 +505,7 @@ exports[`add child > baz added 1`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             baz
@@ -531,7 +531,7 @@ exports[`add child > initial 1`] = `
       •
     </div>
     <div
-      class="bulletList_item "
+      class="bulletList_item"
     >
       <span>
         root
@@ -549,7 +549,7 @@ exports[`add child > initial 1`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             foo
@@ -568,7 +568,7 @@ exports[`add child > initial 1`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             bar
@@ -600,7 +600,7 @@ exports[`inconsistent error > an item is not in linked list > initial 1`] = `
       •
     </div>
     <div
-      class="bulletList_item "
+      class="bulletList_item"
     >
       <span>
         root
@@ -618,7 +618,7 @@ exports[`inconsistent error > an item is not in linked list > initial 1`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             foo
@@ -650,7 +650,7 @@ exports[`inconsistent error > first item not found > initial 1`] = `
       •
     </div>
     <div
-      class="bulletList_item "
+      class="bulletList_item"
     >
       <span>
         root
@@ -668,7 +668,7 @@ exports[`inconsistent error > first item not found > initial 1`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             foo
@@ -700,7 +700,7 @@ exports[`inconsistent error > next item not found > initial 1`] = `
       •
     </div>
     <div
-      class="bulletList_item "
+      class="bulletList_item"
     >
       <span>
         root
@@ -718,7 +718,7 @@ exports[`inconsistent error > next item not found > initial 1`] = `
           •
         </div>
         <div
-          class="bulletList_item "
+          class="bulletList_item"
         >
           <span>
             foo

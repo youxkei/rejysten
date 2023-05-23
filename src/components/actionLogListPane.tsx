@@ -6,6 +6,7 @@ import { For } from "solid-js";
 import { createSignalWithLock, runWithLock, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeAllSignal } from "@/services/rxdb/subscribe";
+import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
 import { styles } from "@/styles.css";
 import { shortenClassName } from "@/test";
@@ -19,13 +20,18 @@ function epochMillisecondsToString(epochMilliseconds: number) {
 }
 
 function ActionLog(props: { actionLog: ActionLogDocument }) {
+  const { store } = useStoreService();
+  const lockService = useLockService();
+
+  const isSelected$ = createSignalWithLock(lockService, () => props.actionLog.id === store.actionLogListPane.currentActionLogId, false);
+
   return (
-    <>
+    <div classList={{ [styles.actionLog.container]: true, [styles.selected]: isSelected$() }}>
       <span class={styles.actionLog.beginAt}>{epochMillisecondsToString(props.actionLog.beginAt)}</span>
       <span class={styles.actionLog.waveDash}>～</span>
       <span class={styles.actionLog.endAt}>{epochMillisecondsToString(props.actionLog.endAt)}</span>
       <span class={styles.actionLog.text}>{props.actionLog.text}</span>
-    </>
+    </div>
   );
 }
 
@@ -171,6 +177,45 @@ if (import.meta.vitest) {
       ctx.expect(shortenClassName(container)).toMatchSnapshot();
 
       unmount();
+    });
+
+    test("finished actionLog is selected", async (ctx) => {
+      const {
+        container,
+        unmount,
+        rxdbService: { collections },
+        lockService,
+        storeService: { updateStore },
+      } = await renderWithServicesForTest(ctx.meta.id, (props) => (
+        <>
+          <ActionLogListPane />
+          {props.children}
+        </>
+      ));
+
+      await runWithLock(lockService, async () => {
+        await collections.actionLogs.bulkInsert([
+          { id: "finished", text: "finished", beginAt: 1, endAt: 2, updatedAt: 2 },
+          { id: "ongoing", text: "ongoing", beginAt: 3, endAt: 0, updatedAt: 3 },
+          { id: "tentative", text: "tentative", beginAt: 0, endAt: 0, updatedAt: 4 },
+        ]);
+
+        await updateStore((store) => {
+          store.actionLogListPane.currentActionLogId = "finished";
+        });
+      });
+
+      ctx.expect(shortenClassName(container)).toMatchSnapshot();
+
+      unmount();
+    });
+
+    test.todo("ongoing actionLog is selected", async (_ctx) => {
+      // TODO
+    });
+
+    test.todo("tentative actionLog is selected", async (_ctx) => {
+      // TODO
     });
   });
 

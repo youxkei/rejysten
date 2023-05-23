@@ -43,6 +43,7 @@ export default defineConfig({
     },
     threads: true,
     isolate: true,
+    outputDiffLines: 1000,
     outputDiffMaxLines: 1000,
   },
 });

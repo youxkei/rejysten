@@ -23,6 +23,10 @@ const nord = [
 const bulletListItemMinHeight = 27;
 
 export const styles = {
+  selected: style({
+    backgroundColor: nord[1],
+  }),
+
   bulletList: {
     container: style({
       display: "grid",
@@ -51,20 +55,23 @@ export const styles = {
       gridRowStart: 2,
       width: "100%",
     }),
-
-    selected: style({
-      backgroundColor: nord[1],
-    }),
   },
 
   actionLogList: {
     container: style({
       display: "grid",
-      gridTemplateColumns: "8ch 2ch 8ch auto",
-      gridGap: "0.5ch 0.5ch",
+      gridTemplateColumns: "auto",
+      gridRowGap: "0.5ch",
     }),
   },
+
   actionLog: {
+    container: style({
+      display: "grid",
+      gridColumn: "1 / -1",
+      gridTemplateColumns: "8ch 2ch 8ch auto",
+      gridColumnGap: "0.5ch",
+    }),
     beginAt: style({
       gridColumnStart: 1,
       justifySelf: "center",
