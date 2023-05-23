@@ -9,6 +9,7 @@ import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeSignal, createSubscribeAllSignal } from "@/services/rxdb/subscribe";
 import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
+import { shortenClassName } from "@/test";
 
 export function ItemList(props: { id: string; selectedId: string }) {
   const { store } = useStoreService();
@@ -153,21 +154,21 @@ if (import.meta.vitest) {
         await findByText(listItem.text);
       }
 
-      ctx.expect(container).toMatchSnapshot();
+      ctx.expect(shortenClassName(container)).toMatchSnapshot();
 
       await (await collections.listItems.findOne("1").exec())!.patch({
         text: "changed root",
       });
       await findByText("changed root");
 
-      ctx.expect(container).toMatchSnapshot();
+      ctx.expect(shortenClassName(container)).toMatchSnapshot();
 
       await (await collections.listItems.findOne("2").exec())!.patch({
         text: "changed foo",
       });
       await findByText("changed foo");
 
-      ctx.expect(container).toMatchSnapshot();
+      ctx.expect(shortenClassName(container)).toMatchSnapshot();
 
       unmount();
     });
@@ -198,7 +199,7 @@ if (import.meta.vitest) {
       await findByText(listItem.text);
     }
 
-    ctx.expect(container).toMatchSnapshot("initial");
+    ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
     await runWithLock(lockService, async () => {
       await collections.listItems.bulkUpsert([
@@ -208,7 +209,7 @@ if (import.meta.vitest) {
     });
     await findByText("baz");
 
-    ctx.expect(container).toMatchSnapshot("baz added");
+    ctx.expect(shortenClassName(container)).toMatchSnapshot("baz added");
 
     unmount();
   });
@@ -237,11 +238,11 @@ if (import.meta.vitest) {
         await findByText(listItem.text);
       }
 
-      ctx.expect(container).toMatchSnapshot("initial");
+      ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
       await collections.listItems.insert({ id: "3", text: "bar", prevId: "", nextId: "", parentId: "1", updatedAt: 1 });
       await findByText("Error: there is an inconsistency in listItem in the children of '1': some listItems are not in linked list");
-      ctx.expect(container).toMatchSnapshot("error");
+      ctx.expect(shortenClassName(container)).toMatchSnapshot("error");
 
       unmount();
     });
@@ -269,12 +270,12 @@ if (import.meta.vitest) {
         await findByText(listItem.text);
       }
 
-      ctx.expect(container).toMatchSnapshot("initial");
+      ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
       await collections.listItems.upsert({ id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1", updatedAt: 1 });
       await findByText("Error: there is an inconsistency in listItem in the children of '1': no listItem with id = '3'");
 
-      ctx.expect(container).toMatchSnapshot("error");
+      ctx.expect(shortenClassName(container)).toMatchSnapshot("error");
 
       unmount();
     });
@@ -302,12 +303,12 @@ if (import.meta.vitest) {
         await findByText(listItem.text);
       }
 
-      ctx.expect(container).toMatchSnapshot("initial");
+      ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
       await collections.listItems.upsert({ id: "2", text: "foo", prevId: "3", nextId: "3", parentId: "1", updatedAt: 1 });
       await findByText("Error: there is an inconsistency in listItem in the children of '1': no listItem with prevId = ''");
 
-      ctx.expect(container).toMatchSnapshot("error");
+      ctx.expect(shortenClassName(container)).toMatchSnapshot("error");
 
       unmount();
     });
