@@ -63,30 +63,33 @@ export const styles = {
       gridTemplateColumns: "auto",
       gridRowGap: "0.5ch",
     }),
-  },
-
-  actionLog: {
-    container: style({
-      display: "grid",
+    separator: style({
       gridColumn: "1 / -1",
-      gridTemplateColumns: "8ch 2ch 8ch auto",
-      gridColumnGap: "0.5ch",
     }),
-    beginAt: style({
-      gridColumnStart: 1,
-      justifySelf: "center",
-    }),
-    waveDash: style({
-      gridColumnStart: 2,
-      justifySelf: "center",
-    }),
-    endAt: style({
-      gridColumnStart: 3,
-      justifySelf: "center",
-    }),
-    text: style({
-      gridColumnStart: 4,
-    }),
+    actionLog: {
+      container: style({
+        display: "grid",
+        gridColumn: "1 / -1",
+        gridTemplateColumns: "8ch 2ch 8ch auto",
+        gridColumnGap: "0.5ch",
+        marginLeft: "1ch",
+      }),
+      beginAt: style({
+        gridColumnStart: 1,
+        justifySelf: "center",
+      }),
+      waveDash: style({
+        gridColumnStart: 2,
+        justifySelf: "center",
+      }),
+      endAt: style({
+        gridColumnStart: 3,
+        justifySelf: "center",
+      }),
+      text: style({
+        gridColumnStart: 4,
+      }),
+    },
   },
 };
 

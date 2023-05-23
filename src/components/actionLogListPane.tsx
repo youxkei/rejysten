@@ -1,25 +1,37 @@
 import type { ActionLogDocument } from "@/services/rxdb/collections/actionLog";
 
 import { Temporal } from "@js-temporal/polyfill";
-import { For } from "solid-js";
+import { For, Match, Switch } from "solid-js";
 
 import { createSignalWithLock, runWithLock, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeAllSignal } from "@/services/rxdb/subscribe";
 import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
+import { matches } from "@/solid/switch";
 import { styles } from "@/styles.css";
 import { shortenClassName } from "@/test";
+
+type ActionLogOrDateSeparator = { type: "actionLog"; value: ActionLogDocument } | { type: "dateSeparator"; value: Temporal.PlainDate };
+
+function isActionLog(actionLogOrDateSeparator: ActionLogOrDateSeparator): actionLogOrDateSeparator is { type: "actionLog"; value: ActionLogDocument } {
+  return actionLogOrDateSeparator.type === "actionLog";
+}
+
+function isDateSeparator(actionLogOrDateSeparator: ActionLogOrDateSeparator): actionLogOrDateSeparator is { type: "dateSeparator"; value: Temporal.PlainDate } {
+  return actionLogOrDateSeparator.type === "dateSeparator";
+}
+
+function getPlainDateTime(epochMilliseconds: number) {
+  return Temporal.Instant.fromEpochMilliseconds(epochMilliseconds).toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainDateTime();
+}
 
 function epochMillisecondsToString(epochMilliseconds: number) {
   if (epochMilliseconds === 0) {
     return "N/A";
   }
 
-  return Temporal.Instant.fromEpochMilliseconds(epochMilliseconds)
-    .toZonedDateTimeISO(Temporal.Now.timeZoneId())
-    .toPlainTime()
-    .toString({ smallestUnit: "second" });
+  return getPlainDateTime(epochMilliseconds).toPlainTime().toString({ smallestUnit: "second" });
 }
 
 function ActionLog(props: { actionLog: ActionLogDocument }) {
@@ -29,20 +41,24 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
   const isSelected$ = createSignalWithLock(lockService, () => props.actionLog.id === store.actionLogListPane.currentActionLogId, false);
 
   return (
-    <div classList={{ [styles.actionLog.container]: true, [styles.selected]: isSelected$() }}>
-      <span class={styles.actionLog.beginAt}>{epochMillisecondsToString(props.actionLog.beginAt)}</span>
-      <span class={styles.actionLog.waveDash}>～</span>
-      <span class={styles.actionLog.endAt}>{epochMillisecondsToString(props.actionLog.endAt)}</span>
-      <span class={styles.actionLog.text}>{props.actionLog.text}</span>
+    <div classList={{ [styles.actionLogList.actionLog.container]: true, [styles.selected]: isSelected$() }}>
+      <span class={styles.actionLogList.actionLog.beginAt}>{epochMillisecondsToString(props.actionLog.beginAt)}</span>
+      <span class={styles.actionLogList.actionLog.waveDash}>～</span>
+      <span class={styles.actionLogList.actionLog.endAt}>{epochMillisecondsToString(props.actionLog.endAt)}</span>
+      <span class={styles.actionLogList.actionLog.text}>{props.actionLog.text}</span>
     </div>
   );
+}
+
+function DateSeparator(props: { date: Temporal.PlainDate }) {
+  return <span class={styles.actionLogList.separator}>{props.date.toString()}</span>;
 }
 
 export function ActionLogListPane() {
   const { collections } = useRxDBService();
   const lockService = useLockService();
 
-  const actionLogs$ = createSignalWithLock(
+  const finishedActionLogs$ = createSignalWithLock(
     lockService,
     createSubscribeAllSignal(() =>
       collections.actionLogs.find({
@@ -52,6 +68,29 @@ export function ActionLogListPane() {
     ),
     []
   );
+
+  const finishedActionLogsWithDateSeparators$ = () => {
+    const actionLogs = finishedActionLogs$();
+    if (actionLogs.length === 0) return [];
+
+    const actionLogsWithSeparators = [
+      { type: "dateSeparator", value: getPlainDateTime(actionLogs[0].beginAt).toPlainDate() },
+      { type: "actionLog", value: actionLogs[0] },
+    ] as ActionLogOrDateSeparator[];
+
+    for (let i = 1; i < actionLogs.length; i++) {
+      const beforeDate = getPlainDateTime(actionLogs[i - 1].beginAt).toPlainDate();
+      const afterDate = getPlainDateTime(actionLogs[i].beginAt).toPlainDate();
+
+      if (beforeDate.until(afterDate).days > 0) {
+        actionLogsWithSeparators.push({ type: "dateSeparator", value: afterDate });
+      }
+
+      actionLogsWithSeparators.push({ type: "actionLog", value: actionLogs[i] });
+    }
+
+    return actionLogsWithSeparators;
+  };
 
   const ongoingActionLogs$ = createSignalWithLock(
     lockService,
@@ -72,7 +111,14 @@ export function ActionLogListPane() {
 
   return (
     <div class={styles.actionLogList.container}>
-      <For each={actionLogs$()}>{(actionLog) => <ActionLog actionLog={actionLog} />}</For>
+      <For each={finishedActionLogsWithDateSeparators$()}>
+        {(actionLogOrDateSeparator) => (
+          <Switch>
+            <Match when={matches(actionLogOrDateSeparator, isActionLog)}>{(actionLog) => <ActionLog actionLog={actionLog().value} />}</Match>
+            <Match when={matches(actionLogOrDateSeparator, isDateSeparator)}>{(dateSeparator) => <DateSeparator date={dateSeparator().value} />}</Match>
+          </Switch>
+        )}
+      </For>
       <For each={ongoingActionLogs$()}>{(actionLog) => <ActionLog actionLog={actionLog} />}</For>
       <For each={tentativeActionLogs$()}>{(actionLog) => <ActionLog actionLog={actionLog} />}</For>
     </div>
@@ -218,6 +264,10 @@ if (import.meta.vitest) {
     });
 
     test.todo("tentative actionLog is selected", async (_ctx) => {
+      // TODO
+    });
+
+    test.todo("date separators", async (_ctx) => {
       // TODO
     });
   });
