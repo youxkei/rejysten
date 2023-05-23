@@ -49,8 +49,28 @@ export function EventEmitterServiceProvider(props: { children: JSXElement }) {
   return props.children;
 }
 
-function emitActionLogListPaneEvent(_ctx: Context, _event: KeyboardEvent) {
-  // TODO
+function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
+  switch (ctx.store.mode) {
+    case "normal": {
+      switch (event.code) {
+        case "KeyK": {
+          ctx.emitEvent({ type: "pane", event: { pane: "actionLogList", type: "moveAbove" } });
+          break;
+        }
+
+        case "KeyJ": {
+          ctx.emitEvent({ type: "pane", event: { pane: "actionLogList", type: "moveBelow" } });
+          break;
+        }
+      }
+
+      break;
+    }
+
+    case "insert": {
+      break;
+    }
+  }
 }
 
 function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent) {

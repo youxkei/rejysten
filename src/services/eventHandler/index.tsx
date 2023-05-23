@@ -9,6 +9,7 @@ import { createEffect, untrack } from "solid-js";
 import { useEventService } from "@/services/event";
 import { runWithLock, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
+import { getAboveLog, getBelowLog } from "@/services/rxdb/collections/actionLog";
 import { addNextSibling, addPrevSibling, dedent, getBelowItem, getAboveItem, indent } from "@/services/rxdb/collections/listItem";
 import { useStoreService } from "@/services/store";
 
@@ -62,11 +63,35 @@ async function handlePaneEvent(ctx: Context, event: PaneEvent) {
   }
 }
 
-async function handleActionLogListPaneEvent(ctx: Context, _event: ActionLogListPaneEvent) {
+async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPaneEvent) {
   if (ctx.storeService.store.currentPane !== "actionLogList") throw new Error("ActionLogListPaneEvent must be emitted when currentPane is actionLogList");
 
-  // TODO
-  await Promise.resolve();
+  const currentActionLog = await ctx.rxdbService.collections.actionLogs.findOne(ctx.storeService.store.actionLogListPane.currentActionLogId).exec();
+  if (!currentActionLog) return;
+
+  switch (event.type) {
+    case "moveAbove": {
+      const aboveActionLog = await getAboveLog(ctx.rxdbService, currentActionLog);
+      if (aboveActionLog) {
+        await ctx.storeService.updateStore((store) => {
+          store.actionLogListPane.currentActionLogId = aboveActionLog.id;
+        });
+      }
+
+      break;
+    }
+
+    case "moveBelow": {
+      const belowActionLog = await getBelowLog(ctx.rxdbService, currentActionLog);
+      if (belowActionLog) {
+        await ctx.storeService.updateStore((store) => {
+          store.actionLogListPane.currentActionLogId = belowActionLog.id;
+        });
+      }
+
+      break;
+    }
+  }
 }
 
 async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent) {

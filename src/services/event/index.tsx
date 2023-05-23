@@ -6,7 +6,7 @@ export type Event = { type: "initial" } | { type: "pane"; event: PaneEvent };
 
 export type PaneEvent = ActionLogListPaneEvent | ActionLogPaneEvent;
 export type ActionLogListPaneEvent = { pane: "actionLogList" } & (
-  | { type: "add" | "enter" | "leaveInsertMode" }
+  | { type: "add" | "moveAbove" | "moveBelow" | "enter" | "leaveInsertMode" }
   | { type: "enterInsertMode"; initialPosition: "start" | "end" }
   | { type: "changeEditorText"; newText: string }
 );
