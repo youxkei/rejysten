@@ -5,146 +5,161 @@ exports[`RxDB changes > beginAt changes > beginAt of finished 2 changed 1`] = `
   <div
     class="actionLogList_container"
   >
+    <span
+      class="actionLogList_separator"
+    >
+      1970-01-01
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         finished 2
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         finished 1
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      ongoing
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         ongoing 1
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         ongoing 2
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      tentative
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         tentative 1
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         tentative 2
       </span>
@@ -158,146 +173,161 @@ exports[`RxDB changes > beginAt changes > beginAt of ongoing 2 changed 1`] = `
   <div
     class="actionLogList_container"
   >
+    <span
+      class="actionLogList_separator"
+    >
+      1970-01-01
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         finished 2
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         finished 1
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      ongoing
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         ongoing 2
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         ongoing 1
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      tentative
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         tentative 1
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         tentative 2
       </span>
@@ -311,146 +341,161 @@ exports[`RxDB changes > beginAt changes > beginAt of tentative 2 changed 1`] = `
   <div
     class="actionLogList_container"
   >
+    <span
+      class="actionLogList_separator"
+    >
+      1970-01-01
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         finished 2
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         finished 1
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      ongoing
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         ongoing 2
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         tentative 2
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         ongoing 1
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      tentative
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         tentative 1
       </span>
@@ -464,146 +509,161 @@ exports[`RxDB changes > beginAt changes > initial 1`] = `
   <div
     class="actionLogList_container"
   >
+    <span
+      class="actionLogList_separator"
+    >
+      1970-01-01
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         finished 1
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         finished 2
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      ongoing
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         ongoing 1
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         ongoing 2
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      tentative
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         tentative 1
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         tentative 2
       </span>
@@ -617,78 +677,85 @@ exports[`RxDB changes > endAt changes > endAt of ongoing changed 1`] = `
   <div
     class="actionLogList_container"
   >
+    <span
+      class="actionLogList_separator"
+    >
+      1970-01-01
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         finished 1
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         ongoing
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         finished 2
       </span>
     </div>
+    
+    
     
     
   </div>
@@ -700,78 +767,89 @@ exports[`RxDB changes > endAt changes > initial 1`] = `
   <div
     class="actionLogList_container"
   >
+    <span
+      class="actionLogList_separator"
+    >
+      1970-01-01
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         finished 1
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         finished 2
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      ongoing
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         ongoing
       </span>
     </div>
+    
     
   </div>
 </div>
@@ -782,74 +860,89 @@ exports[`RxDB changes > text changes > initial 1`] = `
   <div
     class="actionLogList_container"
   >
+    <span
+      class="actionLogList_separator"
+    >
+      1970-01-01
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         finished
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      ongoing
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         ongoing
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      tentative
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         tentative
       </span>
@@ -863,74 +956,89 @@ exports[`RxDB changes > text changes > text of finished changed 1`] = `
   <div
     class="actionLogList_container"
   >
+    <span
+      class="actionLogList_separator"
+    >
+      1970-01-01
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         changed finished
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      ongoing
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         ongoing
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      tentative
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         tentative
       </span>
@@ -944,74 +1052,89 @@ exports[`RxDB changes > text changes > text of ongoing changed 1`] = `
   <div
     class="actionLogList_container"
   >
+    <span
+      class="actionLogList_separator"
+    >
+      1970-01-01
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         changed finished
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      ongoing
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         changed ongoing
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      tentative
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         tentative
       </span>
@@ -1025,74 +1148,89 @@ exports[`RxDB changes > text changes > text of tentative changed 1`] = `
   <div
     class="actionLogList_container"
   >
+    <span
+      class="actionLogList_separator"
+    >
+      1970-01-01
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         changed finished
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      ongoing
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         changed ongoing
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      tentative
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         changed tentative
       </span>
@@ -1106,74 +1244,89 @@ exports[`display > finished actionLog is selected 1`] = `
   <div
     class="actionLogList_container"
   >
+    <span
+      class="actionLogList_separator"
+    >
+      1970-01-01
+    </span>
     <div
-      class="actionLog_container selected"
+      class="actionLogList_actionLog_container selected"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         finished
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      ongoing
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         ongoing
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      tentative
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         tentative
       </span>
@@ -1187,102 +1340,109 @@ exports[`display > finished actionLogs are sorted by beginAt 1`] = `
   <div
     class="actionLogList_container"
   >
+    <span
+      class="actionLogList_separator"
+    >
+      1970-01-01
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         3
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         4
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         2
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         1
       </span>
     </div>
+    
+    
     
     
   </div>
@@ -1294,198 +1454,209 @@ exports[`display > ongoing actionLogs follows finished actionLogs and sorted by 
   <div
     class="actionLogList_container"
   >
+    <span
+      class="actionLogList_separator"
+    >
+      1970-01-01
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         7
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         8
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         6
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         5
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      ongoing
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         4
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         1
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         3
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         2
       </span>
     </div>
+    
     
   </div>
 </div>
@@ -1496,290 +1667,305 @@ exports[`display > tentative actionLogs follows ongoing actionLogs and sorted by
   <div
     class="actionLogList_container"
   >
+    <span
+      class="actionLogList_separator"
+    >
+      1970-01-01
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         12
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         09
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         11
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         10
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      ongoing
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         07
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         08
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         06
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         09:00:00
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         05
       </span>
     </div>
+    <span
+      class="actionLogList_separator"
+    >
+      tentative
+    </span>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         01
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         02
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         03
       </span>
     </div>
     <div
-      class="actionLog_container"
+      class="actionLogList_actionLog_container"
     >
       <span
-        class="actionLog_beginAt"
+        class="actionLogList_actionLog_beginAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_waveDash"
+        class="actionLogList_actionLog_waveDash"
       >
         ～
       </span>
       <span
-        class="actionLog_endAt"
+        class="actionLogList_actionLog_endAt"
       >
         N/A
       </span>
       <span
-        class="actionLog_text"
+        class="actionLogList_actionLog_text"
       >
         04
       </span>

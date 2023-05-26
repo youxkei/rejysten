@@ -1,7 +1,7 @@
 import type { ActionLogDocument } from "@/services/rxdb/collections/actionLog";
 
 import { Temporal } from "@js-temporal/polyfill";
-import { For, Match, Switch } from "solid-js";
+import { For, Match, Show, Switch } from "solid-js";
 
 import { createSignalWithLock, runWithLock, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
@@ -12,13 +12,15 @@ import { matches } from "@/solid/switch";
 import { styles } from "@/styles.css";
 import { shortenClassName } from "@/test";
 
-type ActionLogOrDateSeparator = { type: "actionLog"; value: ActionLogDocument } | { type: "dateSeparator"; value: Temporal.PlainDate };
+type ActionLog = { type: "actionLog"; value: ActionLogDocument };
+type DateSeparator = { type: "dateSeparator"; value: Temporal.PlainDate };
+type ActionLogOrDateSeparator = ActionLog | DateSeparator;
 
-function isActionLog(actionLogOrDateSeparator: ActionLogOrDateSeparator): actionLogOrDateSeparator is { type: "actionLog"; value: ActionLogDocument } {
+function isActionLog(actionLogOrDateSeparator: ActionLogOrDateSeparator): actionLogOrDateSeparator is ActionLog {
   return actionLogOrDateSeparator.type === "actionLog";
 }
 
-function isDateSeparator(actionLogOrDateSeparator: ActionLogOrDateSeparator): actionLogOrDateSeparator is { type: "dateSeparator"; value: Temporal.PlainDate } {
+function isDateSeparator(actionLogOrDateSeparator: ActionLogOrDateSeparator): actionLogOrDateSeparator is DateSeparator {
   return actionLogOrDateSeparator.type === "dateSeparator";
 }
 
@@ -119,7 +121,15 @@ export function ActionLogListPane() {
           </Switch>
         )}
       </For>
+
+      <Show when={ongoingActionLogs$().length > 0}>
+        <span class={styles.actionLogList.separator}>ongoing</span>
+      </Show>
       <For each={ongoingActionLogs$()}>{(actionLog) => <ActionLog actionLog={actionLog} />}</For>
+
+      <Show when={tentativeActionLogs$().length > 0}>
+        <span class={styles.actionLogList.separator}>tentative</span>
+      </Show>
       <For each={tentativeActionLogs$()}>{(actionLog) => <ActionLog actionLog={actionLog} />}</For>
     </div>
   );
