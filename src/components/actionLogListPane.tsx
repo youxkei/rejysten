@@ -420,4 +420,12 @@ if (import.meta.vitest) {
       unmount();
     });
   });
+
+  describe.skip("PC operations", () => {
+    // TODO
+  });
+
+  describe.skip("mobile operations", () => {
+    // TODO
+  });
 }
