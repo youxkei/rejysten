@@ -15,12 +15,14 @@ const initialStore: Store = {
   mode: "normal",
 
   editor: {
+    text: "",
     initialPosition: "start",
   },
 
   currentPane: "actionLogList",
   actionLogListPane: {
     currentActionLogId: "",
+    focus: "text",
   },
   actionLogPane: {
     currentListItemId: "",

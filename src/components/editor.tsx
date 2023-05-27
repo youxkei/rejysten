@@ -2,6 +2,7 @@ import { onMount } from "solid-js";
 
 import { useEventService } from "@/services/event";
 import { useStoreService } from "@/services/store";
+import { styles } from "@/styles.css";
 
 export function Editor(props: { text: string }) {
   const { store } = useStoreService();
@@ -30,8 +31,9 @@ export function Editor(props: { text: string }) {
 
   return (
     <input
+      class={styles.editor}
       ref={input}
-      onInput={(event) => emitEvent({ type: "pane", event: { pane: store.currentPane, type: "changeEditorText", newText: event.currentTarget.value } })}
+      onInput={(event) => emitEvent({ kind: "pane", pane: store.currentPane, mode: "insert", type: "changeEditorText", newText: event.currentTarget.value })}
       value={props.text}
     />
   );

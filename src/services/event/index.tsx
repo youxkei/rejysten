@@ -2,18 +2,24 @@ import type { JSXElement } from "solid-js";
 
 import { createContext, createSignal, useContext } from "solid-js";
 
-export type Event = { type: "initial" } | { type: "pane"; event: PaneEvent };
+export type Event = { kind: "initial" } | ({ kind: "pane" } & PaneEvent);
 
 export type PaneEvent = ActionLogListPaneEvent | ActionLogPaneEvent;
+
 export type ActionLogListPaneEvent = { pane: "actionLogList" } & (
-  | { type: "add" | "moveAbove" | "moveBelow" | "enter" | "leaveInsertMode" }
-  | { type: "enterInsertMode"; initialPosition: "start" | "end" }
-  | { type: "changeEditorText"; newText: string }
+  | ({ mode: "normal" } & (
+      | { type: "add" | "moveAbove" | "moveBelow" | "enterActionLogPane" }
+      | { type: "enterInsertMode"; focus: "text" | "start" | "end"; initialPosition: "start" | "end" }
+    ))
+  | ({ mode: "insert" } & ({ type: "leaveInsertMode" | "rotateFocus" } | { type: "changeEditorText"; newText: string }))
 );
+
 export type ActionLogPaneEvent = { pane: "actionLog" } & (
-  | { type: "indent" | "dedent" | "addPrev" | "addNext" | "moveAbove" | "moveBelow" | "leaveInsertMode" }
-  | { type: "enterInsertMode"; initialPosition: "start" | "end" }
-  | { type: "changeEditorText"; newText: string }
+  | ({ mode: "normal" } & (
+      | { type: "indent" | "dedent" | "addPrev" | "addNext" | "moveAbove" | "moveBelow" }
+      | { type: "enterInsertMode"; initialPosition: "start" | "end" }
+    ))
+  | ({ mode: "insert" } & ({ type: "leaveInsertMode" } | { type: "changeEditorText"; newText: string }))
 );
 
 export type EventService = {
@@ -24,7 +30,7 @@ export type EventService = {
 const context = createContext<EventService>();
 
 export function EventServiceProvider(props: { children: JSXElement }) {
-  const [currentEvent$, emitEvent] = createSignal<Event>({ type: "initial" });
+  const [currentEvent$, emitEvent] = createSignal<Event>({ kind: "initial" });
 
   return <context.Provider value={{ currentEvent$, emitEvent }}>{props.children}</context.Provider>;
 }

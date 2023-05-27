@@ -50,38 +50,17 @@ export function EventEmitterServiceProvider(props: { children: JSXElement }) {
 }
 
 function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
-  switch (ctx.store.mode) {
-    case "normal": {
-      switch (event.code) {
-        case "KeyK": {
-          ctx.emitEvent({ type: "pane", event: { pane: "actionLogList", type: "moveAbove" } });
-          break;
-        }
-
-        case "KeyJ": {
-          ctx.emitEvent({ type: "pane", event: { pane: "actionLogList", type: "moveBelow" } });
-          break;
-        }
-      }
-
-      break;
-    }
-
-    case "insert": {
-      break;
-    }
-  }
-}
-
-function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent) {
   const { shiftKey } = event;
+  const actionLogListPaneEvent = { kind: "pane", pane: "actionLogList" } as const;
 
   switch (ctx.store.mode) {
     case "normal": {
+      const normalModeEvent = { ...actionLogListPaneEvent, mode: "normal" } as const;
+
       switch (event.code) {
         case "KeyK": {
           if (!shiftKey) {
-            ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "moveAbove" } });
+            ctx.emitEvent({ ...normalModeEvent, type: "moveAbove" });
             event.preventDefault();
           }
 
@@ -90,7 +69,83 @@ function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent) {
 
         case "KeyJ": {
           if (!shiftKey) {
-            ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "moveBelow" } });
+            ctx.emitEvent({ ...normalModeEvent, type: "moveBelow" });
+            event.preventDefault();
+          }
+
+          break;
+        }
+
+        case "KeyI": {
+          if (!shiftKey) {
+            ctx.emitEvent({ ...normalModeEvent, type: "enterInsertMode", focus: "text", initialPosition: "start" });
+            event.preventDefault();
+          }
+
+          break;
+        }
+
+        case "KeyA": {
+          if (!shiftKey) {
+            ctx.emitEvent({ ...normalModeEvent, type: "enterInsertMode", focus: "text", initialPosition: "end" });
+            event.preventDefault();
+          }
+
+          break;
+        }
+      }
+
+      break;
+    }
+
+    case "insert": {
+      const insertModeEvent = { ...actionLogListPaneEvent, mode: "insert" } as const;
+      switch (event.code) {
+        case "Tab": {
+          if (!shiftKey) {
+            ctx.emitEvent({ ...insertModeEvent, type: "rotateFocus" });
+            event.preventDefault();
+          }
+
+          break;
+        }
+
+        case "Escape": {
+          if (!shiftKey) {
+            ctx.emitEvent({ ...insertModeEvent, type: "leaveInsertMode" });
+            event.preventDefault();
+          }
+
+          break;
+        }
+      }
+
+      break;
+    }
+  }
+}
+
+function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent) {
+  const { shiftKey } = event;
+  const paneKindEvent = { kind: "pane", pane: "actionLog" } as const;
+
+  switch (ctx.store.mode) {
+    case "normal": {
+      const normalModeEvent = { ...paneKindEvent, mode: "normal" } as const;
+
+      switch (event.code) {
+        case "KeyK": {
+          if (!shiftKey) {
+            ctx.emitEvent({ ...normalModeEvent, type: "moveAbove" });
+            event.preventDefault();
+          }
+
+          break;
+        }
+
+        case "KeyJ": {
+          if (!shiftKey) {
+            ctx.emitEvent({ ...normalModeEvent, type: "moveBelow" });
             event.preventDefault();
           }
 
@@ -99,9 +154,9 @@ function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent) {
 
         case "KeyO": {
           if (shiftKey) {
-            ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "addPrev" } });
+            ctx.emitEvent({ ...normalModeEvent, type: "addPrev" });
           } else {
-            ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "addNext" } });
+            ctx.emitEvent({ ...normalModeEvent, type: "addNext" });
           }
           event.preventDefault();
 
@@ -110,9 +165,9 @@ function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent) {
 
         case "Tab": {
           if (shiftKey) {
-            ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "dedent" } });
+            ctx.emitEvent({ ...normalModeEvent, type: "dedent" });
           } else {
-            ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "indent" } });
+            ctx.emitEvent({ ...normalModeEvent, type: "indent" });
           }
           event.preventDefault();
 
@@ -120,14 +175,14 @@ function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent) {
         }
 
         case "KeyI": {
-          ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "enterInsertMode", initialPosition: "start" } });
+          ctx.emitEvent({ ...normalModeEvent, type: "enterInsertMode", initialPosition: "start" });
           event.preventDefault();
 
           break;
         }
 
         case "KeyA": {
-          ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "enterInsertMode", initialPosition: "end" } });
+          ctx.emitEvent({ ...normalModeEvent, type: "enterInsertMode", initialPosition: "end" });
           event.preventDefault();
 
           break;
@@ -138,9 +193,11 @@ function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent) {
     }
 
     case "insert": {
+      const insertModeEvent = { ...paneKindEvent, mode: "insert" } as const;
+
       switch (event.code) {
         case "Escape": {
-          ctx.emitEvent({ type: "pane", event: { pane: "actionLog", type: "leaveInsertMode" } });
+          ctx.emitEvent({ ...insertModeEvent, type: "leaveInsertMode" });
           event.preventDefault();
 
           break;

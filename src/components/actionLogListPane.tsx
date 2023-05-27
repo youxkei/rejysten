@@ -1,8 +1,9 @@
 import type { ActionLogDocument } from "@/services/rxdb/collections/actionLog";
 
 import { Temporal } from "@js-temporal/polyfill";
-import { For, Match, Show, Switch } from "solid-js";
+import { Index, Match, Show, Switch } from "solid-js";
 
+import { Editor } from "@/components/editor";
 import { createSignalWithLock, runWithLock, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeAllSignal } from "@/services/rxdb/subscribe";
@@ -41,19 +42,32 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
   const lockService = useLockService();
 
   const isSelected$ = createSignalWithLock(lockService, () => props.actionLog.id === store.actionLogListPane.currentActionLogId, false);
+  const isEditor$ = () => isSelected$() && store.mode === "insert";
 
   return (
     <div classList={{ [styles.actionLogList.actionLog.container]: true, [styles.selected]: isSelected$() }}>
-      <span class={styles.actionLogList.actionLog.beginAt}>{epochMillisecondsToString(props.actionLog.beginAt)}</span>
-      <span class={styles.actionLogList.actionLog.waveDash}>～</span>
-      <span class={styles.actionLogList.actionLog.endAt}>{epochMillisecondsToString(props.actionLog.endAt)}</span>
-      <span class={styles.actionLogList.actionLog.text}>{props.actionLog.text}</span>
+      <div class={styles.actionLogList.actionLog.startAt}>
+        <Show when={isEditor$() && store.actionLogListPane.focus === "start"} fallback={epochMillisecondsToString(props.actionLog.startAt)}>
+          <Editor text={store.editor.text} />
+        </Show>
+      </div>
+      <div class={styles.actionLogList.actionLog.waveDash}>～</div>
+      <div class={styles.actionLogList.actionLog.endAt}>
+        <Show when={isEditor$() && store.actionLogListPane.focus === "end"} fallback={epochMillisecondsToString(props.actionLog.endAt)}>
+          <Editor text={store.editor.text} />
+        </Show>
+      </div>
+      <div class={styles.actionLogList.actionLog.text}>
+        <Show when={isEditor$() && store.actionLogListPane.focus === "text"} fallback={props.actionLog.text}>
+          <Editor text={props.actionLog.text} />
+        </Show>
+      </div>
     </div>
   );
 }
 
 function DateSeparator(props: { date: Temporal.PlainDate }) {
-  return <span class={styles.actionLogList.separator}>{props.date.toString()}</span>;
+  return <div class={styles.actionLogList.separator}>{props.date.toString()}</div>;
 }
 
 export function ActionLogListPane() {
@@ -64,8 +78,8 @@ export function ActionLogListPane() {
     lockService,
     createSubscribeAllSignal(() =>
       collections.actionLogs.find({
-        selector: { beginAt: { $gt: 0 }, endAt: { $gt: 0 } },
-        sort: [{ beginAt: "asc" }],
+        selector: { startAt: { $gt: 0 }, endAt: { $gt: 0 } },
+        sort: [{ startAt: "asc" }],
       })
     ),
     []
@@ -76,13 +90,13 @@ export function ActionLogListPane() {
     if (actionLogs.length === 0) return [];
 
     const actionLogsWithSeparators = [
-      { type: "dateSeparator", value: getPlainDateTime(actionLogs[0].beginAt).toPlainDate() },
+      { type: "dateSeparator", value: getPlainDateTime(actionLogs[0].startAt).toPlainDate() },
       { type: "actionLog", value: actionLogs[0] },
     ] as ActionLogOrDateSeparator[];
 
     for (let i = 1; i < actionLogs.length; i++) {
-      const beforeDate = getPlainDateTime(actionLogs[i - 1].beginAt).toPlainDate();
-      const afterDate = getPlainDateTime(actionLogs[i].beginAt).toPlainDate();
+      const beforeDate = getPlainDateTime(actionLogs[i - 1].startAt).toPlainDate();
+      const afterDate = getPlainDateTime(actionLogs[i].startAt).toPlainDate();
 
       if (beforeDate.until(afterDate).days > 0) {
         actionLogsWithSeparators.push({ type: "dateSeparator", value: afterDate });
@@ -98,8 +112,8 @@ export function ActionLogListPane() {
     lockService,
     createSubscribeAllSignal(() =>
       collections.actionLogs.find({
-        selector: { beginAt: { $gt: 0 }, endAt: 0 },
-        sort: [{ beginAt: "asc" }],
+        selector: { startAt: { $gt: 0 }, endAt: 0 },
+        sort: [{ startAt: "asc" }],
       })
     ),
     []
@@ -107,37 +121,37 @@ export function ActionLogListPane() {
 
   const tentativeActionLogs$ = createSignalWithLock(
     lockService,
-    createSubscribeAllSignal(() => collections.actionLogs.find({ selector: { beginAt: 0 } })),
+    createSubscribeAllSignal(() => collections.actionLogs.find({ selector: { startAt: 0 } })),
     []
   );
 
   return (
     <div class={styles.actionLogList.container}>
-      <For each={finishedActionLogsWithDateSeparators$()}>
+      <Index each={finishedActionLogsWithDateSeparators$()}>
         {(actionLogOrDateSeparator) => (
           <Switch>
-            <Match when={matches(actionLogOrDateSeparator, isActionLog)}>{(actionLog) => <ActionLog actionLog={actionLog().value} />}</Match>
-            <Match when={matches(actionLogOrDateSeparator, isDateSeparator)}>{(dateSeparator) => <DateSeparator date={dateSeparator().value} />}</Match>
+            <Match when={matches(actionLogOrDateSeparator(), isActionLog)}>{(actionLog) => <ActionLog actionLog={actionLog().value} />}</Match>
+            <Match when={matches(actionLogOrDateSeparator(), isDateSeparator)}>{(dateSeparator) => <DateSeparator date={dateSeparator().value} />}</Match>
           </Switch>
         )}
-      </For>
+      </Index>
 
       <Show when={ongoingActionLogs$().length > 0}>
-        <span class={styles.actionLogList.separator}>ongoing</span>
+        <div class={styles.actionLogList.separator}>ongoing</div>
       </Show>
-      <For each={ongoingActionLogs$()}>{(actionLog) => <ActionLog actionLog={actionLog} />}</For>
+      <Index each={ongoingActionLogs$()}>{(actionLog) => <ActionLog actionLog={actionLog()} />}</Index>
 
       <Show when={tentativeActionLogs$().length > 0}>
-        <span class={styles.actionLogList.separator}>tentative</span>
+        <div class={styles.actionLogList.separator}>tentative</div>
       </Show>
-      <For each={tentativeActionLogs$()}>{(actionLog) => <ActionLog actionLog={actionLog} />}</For>
+      <Index each={tentativeActionLogs$()}>{(actionLog) => <ActionLog actionLog={actionLog()} />}</Index>
     </div>
   );
 }
 
 if (import.meta.vitest) {
   describe("display", () => {
-    test("finished actionLogs are sorted by beginAt", async (ctx) => {
+    test("finished actionLogs are sorted by startAt", async (ctx) => {
       const {
         container,
         unmount,
@@ -152,10 +166,10 @@ if (import.meta.vitest) {
 
       await runWithLock(lockService, async () => {
         await collections.actionLogs.bulkInsert([
-          { id: "1", text: "1", beginAt: 4, endAt: 9, updatedAt: 9 },
-          { id: "2", text: "2", beginAt: 3, endAt: 9, updatedAt: 9 },
-          { id: "3", text: "3", beginAt: 1, endAt: 9, updatedAt: 9 },
-          { id: "4", text: "4", beginAt: 2, endAt: 9, updatedAt: 9 },
+          { id: "1", text: "1", startAt: 4, endAt: 9, updatedAt: 9 },
+          { id: "2", text: "2", startAt: 3, endAt: 9, updatedAt: 9 },
+          { id: "3", text: "3", startAt: 1, endAt: 9, updatedAt: 9 },
+          { id: "4", text: "4", startAt: 2, endAt: 9, updatedAt: 9 },
         ]);
       });
 
@@ -164,7 +178,7 @@ if (import.meta.vitest) {
       unmount();
     });
 
-    test("ongoing actionLogs follows finished actionLogs and sorted by beginAt", async (ctx) => {
+    test("ongoing actionLogs follows finished actionLogs and sorted by startAt", async (ctx) => {
       const {
         container,
         unmount,
@@ -180,16 +194,16 @@ if (import.meta.vitest) {
       await runWithLock(lockService, async () => {
         await collections.actionLogs.bulkInsert([
           // ongoing actionLogs
-          { id: "1", text: "1", beginAt: 6, endAt: 0, updatedAt: 6 },
-          { id: "2", text: "2", beginAt: 8, endAt: 0, updatedAt: 8 },
-          { id: "3", text: "3", beginAt: 7, endAt: 0, updatedAt: 7 },
-          { id: "4", text: "4", beginAt: 5, endAt: 0, updatedAt: 5 },
+          { id: "1", text: "1", startAt: 6, endAt: 0, updatedAt: 6 },
+          { id: "2", text: "2", startAt: 8, endAt: 0, updatedAt: 8 },
+          { id: "3", text: "3", startAt: 7, endAt: 0, updatedAt: 7 },
+          { id: "4", text: "4", startAt: 5, endAt: 0, updatedAt: 5 },
 
           // finished actionLogs
-          { id: "5", text: "5", beginAt: 4, endAt: 9, updatedAt: 9 },
-          { id: "6", text: "6", beginAt: 3, endAt: 9, updatedAt: 9 },
-          { id: "7", text: "7", beginAt: 1, endAt: 9, updatedAt: 9 },
-          { id: "8", text: "8", beginAt: 2, endAt: 9, updatedAt: 9 },
+          { id: "5", text: "5", startAt: 4, endAt: 9, updatedAt: 9 },
+          { id: "6", text: "6", startAt: 3, endAt: 9, updatedAt: 9 },
+          { id: "7", text: "7", startAt: 1, endAt: 9, updatedAt: 9 },
+          { id: "8", text: "8", startAt: 2, endAt: 9, updatedAt: 9 },
         ]);
       });
 
@@ -214,22 +228,22 @@ if (import.meta.vitest) {
       await runWithLock(lockService, async () => {
         await collections.actionLogs.bulkInsert([
           // tentative actionLogs
-          { id: "02", text: "02", beginAt: 0, endAt: 0, updatedAt: 10 },
-          { id: "03", text: "03", beginAt: 0, endAt: 0, updatedAt: 10 },
-          { id: "04", text: "04", beginAt: 0, endAt: 0, updatedAt: 10 },
-          { id: "01", text: "01", beginAt: 0, endAt: 0, updatedAt: 10 },
+          { id: "02", text: "02", startAt: 0, endAt: 0, updatedAt: 10 },
+          { id: "03", text: "03", startAt: 0, endAt: 0, updatedAt: 10 },
+          { id: "04", text: "04", startAt: 0, endAt: 0, updatedAt: 10 },
+          { id: "01", text: "01", startAt: 0, endAt: 0, updatedAt: 10 },
 
           // ongoing actionLogs
-          { id: "05", text: "05", beginAt: 4, endAt: 0, updatedAt: 4 },
-          { id: "06", text: "06", beginAt: 3, endAt: 0, updatedAt: 3 },
-          { id: "07", text: "07", beginAt: 1, endAt: 0, updatedAt: 1 },
-          { id: "08", text: "08", beginAt: 2, endAt: 0, updatedAt: 2 },
+          { id: "05", text: "05", startAt: 4, endAt: 0, updatedAt: 4 },
+          { id: "06", text: "06", startAt: 3, endAt: 0, updatedAt: 3 },
+          { id: "07", text: "07", startAt: 1, endAt: 0, updatedAt: 1 },
+          { id: "08", text: "08", startAt: 2, endAt: 0, updatedAt: 2 },
 
           // finished actionLogs
-          { id: "09", text: "09", beginAt: 6, endAt: 9, updatedAt: 9 },
-          { id: "10", text: "10", beginAt: 8, endAt: 9, updatedAt: 9 },
-          { id: "11", text: "11", beginAt: 7, endAt: 9, updatedAt: 9 },
-          { id: "12", text: "12", beginAt: 5, endAt: 9, updatedAt: 9 },
+          { id: "09", text: "09", startAt: 6, endAt: 9, updatedAt: 9 },
+          { id: "10", text: "10", startAt: 8, endAt: 9, updatedAt: 9 },
+          { id: "11", text: "11", startAt: 7, endAt: 9, updatedAt: 9 },
+          { id: "12", text: "12", startAt: 5, endAt: 9, updatedAt: 9 },
         ]);
       });
 
@@ -254,9 +268,9 @@ if (import.meta.vitest) {
 
       await runWithLock(lockService, async () => {
         await collections.actionLogs.bulkInsert([
-          { id: "finished", text: "finished", beginAt: 1, endAt: 2, updatedAt: 2 },
-          { id: "ongoing", text: "ongoing", beginAt: 3, endAt: 0, updatedAt: 3 },
-          { id: "tentative", text: "tentative", beginAt: 0, endAt: 0, updatedAt: 4 },
+          { id: "finished", text: "finished", startAt: 1, endAt: 2, updatedAt: 2 },
+          { id: "ongoing", text: "ongoing", startAt: 3, endAt: 0, updatedAt: 3 },
+          { id: "tentative", text: "tentative", startAt: 0, endAt: 0, updatedAt: 4 },
         ]);
 
         await updateStore((store) => {
@@ -298,28 +312,28 @@ if (import.meta.vitest) {
 
       await runWithLock(lockService, async () => {
         await collections.actionLogs.bulkInsert([
-          { id: "finished", text: "finished", beginAt: 1, endAt: 2, updatedAt: 2 },
-          { id: "ongoing", text: "ongoing", beginAt: 3, endAt: 0, updatedAt: 3 },
-          { id: "tentative", text: "tentative", beginAt: 0, endAt: 0, updatedAt: 4 },
+          { id: "finished", text: "finished", startAt: 1, endAt: 2, updatedAt: 2 },
+          { id: "ongoing", text: "ongoing", startAt: 3, endAt: 0, updatedAt: 3 },
+          { id: "tentative", text: "tentative", startAt: 0, endAt: 0, updatedAt: 4 },
         ]);
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
       await runWithLock(lockService, async () => {
-        await collections.actionLogs.bulkUpsert([{ id: "finished", text: "changed finished", beginAt: 1, endAt: 2, updatedAt: 5 }]);
+        await collections.actionLogs.bulkUpsert([{ id: "finished", text: "changed finished", startAt: 1, endAt: 2, updatedAt: 5 }]);
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("text of finished changed");
 
       await runWithLock(lockService, async () => {
-        await collections.actionLogs.bulkUpsert([{ id: "ongoing", text: "changed ongoing", beginAt: 3, endAt: 0, updatedAt: 6 }]);
+        await collections.actionLogs.bulkUpsert([{ id: "ongoing", text: "changed ongoing", startAt: 3, endAt: 0, updatedAt: 6 }]);
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("text of ongoing changed");
 
       await runWithLock(lockService, async () => {
-        await collections.actionLogs.bulkUpsert([{ id: "tentative", text: "changed tentative", beginAt: 0, endAt: 0, updatedAt: 7 }]);
+        await collections.actionLogs.bulkUpsert([{ id: "tentative", text: "changed tentative", startAt: 0, endAt: 0, updatedAt: 7 }]);
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("text of tentative changed");
@@ -327,7 +341,7 @@ if (import.meta.vitest) {
       unmount();
     });
 
-    test("beginAt changes", async (ctx) => {
+    test("startAt changes", async (ctx) => {
       const {
         container,
         unmount,
@@ -342,34 +356,34 @@ if (import.meta.vitest) {
 
       await runWithLock(lockService, async () => {
         await collections.actionLogs.bulkInsert([
-          { id: "finished 1", text: "finished 1", beginAt: 2, endAt: 4, updatedAt: 4 },
-          { id: "finished 2", text: "finished 2", beginAt: 3, endAt: 4, updatedAt: 4 },
-          { id: "ongoing 1", text: "ongoing 1", beginAt: 5, endAt: 0, updatedAt: 5 },
-          { id: "ongoing 2", text: "ongoing 2", beginAt: 6, endAt: 0, updatedAt: 6 },
-          { id: "tentative 1", text: "tentative 1", beginAt: 0, endAt: 0, updatedAt: 7 },
-          { id: "tentative 2", text: "tentative 2", beginAt: 0, endAt: 0, updatedAt: 7 },
+          { id: "finished 1", text: "finished 1", startAt: 2, endAt: 4, updatedAt: 4 },
+          { id: "finished 2", text: "finished 2", startAt: 3, endAt: 4, updatedAt: 4 },
+          { id: "ongoing 1", text: "ongoing 1", startAt: 5, endAt: 0, updatedAt: 5 },
+          { id: "ongoing 2", text: "ongoing 2", startAt: 6, endAt: 0, updatedAt: 6 },
+          { id: "tentative 1", text: "tentative 1", startAt: 0, endAt: 0, updatedAt: 7 },
+          { id: "tentative 2", text: "tentative 2", startAt: 0, endAt: 0, updatedAt: 7 },
         ]);
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
       await runWithLock(lockService, async () => {
-        await collections.actionLogs.bulkUpsert([{ id: "finished 2", text: "finished 2", beginAt: 1, endAt: 4, updatedAt: 8 }]);
+        await collections.actionLogs.bulkUpsert([{ id: "finished 2", text: "finished 2", startAt: 1, endAt: 4, updatedAt: 8 }]);
       });
 
-      ctx.expect(shortenClassName(container)).toMatchSnapshot("beginAt of finished 2 changed");
+      ctx.expect(shortenClassName(container)).toMatchSnapshot("startAt of finished 2 changed");
 
       await runWithLock(lockService, async () => {
-        await collections.actionLogs.bulkUpsert([{ id: "ongoing 2", text: "ongoing 2", beginAt: 3, endAt: 0, updatedAt: 9 }]);
+        await collections.actionLogs.bulkUpsert([{ id: "ongoing 2", text: "ongoing 2", startAt: 3, endAt: 0, updatedAt: 9 }]);
       });
 
-      ctx.expect(shortenClassName(container)).toMatchSnapshot("beginAt of ongoing 2 changed");
+      ctx.expect(shortenClassName(container)).toMatchSnapshot("startAt of ongoing 2 changed");
 
       await runWithLock(lockService, async () => {
-        await collections.actionLogs.bulkUpsert([{ id: "tentative 2", text: "tentative 2", beginAt: 4, endAt: 0, updatedAt: 10 }]);
+        await collections.actionLogs.bulkUpsert([{ id: "tentative 2", text: "tentative 2", startAt: 4, endAt: 0, updatedAt: 10 }]);
       });
 
-      ctx.expect(shortenClassName(container)).toMatchSnapshot("beginAt of tentative 2 changed");
+      ctx.expect(shortenClassName(container)).toMatchSnapshot("startAt of tentative 2 changed");
 
       unmount();
     });
@@ -389,16 +403,16 @@ if (import.meta.vitest) {
 
       await runWithLock(lockService, async () => {
         await collections.actionLogs.bulkInsert([
-          { id: "finished 1", text: "finished 1", beginAt: 1, endAt: 4, updatedAt: 4 },
-          { id: "finished 2", text: "finished 2", beginAt: 3, endAt: 4, updatedAt: 4 },
-          { id: "ongoing", text: "ongoing", beginAt: 2, endAt: 0, updatedAt: 5 },
+          { id: "finished 1", text: "finished 1", startAt: 1, endAt: 4, updatedAt: 4 },
+          { id: "finished 2", text: "finished 2", startAt: 3, endAt: 4, updatedAt: 4 },
+          { id: "ongoing", text: "ongoing", startAt: 2, endAt: 0, updatedAt: 5 },
         ]);
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
       await runWithLock(lockService, async () => {
-        await collections.actionLogs.bulkUpsert([{ id: "ongoing", text: "ongoing", beginAt: 2, endAt: 6, updatedAt: 6 }]);
+        await collections.actionLogs.bulkUpsert([{ id: "ongoing", text: "ongoing", startAt: 2, endAt: 6, updatedAt: 6 }]);
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("endAt of ongoing changed");

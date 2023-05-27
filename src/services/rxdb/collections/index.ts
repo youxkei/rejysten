@@ -16,9 +16,10 @@ export const schema = {
         editor: {
           type: "object",
           properties: {
+            text: { type: "string" },
             initialPosition: { type: "string", enum: ["start", "end"] },
           },
-          required: ["initialPosition"],
+          required: ["text", "initialPosition"],
         },
 
         // pane related states
@@ -27,8 +28,9 @@ export const schema = {
           type: "object",
           properties: {
             currentActionLogId: { type: "string" },
+            focus: { type: "string", enum: ["text", "start", "end"] },
           },
-          required: ["currentActionLogId"],
+          required: ["currentActionLogId", "focus"],
         },
         actionLogPane: {
           type: "object",
@@ -38,7 +40,7 @@ export const schema = {
           required: ["currentListItemId"],
         },
       },
-      required: ["id", "editor", "currentPane", "actionLogListPane", "actionLogPane"],
+      required: ["id", "mode", "editor", "currentPane", "actionLogListPane", "actionLogPane"],
     },
   },
   listItems: {
@@ -74,13 +76,13 @@ export const schema = {
 
         text: { type: "string" },
 
-        beginAt: { type: "integer", multipleOf: 1 },
+        startAt: { type: "integer", multipleOf: 1 },
         endAt: { type: "integer" },
 
         updatedAt: { type: "integer" },
       },
-      required: ["id", "text", "beginAt", "endAt", "updatedAt"],
-      indexes: ["beginAt", "endAt"],
+      required: ["id", "text", "startAt", "endAt", "updatedAt"],
+      indexes: ["startAt", "endAt"],
     },
   },
 

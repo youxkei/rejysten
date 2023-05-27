@@ -27,6 +27,11 @@ export const styles = {
     backgroundColor: nord[1],
   }),
 
+  editor: style({
+    width: "100%",
+    boxSizing: "border-box",
+  }),
+
   bulletList: {
     container: style({
       display: "grid",
@@ -74,7 +79,7 @@ export const styles = {
         gridColumnGap: "0.5ch",
         marginLeft: "1ch",
       }),
-      beginAt: style({
+      startAt: style({
         gridColumnStart: 1,
         justifySelf: "center",
       }),

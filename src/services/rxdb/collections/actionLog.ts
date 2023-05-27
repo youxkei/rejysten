@@ -8,8 +8,8 @@ export type ActionLogDocument = RxDocument<ActionLog>;
 function getAboveFinishedLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
   return collections.actionLogs
     .findOne({
-      selector: { beginAt: { $gt: 0, $lt: baseLog.beginAt }, endAt: { $gt: 0 } },
-      sort: [{ beginAt: "desc" }],
+      selector: { startAt: { $gt: 0, $lt: baseLog.startAt }, endAt: { $gt: 0 } },
+      sort: [{ startAt: "desc" }],
     })
     .exec();
 }
@@ -17,8 +17,8 @@ function getAboveFinishedLog({ collections }: RxDBService, baseLog: ActionLogDoc
 function getBelowFinishedLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
   return collections.actionLogs
     .findOne({
-      selector: { beginAt: { $gt: baseLog.beginAt }, endAt: { $gt: 0 } },
-      sort: [{ beginAt: "asc" }],
+      selector: { startAt: { $gt: baseLog.startAt }, endAt: { $gt: 0 } },
+      sort: [{ startAt: "asc" }],
     })
     .exec();
 }
@@ -26,8 +26,8 @@ function getBelowFinishedLog({ collections }: RxDBService, baseLog: ActionLogDoc
 function getAboveOngoingLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
   return collections.actionLogs
     .findOne({
-      selector: { beginAt: { $gt: 0, $lt: baseLog.beginAt }, endAt: 0 },
-      sort: [{ beginAt: "desc", id: "desc" }],
+      selector: { startAt: { $gt: 0, $lt: baseLog.startAt }, endAt: 0 },
+      sort: [{ startAt: "desc", id: "desc" }],
     })
     .exec();
 }
@@ -35,8 +35,8 @@ function getAboveOngoingLog({ collections }: RxDBService, baseLog: ActionLogDocu
 function getBelowOngoingLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
   return collections.actionLogs
     .findOne({
-      selector: { beginAt: { $gt: baseLog.beginAt }, endAt: 0 },
-      sort: [{ beginAt: "asc" }],
+      selector: { startAt: { $gt: baseLog.startAt }, endAt: 0 },
+      sort: [{ startAt: "asc" }],
     })
     .exec();
 }
@@ -44,8 +44,8 @@ function getBelowOngoingLog({ collections }: RxDBService, baseLog: ActionLogDocu
 function getAboveTentativeLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
   return collections.actionLogs
     .findOne({
-      selector: { id: { $lt: baseLog.id }, beginAt: 0 },
-      sort: [{ beginAt: "desc", id: "desc" }],
+      selector: { id: { $lt: baseLog.id }, startAt: 0 },
+      sort: [{ id: "desc" }],
     })
     .exec();
 }
@@ -53,7 +53,7 @@ function getAboveTentativeLog({ collections }: RxDBService, baseLog: ActionLogDo
 function getLastFinishedLog({ collections }: RxDBService) {
   return collections.actionLogs
     .findOne({
-      selector: { beginAt: { $gt: 0 }, endAt: { $gt: 0 } },
+      selector: { startAt: { $gt: 0 }, endAt: { $gt: 0 } },
       sort: [{ endAt: "desc", id: "desc" }],
     })
     .exec();
@@ -62,8 +62,8 @@ function getLastFinishedLog({ collections }: RxDBService) {
 function getFirstOngoingLog({ collections }: RxDBService) {
   return collections.actionLogs
     .findOne({
-      selector: { beginAt: { $gt: 0 }, endAt: 0 },
-      sort: [{ beginAt: "asc" }],
+      selector: { startAt: { $gt: 0 }, endAt: 0 },
+      sort: [{ startAt: "asc" }],
     })
     .exec();
 }
@@ -71,8 +71,8 @@ function getFirstOngoingLog({ collections }: RxDBService) {
 function getLastOngoingLog({ collections }: RxDBService) {
   return collections.actionLogs
     .findOne({
-      selector: { beginAt: { $gt: 0 }, endAt: 0 },
-      sort: [{ beginAt: "desc", id: "desc" }],
+      selector: { startAt: { $gt: 0 }, endAt: 0 },
+      sort: [{ startAt: "desc", id: "desc" }],
     })
     .exec();
 }
@@ -80,7 +80,7 @@ function getLastOngoingLog({ collections }: RxDBService) {
 function getFirstTentativeLog({ collections }: RxDBService) {
   return collections.actionLogs
     .findOne({
-      selector: { beginAt: 0 },
+      selector: { startAt: 0 },
     })
     .exec();
 }
@@ -88,14 +88,14 @@ function getFirstTentativeLog({ collections }: RxDBService) {
 function getBelowTentativeLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
   return collections.actionLogs
     .findOne({
-      selector: { id: { $gt: baseLog.id }, beginAt: 0 },
-      sort: [{ beginAt: "desc" }],
+      selector: { id: { $gt: baseLog.id }, startAt: 0 },
+      sort: [{ startAt: "desc" }],
     })
     .exec();
 }
 
 export async function getAboveLog(service: RxDBService, baseLog: ActionLogDocument) {
-  if (baseLog.beginAt === 0) {
+  if (baseLog.startAt === 0) {
     const aboveTentativeLog = await getAboveTentativeLog(service, baseLog);
     if (aboveTentativeLog) return aboveTentativeLog;
 
@@ -116,7 +116,7 @@ export async function getAboveLog(service: RxDBService, baseLog: ActionLogDocume
 }
 
 export async function getBelowLog(service: RxDBService, baseLog: ActionLogDocument) {
-  if (baseLog.beginAt === 0) {
+  if (baseLog.startAt === 0) {
     return await getBelowTentativeLog(service, baseLog);
   }
 
