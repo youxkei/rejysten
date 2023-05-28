@@ -77,7 +77,7 @@ export const schema = {
         text: { type: "string" },
 
         startAt: { type: "integer", multipleOf: 1 },
-        endAt: { type: "integer" },
+        endAt: { type: "integer", multipleOf: 1 },
 
         updatedAt: { type: "integer" },
       },

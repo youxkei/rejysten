@@ -44,7 +44,7 @@
     "vite-plugin-node-stdlib-browser": "^0.2.1",
     "vite-plugin-solid": "^2.7.0",
     "vite-tsconfig-paths": "^4.0.8",
-    "vitest": "^0.29.8"
+    "vitest": "^0.31.1"
   },
   "dependencies": {
     "@js-temporal/polyfill": "^0.4.4",
@@ -52,13 +52,13 @@
     "@solid-primitives/keyboard": "^1.2.0",
     "@vanilla-extract/css": "^1.11.0",
     "dexie": "4.0.0-alpha.4",
-    "firebase": "9.17.2",
+    "firebase": "9.21.0",
     "id128": "^1.6.6",
     "immer": "^10.0.1",
     "js-yaml": "^4.1.0",
     "node-stdlib-browser": "^1.2.0",
-    "rxdb": "^14.6.4",
-    "rxjs": "^7.8.0",
+    "rxdb": "^14.12.0",
+    "rxjs": "^7.8.1",
     "solid-js": "^1.7.3",
     "superstruct": "^1.0.3"
   },
