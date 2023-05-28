@@ -4,6 +4,8 @@ import type { Temporal } from "@js-temporal/polyfill";
 import { Index, Match, Show, Switch } from "solid-js";
 
 import { Editor } from "@/components/editor";
+import { createDouble } from "@/components/event";
+import { useEventService } from "@/services/event";
 import { createSignalWithLock, runWithLock, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeAllSignal } from "@/services/rxdb/subscribe";
@@ -29,24 +31,33 @@ function isDateSeparator(actionLogOrDateSeparator: ActionLogOrDateSeparator): ac
 function ActionLog(props: { actionLog: ActionLogDocument }) {
   const { store } = useStoreService();
   const lockService = useLockService();
+  const { emitEvent } = useEventService();
 
   const isSelected$ = createSignalWithLock(lockService, () => props.actionLog.id === store.actionLogListPane.currentActionLogId, false);
   const isEditor$ = () => isSelected$() && store.mode === "insert";
 
+  function createOnDoubleClick(focus: "text" | "start" | "end") {
+    return createDouble(300, (event: MouseEvent, isDouble) => {
+      if (isDouble) {
+        emitEvent({ kind: "pane", pane: "actionLogList", mode: "normal", type: "enterInsertMode", focus, initialPosition: "end" });
+      }
+    });
+  }
+
   return (
     <div classList={{ [styles.actionLogList.actionLog.container]: true, [styles.selected]: isSelected$() }}>
-      <div class={styles.actionLogList.actionLog.startAt}>
+      <div class={styles.actionLogList.actionLog.startAt} onClick={createOnDoubleClick("start")}>
         <Show when={isEditor$() && store.actionLogListPane.focus === "start"} fallback={epochMsToTimeText(props.actionLog.startAt) || "N/A"}>
           <Editor text={store.editor.text} />
         </Show>
       </div>
       <div class={styles.actionLogList.actionLog.waveDash}>～</div>
-      <div class={styles.actionLogList.actionLog.endAt}>
+      <div class={styles.actionLogList.actionLog.endAt} onClick={createOnDoubleClick("end")}>
         <Show when={isEditor$() && store.actionLogListPane.focus === "end"} fallback={epochMsToTimeText(props.actionLog.endAt) || "N/A"}>
           <Editor text={store.editor.text} />
         </Show>
       </div>
-      <div class={styles.actionLogList.actionLog.text}>
+      <div class={styles.actionLogList.actionLog.text} onClick={createOnDoubleClick("text")}>
         <Show when={isEditor$() && store.actionLogListPane.focus === "text"} fallback={props.actionLog.text}>
           <Editor text={props.actionLog.text} />
         </Show>

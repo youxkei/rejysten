@@ -29,7 +29,16 @@ export const styles = {
 
   editor: style({
     width: "100%",
+
+    color: nord[5],
+    backgroundColor: "transparent",
+
     boxSizing: "border-box",
+    padding: 0,
+    border: "none",
+
+    fontFamily: "sans-serif",
+    fontSize: "inherit",
   }),
 
   bulletList: {
@@ -92,13 +101,16 @@ export const styles = {
         justifySelf: "center",
       }),
       text: style({
-        gridColumnStart: 4,
+        gridRowStart: 2,
+        gridColumn: "1 / -1",
+        paddingLeft: "2ch",
       }),
     },
   },
 };
 
 globalStyle("body", {
+  fontFamily: "sans-serif",
   color: nord[5],
   backgroundColor: nord[0],
 });

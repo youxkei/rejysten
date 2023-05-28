@@ -3,8 +3,10 @@ import type { RxDBService } from "@/services/rxdb";
 import type { StoreService } from "@/services/store";
 import type { JSXElement, Owner } from "solid-js";
 
+import { MultiProvider } from "@solid-primitives/context";
 import { getOwner } from "solid-js";
 
+import { EventServiceProvider } from "@/services/event";
 import { LockServiceProvider, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
 import { RxDBServiceProviderForTest } from "@/services/rxdb/test";
@@ -15,11 +17,9 @@ export function renderWithServicesForTest(tid: string, Component: (props: { chil
   return renderAsync(
     (props) => (
       <RxDBServiceProviderForTest tid={tid}>
-        <StoreServiceProvider>
-          <LockServiceProvider>
-            <Component>{props.children}</Component>
-          </LockServiceProvider>
-        </StoreServiceProvider>
+        <MultiProvider values={[StoreServiceProvider, LockServiceProvider, EventServiceProvider]}>
+          <Component>{props.children}</Component>
+        </MultiProvider>
       </RxDBServiceProviderForTest>
     ),
     (resolve: (value: { owner: Owner; rxdbService: RxDBService; storeService: StoreService; lockService: LockService }) => void) => {
