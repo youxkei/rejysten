@@ -3,7 +3,6 @@ import type { RxDBService } from "@/services/rxdb";
 import type { StoreService } from "@/services/store";
 import type { JSXElement } from "solid-js";
 
-import { Temporal } from "@js-temporal/polyfill";
 import { Ulid } from "id128";
 import { createEffect, untrack } from "solid-js";
 
@@ -13,6 +12,7 @@ import { useRxDBService } from "@/services/rxdb";
 import { getAboveLog, getBelowLog } from "@/services/rxdb/collections/actionLog";
 import { addNextSibling, addPrevSibling, dedent, getBelowItem, getAboveItem, indent } from "@/services/rxdb/collections/listItem";
 import { useStoreService } from "@/services/store";
+import { epochMsToTimeText, timeTextToEpochMs } from "@/temporal";
 
 type Context = {
   now: number;
@@ -107,12 +107,12 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
 
             switch (event.focus) {
               case "start": {
-                store.editor.text = toTimeText(currentActionLog.startAt);
+                store.editor.text = epochMsToTimeText(currentActionLog.startAt, true);
                 break;
               }
 
               case "end": {
-                store.editor.text = toTimeText(currentActionLog.endAt);
+                store.editor.text = epochMsToTimeText(currentActionLog.endAt, true);
                 break;
               }
             }
@@ -155,12 +155,20 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
         case "rotateFocus": {
           switch (ctx.storeService.store.actionLogListPane.focus) {
             case "start": {
-              await currentActionLog.patch({ startAt: parseTimeText(ctx.storeService.store.editor.text) });
+              const startAt = timeTextToEpochMs(ctx.storeService.store.editor.text);
+              if (isFinite(startAt)) {
+                await currentActionLog.patch({ startAt });
+              }
+
               break;
             }
 
             case "end": {
-              await currentActionLog.patch({ endAt: parseTimeText(ctx.storeService.store.editor.text) });
+              const endAt = timeTextToEpochMs(ctx.storeService.store.editor.text);
+              if (isFinite(endAt)) {
+                await currentActionLog.patch({ endAt });
+              }
+
               break;
             }
           }
@@ -169,13 +177,13 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
             switch (store.actionLogListPane.focus) {
               case "text": {
                 store.actionLogListPane.focus = "start";
-                store.editor.text = toTimeText(currentActionLog.startAt);
+                store.editor.text = epochMsToTimeText(currentActionLog.startAt, true);
                 break;
               }
 
               case "start": {
                 store.actionLogListPane.focus = "end";
-                store.editor.text = toTimeText(currentActionLog.endAt);
+                store.editor.text = epochMsToTimeText(currentActionLog.endAt, true);
                 break;
               }
 
@@ -193,12 +201,20 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
         case "leaveInsertMode": {
           switch (ctx.storeService.store.actionLogListPane.focus) {
             case "start": {
-              await currentActionLog.patch({ startAt: parseTimeText(ctx.storeService.store.editor.text) });
+              const startAt = timeTextToEpochMs(ctx.storeService.store.editor.text);
+              if (isFinite(startAt)) {
+                await currentActionLog.patch({ startAt });
+              }
+
               break;
             }
 
             case "end": {
-              await currentActionLog.patch({ endAt: parseTimeText(ctx.storeService.store.editor.text) });
+              const endAt = timeTextToEpochMs(ctx.storeService.store.editor.text);
+              if (isFinite(endAt)) {
+                await currentActionLog.patch({ endAt });
+              }
+
               break;
             }
           }
@@ -316,29 +332,4 @@ async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent)
       }
     }
   }
-}
-
-function parseTimeText(text: string) {
-  if (text.length === 4 || text.length === 6) {
-    const hour = Number(text.substring(0, 2));
-    const minute = Number(text.substring(2, 4));
-    const second = text.length === 6 ? Number(text.substring(4, 6)) : 0;
-
-    if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59 && second >= 0 && second <= 59) {
-      return new Temporal.PlainTime(hour, minute, second).toZonedDateTime({
-        timeZone: Temporal.Now.timeZoneId(),
-        plainDate: Temporal.Now.plainDateISO(),
-      }).epochMilliseconds;
-    }
-  }
-
-  return 0;
-}
-
-function toTimeText(epochMilliseconds: number) {
-  if (epochMilliseconds === 0) return "";
-
-  const time = Temporal.Instant.fromEpochMilliseconds(epochMilliseconds).toZonedDateTimeISO(Temporal.Now.timeZoneId());
-
-  return `${time.hour.toString().padStart(2, "0")}${time.minute.toString().padStart(2, "0")}${time.second.toString().padStart(2, "0")}`;
 }

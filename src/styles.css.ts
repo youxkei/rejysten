@@ -75,7 +75,7 @@ export const styles = {
       container: style({
         display: "grid",
         gridColumn: "1 / -1",
-        gridTemplateColumns: "8ch 2ch 8ch auto",
+        gridTemplateColumns: "19ch 2ch 19ch auto",
         gridColumnGap: "0.5ch",
         marginLeft: "1ch",
       }),

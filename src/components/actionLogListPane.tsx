@@ -1,6 +1,6 @@
 import type { ActionLogDocument } from "@/services/rxdb/collections/actionLog";
+import type { Temporal } from "@js-temporal/polyfill";
 
-import { Temporal } from "@js-temporal/polyfill";
 import { Index, Match, Show, Switch } from "solid-js";
 
 import { Editor } from "@/components/editor";
@@ -11,6 +11,7 @@ import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
 import { matches } from "@/solid/switch";
 import { styles } from "@/styles.css";
+import { epochMsToPlainDateTime, epochMsToTimeText } from "@/temporal";
 import { shortenClassName } from "@/test";
 
 type ActionLog = { type: "actionLog"; value: ActionLogDocument };
@@ -25,18 +26,6 @@ function isDateSeparator(actionLogOrDateSeparator: ActionLogOrDateSeparator): ac
   return actionLogOrDateSeparator.type === "dateSeparator";
 }
 
-function getPlainDateTime(epochMilliseconds: number) {
-  return Temporal.Instant.fromEpochMilliseconds(epochMilliseconds).toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainDateTime();
-}
-
-function epochMillisecondsToString(epochMilliseconds: number) {
-  if (epochMilliseconds === 0) {
-    return "N/A";
-  }
-
-  return getPlainDateTime(epochMilliseconds).toPlainTime().toString({ smallestUnit: "second" });
-}
-
 function ActionLog(props: { actionLog: ActionLogDocument }) {
   const { store } = useStoreService();
   const lockService = useLockService();
@@ -47,13 +36,13 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
   return (
     <div classList={{ [styles.actionLogList.actionLog.container]: true, [styles.selected]: isSelected$() }}>
       <div class={styles.actionLogList.actionLog.startAt}>
-        <Show when={isEditor$() && store.actionLogListPane.focus === "start"} fallback={epochMillisecondsToString(props.actionLog.startAt)}>
+        <Show when={isEditor$() && store.actionLogListPane.focus === "start"} fallback={epochMsToTimeText(props.actionLog.startAt) || "N/A"}>
           <Editor text={store.editor.text} />
         </Show>
       </div>
       <div class={styles.actionLogList.actionLog.waveDash}>～</div>
       <div class={styles.actionLogList.actionLog.endAt}>
-        <Show when={isEditor$() && store.actionLogListPane.focus === "end"} fallback={epochMillisecondsToString(props.actionLog.endAt)}>
+        <Show when={isEditor$() && store.actionLogListPane.focus === "end"} fallback={epochMsToTimeText(props.actionLog.endAt) || "N/A"}>
           <Editor text={store.editor.text} />
         </Show>
       </div>
@@ -90,13 +79,13 @@ export function ActionLogListPane() {
     if (actionLogs.length === 0) return [];
 
     const actionLogsWithSeparators = [
-      { type: "dateSeparator", value: getPlainDateTime(actionLogs[0].startAt).toPlainDate() },
+      { type: "dateSeparator", value: epochMsToPlainDateTime(actionLogs[0].startAt).toPlainDate() },
       { type: "actionLog", value: actionLogs[0] },
     ] as ActionLogOrDateSeparator[];
 
     for (let i = 1; i < actionLogs.length; i++) {
-      const beforeDate = getPlainDateTime(actionLogs[i - 1].startAt).toPlainDate();
-      const afterDate = getPlainDateTime(actionLogs[i].startAt).toPlainDate();
+      const beforeDate = epochMsToPlainDateTime(actionLogs[i - 1].startAt).toPlainDate();
+      const afterDate = epochMsToPlainDateTime(actionLogs[i].startAt).toPlainDate();
 
       if (beforeDate.until(afterDate).days > 0) {
         actionLogsWithSeparators.push({ type: "dateSeparator", value: afterDate });
