@@ -28,7 +28,7 @@ export const schema = {
           type: "object",
           properties: {
             currentActionLogId: { type: "string" },
-            focus: { type: "string", enum: ["text", "start", "end"] },
+            focus: { type: "string", enum: ["text", "startAt", "endAt"] },
           },
           required: ["currentActionLogId", "focus"],
         },

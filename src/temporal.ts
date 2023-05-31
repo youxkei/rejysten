@@ -95,3 +95,15 @@ if (import.meta.vitest) {
     });
   });
 }
+
+export function durationTextBetweenEpochMs(start: number, end: number) {
+  if (start === 0 || end === 0) return "";
+
+  const duration = Temporal.Instant.fromEpochMilliseconds(start).until(Temporal.Instant.fromEpochMilliseconds(end)).round({
+    largestUnit: "minute",
+    smallestUnit: "second",
+    roundingMode: "floor",
+  });
+
+  return `${duration.minutes.toString().padStart(2, "0")}:${duration.seconds.toString().padStart(2, "0")}`;
+}

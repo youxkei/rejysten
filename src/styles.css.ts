@@ -36,6 +36,7 @@ export const styles = {
     boxSizing: "border-box",
     padding: 0,
     border: "none",
+    outline: "none",
 
     fontFamily: "sans-serif",
     fontSize: "inherit",
@@ -84,21 +85,20 @@ export const styles = {
       container: style({
         display: "grid",
         gridColumn: "1 / -1",
-        gridTemplateColumns: "19ch 2ch 19ch auto",
+        gridTemplateColumns: "18ch 18ch max-content auto",
         gridColumnGap: "0.5ch",
-        marginLeft: "1ch",
+
+        boxSizing: "border-box",
+        paddingLeft: "2ch",
       }),
       startAt: style({
         gridColumnStart: 1,
-        justifySelf: "center",
-      }),
-      waveDash: style({
-        gridColumnStart: 2,
-        justifySelf: "center",
       }),
       endAt: style({
+        gridColumnStart: 2,
+      }),
+      duration: style({
         gridColumnStart: 3,
-        justifySelf: "center",
       }),
       text: style({
         gridRowStart: 2,

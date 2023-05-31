@@ -13,7 +13,7 @@ import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
 import { matches } from "@/solid/switch";
 import { styles } from "@/styles.css";
-import { epochMsToPlainDateTime, epochMsToTimeText } from "@/temporal";
+import { durationTextBetweenEpochMs, epochMsToPlainDateTime, epochMsToTimeText } from "@/temporal";
 import { shortenClassName } from "@/test";
 
 type ActionLog = { type: "actionLog"; value: ActionLogDocument };
@@ -36,27 +36,38 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
   const isSelected$ = createSignalWithLock(lockService, () => props.actionLog.id === store.actionLogListPane.currentActionLogId, false);
   const isEditor$ = () => isSelected$() && store.mode === "insert";
 
-  function createOnDoubleClick(focus: "text" | "start" | "end") {
+  const onClick$ = () => {
+    const actionLogId = props.actionLog.id;
+    return () => {
+      emitEvent({ kind: "pane", pane: "actionLogList", mode: "normal", type: "focus", actionLogId });
+    };
+  };
+
+  function createOnDoubleClick(focus: "text" | "startAt" | "endAt") {
+    const onClick = onClick$();
+
     return createDouble(300, (event: MouseEvent, isDouble) => {
       if (isDouble) {
         emitEvent({ kind: "pane", pane: "actionLogList", mode: "normal", type: "enterInsertMode", focus, initialPosition: "end" });
+      } else {
+        onClick();
       }
     });
   }
 
   return (
-    <div classList={{ [styles.actionLogList.actionLog.container]: true, [styles.selected]: isSelected$() }}>
-      <div class={styles.actionLogList.actionLog.startAt} onClick={createOnDoubleClick("start")}>
-        <Show when={isEditor$() && store.actionLogListPane.focus === "start"} fallback={epochMsToTimeText(props.actionLog.startAt) || "N/A"}>
+    <div classList={{ [styles.actionLogList.actionLog.container]: true, [styles.selected]: isSelected$() }} onClick={onClick$()}>
+      <div class={styles.actionLogList.actionLog.startAt} onClick={createOnDoubleClick("startAt")}>
+        <Show when={isEditor$() && store.actionLogListPane.focus === "startAt"} fallback={epochMsToTimeText(props.actionLog.startAt) || "N/A"}>
           <Editor text={store.editor.text} />
         </Show>
       </div>
-      <div class={styles.actionLogList.actionLog.waveDash}>～</div>
-      <div class={styles.actionLogList.actionLog.endAt} onClick={createOnDoubleClick("end")}>
-        <Show when={isEditor$() && store.actionLogListPane.focus === "end"} fallback={epochMsToTimeText(props.actionLog.endAt) || "N/A"}>
+      <div class={styles.actionLogList.actionLog.endAt} onClick={createOnDoubleClick("endAt")}>
+        <Show when={isEditor$() && store.actionLogListPane.focus === "endAt"} fallback={epochMsToTimeText(props.actionLog.endAt) || "N/A"}>
           <Editor text={store.editor.text} />
         </Show>
       </div>
+      <div class={styles.actionLogList.actionLog.duration}>{durationTextBetweenEpochMs(props.actionLog.startAt, props.actionLog.endAt) || "N/A"}</div>
       <div class={styles.actionLogList.actionLog.text} onClick={createOnDoubleClick("text")}>
         <Show when={isEditor$() && store.actionLogListPane.focus === "text"} fallback={props.actionLog.text}>
           <Editor text={props.actionLog.text} />
@@ -422,7 +433,27 @@ if (import.meta.vitest) {
   });
 
   describe.skip("PC operations", () => {
-    // TODO
+    describe.skip("keyboard operation", () => {
+      // TODO
+    });
+
+    describe.skip("mouse operation", () => {
+      test.skip("click to focus actionLog", () => {
+        // TODO
+      });
+
+      test.skip("double click to edit text", () => {
+        // TODO
+      });
+
+      test.skip("double click to edit startAt", () => {
+        // TODO
+      });
+
+      test.skip("double click to edit endAt", () => {
+        // TODO
+      });
+    });
   });
 
   describe.skip("mobile operations", () => {

@@ -9,7 +9,8 @@ export type PaneEvent = ActionLogListPaneEvent | ActionLogPaneEvent;
 export type ActionLogListPaneEvent = { pane: "actionLogList" } & (
   | ({ mode: "normal" } & (
       | { type: "add" | "moveAbove" | "moveBelow" | "enterActionLogPane" }
-      | { type: "enterInsertMode"; focus: "text" | "start" | "end"; initialPosition: "start" | "end" }
+      | { type: "focus"; actionLogId: string }
+      | { type: "enterInsertMode"; focus: "text" | "startAt" | "endAt"; initialPosition: "start" | "end" }
     ))
   | ({ mode: "insert" } & ({ type: "leaveInsertMode" | "rotateFocus" } | { type: "changeEditorText"; newText: string }))
 );

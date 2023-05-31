@@ -99,6 +99,17 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
           break;
         }
 
+        case "focus": {
+          const nextActionLog = await ctx.rxdbService.collections.actionLogs.findOne(event.actionLogId).exec();
+          if (nextActionLog) {
+            await ctx.storeService.updateStore((store) => {
+              store.actionLogListPane.currentActionLogId = nextActionLog.id;
+            });
+          }
+
+          break;
+        }
+
         case "enterInsertMode": {
           await ctx.storeService.updateStore((store) => {
             store.mode = "insert";
@@ -106,12 +117,12 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
             store.editor.initialPosition = event.initialPosition;
 
             switch (event.focus) {
-              case "start": {
+              case "startAt": {
                 store.editor.text = epochMsToTimeText(currentActionLog.startAt, true);
                 break;
               }
 
-              case "end": {
+              case "endAt": {
                 store.editor.text = epochMsToTimeText(currentActionLog.endAt, true);
                 break;
               }
@@ -139,8 +150,8 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
               break;
             }
 
-            case "start":
-            case "end": {
+            case "startAt":
+            case "endAt": {
               await ctx.storeService.updateStore((store) => {
                 store.editor.text = event.newText;
               });
@@ -154,7 +165,7 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
 
         case "rotateFocus": {
           switch (ctx.storeService.store.actionLogListPane.focus) {
-            case "start": {
+            case "startAt": {
               const startAt = timeTextToEpochMs(ctx.storeService.store.editor.text);
               if (isFinite(startAt)) {
                 await currentActionLog.patch({ startAt });
@@ -163,7 +174,7 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
               break;
             }
 
-            case "end": {
+            case "endAt": {
               const endAt = timeTextToEpochMs(ctx.storeService.store.editor.text);
               if (isFinite(endAt)) {
                 await currentActionLog.patch({ endAt });
@@ -176,18 +187,18 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
           await ctx.storeService.updateStore((store) => {
             switch (store.actionLogListPane.focus) {
               case "text": {
-                store.actionLogListPane.focus = "start";
+                store.actionLogListPane.focus = "startAt";
                 store.editor.text = epochMsToTimeText(currentActionLog.startAt, true);
                 break;
               }
 
-              case "start": {
-                store.actionLogListPane.focus = "end";
+              case "startAt": {
+                store.actionLogListPane.focus = "endAt";
                 store.editor.text = epochMsToTimeText(currentActionLog.endAt, true);
                 break;
               }
 
-              case "end": {
+              case "endAt": {
                 store.actionLogListPane.focus = "text";
                 store.editor.text = "";
                 break;
@@ -200,7 +211,7 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
 
         case "leaveInsertMode": {
           switch (ctx.storeService.store.actionLogListPane.focus) {
-            case "start": {
+            case "startAt": {
               const startAt = timeTextToEpochMs(ctx.storeService.store.editor.text);
               if (isFinite(startAt)) {
                 await currentActionLog.patch({ startAt });
@@ -209,7 +220,7 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
               break;
             }
 
-            case "end": {
+            case "endAt": {
               const endAt = timeTextToEpochMs(ctx.storeService.store.editor.text);
               if (isFinite(endAt)) {
                 await currentActionLog.patch({ endAt });

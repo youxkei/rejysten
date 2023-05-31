@@ -19,14 +19,14 @@ exports[`RxDB changes > endAt changes > endAt of ongoing changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -43,14 +43,14 @@ exports[`RxDB changes > endAt changes > endAt of ongoing changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -67,14 +67,14 @@ exports[`RxDB changes > endAt changes > endAt of ongoing changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -109,14 +109,14 @@ exports[`RxDB changes > endAt changes > initial 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -133,14 +133,14 @@ exports[`RxDB changes > endAt changes > initial 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -162,12 +162,12 @@ exports[`RxDB changes > endAt changes > initial 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -202,14 +202,14 @@ exports[`RxDB changes > startAt changes > initial 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -226,14 +226,14 @@ exports[`RxDB changes > startAt changes > initial 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -255,12 +255,12 @@ exports[`RxDB changes > startAt changes > initial 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -279,12 +279,12 @@ exports[`RxDB changes > startAt changes > initial 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -308,12 +308,12 @@ exports[`RxDB changes > startAt changes > initial 1`] = `
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -332,12 +332,12 @@ exports[`RxDB changes > startAt changes > initial 1`] = `
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -370,14 +370,14 @@ exports[`RxDB changes > startAt changes > startAt of finished 2 changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -394,14 +394,14 @@ exports[`RxDB changes > startAt changes > startAt of finished 2 changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -423,12 +423,12 @@ exports[`RxDB changes > startAt changes > startAt of finished 2 changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -447,12 +447,12 @@ exports[`RxDB changes > startAt changes > startAt of finished 2 changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -476,12 +476,12 @@ exports[`RxDB changes > startAt changes > startAt of finished 2 changed 1`] = `
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -500,12 +500,12 @@ exports[`RxDB changes > startAt changes > startAt of finished 2 changed 1`] = `
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -538,14 +538,14 @@ exports[`RxDB changes > startAt changes > startAt of ongoing 2 changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -562,14 +562,14 @@ exports[`RxDB changes > startAt changes > startAt of ongoing 2 changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -591,12 +591,12 @@ exports[`RxDB changes > startAt changes > startAt of ongoing 2 changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -615,12 +615,12 @@ exports[`RxDB changes > startAt changes > startAt of ongoing 2 changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -644,12 +644,12 @@ exports[`RxDB changes > startAt changes > startAt of ongoing 2 changed 1`] = `
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -668,12 +668,12 @@ exports[`RxDB changes > startAt changes > startAt of ongoing 2 changed 1`] = `
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -706,14 +706,14 @@ exports[`RxDB changes > startAt changes > startAt of tentative 2 changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -730,14 +730,14 @@ exports[`RxDB changes > startAt changes > startAt of tentative 2 changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -759,12 +759,12 @@ exports[`RxDB changes > startAt changes > startAt of tentative 2 changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -783,12 +783,12 @@ exports[`RxDB changes > startAt changes > startAt of tentative 2 changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -807,12 +807,12 @@ exports[`RxDB changes > startAt changes > startAt of tentative 2 changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -836,12 +836,12 @@ exports[`RxDB changes > startAt changes > startAt of tentative 2 changed 1`] = `
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -874,14 +874,14 @@ exports[`RxDB changes > text changes > initial 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -903,12 +903,12 @@ exports[`RxDB changes > text changes > initial 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -932,12 +932,12 @@ exports[`RxDB changes > text changes > initial 1`] = `
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -970,14 +970,14 @@ exports[`RxDB changes > text changes > text of finished changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -999,12 +999,12 @@ exports[`RxDB changes > text changes > text of finished changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1028,12 +1028,12 @@ exports[`RxDB changes > text changes > text of finished changed 1`] = `
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1066,14 +1066,14 @@ exports[`RxDB changes > text changes > text of ongoing changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -1095,12 +1095,12 @@ exports[`RxDB changes > text changes > text of ongoing changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1124,12 +1124,12 @@ exports[`RxDB changes > text changes > text of ongoing changed 1`] = `
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1162,14 +1162,14 @@ exports[`RxDB changes > text changes > text of tentative changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -1191,12 +1191,12 @@ exports[`RxDB changes > text changes > text of tentative changed 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1220,12 +1220,12 @@ exports[`RxDB changes > text changes > text of tentative changed 1`] = `
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1258,14 +1258,14 @@ exports[`display > finished actionLog is selected 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -1287,12 +1287,12 @@ exports[`display > finished actionLog is selected 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1316,12 +1316,12 @@ exports[`display > finished actionLog is selected 1`] = `
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1354,14 +1354,14 @@ exports[`display > finished actionLogs are sorted by startAt 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -1378,14 +1378,14 @@ exports[`display > finished actionLogs are sorted by startAt 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -1402,14 +1402,14 @@ exports[`display > finished actionLogs are sorted by startAt 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -1426,14 +1426,14 @@ exports[`display > finished actionLogs are sorted by startAt 1`] = `
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -1468,14 +1468,14 @@ exports[`display > ongoing actionLogs follows finished actionLogs and sorted by 
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -1492,14 +1492,14 @@ exports[`display > ongoing actionLogs follows finished actionLogs and sorted by 
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -1516,14 +1516,14 @@ exports[`display > ongoing actionLogs follows finished actionLogs and sorted by 
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -1540,14 +1540,14 @@ exports[`display > ongoing actionLogs follows finished actionLogs and sorted by 
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -1569,12 +1569,12 @@ exports[`display > ongoing actionLogs follows finished actionLogs and sorted by 
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1593,12 +1593,12 @@ exports[`display > ongoing actionLogs follows finished actionLogs and sorted by 
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1617,12 +1617,12 @@ exports[`display > ongoing actionLogs follows finished actionLogs and sorted by 
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1641,12 +1641,12 @@ exports[`display > ongoing actionLogs follows finished actionLogs and sorted by 
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1681,14 +1681,14 @@ exports[`display > tentative actionLogs follows ongoing actionLogs and sorted by
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -1705,14 +1705,14 @@ exports[`display > tentative actionLogs follows ongoing actionLogs and sorted by
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -1729,14 +1729,14 @@ exports[`display > tentative actionLogs follows ongoing actionLogs and sorted by
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -1753,14 +1753,14 @@ exports[`display > tentative actionLogs follows ongoing actionLogs and sorted by
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
-      >
-        ～
-      </div>
-      <div
         class="actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        00:00
       </div>
       <div
         class="actionLogList_actionLog_text"
@@ -1782,12 +1782,12 @@ exports[`display > tentative actionLogs follows ongoing actionLogs and sorted by
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1806,12 +1806,12 @@ exports[`display > tentative actionLogs follows ongoing actionLogs and sorted by
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1830,12 +1830,12 @@ exports[`display > tentative actionLogs follows ongoing actionLogs and sorted by
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1854,12 +1854,12 @@ exports[`display > tentative actionLogs follows ongoing actionLogs and sorted by
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1883,12 +1883,12 @@ exports[`display > tentative actionLogs follows ongoing actionLogs and sorted by
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1907,12 +1907,12 @@ exports[`display > tentative actionLogs follows ongoing actionLogs and sorted by
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1931,12 +1931,12 @@ exports[`display > tentative actionLogs follows ongoing actionLogs and sorted by
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
@@ -1955,12 +1955,12 @@ exports[`display > tentative actionLogs follows ongoing actionLogs and sorted by
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_waveDash"
+        class="actionLogList_actionLog_endAt"
       >
-        ～
+        N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogList_actionLog_duration"
       >
         N/A
       </div>
