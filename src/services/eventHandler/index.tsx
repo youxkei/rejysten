@@ -99,6 +99,27 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
           break;
         }
 
+        case "add": {
+          const id = Ulid.generate({ time: ctx.now }).toCanonical();
+
+          await ctx.rxdbService.collections.actionLogs.insert({
+            id,
+            text: "",
+            startAt: currentActionLog.endAt || ctx.now,
+            endAt: 0,
+            updatedAt: ctx.now,
+          });
+
+          await ctx.storeService.updateStore((store) => {
+            store.mode = "insert";
+            store.editor.initialPosition = "end";
+            store.actionLogListPane.currentActionLogId = id;
+            store.actionLogListPane.focus = "text";
+          });
+
+          break;
+        }
+
         case "focus": {
           const nextActionLog = await ctx.rxdbService.collections.actionLogs.findOne(event.actionLogId).exec();
           if (nextActionLog) {
@@ -234,8 +255,16 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
             store.mode = "normal";
             store.editor.text = "";
           });
+
+          break;
         }
       }
+
+      break;
+    }
+
+    default: {
+      throw new Error(`unknown event mode: ${event as { mode: "__invalid__" }}`);
     }
   }
 }

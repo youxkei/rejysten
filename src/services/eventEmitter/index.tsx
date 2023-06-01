@@ -93,6 +93,15 @@ function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
 
           break;
         }
+
+        case "KeyO": {
+          if (!shiftKey) {
+            ctx.emitEvent({ ...normalModeEvent, type: "add" });
+            event.preventDefault();
+          }
+
+          break;
+        }
       }
 
       break;

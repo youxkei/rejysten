@@ -434,7 +434,9 @@ if (import.meta.vitest) {
 
   describe.skip("PC operations", () => {
     describe.skip("keyboard operation", () => {
-      // TODO
+      test.skip("press o to add actionLog", () => {
+        // TODO
+      });
     });
 
     describe.skip("mouse operation", () => {
