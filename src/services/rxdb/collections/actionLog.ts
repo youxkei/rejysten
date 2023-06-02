@@ -10,7 +10,8 @@ export type ActionLogDocument = RxDocument<ActionLog>;
 function getAboveFinishedLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
   return collections.actionLogs
     .findOne({
-      selector: { id: { $not: baseLog.id }, startAt: { $gt: 0, $lte: baseLog.startAt }, endAt: { $gt: 0 } },
+      // use $lte instead of $lt due to a bug https://github.com/pubkey/rxdb/pull/4751
+      selector: { id: { $lte: baseLog.id }, startAt: { $gt: 0, $lte: baseLog.startAt }, endAt: { $gt: 0 } },
       sort: [{ id: "desc", startAt: "desc" }],
     })
     .exec();
@@ -19,7 +20,7 @@ function getAboveFinishedLog({ collections }: RxDBService, baseLog: ActionLogDoc
 function getBelowFinishedLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
   return collections.actionLogs
     .findOne({
-      selector: { id: { $not: baseLog.id }, startAt: { $gt: 0, $gte: baseLog.startAt }, endAt: { $gt: 0 } },
+      selector: { id: { $gt: baseLog.id }, startAt: { $gt: 0, $gte: baseLog.startAt }, endAt: { $gt: 0 } },
       sort: [{ startAt: "asc" }],
     })
     .exec();
@@ -28,7 +29,8 @@ function getBelowFinishedLog({ collections }: RxDBService, baseLog: ActionLogDoc
 function getAboveOngoingLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
   return collections.actionLogs
     .findOne({
-      selector: { id: { $not: baseLog.id }, startAt: { $gt: 0, $lte: baseLog.startAt }, endAt: 0 },
+      // use $lte instead of $lt due to a bug https://github.com/pubkey/rxdb/pull/4751
+      selector: { id: { $lte: baseLog.id }, startAt: { $gt: 0, $lte: baseLog.startAt }, endAt: 0 },
       sort: [{ id: "desc", startAt: "desc" }],
     })
     .exec();
@@ -37,7 +39,7 @@ function getAboveOngoingLog({ collections }: RxDBService, baseLog: ActionLogDocu
 function getBelowOngoingLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
   return collections.actionLogs
     .findOne({
-      selector: { id: { $not: baseLog.id }, startAt: { $gte: baseLog.startAt }, endAt: 0 },
+      selector: { id: { $gt: baseLog.id }, startAt: { $gte: baseLog.startAt }, endAt: 0 },
       sort: [{ startAt: "asc" }],
     })
     .exec();
@@ -138,13 +140,14 @@ if (import.meta.vitest) {
         wantActionLogId: "2",
       },
       {
-        name: "finished log, has an above finished log with same startAt",
+        name: "finished log, has above and below finished logs with same startAt",
         actionLogs: [
           { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
           { id: "2", text: "", startAt: 2, endAt: 2, updatedAt: 9 },
           { id: "3", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
           { id: "4", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
           { id: "5", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
+          { id: "6", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
         ],
         currentActionLogId: "5",
         wantActionLogId: "4",
@@ -188,13 +191,14 @@ if (import.meta.vitest) {
         wantActionLogId: "2",
       },
       {
-        name: "ongoing log, has an above ongoing log with same startAt",
+        name: "ongoing log, has above and below ongoing logs with same startAt",
         actionLogs: [
           { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
           { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
           { id: "3", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
           { id: "4", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
           { id: "5", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
+          { id: "6", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
         ],
         currentActionLogId: "5",
         wantActionLogId: "4",
@@ -339,8 +343,9 @@ if (import.meta.vitest) {
         wantActionLogId: "2",
       },
       {
-        name: "ongoing log, has a below ongoing log with same startAt",
+        name: "ongoing log, has above and below ongoing logs with same startAt",
         actionLogs: [
+          { id: "0", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
           { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
           { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
           { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
@@ -399,8 +404,9 @@ if (import.meta.vitest) {
         wantActionLogId: "2",
       },
       {
-        name: "finished log, has a below finished log with same startAt",
+        name: "finished log, has above and below finished logs with same startAt",
         actionLogs: [
+          { id: "0", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
           { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
           { id: "2", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
           { id: "3", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
