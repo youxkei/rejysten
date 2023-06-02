@@ -86,10 +86,11 @@ export const styles = {
         display: "grid",
         gridColumn: "1 / -1",
         gridTemplateColumns: "18ch 18ch max-content auto",
+        gridTemplateRows: "1.5em 1.5em",
         gridColumnGap: "0.5ch",
 
         boxSizing: "border-box",
-        paddingLeft: "2ch",
+        marginLeft: "0.4ch",
       }),
       startAt: style({
         gridColumnStart: 1,
@@ -103,7 +104,6 @@ export const styles = {
       text: style({
         gridRowStart: 2,
         gridColumn: "1 / -1",
-        paddingLeft: "2ch",
       }),
     },
   },

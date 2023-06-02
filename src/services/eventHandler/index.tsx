@@ -105,7 +105,7 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
           await ctx.rxdbService.collections.actionLogs.insert({
             id,
             text: "",
-            startAt: currentActionLog.endAt || ctx.now,
+            startAt: currentActionLog.endAt || (ctx.now / 1000) * 1000,
             endAt: 0,
             updatedAt: ctx.now,
           });
