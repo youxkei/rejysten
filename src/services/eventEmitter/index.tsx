@@ -1,4 +1,5 @@
 import type { Event } from "@/services/event";
+import type { RxDBService } from "@/services/rxdb";
 import type { Store } from "@/services/store";
 import type { JSXElement } from "solid-js";
 
@@ -6,16 +7,20 @@ import { useKeyDownEvent } from "@solid-primitives/keyboard";
 import { createEffect, untrack } from "solid-js";
 
 import { useEventService } from "@/services/event";
+import { useRxDBService } from "@/services/rxdb";
+import { getAboveLog } from "@/services/rxdb/collections/actionLog";
 import { useStoreService } from "@/services/store";
 
 type Context = {
   store: Store;
   emitEvent: (event: Event) => void;
+  rxdb: RxDBService;
 };
 
 export function EventEmitterServiceProvider(props: { children: JSXElement }) {
   const { store } = useStoreService();
   const { emitEvent } = useEventService();
+  const rxdb = useRxDBService();
 
   const keyDownEvent$ = useKeyDownEvent();
 
@@ -30,17 +35,21 @@ export function EventEmitterServiceProvider(props: { children: JSXElement }) {
     }
 
     untrack(() => {
-      const ctx = { store, emitEvent };
+      const ctx = { store, emitEvent, rxdb };
 
       switch (store.currentPane) {
         case "actionLogList": {
-          emitActionLogListPaneEvent(ctx, event);
+          void emitActionLogListPaneEvent(ctx, event);
           break;
         }
 
         case "actionLog": {
           emitActionLogPaneEvent(ctx, event);
           break;
+        }
+
+        default: {
+          throw new Error(`unknown store.currentPane: ${store.currentPane as "__invalid__"}`);
         }
       }
     });
@@ -49,8 +58,8 @@ export function EventEmitterServiceProvider(props: { children: JSXElement }) {
   return props.children;
 }
 
-function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
-  const { shiftKey } = event;
+async function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
+  const { shiftKey, isComposing } = event;
   const actionLogListPaneEvent = { kind: "pane", pane: "actionLogList" } as const;
 
   switch (ctx.store.mode) {
@@ -124,6 +133,24 @@ function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
             ctx.emitEvent({ ...insertModeEvent, type: "leaveInsertMode" });
             event.preventDefault();
           }
+
+          break;
+        }
+
+        case "Backspace": {
+          if (shiftKey || isComposing || ctx.store.actionLogListPane.focus !== "text") break;
+
+          const currentActionLog = await ctx.rxdb.collections.actionLogs.findOne(ctx.store.actionLogListPane.currentActionLogId).exec();
+          if (!currentActionLog || currentActionLog.text !== "") break;
+
+          const items = await ctx.rxdb.collections.listItems.find({ selector: { parentId: currentActionLog.id } }).exec();
+          if (items.length > 0) break;
+
+          const aboveActionLog = await getAboveLog(ctx.rxdb, currentActionLog);
+          if (!aboveActionLog) break;
+
+          ctx.emitEvent({ ...insertModeEvent, type: "delete" });
+          event.preventDefault();
 
           break;
         }

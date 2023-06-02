@@ -12,7 +12,7 @@ export type ActionLogListPaneEvent = { pane: "actionLogList" } & (
       | { type: "focus"; actionLogId: string }
       | { type: "enterInsertMode"; focus: "text" | "startAt" | "endAt"; initialPosition: "start" | "end" }
     ))
-  | ({ mode: "insert" } & ({ type: "leaveInsertMode" | "rotateFocus" } | { type: "changeEditorText"; newText: string }))
+  | ({ mode: "insert" } & ({ type: "leaveInsertMode" | "rotateFocus" | "delete" } | { type: "changeEditorText"; newText: string }))
 );
 
 export type ActionLogPaneEvent = { pane: "actionLog" } & (

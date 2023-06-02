@@ -437,6 +437,10 @@ if (import.meta.vitest) {
       test.skip("press o to add actionLog", () => {
         // TODO
       });
+
+      test.skip("press backspace to delete actionLog", () => {
+        // TODO
+      });
     });
 
     describe.skip("mouse operation", () => {

@@ -258,6 +258,29 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
 
           break;
         }
+
+        case "delete": {
+          if (currentActionLog.text !== "") break;
+
+          const items = await ctx.rxdbService.collections.listItems.find({ selector: { parentId: currentActionLog.id } }).exec();
+          if (items.length > 0) break;
+
+          const aboveActionLog = await getAboveLog(ctx.rxdbService, currentActionLog);
+          if (!aboveActionLog) break;
+
+          await ctx.storeService.updateStore((store) => {
+            store.editor.initialPosition = "end";
+            store.actionLogListPane.currentActionLogId = aboveActionLog.id;
+          });
+
+          await currentActionLog.remove();
+
+          break;
+        }
+
+        default: {
+          throw new Error(`unknown event type: ${event as { type: "__invalid__" }}`);
+        }
       }
 
       break;
