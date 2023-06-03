@@ -31,6 +31,7 @@ export function EventHandlerServiceProvider(props: { children: JSXElement }) {
 
   createEffect(async () => {
     const event = eventService.currentEvent$();
+    if (event.kind === "initial") return;
 
     await untrack(() => runWithLock(lockService, () => handle({ now: Date.now(), rxdbService, storeService, eventService }, event)));
   });
@@ -39,6 +40,7 @@ export function EventHandlerServiceProvider(props: { children: JSXElement }) {
 }
 
 async function handle(ctx: Context, event: Event) {
+  console.debug("event handler start", event);
   switch (event.kind) {
     case "initial": {
       // do nothing
@@ -55,6 +57,7 @@ async function handle(ctx: Context, event: Event) {
       throw new NeverErrorWithFields("unknown event.kind", { event }, event);
     }
   }
+  console.debug("event handler end", event);
 }
 
 async function handlePaneEvent(ctx: Context, event: PaneEvent) {

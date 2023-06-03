@@ -53,6 +53,8 @@ export function StoreServiceProvider(props: { children: JSXElement }) {
     if (!storeDocument) return;
 
     const { id: _, ...newStore } = storeDocument.toJSON();
+
+    console.debug("update store", newStore);
     setStore(reconcile(newStore));
   });
 

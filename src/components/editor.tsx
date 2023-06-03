@@ -1,4 +1,4 @@
-import { onMount } from "solid-js";
+import { onCleanup, onMount } from "solid-js";
 
 import { useEventService } from "@/services/event";
 import { useStoreService } from "@/services/store";
@@ -29,12 +29,23 @@ export function Editor(props: { text: string }) {
     }
   });
 
+  let active = true;
+  onCleanup(() => {
+    active = false;
+  });
+
+  const onBlur = () => {
+    if (active) {
+      emitEvent({ kind: "pane", pane: store.currentPane, mode: "insert", type: "leaveInsertMode" });
+    }
+  };
+
   return (
     <input
       class={styles.editor}
       ref={input}
       onInput={(event) => emitEvent({ kind: "pane", pane: store.currentPane, mode: "insert", type: "changeEditorText", newText: event.currentTarget.value })}
-      //onBlur={() => emitEvent({ kind: "pane", pane: store.currentPane, mode: "insert", type: "leaveInsertMode" })}
+      onBlur={onBlur}
       value={props.text}
     />
   );

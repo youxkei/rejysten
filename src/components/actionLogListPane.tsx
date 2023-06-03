@@ -34,7 +34,7 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
   const { emitEvent } = useEventService();
 
   const isSelected$ = createSignalWithLock(lockService, () => props.actionLog.id === store.actionLogListPane.currentActionLogId, false);
-  const isEditor$ = () => isSelected$() && store.mode === "insert";
+  const isEditor$ = createSignalWithLock(lockService, () => isSelected$() && store.mode === "insert", false);
 
   const onClick$ = () => {
     const actionLogId = props.actionLog.id;
