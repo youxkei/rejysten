@@ -22,6 +22,7 @@
   },
   "homepage": "https://github.com/youxkei/rejysten#readme",
   "devDependencies": {
+    "@blitz/eslint-plugin": "github:stackblitz/eslint-plugin#93190f5",
     "@solidjs/testing-library": "^0.7.0",
     "@testing-library/user-event": "^14.4.3",
     "@types/js-yaml": "^4.0.5",
@@ -86,7 +87,8 @@
       "@typescript-eslint",
       "import",
       "no-relative-import-paths",
-      "unused-imports"
+      "unused-imports",
+      "@blitz"
     ],
     "rules": {
       "@typescript-eslint/no-non-null-assertion": "off",
@@ -140,7 +142,8 @@
           "prefix": "@"
         }
       ],
-      "unused-imports/no-unused-imports": "error"
+      "unused-imports/no-unused-imports": "error",
+      "@blitz/block-scope-case": "error"
     }
   }
 }
