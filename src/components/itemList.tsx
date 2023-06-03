@@ -22,7 +22,7 @@ export function ItemList(props: { id: string; selectedId: string }) {
     undefined
   );
   const isSelected$ = createSignalWithLock(lockService, () => props.id === props.selectedId, false);
-  const isEditor$ = () => isSelected$() && store.mode === "insert";
+  const isEditor$ = createSignalWithLock(lockService, () => isSelected$() && store.mode === "insert", false);
 
   return (
     <Show when={listItem$()}>

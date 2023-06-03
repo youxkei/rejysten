@@ -35,9 +35,10 @@ export const schema = {
         actionLogPane: {
           type: "object",
           properties: {
+            currentActionLogId: { type: "string" },
             currentListItemId: { type: "string" },
           },
-          required: ["currentListItemId"],
+          required: ["currentActionLogId", "currentListItemId"],
         },
       },
       required: ["id", "mode", "editor", "currentPane", "actionLogListPane", "actionLogPane"],

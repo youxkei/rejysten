@@ -432,8 +432,8 @@ if (import.meta.vitest) {
     });
   });
 
-  describe.skip("PC operations", () => {
-    describe.skip("keyboard operation", () => {
+  describe("PC operations", () => {
+    describe("keyboard operation", () => {
       test.skip("press o to add actionLog", () => {
         // TODO
       });
@@ -441,9 +441,13 @@ if (import.meta.vitest) {
       test.skip("press backspace to delete actionLog", () => {
         // TODO
       });
+
+      test.skip("press L to move to ActionLogPane", () => {
+        // TODO
+      });
     });
 
-    describe.skip("mouse operation", () => {
+    describe("mouse operation", () => {
       test.skip("click to focus actionLog", () => {
         // TODO
       });

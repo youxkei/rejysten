@@ -10,7 +10,7 @@ export type PaneEvent = ActionLogListPaneEvent | ActionLogPaneEvent;
 
 export type ActionLogListPaneEvent = { pane: "actionLogList" } & (
   | ({ mode: "normal" } & (
-      | { type: "moveAbove" | "moveBelow" | "add" | "enterActionLogPane" }
+      | { type: "moveAbove" | "moveBelow" | "add" | "start" | "finish" | "moveToActionLogPane" }
       | { type: "focus"; actionLogId: string }
       | { type: "enterInsertMode"; focus: "text" | "startAt" | "endAt"; initialPosition: "start" | "end" }
     ))
@@ -19,7 +19,7 @@ export type ActionLogListPaneEvent = { pane: "actionLogList" } & (
 
 export type ActionLogPaneEvent = { pane: "actionLog" } & (
   | ({ mode: "normal" } & (
-      | { type: "indent" | "dedent" | "addPrev" | "addNext" | "moveAbove" | "moveBelow" }
+      | { type: "indent" | "dedent" | "addPrev" | "addNext" | "moveAbove" | "moveBelow" | "moveToActionLogListPane" }
       | { type: "enterInsertMode"; initialPosition: "start" | "end" }
     ))
   | ({ mode: "insert" } & ({ type: "leaveInsertMode" } | { type: "changeEditorText"; newText: string }))

@@ -112,6 +112,31 @@ async function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
 
           break;
         }
+
+        case "KeyS": {
+          if (!shiftKey) {
+            ctx.emitEvent({ ...normalModeEvent, type: "start" });
+            event.preventDefault();
+          }
+
+          break;
+        }
+
+        case "KeyF": {
+          if (!shiftKey) {
+            ctx.emitEvent({ ...normalModeEvent, type: "finish" });
+            event.preventDefault();
+          }
+
+          break;
+        }
+
+        case "KeyL": {
+          if (!shiftKey) {
+            ctx.emitEvent({ ...normalModeEvent, type: "moveToActionLogPane" });
+            event.preventDefault();
+          }
+        }
       }
 
       break;
@@ -221,6 +246,15 @@ function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent) {
         case "KeyA": {
           ctx.emitEvent({ ...normalModeEvent, type: "enterInsertMode", initialPosition: "end" });
           event.preventDefault();
+
+          break;
+        }
+
+        case "KeyH": {
+          if (!shiftKey) {
+            ctx.emitEvent({ ...normalModeEvent, type: "moveToActionLogListPane" });
+            event.preventDefault();
+          }
 
           break;
         }

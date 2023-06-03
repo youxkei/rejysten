@@ -169,8 +169,35 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
           break;
         }
 
-        case "enterActionLogPane": {
-          // TODO
+        case "start": {
+          if (currentActionLog.startAt !== 0) break;
+
+          const aboveActionLog = await getAboveLog(ctx.rxdbService, currentActionLog);
+
+          if (aboveActionLog && aboveActionLog.endAt > 0) {
+            await currentActionLog.patch({ startAt: aboveActionLog.endAt, updatedAt: ctx.now });
+          } else {
+            await currentActionLog.patch({ startAt: (ctx.now / 1000) * 1000, updatedAt: ctx.now });
+          }
+
+          break;
+        }
+
+        case "finish": {
+          if (currentActionLog.endAt !== 0) break;
+
+          await currentActionLog.patch({ endAt: (ctx.now / 1000) * 1000, updatedAt: ctx.now });
+
+          break;
+        }
+
+        case "moveToActionLogPane": {
+          await ctx.storeService.updateStore((store) => {
+            store.currentPane = "actionLog";
+            store.actionLogPane.currentListItemId = "";
+            store.actionLogPane.currentActionLogId = currentActionLog.id;
+          });
+
           break;
         }
 
@@ -393,6 +420,16 @@ async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent)
             store.mode = "insert";
             store.editor.initialPosition = event.initialPosition;
           });
+          break;
+        }
+
+        case "moveToActionLogListPane": {
+          await ctx.storeService.updateStore((store) => {
+            store.currentPane = "actionLogList";
+            store.actionLogPane.currentListItemId = "";
+            store.actionLogPane.currentActionLogId = "";
+          });
+
           break;
         }
 

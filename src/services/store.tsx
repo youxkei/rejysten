@@ -26,6 +26,7 @@ const initialStore: Store = {
     focus: "text",
   },
   actionLogPane: {
+    currentActionLogId: "",
     currentListItemId: "",
   },
 } as const;

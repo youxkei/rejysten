@@ -383,6 +383,24 @@ if (import.meta.vitest) {
   });
 }
 
+export async function getBottomItem(service: RxDBService, parentId: string) {
+  let lastItem = await service.collections.listItems.findOne({ selector: { parentId, nextId: "" } }).exec();
+  if (!lastItem) return null;
+
+  for (;;) {
+    const nextLastItem: ListItemDocument | null = await service.collections.listItems.findOne({ selector: { parentId: lastItem.id, nextId: "" } }).exec();
+    if (!nextLastItem) return lastItem;
+
+    lastItem = nextLastItem;
+  }
+}
+
+if (import.meta.vitest) {
+  describe.skip("getBottomItem", () => {
+    // TODO
+  });
+}
+
 export async function addPrevSibling(
   service: RxDBService,
   updatedAt: number,
