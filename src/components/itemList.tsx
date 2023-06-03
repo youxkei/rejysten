@@ -1,44 +1,34 @@
 import type { ListItemDocument } from "@/services/rxdb/collections/listItem";
 
-import { Show, For, ErrorBoundary, createMemo } from "solid-js";
+import { Show, ErrorBoundary, Index } from "solid-js";
 
 import { BulletList } from "@/components/bulletList";
 import { Editor } from "@/components/editor";
 import { createSignalWithLock, runWithLock, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
-import { createSubscribeSignal, createSubscribeAllSignal } from "@/services/rxdb/subscribe";
+import { createSubscribeAllSignal } from "@/services/rxdb/subscribe";
 import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
 import { shortenClassName } from "@/test";
 
-export function ItemList(props: { id: string; selectedId: string }) {
+export function ItemList(props: { listItem: ListItemDocument; selectedId: string }) {
   const { store } = useStoreService();
-  const { collections } = useRxDBService();
   const lockService = useLockService();
 
-  const listItem$ = createSignalWithLock(
-    lockService,
-    createSubscribeSignal(() => collections.listItems.findOne(props.id)),
-    undefined
-  );
-  const isSelected$ = createSignalWithLock(lockService, () => props.id === props.selectedId, false);
+  const isSelected$ = createSignalWithLock(lockService, () => props.listItem.id === props.selectedId, false);
   const isEditor$ = createSignalWithLock(lockService, () => isSelected$() && store.mode === "insert", false);
 
   return (
-    <Show when={listItem$()}>
-      {(listItem$) => (
-        <BulletList
-          bullet={"•"}
-          item={
-            <Show when={isEditor$()} fallback={<span>{listItem$().text}</span>}>
-              <Editor text={listItem$().text} />
-            </Show>
-          }
-          child={<ItemListChildren parentId={props.id} selectedId={props.selectedId} />}
-          isSelected={isSelected$()}
-        />
-      )}
-    </Show>
+    <BulletList
+      bullet={"•"}
+      item={
+        <Show when={isEditor$()} fallback={<span>{props.listItem.text}</span>}>
+          <Editor text={props.listItem.text} />
+        </Show>
+      }
+      child={<ItemListChildren parentId={props.listItem.id} selectedId={props.selectedId} />}
+      isSelected={isSelected$()}
+    />
   );
 }
 
@@ -93,27 +83,7 @@ export function ItemListChildren(props: { parentId: string; selectedId: string }
     return sortedChildren;
   };
 
-  const childrenWithMemo$ = createMemo<{ value: ListItemDocument[]; changed: boolean }>(
-    (prev) => {
-      const children = sortedChildren$();
-
-      if (prev.value.length !== children.length) {
-        return { value: children, changed: true };
-      }
-
-      for (let i = 0; i < children.length; i++) {
-        if (prev.value[i].prevId !== children[i].prevId || prev.value[i].nextId !== children[i].nextId) {
-          return { value: children, changed: true };
-        }
-      }
-
-      return { value: prev.value, changed: false };
-    },
-    { value: [], changed: false },
-    { equals: (_, next) => !next.changed }
-  );
-
-  return <For each={childrenWithMemo$().value}>{(child) => <ItemList id={child.id} selectedId={props.selectedId} />}</For>;
+  return <Index each={sortedChildren$()}>{(listItem) => <ItemList listItem={listItem()} selectedId={props.selectedId} />}</Index>;
 }
 
 if (import.meta.vitest) {
@@ -144,7 +114,7 @@ if (import.meta.vitest) {
         findByText,
       } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <>
-          <ItemList id="1" selectedId="" />
+          <ItemListChildren parentId="" selectedId="" />
           {props.children}
         </>
       ));
@@ -183,7 +153,7 @@ if (import.meta.vitest) {
       findByText,
     } = await renderWithServicesForTest(ctx.meta.id, (props) => (
       <>
-        <ItemList id="1" selectedId="" />
+        <ItemListChildren parentId="" selectedId="" />
         {props.children}
       </>
     ));
@@ -223,7 +193,7 @@ if (import.meta.vitest) {
         findByText,
       } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <ErrorBoundary fallback={(error) => `${error}`}>
-          <ItemList id="1" selectedId="" />
+          <ItemListChildren parentId="" selectedId="" />
           {props.children}
         </ErrorBoundary>
       ));
@@ -255,7 +225,7 @@ if (import.meta.vitest) {
         findByText,
       } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <ErrorBoundary fallback={(error) => `${error}`}>
-          <ItemList id="1" selectedId="" />
+          <ItemListChildren parentId="" selectedId="" />
           {props.children}
         </ErrorBoundary>
       ));
@@ -288,7 +258,7 @@ if (import.meta.vitest) {
         findByText,
       } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <ErrorBoundary fallback={(error) => `${error}`}>
-          <ItemList id="1" selectedId="" />
+          <ItemListChildren parentId="" selectedId="" />
           {props.children}
         </ErrorBoundary>
       ));
