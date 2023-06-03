@@ -90,7 +90,7 @@ export const styles = {
         gridColumnGap: "0.5ch",
 
         boxSizing: "border-box",
-        marginLeft: "0.4ch",
+        marginLeft: "1ch",
       }),
       startAt: style({
         gridColumnStart: 1,
