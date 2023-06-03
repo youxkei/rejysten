@@ -4,6 +4,7 @@ import type { JSXElement } from "solid-js";
 import userEvent from "@testing-library/user-event";
 import { createEffect, createContext, createMemo, createSignal, startTransition, untrack, useContext } from "solid-js";
 
+import { ServiceNotAvailable } from "@/services/error";
 import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeSignal } from "@/services/rxdb/subscribe";
 import { renderWithServicesForTest } from "@/services/test";
@@ -34,7 +35,7 @@ export function LockServiceProvider(props: { children: JSXElement }) {
 
 export function useLockService() {
   const service = useContext(context);
-  if (!service) throw new Error("useLockService must be used within a LockServiceProvider");
+  if (!service) throw new ServiceNotAvailable("Lock");
 
   return service;
 }

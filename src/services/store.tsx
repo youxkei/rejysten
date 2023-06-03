@@ -5,6 +5,7 @@ import { produce } from "immer";
 import { createRoot, useContext, createEffect, createContext } from "solid-js";
 import { createStore, reconcile, unwrap } from "solid-js/store";
 
+import { ServiceNotAvailable } from "@/services/error";
 import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeSignal } from "@/services/rxdb/subscribe";
 import { renderWithServicesForTest } from "@/services/test";
@@ -60,7 +61,7 @@ export function StoreServiceProvider(props: { children: JSXElement }) {
 
 export function useStoreService() {
   const service = useContext(context);
-  if (!service) throw new Error("useStoreService must be used within a StoreServiceProvider");
+  if (!service) throw new ServiceNotAvailable("Store");
 
   return service;
 }

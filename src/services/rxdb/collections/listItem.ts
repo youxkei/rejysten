@@ -2,6 +2,7 @@ import type { RxDBService } from "@/services/rxdb";
 import type { CollectionNameToDocumentType } from "@/services/rxdb/collections";
 import type { RxDocument } from "rxdb";
 
+import { ErrorWithFields } from "@/error";
 import { InconsistentError } from "@/services/rxdb/error";
 import { createRxDBServiceForTest } from "@/services/rxdb/test";
 
@@ -389,7 +390,7 @@ export async function addPrevSibling(
   newItem: Omit<ListItem, "parentId" | "prevId" | "nextId" | "updatedAt"> | RxDocument<ListItem>
 ) {
   if (newItem.id === "") {
-    throw new Error(`newItem.id is empty. newItem: ${newItem}`);
+    throw new ErrorWithFields("newItem.id is empty", { newItem });
   }
 
   const listItems = service.collections.listItems;
@@ -487,7 +488,7 @@ export async function addNextSibling(
   newItem: Omit<ListItem, "parentId" | "prevId" | "nextId" | "updatedAt"> | RxDocument<ListItem>
 ) {
   if (newItem.id === "") {
-    throw new Error(`newItem.id is empty. newItem: ${newItem}`);
+    throw new ErrorWithFields("newItem.id is empty", { newItem });
   }
 
   const listItems = service.collections.listItems;

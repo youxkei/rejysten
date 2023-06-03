@@ -10,6 +10,7 @@ import { replicateFirestore } from "rxdb/plugins/replication-firestore";
 import { batch, createContext, createEffect, createMemo, createSignal, onMount, useContext, onCleanup, createResource } from "solid-js";
 import * as s from "superstruct";
 
+import { ServiceNotAvailable } from "@/services/error";
 import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeWithSignal } from "@/solid/subscribe";
 
@@ -198,7 +199,7 @@ export function RxDBSyncFirestoreServiceProvider(props: { children: JSXElement }
 
 export function useRxDBSyncFirestoreService() {
   const service = useContext(context);
-  if (!service) throw new Error("useRxDBSyncFirestoreService must be used within RxDBSyncFirestoreProvider");
+  if (!service) throw new ServiceNotAvailable("RxDBSyncFirestore");
 
   return service;
 }

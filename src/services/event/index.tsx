@@ -2,6 +2,8 @@ import type { JSXElement } from "solid-js";
 
 import { createContext, createSignal, useContext } from "solid-js";
 
+import { ServiceNotAvailable } from "@/services/error";
+
 export type Event = { kind: "initial" } | ({ kind: "pane" } & PaneEvent);
 
 export type PaneEvent = ActionLogListPaneEvent | ActionLogPaneEvent;
@@ -38,7 +40,7 @@ export function EventServiceProvider(props: { children: JSXElement }) {
 
 export function useEventService() {
   const service = useContext(context);
-  if (!service) throw new Error("useEventService must be used within EventServiceProvider");
+  if (!service) throw new ServiceNotAvailable("Event");
 
   return service;
 }

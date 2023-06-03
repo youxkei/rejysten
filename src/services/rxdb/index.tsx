@@ -8,6 +8,7 @@ import { RxDBMigrationPlugin } from "rxdb/plugins/migration";
 import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
 import { Show, createContext, createResource, onCleanup, useContext } from "solid-js";
 
+import { ServiceNotAvailable } from "@/services/error";
 import { schema } from "@/services/rxdb/collections";
 
 export type RxDBService = {
@@ -85,7 +86,7 @@ export function RxDBServiceProvider(props: { children: JSXElement; databaseCreat
 
 export function useRxDBService() {
   const service = useContext(context);
-  if (!service) throw new Error("useRxDBService must be used within RxDBServiceProvider");
+  if (!service) throw new ServiceNotAvailable("RxDB");
 
   return service;
 }

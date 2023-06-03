@@ -6,6 +6,7 @@ import type { JSXElement } from "solid-js";
 import { Ulid } from "id128";
 import { createEffect, untrack } from "solid-js";
 
+import { ErrorWithFields, NeverErrorWithFields } from "@/error";
 import { useEventService } from "@/services/event";
 import { runWithLock, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
@@ -39,14 +40,20 @@ export function EventHandlerServiceProvider(props: { children: JSXElement }) {
 
 async function handle(ctx: Context, event: Event) {
   switch (event.kind) {
-    case "initial":
+    case "initial": {
       // do nothing
       break;
+    }
 
-    case "pane":
+    case "pane": {
       await handlePaneEvent(ctx, event);
 
       break;
+    }
+
+    default: {
+      throw new NeverErrorWithFields("unknown event.kind", { event }, event);
+    }
   }
 }
 
@@ -61,11 +68,17 @@ async function handlePaneEvent(ctx: Context, event: PaneEvent) {
       await handleActionLogPaneEvent(ctx, event);
       break;
     }
+
+    default: {
+      throw new NeverErrorWithFields("unknown event.pane", { event }, event);
+    }
   }
 }
 
 async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPaneEvent) {
-  if (ctx.storeService.store.currentPane !== "actionLogList") throw new Error("ActionLogListPaneEvent must be emitted when currentPane is actionLogList");
+  if (ctx.storeService.store.currentPane !== "actionLogList") {
+    throw new ErrorWithFields("ActionLogListPaneEvent must be emitted when currentPane is actionLogList", { event, store: ctx.storeService.store });
+  }
 
   const currentActionLog = await ctx.rxdbService.collections.actionLogs.findOne(ctx.storeService.store.actionLogListPane.currentActionLogId).exec();
   if (!currentActionLog) return;
@@ -151,6 +164,15 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
           });
 
           break;
+        }
+
+        case "enterActionLogPane": {
+          // TODO
+          break;
+        }
+
+        default: {
+          throw new NeverErrorWithFields("unknown event.type", { event }, event);
         }
       }
 
@@ -279,7 +301,7 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
         }
 
         default: {
-          throw new Error(`unknown event type: ${event as { type: "__invalid__" }}`);
+          throw new NeverErrorWithFields("unknown event.type", { event }, event);
         }
       }
 
@@ -287,13 +309,15 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
     }
 
     default: {
-      throw new Error(`unknown event mode: ${event as { mode: "__invalid__" }}`);
+      throw new NeverErrorWithFields("unknown event.mode", { event }, event);
     }
   }
 }
 
 async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent) {
-  if (ctx.storeService.store.currentPane !== "actionLog") throw new Error("ActionLogPaneEvent must be emitted when currentPane is actionLog");
+  if (ctx.storeService.store.currentPane !== "actionLog") {
+    throw new ErrorWithFields("ActionLogPaneEvent must be emitted when currentPane is actionLog", { event, store: ctx.storeService.store });
+  }
 
   const currentListItem = await ctx.rxdbService.collections.listItems.findOne(ctx.storeService.store.actionLogPane.currentListItemId).exec();
   if (!currentListItem) return;
@@ -368,6 +392,10 @@ async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent)
           });
           break;
         }
+
+        default: {
+          throw new NeverErrorWithFields("unknown event.type", { event }, event);
+        }
       }
 
       break;
@@ -392,7 +420,17 @@ async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent)
 
           break;
         }
+
+        default: {
+          throw new NeverErrorWithFields("unknown event.type", { event }, event);
+        }
       }
+
+      break;
+    }
+
+    default: {
+      throw new NeverErrorWithFields("unknown event.mode", { event }, event);
     }
   }
 }

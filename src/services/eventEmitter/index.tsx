@@ -6,6 +6,7 @@ import type { JSXElement } from "solid-js";
 import { useKeyDownEvent } from "@solid-primitives/keyboard";
 import { createEffect, untrack } from "solid-js";
 
+import { NeverErrorWithFields } from "@/error";
 import { useEventService } from "@/services/event";
 import { useRxDBService } from "@/services/rxdb";
 import { getAboveLog } from "@/services/rxdb/collections/actionLog";
@@ -49,7 +50,7 @@ export function EventEmitterServiceProvider(props: { children: JSXElement }) {
         }
 
         default: {
-          throw new Error(`unknown store.currentPane: ${store.currentPane as "__invalid__"}`);
+          throw new NeverErrorWithFields("unknown store.currentPane", { store }, store.currentPane);
         }
       }
     });
