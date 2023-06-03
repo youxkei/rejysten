@@ -166,7 +166,7 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
         case "changeEditorText": {
           switch (ctx.storeService.store.actionLogListPane.focus) {
             case "text": {
-              await currentActionLog.patch({ text: event.newText });
+              await currentActionLog.patch({ text: event.newText, updatedAt: ctx.now });
 
               break;
             }
@@ -189,7 +189,7 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
             case "startAt": {
               const startAt = timeTextToEpochMs(ctx.storeService.store.editor.text);
               if (isFinite(startAt)) {
-                await currentActionLog.patch({ startAt });
+                await currentActionLog.patch({ startAt, updatedAt: ctx.now });
               }
 
               break;
@@ -198,7 +198,7 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
             case "endAt": {
               const endAt = timeTextToEpochMs(ctx.storeService.store.editor.text);
               if (isFinite(endAt)) {
-                await currentActionLog.patch({ endAt });
+                await currentActionLog.patch({ endAt, updatedAt: ctx.now });
               }
 
               break;
@@ -235,7 +235,7 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
             case "startAt": {
               const startAt = timeTextToEpochMs(ctx.storeService.store.editor.text);
               if (isFinite(startAt)) {
-                await currentActionLog.patch({ startAt });
+                await currentActionLog.patch({ startAt, updatedAt: ctx.now });
               }
 
               break;
@@ -244,7 +244,7 @@ async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPa
             case "endAt": {
               const endAt = timeTextToEpochMs(ctx.storeService.store.editor.text);
               if (isFinite(endAt)) {
-                await currentActionLog.patch({ endAt });
+                await currentActionLog.patch({ endAt, updatedAt: ctx.now });
               }
 
               break;
@@ -380,7 +380,7 @@ async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent)
 
       switch (event.type) {
         case "changeEditorText": {
-          await currentListItem.patch({ text: event.newText });
+          await currentListItem.patch({ text: event.newText, updatedAt: ctx.now });
 
           break;
         }
