@@ -30,11 +30,11 @@ function isDateSeparator(actionLogOrDateSeparator: ActionLogOrDateSeparator): ac
 
 function ActionLog(props: { actionLog: ActionLogDocument }) {
   const { store } = useStoreService();
-  const lockService = useLockService();
+  const lock = useLockService();
   const { emitEvent } = useEventService();
 
-  const isSelected$ = createSignalWithLock(lockService, () => props.actionLog.id === store.actionLogListPane.currentActionLogId, false);
-  const isEditor$ = createSignalWithLock(lockService, () => isSelected$() && store.mode === "insert", false);
+  const isSelected$ = createSignalWithLock(lock, () => props.actionLog.id === store.actionLogListPane.currentActionLogId, false);
+  const isEditor$ = createSignalWithLock(lock, () => isSelected$() && store.mode === "insert", false);
 
   const onClick$ = () => {
     const actionLogId = props.actionLog.id;
@@ -83,10 +83,10 @@ function DateSeparator(props: { date: Temporal.PlainDate }) {
 
 export function ActionLogListPane() {
   const { collections } = useRxDBService();
-  const lockService = useLockService();
+  const lock = useLockService();
 
   const finishedActionLogs$ = createSignalWithLock(
-    lockService,
+    lock,
     createSubscribeAllSignal(() =>
       collections.actionLogs.find({
         selector: { startAt: { $gt: 0 }, endAt: { $gt: 0 } },
@@ -120,7 +120,7 @@ export function ActionLogListPane() {
   };
 
   const ongoingActionLogs$ = createSignalWithLock(
-    lockService,
+    lock,
     createSubscribeAllSignal(() =>
       collections.actionLogs.find({
         selector: { startAt: { $gt: 0 }, endAt: 0 },
@@ -131,7 +131,7 @@ export function ActionLogListPane() {
   );
 
   const tentativeActionLogs$ = createSignalWithLock(
-    lockService,
+    lock,
     createSubscribeAllSignal(() => collections.actionLogs.find({ selector: { startAt: 0 } })),
     []
   );
@@ -166,8 +166,8 @@ if (import.meta.vitest) {
       const {
         container,
         unmount,
-        rxdbService: { collections },
-        lockService,
+        rxdb: { collections },
+        lock,
       } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <>
           <ActionLogListPane />
@@ -175,7 +175,7 @@ if (import.meta.vitest) {
         </>
       ));
 
-      await runWithLock(lockService, async () => {
+      await runWithLock(lock, async () => {
         await collections.actionLogs.bulkInsert([
           { id: "1", text: "1", startAt: 4, endAt: 9, updatedAt: 9 },
           { id: "2", text: "2", startAt: 3, endAt: 9, updatedAt: 9 },
@@ -193,8 +193,8 @@ if (import.meta.vitest) {
       const {
         container,
         unmount,
-        rxdbService: { collections },
-        lockService,
+        rxdb: { collections },
+        lock,
       } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <>
           <ActionLogListPane />
@@ -202,7 +202,7 @@ if (import.meta.vitest) {
         </>
       ));
 
-      await runWithLock(lockService, async () => {
+      await runWithLock(lock, async () => {
         await collections.actionLogs.bulkInsert([
           // ongoing actionLogs
           { id: "1", text: "1", startAt: 6, endAt: 0, updatedAt: 6 },
@@ -227,8 +227,8 @@ if (import.meta.vitest) {
       const {
         container,
         unmount,
-        rxdbService: { collections },
-        lockService,
+        rxdb: { collections },
+        lock,
       } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <>
           <ActionLogListPane />
@@ -236,7 +236,7 @@ if (import.meta.vitest) {
         </>
       ));
 
-      await runWithLock(lockService, async () => {
+      await runWithLock(lock, async () => {
         await collections.actionLogs.bulkInsert([
           // tentative actionLogs
           { id: "02", text: "02", startAt: 0, endAt: 0, updatedAt: 10 },
@@ -267,9 +267,9 @@ if (import.meta.vitest) {
       const {
         container,
         unmount,
-        rxdbService: { collections },
-        lockService,
-        storeService: { updateStore },
+        rxdb: { collections },
+        lock,
+        store: { updateStore },
       } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <>
           <ActionLogListPane />
@@ -277,7 +277,7 @@ if (import.meta.vitest) {
         </>
       ));
 
-      await runWithLock(lockService, async () => {
+      await runWithLock(lock, async () => {
         await collections.actionLogs.bulkInsert([
           { id: "finished", text: "finished", startAt: 1, endAt: 2, updatedAt: 2 },
           { id: "ongoing", text: "ongoing", startAt: 3, endAt: 0, updatedAt: 3 },
@@ -312,8 +312,8 @@ if (import.meta.vitest) {
       const {
         container,
         unmount,
-        rxdbService: { collections },
-        lockService,
+        rxdb: { collections },
+        lock,
       } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <>
           <ActionLogListPane />
@@ -321,7 +321,7 @@ if (import.meta.vitest) {
         </>
       ));
 
-      await runWithLock(lockService, async () => {
+      await runWithLock(lock, async () => {
         await collections.actionLogs.bulkInsert([
           { id: "finished", text: "finished", startAt: 1, endAt: 2, updatedAt: 2 },
           { id: "ongoing", text: "ongoing", startAt: 3, endAt: 0, updatedAt: 3 },
@@ -331,19 +331,19 @@ if (import.meta.vitest) {
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
-      await runWithLock(lockService, async () => {
+      await runWithLock(lock, async () => {
         await collections.actionLogs.bulkUpsert([{ id: "finished", text: "changed finished", startAt: 1, endAt: 2, updatedAt: 5 }]);
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("text of finished changed");
 
-      await runWithLock(lockService, async () => {
+      await runWithLock(lock, async () => {
         await collections.actionLogs.bulkUpsert([{ id: "ongoing", text: "changed ongoing", startAt: 3, endAt: 0, updatedAt: 6 }]);
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("text of ongoing changed");
 
-      await runWithLock(lockService, async () => {
+      await runWithLock(lock, async () => {
         await collections.actionLogs.bulkUpsert([{ id: "tentative", text: "changed tentative", startAt: 0, endAt: 0, updatedAt: 7 }]);
       });
 
@@ -356,8 +356,8 @@ if (import.meta.vitest) {
       const {
         container,
         unmount,
-        rxdbService: { collections },
-        lockService,
+        rxdb: { collections },
+        lock,
       } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <>
           <ActionLogListPane />
@@ -365,7 +365,7 @@ if (import.meta.vitest) {
         </>
       ));
 
-      await runWithLock(lockService, async () => {
+      await runWithLock(lock, async () => {
         await collections.actionLogs.bulkInsert([
           { id: "finished 1", text: "finished 1", startAt: 2, endAt: 4, updatedAt: 4 },
           { id: "finished 2", text: "finished 2", startAt: 3, endAt: 4, updatedAt: 4 },
@@ -378,19 +378,19 @@ if (import.meta.vitest) {
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
-      await runWithLock(lockService, async () => {
+      await runWithLock(lock, async () => {
         await collections.actionLogs.bulkUpsert([{ id: "finished 2", text: "finished 2", startAt: 1, endAt: 4, updatedAt: 8 }]);
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("startAt of finished 2 changed");
 
-      await runWithLock(lockService, async () => {
+      await runWithLock(lock, async () => {
         await collections.actionLogs.bulkUpsert([{ id: "ongoing 2", text: "ongoing 2", startAt: 3, endAt: 0, updatedAt: 9 }]);
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("startAt of ongoing 2 changed");
 
-      await runWithLock(lockService, async () => {
+      await runWithLock(lock, async () => {
         await collections.actionLogs.bulkUpsert([{ id: "tentative 2", text: "tentative 2", startAt: 4, endAt: 0, updatedAt: 10 }]);
       });
 
@@ -403,8 +403,8 @@ if (import.meta.vitest) {
       const {
         container,
         unmount,
-        rxdbService: { collections },
-        lockService,
+        rxdb: { collections },
+        lock,
       } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <>
           <ActionLogListPane />
@@ -412,7 +412,7 @@ if (import.meta.vitest) {
         </>
       ));
 
-      await runWithLock(lockService, async () => {
+      await runWithLock(lock, async () => {
         await collections.actionLogs.bulkInsert([
           { id: "finished 1", text: "finished 1", startAt: 1, endAt: 4, updatedAt: 4 },
           { id: "finished 2", text: "finished 2", startAt: 3, endAt: 4, updatedAt: 4 },
@@ -422,7 +422,7 @@ if (import.meta.vitest) {
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
-      await runWithLock(lockService, async () => {
+      await runWithLock(lock, async () => {
         await collections.actionLogs.bulkUpsert([{ id: "ongoing", text: "ongoing", startAt: 2, endAt: 6, updatedAt: 6 }]);
       });
 

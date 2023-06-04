@@ -23,14 +23,14 @@ export function renderWithServicesForTest(tid: string, Component: (props: { chil
         </MultiProvider>
       </RxDBServiceProviderForTest>
     ),
-    (resolve: (value: { owner: Owner; rxdbService: RxDBService; storeService: StoreService; lockService: LockService }) => void) => {
+    (resolve: (value: { owner: Owner; rxdb: RxDBService; store: StoreService; lock: LockService }) => void) => {
       const owner = getOwner()!;
 
-      const rxdbService = useRxDBService();
-      const storeService = useStoreService();
-      const lockService = useLockService();
+      const rxdb = useRxDBService();
+      const store = useStoreService();
+      const lock = useLockService();
 
-      resolve({ owner, rxdbService, storeService, lockService });
+      resolve({ owner, rxdb, store, lock });
     }
   );
 }

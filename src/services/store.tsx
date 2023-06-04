@@ -73,8 +73,8 @@ if (import.meta.vitest) {
   test("initial store", async (test) => {
     const {
       unmount,
-      rxdbService: { collections },
-      storeService: { store },
+      rxdb: { collections },
+      store: { store },
     } = await renderWithServicesForTest(test.meta.id, (props) => props.children);
 
     test.expect(store).toEqual(initialStore);
@@ -88,8 +88,8 @@ if (import.meta.vitest) {
   test("update store from initial store", async (test) => {
     const {
       unmount,
-      rxdbService: { collections },
-      storeService: { store, updateStore },
+      rxdb: { collections },
+      store: { store, updateStore },
     } = await renderWithServicesForTest(test.meta.id, (props) => props.children);
 
     const storePromise = new Promise<string>((resolve) => {
@@ -130,8 +130,8 @@ if (import.meta.vitest) {
   test("update store from non-initial store", async (test) => {
     const {
       unmount,
-      rxdbService: { collections },
-      storeService: { store, updateStore },
+      rxdb: { collections },
+      store: { store, updateStore },
     } = await renderWithServicesForTest(test.meta.id, (props) => props.children);
 
     await updateStore((store) => {
@@ -194,7 +194,7 @@ if (import.meta.vitest) {
   test("granular update notification", async (test) => {
     const {
       unmount,
-      storeService: { store, updateStore },
+      store: { store, updateStore },
     } = await renderWithServicesForTest(test.meta.id, (props) => props.children);
 
     const currentActionLogIdPromise = Promise.race([

@@ -13,10 +13,10 @@ import { shortenClassName } from "@/test";
 
 export function ItemList(props: { listItem: ListItemDocument; selectedId: string }) {
   const { store } = useStoreService();
-  const lockService = useLockService();
+  const lock = useLockService();
 
-  const isSelected$ = createSignalWithLock(lockService, () => props.listItem.id === props.selectedId, false);
-  const isEditor$ = createSignalWithLock(lockService, () => isSelected$() && store.mode === "insert", false);
+  const isSelected$ = createSignalWithLock(lock, () => props.listItem.id === props.selectedId, false);
+  const isEditor$ = createSignalWithLock(lock, () => isSelected$() && store.mode === "insert", false);
 
   return (
     <BulletList
@@ -33,16 +33,16 @@ export function ItemList(props: { listItem: ListItemDocument; selectedId: string
 }
 
 export function ItemListChildren(props: { parentId: string; selectedId: string }) {
-  const lockService = useLockService();
-  const rxdbService = useRxDBService();
+  const lock = useLockService();
+  const { collections } = useRxDBService();
 
   const children$ = createSubscribeAllSignal(() =>
-    rxdbService.collections.listItems.find({
+    collections.listItems.find({
       selector: { parentId: props.parentId },
     })
   );
 
-  const childrenWithLock$ = createSignalWithLock(lockService, children$, []);
+  const childrenWithLock$ = createSignalWithLock(lock, children$, []);
 
   const sortedChildren$ = () => {
     const children = childrenWithLock$();
@@ -110,7 +110,7 @@ if (import.meta.vitest) {
       const {
         container,
         unmount,
-        rxdbService: { collections },
+        rxdb: { collections },
         findByText,
       } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <>
@@ -148,8 +148,8 @@ if (import.meta.vitest) {
     const {
       container,
       unmount,
-      rxdbService: { collections },
-      lockService,
+      rxdb: { collections },
+      lock,
       findByText,
     } = await renderWithServicesForTest(ctx.meta.id, (props) => (
       <>
@@ -171,7 +171,7 @@ if (import.meta.vitest) {
 
     ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
-    await runWithLock(lockService, async () => {
+    await runWithLock(lock, async () => {
       await collections.listItems.bulkUpsert([
         { id: "3", text: "bar", prevId: "2", nextId: "4", parentId: "1", updatedAt: 1 },
         { id: "4", text: "baz", prevId: "3", nextId: "", parentId: "1", updatedAt: 1 },
@@ -189,7 +189,7 @@ if (import.meta.vitest) {
       const {
         container,
         unmount,
-        rxdbService: { collections },
+        rxdb: { collections },
         findByText,
       } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <ErrorBoundary fallback={(error) => `${error}`}>
@@ -221,7 +221,7 @@ if (import.meta.vitest) {
       const {
         container,
         unmount,
-        rxdbService: { collections },
+        rxdb: { collections },
         findByText,
       } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <ErrorBoundary fallback={(error) => `${error}`}>
@@ -254,7 +254,7 @@ if (import.meta.vitest) {
       const {
         container,
         unmount,
-        rxdbService: { collections },
+        rxdb: { collections },
         findByText,
       } = await renderWithServicesForTest(ctx.meta.id, (props) => (
         <ErrorBoundary fallback={(error) => `${error}`}>

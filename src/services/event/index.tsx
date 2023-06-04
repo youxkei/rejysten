@@ -4,11 +4,11 @@ import { createContext, createSignal, useContext } from "solid-js";
 
 import { ServiceNotAvailable } from "@/services/error";
 
-export type Event = { kind: "initial" } | ({ kind: "pane" } & PaneEvent);
+export type Event = { kind: "initial" } | PaneEvent;
 
 export type PaneEvent = ActionLogListPaneEvent | ActionLogPaneEvent;
 
-export type ActionLogListPaneEvent = { pane: "actionLogList" } & (
+export type ActionLogListPaneEvent = { kind: "pane"; pane: "actionLogList" } & (
   | ({ mode: "normal" } & (
       | { type: "moveAbove" | "moveBelow" | "add" | "start" | "finish" | "moveToActionLogPane" }
       | { type: "focus"; actionLogId: string }
@@ -17,7 +17,7 @@ export type ActionLogListPaneEvent = { pane: "actionLogList" } & (
   | ({ mode: "insert" } & ({ type: "leaveInsertMode" | "rotateFocus" | "delete" } | { type: "changeEditorText"; newText: string }))
 );
 
-export type ActionLogPaneEvent = { pane: "actionLog" } & (
+export type ActionLogPaneEvent = { kind: "pane"; pane: "actionLog" } & (
   | ({ mode: "normal" } & (
       | { type: "indent" | "dedent" | "addPrev" | "addNext" | "moveAbove" | "moveBelow" | "moveToActionLogListPane" }
       | { type: "enterInsertMode"; initialPosition: "start" | "end" }

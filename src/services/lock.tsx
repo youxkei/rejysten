@@ -10,19 +10,19 @@ import { createSubscribeSignal } from "@/services/rxdb/subscribe";
 import { renderWithServicesForTest } from "@/services/test";
 
 export type LockService = {
-  rxdbService: RxDBService;
-
   lock$: () => boolean;
   setLock: (isLocked: boolean) => void;
+
+  rxdb: RxDBService;
 };
 
 const context = createContext<LockService>();
 
 export function LockServiceProvider(props: { children: JSXElement }) {
-  const rxdbService = useRxDBService();
+  const rxdb = useRxDBService();
   const [lock$, setLock] = createSignal(false);
 
-  const unlockEvent$ = createSubscribeSignal(() => rxdbService.collections.localEvents.findOne("unlock"));
+  const unlockEvent$ = createSubscribeSignal(() => rxdb.collections.localEvents.findOne("unlock"));
   createEffect(async () => {
     const unlockEvent = unlockEvent$();
     if (!unlockEvent) return;
@@ -30,7 +30,7 @@ export function LockServiceProvider(props: { children: JSXElement }) {
     await startTransition(() => setLock(false));
   });
 
-  return <context.Provider value={{ rxdbService, lock$, setLock }}>{props.children}</context.Provider>;
+  return <context.Provider value={{ setLock, lock$, rxdb }}>{props.children}</context.Provider>;
 }
 
 export function useLockService() {
@@ -40,7 +40,7 @@ export function useLockService() {
   return service;
 }
 
-export async function runWithLock({ lock$, setLock, rxdbService: { collections } }: LockService, runner: () => Promise<unknown>) {
+export async function runWithLock({ lock$, setLock, rxdb: { collections } }: LockService, runner: () => Promise<unknown>) {
   if (untrack(lock$)) return;
 
   setLock(true);

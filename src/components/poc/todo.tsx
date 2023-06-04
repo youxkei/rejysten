@@ -60,7 +60,7 @@ if (import.meta.vitest) {
     const {
       container,
       unmount,
-      rxdbService: { collections },
+      rxdb: { collections },
       findByText,
     } = await renderWithServicesForTest(ctx.meta.id, (props) => (
       <>
@@ -89,7 +89,7 @@ if (import.meta.vitest) {
     const {
       container,
       unmount,
-      rxdbService: { collections },
+      rxdb: { collections },
       findByText,
       queryByText,
     } = await renderWithServicesForTest(ctx.meta.id, (props) => (
