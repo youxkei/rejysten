@@ -109,16 +109,26 @@ export async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPan
       }
 
       switch (event.type) {
-        case "changeEditorText": {
-          await currentListItem.patch({ text: event.newText, updatedAt: ctx.now });
-
-          break;
-        }
-
         case "leaveInsertMode": {
           await ctx.store.updateStore((store) => {
             store.mode = "normal";
           });
+
+          break;
+        }
+
+        case "indent": {
+          await indent(ctx.rxdb, ctx.now, currentListItem);
+          break;
+        }
+
+        case "dedent": {
+          await dedent(ctx.rxdb, ctx.now, currentListItem);
+          break;
+        }
+
+        case "changeEditorText": {
+          await currentListItem.patch({ text: event.newText, updatedAt: ctx.now });
 
           break;
         }

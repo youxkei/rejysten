@@ -60,6 +60,22 @@ if (import.meta.vitest) {
       test.skip("press H to move to ActionLogListPane", () => {
         // TODO
       });
+
+      test.skip("press Tab in normal mode to indent item", () => {
+        // TODO
+      });
+
+      test.skip("press Tab in insert mode to indent item", () => {
+        // TODO
+      });
+
+      test.skip("press Shift+Tab in normal mode to dedent item", () => {
+        // TODO
+      });
+
+      test.skip("press Shift+Tab in insert mode to dedent item", () => {
+        // TODO
+      });
     });
   });
 }

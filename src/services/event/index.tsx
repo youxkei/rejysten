@@ -22,7 +22,7 @@ export type ActionLogPaneEvent = { kind: "pane"; pane: "actionLog" } & (
       | { type: "indent" | "dedent" | "addPrev" | "addNext" | "moveAbove" | "moveBelow" | "moveToActionLogListPane" }
       | { type: "enterInsertMode"; initialPosition: "start" | "end" }
     ))
-  | ({ mode: "insert" } & ({ type: "leaveInsertMode" } | { type: "changeEditorText"; newText: string }))
+  | ({ mode: "insert" } & ({ type: "indent" | "dedent" | "leaveInsertMode" } | { type: "changeEditorText"; newText: string }))
 );
 
 export type EventService = {

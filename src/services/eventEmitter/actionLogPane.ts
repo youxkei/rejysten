@@ -80,6 +80,17 @@ export function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent) {
       const insertModeEvent = { ...paneKindEvent, mode: "insert" } as const;
 
       switch (event.code) {
+        case "Tab": {
+          if (shiftKey) {
+            ctx.emitEvent({ ...insertModeEvent, type: "dedent" });
+          } else {
+            ctx.emitEvent({ ...insertModeEvent, type: "indent" });
+          }
+          event.preventDefault();
+
+          break;
+        }
+
         case "Escape": {
           ctx.emitEvent({ ...insertModeEvent, type: "leaveInsertMode" });
           event.preventDefault();
