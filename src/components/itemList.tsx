@@ -77,7 +77,11 @@ export function ItemListChildren(props: { parentId: string; selectedId: string }
     }
 
     if (children.length != sortedChildren.length) {
-      throw new Error(`there is an inconsistency in listItem in the children of '${props.parentId}': some listItems are not in linked list`);
+      throw new Error(
+        `there is an inconsistency in listItem in the children of '${props.parentId}': some listItems are not in linked list: children = [${children.map(
+          (child) => child.id
+        )}], sortedChildren = [${sortedChildren.map((child) => child.id)}]`
+      );
     }
 
     return sortedChildren;
@@ -210,8 +214,10 @@ if (import.meta.vitest) {
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
-      await collections.listItems.insert({ id: "3", text: "bar", prevId: "", nextId: "", parentId: "1", updatedAt: 1 });
-      await findByText("Error: there is an inconsistency in listItem in the children of '1': some listItems are not in linked list");
+      await collections.listItems.insert({ id: "3", text: "bar", prevId: "2", nextId: "", parentId: "1", updatedAt: 1 });
+      await findByText(
+        "Error: there is an inconsistency in listItem in the children of '1': some listItems are not in linked list: children = [2,3], sortedChildren = [2]"
+      );
       ctx.expect(shortenClassName(container)).toMatchSnapshot("error");
 
       unmount();

@@ -37,7 +37,7 @@ export function EventEmitterServiceProvider(props: { children: JSXElement }) {
         }
 
         case "actionLog": {
-          emitActionLogPaneEvent(ctx, event);
+          void emitActionLogPaneEvent(ctx, event);
           break;
         }
 

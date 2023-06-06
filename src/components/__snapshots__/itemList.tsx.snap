@@ -585,7 +585,7 @@ exports[`add child > initial 1`] = `
 
 exports[`inconsistent error > an item is not in linked list > error 1`] = `
 <div>
-  Error: there is an inconsistency in listItem in the children of '1': some listItems are not in linked list
+  Error: there is an inconsistency in listItem in the children of '1': some listItems are not in linked list: children = [2,3], sortedChildren = [2]
 </div>
 `;
 

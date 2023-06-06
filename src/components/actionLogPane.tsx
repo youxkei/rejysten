@@ -57,6 +57,14 @@ export function ActionLogPane() {
 if (import.meta.vitest) {
   describe("PC operations", () => {
     describe("keyboard operations", () => {
+      test.skip("press o to add item below", () => {
+        // TODO
+      });
+
+      test.skip("press O to add item above", () => {
+        // TODO
+      });
+
       test.skip("press H to move to ActionLogListPane", () => {
         // TODO
       });
@@ -74,6 +82,10 @@ if (import.meta.vitest) {
       });
 
       test.skip("press Shift+Tab in insert mode to dedent item", () => {
+        // TODO
+      });
+
+      test.skip("press Backspace to remove item", () => {
         // TODO
       });
     });

@@ -4,7 +4,7 @@ import type { Context } from "@/services/eventHandler/context";
 import { Ulid } from "id128";
 
 import { ErrorWithFields, NeverErrorWithFields } from "@/error";
-import { addNextSibling, addPrevSibling, dedent, getBelowItem, getAboveItem, indent } from "@/services/rxdb/collections/listItem";
+import { addNextSibling, addPrevSibling, dedent, getBelowItem, getAboveItem, indent, remove } from "@/services/rxdb/collections/listItem";
 
 export async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent) {
   if (ctx.store.store.currentPane !== "actionLog") {
@@ -38,6 +38,8 @@ export async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPan
 
           await addPrevSibling(ctx.rxdb, ctx.now, currentListItem, { id, text: "" });
           await ctx.store.updateStore((store) => {
+            store.mode = "insert";
+            store.editor.initialPosition = "end";
             store.actionLogPane.currentListItemId = id;
           });
 
@@ -49,6 +51,8 @@ export async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPan
 
           await addNextSibling(ctx.rxdb, ctx.now, currentListItem, { id, text: "" });
           await ctx.store.updateStore((store) => {
+            store.mode = "insert";
+            store.editor.initialPosition = "end";
             store.actionLogPane.currentListItemId = id;
           });
 
@@ -124,6 +128,25 @@ export async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPan
 
         case "dedent": {
           await dedent(ctx.rxdb, ctx.now, currentListItem);
+          break;
+        }
+
+        case "delete": {
+          if (currentListItem.text !== "") break;
+
+          const childrenItems = await ctx.rxdb.collections.listItems.find({ selector: { parentId: currentListItem.id } }).exec();
+          if (childrenItems.length > 0) break;
+
+          const aboveListItem = await getAboveItem(ctx.rxdb, currentListItem);
+          if (!aboveListItem) break;
+
+          await ctx.store.updateStore((store) => {
+            store.editor.initialPosition = "end";
+            store.actionLogPane.currentListItemId = aboveListItem.id;
+          });
+
+          await remove(ctx.rxdb, ctx.now, currentListItem);
+
           break;
         }
 
