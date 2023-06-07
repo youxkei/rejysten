@@ -1,5 +1,5 @@
 import { Ulid } from "id128";
-import { onMount } from "solid-js";
+import { Show, onMount } from "solid-js";
 
 import { ItemListChildren } from "@/components/itemList";
 import { createSignalWithLock, runWithLock, useLockService } from "@/services/lock";
@@ -47,10 +47,14 @@ export function ActionLogPane() {
   );
 
   return (
-    <>
-      {actionLog$()?.text}
-      <ItemListChildren parentId={store.actionLogPane.currentActionLogId} selectedId={store.actionLogPane.currentListItemId} />
-    </>
+    <Show when={actionLog$()}>
+      {(actionLog$) => (
+        <>
+          {actionLog$().text}
+          <ItemListChildren parentId={store.actionLogPane.currentActionLogId} selectedId={store.actionLogPane.currentListItemId} />
+        </>
+      )}
+    </Show>
   );
 }
 
@@ -85,8 +89,26 @@ if (import.meta.vitest) {
         // TODO
       });
 
-      test.skip("press Backspace to remove item", () => {
-        // TODO
+      describe("press Backspace to remove item", () => {
+        test.skip("text is not empty: item is not removed", () => {
+          // TODO
+        });
+
+        test.skip("text is empty, has children: item is not removed", () => {
+          // TODO
+        });
+
+        test.skip("text is empty, no children, no above item, has below item: item is not removed", () => {
+          // TODO
+        });
+
+        test.skip("text is empty, no children, has above item: item is removed and move to above item", () => {
+          // TODO
+        });
+
+        test.skip("text is empty, no children, no above item, no below item: item is removed and move to ActionLogListPane", () => {
+          // TODO
+        });
       });
     });
   });
