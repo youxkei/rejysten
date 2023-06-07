@@ -24,19 +24,19 @@ function emitNormalModeEvent(ctx: Context, event: KeyboardEvent) {
 
   switch (event.code) {
     case "KeyK": {
-      if (!shiftKey) {
-        ctx.emitEvent({ ...baseEvent, type: "moveAbove" });
-        event.preventDefault();
-      }
+      if (shiftKey) break;
+
+      ctx.emitEvent({ ...baseEvent, type: "moveAbove" });
+      event.preventDefault();
 
       break;
     }
 
     case "KeyJ": {
-      if (!shiftKey) {
-        ctx.emitEvent({ ...baseEvent, type: "moveBelow" });
-        event.preventDefault();
-      }
+      if (shiftKey) break;
+
+      ctx.emitEvent({ ...baseEvent, type: "moveBelow" });
+      event.preventDefault();
 
       break;
     }
@@ -64,6 +64,8 @@ function emitNormalModeEvent(ctx: Context, event: KeyboardEvent) {
     }
 
     case "KeyI": {
+      if (shiftKey) break;
+
       ctx.emitEvent({ ...baseEvent, type: "enterInsertMode", initialPosition: "start" });
       event.preventDefault();
 
@@ -71,6 +73,8 @@ function emitNormalModeEvent(ctx: Context, event: KeyboardEvent) {
     }
 
     case "KeyA": {
+      if (shiftKey) break;
+
       ctx.emitEvent({ ...baseEvent, type: "enterInsertMode", initialPosition: "end" });
       event.preventDefault();
 
@@ -78,10 +82,10 @@ function emitNormalModeEvent(ctx: Context, event: KeyboardEvent) {
     }
 
     case "KeyH": {
-      if (!shiftKey) {
-        ctx.emitEvent({ ...baseEvent, type: "moveToActionLogListPane" });
-        event.preventDefault();
-      }
+      if (shiftKey) break;
+
+      ctx.emitEvent({ ...baseEvent, type: "moveToActionLogListPane" });
+      event.preventDefault();
 
       break;
     }
