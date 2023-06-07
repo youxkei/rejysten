@@ -61,6 +61,14 @@ export function ActionLogPane() {
 if (import.meta.vitest) {
   describe("PC operations", () => {
     describe("keyboard operations", () => {
+      test.skip("press i to enter insert mode", () => {
+        // TODO
+      });
+
+      test.skip("press a to enter insert mode", () => {
+        // TODO
+      });
+
       test.skip("press o to add item below", () => {
         // TODO
       });
