@@ -135,12 +135,44 @@ async function handleInsertModeEvent(ctx: Context, currentListItem: ListItemDocu
     }
 
     case "indent": {
+      const inputElement = window.document.activeElement as HTMLInputElement | null;
+      if (
+        !inputElement ||
+        inputElement.tagName !== "INPUT" ||
+        inputElement.selectionStart === null ||
+        inputElement.selectionStart !== inputElement.selectionEnd
+      ) {
+        break;
+      }
+
+      const cursorPosition = inputElement.selectionStart;
+
       await indent(ctx.rxdb, ctx.now, currentListItem);
+      await ctx.store.updateStore((store) => {
+        store.editor.initialPosition = cursorPosition;
+      });
+
       break;
     }
 
     case "dedent": {
+      const inputElement = window.document.activeElement as HTMLInputElement | null;
+      if (
+        !inputElement ||
+        inputElement.tagName !== "INPUT" ||
+        inputElement.selectionStart === null ||
+        inputElement.selectionStart !== inputElement.selectionEnd
+      ) {
+        break;
+      }
+
+      const cursorPosition = inputElement.selectionStart;
+
       await dedent(ctx.rxdb, ctx.now, currentListItem);
+      await ctx.store.updateStore((store) => {
+        store.editor.initialPosition = cursorPosition;
+      });
+
       break;
     }
 
