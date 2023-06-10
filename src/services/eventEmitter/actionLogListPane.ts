@@ -1,8 +1,6 @@
 import type { Context } from "@/services/eventEmitter/context";
 
-import { getAboveLog } from "@/services/rxdb/collections/actionLog";
-
-export async function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
+export function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
   const { shiftKey, isComposing } = event;
   const actionLogListPaneEvent = { pane: "actionLogList" } as const;
 
@@ -109,17 +107,7 @@ export async function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEv
         case "Backspace": {
           if (shiftKey || isComposing || ctx.store.actionLogListPane.focus !== "text") break;
 
-          const currentActionLog = await ctx.rxdb.collections.actionLogs.findOne(ctx.store.actionLogListPane.currentActionLogId).exec();
-          if (!currentActionLog || currentActionLog.text !== "") break;
-
-          const items = await ctx.rxdb.collections.listItems.find({ selector: { parentId: currentActionLog.id } }).exec();
-          if (items.length > 0) break;
-
-          const aboveActionLog = await getAboveLog(ctx.rxdb, currentActionLog);
-          if (!aboveActionLog) break;
-
-          ctx.emitEvent({ ...insertModeEvent, type: "delete" });
-          event.preventDefault();
+          ctx.emitEvent({ ...insertModeEvent, type: "delete", preventDefault: () => event.preventDefault() });
 
           break;
         }

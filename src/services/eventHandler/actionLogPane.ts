@@ -150,36 +150,27 @@ async function handleInsertModeEvent(ctx: Context, currentListItem: ListItemDocu
       const childrenItems = await ctx.rxdb.collections.listItems.find({ selector: { parentId: currentListItem.id } }).exec();
       if (childrenItems.length > 0) break;
 
-      const aboveListItem = await getAboveItem(ctx.rxdb, currentListItem);
-      if (!aboveListItem) break;
+      if (currentListItem.prevId === "" && currentListItem.nextId === "" && currentListItem.parentId === ctx.store.store.actionLogPane.currentActionLogId) {
+        await ctx.store.updateStore((store) => {
+          store.editor.initialPosition = "end";
+          store.currentPane = "actionLogList";
+          store.actionLogListPane.focus = "text";
+        });
 
-      await ctx.store.updateStore((store) => {
-        store.editor.initialPosition = "end";
-        store.actionLogPane.currentListItemId = aboveListItem.id;
-      });
+        await currentListItem.remove();
+      } else {
+        const aboveListItem = await getAboveItem(ctx.rxdb, currentListItem);
+        if (!aboveListItem) break;
 
-      await remove(ctx.rxdb, ctx.now, currentListItem);
+        await ctx.store.updateStore((store) => {
+          store.editor.initialPosition = "end";
+          store.actionLogPane.currentListItemId = aboveListItem.id;
+        });
 
-      break;
-    }
-
-    case "deleteAndMoveToActionLogListPane": {
-      if (currentListItem.text !== "") break;
-
-      const childrenItems = await ctx.rxdb.collections.listItems.find({ selector: { parentId: currentListItem.id } }).exec();
-      if (childrenItems.length > 0) break;
-
-      if (currentListItem.prevId !== "" || currentListItem.nextId !== "" || currentListItem.parentId !== ctx.store.store.actionLogPane.currentActionLogId) {
-        break;
+        await remove(ctx.rxdb, ctx.now, currentListItem);
       }
 
-      await ctx.store.updateStore((store) => {
-        store.editor.initialPosition = "end";
-        store.currentPane = "actionLogList";
-        store.actionLogListPane.focus = "text";
-      });
-
-      await currentListItem.remove();
+      event.preventDefault();
 
       break;
     }

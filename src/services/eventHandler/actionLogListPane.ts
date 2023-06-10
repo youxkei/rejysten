@@ -256,6 +256,8 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
 
           await currentActionLog.remove();
 
+          event.preventDefault();
+
           break;
         }
 

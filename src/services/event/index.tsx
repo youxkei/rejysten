@@ -12,7 +12,11 @@ export type ActionLogListPaneEvent = { pane: "actionLogList" } & (
       | { type: "focus"; actionLogId: string }
       | { type: "enterInsertMode"; focus: "text" | "startAt" | "endAt"; initialPosition: "start" | "end" }
     ))
-  | ({ mode: "insert" } & ({ type: "rotateFocus" | "delete" | "leaveInsertMode" } | { type: "changeEditorText"; newText: string }))
+  | ({ mode: "insert" } & (
+      | { type: "rotateFocus" | "leaveInsertMode" }
+      | { type: "delete"; preventDefault: () => void }
+      | { type: "changeEditorText"; newText: string }
+    ))
 );
 
 export type ActionLogPaneEvent = { pane: "actionLog" } & (
@@ -21,7 +25,8 @@ export type ActionLogPaneEvent = { pane: "actionLog" } & (
       | { type: "enterInsertMode"; initialPosition: "start" | "end" }
     ))
   | ({ mode: "insert" } & (
-      | { type: "indent" | "dedent" | "delete" | "deleteAndMoveToActionLogListPane" | "leaveInsertMode" }
+      | { type: "indent" | "dedent" | "leaveInsertMode" }
+      | { type: "delete"; preventDefault: () => void }
       | { type: "changeEditorText"; newText: string }
     ))
 );

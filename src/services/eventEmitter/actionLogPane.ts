@@ -1,8 +1,6 @@
 import type { Context } from "@/services/eventEmitter/context";
 
-import { getAboveItem } from "@/services/rxdb/collections/listItem";
-
-export async function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent) {
+export function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent) {
   switch (ctx.store.mode) {
     case "normal": {
       emitNormalModeEvent(ctx, event);
@@ -11,7 +9,7 @@ export async function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent)
     }
 
     case "insert": {
-      await emitInsertModeEvent(ctx, event);
+      emitInsertModeEvent(ctx, event);
 
       break;
     }
@@ -92,12 +90,14 @@ function emitNormalModeEvent(ctx: Context, event: KeyboardEvent) {
   }
 }
 
-async function emitInsertModeEvent(ctx: Context, event: KeyboardEvent) {
+function emitInsertModeEvent(ctx: Context, event: KeyboardEvent) {
   const { shiftKey, isComposing } = event;
   const baseEvent = { pane: "actionLog", mode: "insert" } as const;
 
   switch (event.code) {
     case "Tab": {
+      if (isComposing) break;
+
       if (shiftKey) {
         ctx.emitEvent({ ...baseEvent, type: "dedent" });
       } else {
@@ -109,6 +109,8 @@ async function emitInsertModeEvent(ctx: Context, event: KeyboardEvent) {
     }
 
     case "Escape": {
+      if (shiftKey || isComposing) break;
+
       ctx.emitEvent({ ...baseEvent, type: "leaveInsertMode" });
       event.preventDefault();
 
@@ -118,24 +120,7 @@ async function emitInsertModeEvent(ctx: Context, event: KeyboardEvent) {
     case "Backspace": {
       if (shiftKey || isComposing) break;
 
-      const currentListItem = await ctx.rxdb.collections.listItems.findOne(ctx.store.actionLogPane.currentListItemId).exec();
-      if (!currentListItem || currentListItem.text !== "") break;
-
-      const childrenItems = await ctx.rxdb.collections.listItems.find({ selector: { parentId: currentListItem.id } }).exec();
-      if (childrenItems.length > 0) break;
-
-      if (currentListItem.prevId === "" && currentListItem.nextId === "" && currentListItem.parentId === ctx.store.actionLogPane.currentActionLogId) {
-        ctx.emitEvent({ ...baseEvent, type: "deleteAndMoveToActionLogListPane" });
-        event.preventDefault();
-
-        break;
-      }
-
-      const aboveListItem = await getAboveItem(ctx.rxdb, currentListItem);
-      if (!aboveListItem) return;
-
-      ctx.emitEvent({ ...baseEvent, type: "delete" });
-      event.preventDefault();
+      ctx.emitEvent({ ...baseEvent, type: "delete", preventDefault: () => event.preventDefault() });
 
       break;
     }

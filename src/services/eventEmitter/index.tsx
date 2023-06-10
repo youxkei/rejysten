@@ -7,13 +7,11 @@ import { NeverErrorWithFields } from "@/error";
 import { useEventService } from "@/services/event";
 import { emitActionLogListPaneEvent } from "@/services/eventEmitter/actionLogListPane";
 import { emitActionLogPaneEvent } from "@/services/eventEmitter/actionLogPane";
-import { useRxDBService } from "@/services/rxdb";
 import { useStoreService } from "@/services/store";
 
 export function EventEmitterServiceProvider(props: { children: JSXElement }) {
   const { store } = useStoreService();
   const { emitEvent } = useEventService();
-  const rxdb = useRxDBService();
 
   const keyDownEvent$ = useKeyDownEvent();
 
@@ -28,16 +26,16 @@ export function EventEmitterServiceProvider(props: { children: JSXElement }) {
     }
 
     untrack(() => {
-      const ctx = { store, emitEvent, rxdb };
+      const ctx = { store, emitEvent };
 
       switch (store.currentPane) {
         case "actionLogList": {
-          void emitActionLogListPaneEvent(ctx, event);
+          emitActionLogListPaneEvent(ctx, event);
           break;
         }
 
         case "actionLog": {
-          void emitActionLogPaneEvent(ctx, event);
+          emitActionLogPaneEvent(ctx, event);
           break;
         }
 
