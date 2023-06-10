@@ -57,7 +57,7 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
 
           await ctx.store.updateStore((store) => {
             store.mode = "insert";
-            store.editor.initialPosition = "end";
+            store.editor.initialPosition = -1;
             store.actionLogListPane.currentActionLogId = id;
             store.actionLogListPane.focus = "text";
           });
@@ -250,7 +250,7 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
           if (!aboveActionLog) break;
 
           await ctx.store.updateStore((store) => {
-            store.editor.initialPosition = "end";
+            store.editor.initialPosition = -1;
             store.actionLogListPane.currentActionLogId = aboveActionLog.id;
           });
 

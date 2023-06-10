@@ -13,19 +13,12 @@ export function Editor(props: { text: string }) {
   onMount(() => {
     input.focus();
 
-    switch (store.editor.initialPosition) {
-      case "start": {
-        input.setSelectionRange(0, 0);
-
-        break;
-      }
-
-      case "end": {
-        const length = props.text.length;
-        input.setSelectionRange(length, length);
-
-        break;
-      }
+    if (store.editor.initialPosition === -1) {
+      const pos = props.text.length;
+      input.setSelectionRange(pos, pos);
+    } else {
+      const pos = store.editor.initialPosition;
+      input.setSelectionRange(pos, pos);
     }
   });
 

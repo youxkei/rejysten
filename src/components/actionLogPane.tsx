@@ -98,23 +98,33 @@ if (import.meta.vitest) {
       });
 
       describe("press Backspace to remove item", () => {
-        test.skip("text is not empty: item is not removed", () => {
+        test.skip("cursor is not on the left edge: item is not removed", () => {
           // TODO
         });
 
-        test.skip("text is empty, has children: item is not removed", () => {
+        test.skip("cursor is on the left edge, has children: item is not removed", () => {
           // TODO
         });
 
-        test.skip("text is empty, no children, no above item, has below item: item is not removed", () => {
+        test.skip("cursor is on the left edge, no children, no above item, has below item: item is not removed", () => {
           // TODO
         });
 
-        test.skip("text is empty, no children, has above item: item is removed and move to above item", () => {
+        test.skip("cursor is on the left edge, no children, has above item: item is removed and move to above item", () => {
           // TODO
         });
 
-        test.skip("text is empty, no children, no above item, no below item: item is removed and move to ActionLogListPane", () => {
+        test.skip("text is empty, no parent, no children, no above item, no below item: item is removed and move to ActionLogListPane", () => {
+          // TODO
+        });
+      });
+
+      describe("press Enter to add item", () => {
+        test.skip("cursor is on the right edge: empty item is added and move to added item", () => {
+          // TODO
+        });
+
+        test.skip("cursor is in the middle of text: non-empty item is added and move to added item", () => {
           // TODO
         });
       });

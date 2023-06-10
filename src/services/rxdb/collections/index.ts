@@ -17,7 +17,7 @@ export const schema = {
           type: "object",
           properties: {
             text: { type: "string" },
-            initialPosition: { type: "string", enum: ["start", "end"] },
+            initialPosition: { type: "integer" },
           },
           required: ["text", "initialPosition"],
         },

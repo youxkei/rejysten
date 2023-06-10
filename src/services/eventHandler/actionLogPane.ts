@@ -58,7 +58,7 @@ async function handleNormalModeEvent(ctx: Context, currentListItem: ListItemDocu
       await addPrevSibling(ctx.rxdb, ctx.now, currentListItem, { id, text: "" });
       await ctx.store.updateStore((store) => {
         store.mode = "insert";
-        store.editor.initialPosition = "end";
+        store.editor.initialPosition = 0;
         store.actionLogPane.currentListItemId = id;
       });
 
@@ -71,7 +71,7 @@ async function handleNormalModeEvent(ctx: Context, currentListItem: ListItemDocu
       await addNextSibling(ctx.rxdb, ctx.now, currentListItem, { id, text: "" });
       await ctx.store.updateStore((store) => {
         store.mode = "insert";
-        store.editor.initialPosition = "end";
+        store.editor.initialPosition = 0;
         store.actionLogPane.currentListItemId = id;
       });
 
@@ -144,15 +144,59 @@ async function handleInsertModeEvent(ctx: Context, currentListItem: ListItemDocu
       break;
     }
 
+    case "add": {
+      const inputElement = window.document.activeElement as HTMLInputElement | null;
+      if (
+        !inputElement ||
+        inputElement.tagName !== "INPUT" ||
+        inputElement.selectionStart === null ||
+        inputElement.selectionStart !== inputElement.selectionEnd
+      ) {
+        break;
+      }
+
+      const id = Ulid.generate({ time: ctx.now }).toCanonical();
+      const textBeforeCursor = currentListItem.text.substring(0, inputElement.selectionStart);
+      const textAfterCursor = currentListItem.text.substring(inputElement.selectionStart);
+
+      await addNextSibling(ctx.rxdb, ctx.now, currentListItem, { id, text: textAfterCursor });
+
+      const newCurrentListItem = currentListItem.getLatest();
+      await newCurrentListItem.patch({ text: textBeforeCursor, updatedAt: ctx.now });
+
+      await ctx.store.updateStore((store) => {
+        store.editor.initialPosition = 0;
+        store.actionLogPane.currentListItemId = id;
+      });
+
+      event.preventDefault();
+
+      break;
+    }
+
     case "delete": {
-      if (currentListItem.text !== "") break;
+      const inputElement = window.document.activeElement as HTMLInputElement | null;
+      if (
+        !inputElement ||
+        inputElement.tagName !== "INPUT" ||
+        inputElement.selectionStart === null ||
+        inputElement.selectionStart !== inputElement.selectionEnd ||
+        inputElement.selectionStart !== 0
+      ) {
+        break;
+      }
 
       const childrenItems = await ctx.rxdb.collections.listItems.find({ selector: { parentId: currentListItem.id } }).exec();
       if (childrenItems.length > 0) break;
 
-      if (currentListItem.prevId === "" && currentListItem.nextId === "" && currentListItem.parentId === ctx.store.store.actionLogPane.currentActionLogId) {
+      if (
+        currentListItem.text === "" &&
+        currentListItem.prevId === "" &&
+        currentListItem.nextId === "" &&
+        currentListItem.parentId === ctx.store.store.actionLogPane.currentActionLogId
+      ) {
         await ctx.store.updateStore((store) => {
-          store.editor.initialPosition = "end";
+          store.editor.initialPosition = -1;
           store.currentPane = "actionLogList";
           store.actionLogListPane.focus = "text";
         });
@@ -162,8 +206,10 @@ async function handleInsertModeEvent(ctx: Context, currentListItem: ListItemDocu
         const aboveListItem = await getAboveItem(ctx.rxdb, currentListItem);
         if (!aboveListItem) break;
 
+        await aboveListItem.patch({ text: aboveListItem.text + currentListItem.text, updatedAt: ctx.now });
+
         await ctx.store.updateStore((store) => {
-          store.editor.initialPosition = "end";
+          store.editor.initialPosition = aboveListItem.text.length;
           store.actionLogPane.currentListItemId = aboveListItem.id;
         });
 

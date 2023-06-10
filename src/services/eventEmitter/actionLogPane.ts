@@ -64,7 +64,7 @@ function emitNormalModeEvent(ctx: Context, event: KeyboardEvent) {
     case "KeyI": {
       if (shiftKey) break;
 
-      ctx.emitEvent({ ...baseEvent, type: "enterInsertMode", initialPosition: "start" });
+      ctx.emitEvent({ ...baseEvent, type: "enterInsertMode", initialPosition: 0 });
       event.preventDefault();
 
       break;
@@ -73,7 +73,7 @@ function emitNormalModeEvent(ctx: Context, event: KeyboardEvent) {
     case "KeyA": {
       if (shiftKey) break;
 
-      ctx.emitEvent({ ...baseEvent, type: "enterInsertMode", initialPosition: "end" });
+      ctx.emitEvent({ ...baseEvent, type: "enterInsertMode", initialPosition: -1 });
       event.preventDefault();
 
       break;
@@ -113,6 +113,14 @@ function emitInsertModeEvent(ctx: Context, event: KeyboardEvent) {
 
       ctx.emitEvent({ ...baseEvent, type: "leaveInsertMode" });
       event.preventDefault();
+
+      break;
+    }
+
+    case "Enter": {
+      if (shiftKey || isComposing) break;
+
+      ctx.emitEvent({ ...baseEvent, type: "add", preventDefault: () => event.preventDefault() });
 
       break;
     }

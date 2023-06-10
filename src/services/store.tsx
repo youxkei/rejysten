@@ -17,7 +17,7 @@ const initialStore: Store = {
 
   editor: {
     text: "",
-    initialPosition: "start",
+    initialPosition: -1,
   },
 
   currentPane: "actionLogList",
