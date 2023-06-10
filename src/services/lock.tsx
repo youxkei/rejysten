@@ -2,12 +2,13 @@ import type { RxDBService } from "@/services/rxdb";
 import type { JSXElement } from "solid-js";
 
 import userEvent from "@testing-library/user-event";
-import { createEffect, createContext, createMemo, createSignal, startTransition, untrack, useContext } from "solid-js";
+import { createComputed, createRoot, onMount, createEffect, createContext, createMemo, createSignal, startTransition, useContext } from "solid-js";
 
 import { ServiceNotAvailable } from "@/services/error";
 import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeSignal } from "@/services/rxdb/subscribe";
 import { renderWithServicesForTest } from "@/services/test";
+import { getPromiseWithResolve } from "@/test";
 
 export type LockService = {
   lock$: () => boolean;
@@ -41,15 +42,90 @@ export function useLockService() {
 }
 
 export async function runWithLock({ lock$, setLock, rxdb: { collections } }: LockService, runner: () => Promise<unknown>) {
-  if (untrack(lock$)) return;
-
-  setLock(true);
+  // wait for the lock to be released, and then acquire lock
+  await new Promise<void>((resolve) => {
+    createRoot((dispose) => {
+      createComputed(() => {
+        if (!lock$()) {
+          setLock(true);
+          dispose();
+          resolve();
+        }
+      });
+    });
+  });
 
   try {
     await runner();
   } finally {
     await collections.localEvents.upsert({ id: "unlock" });
   }
+}
+
+if (import.meta.vitest) {
+  describe("runWithLock", () => {
+    test("concurrent counting doesn't work without runWithLock", async (test) => {
+      const { promise, resolve } = getPromiseWithResolve();
+      let count = 0;
+
+      const { unmount } = await renderWithServicesForTest(test.meta.id, (props) => {
+        onMount(async () => {
+          const increment = async () => {
+            const c = count;
+
+            await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+            count = c + 1;
+          };
+
+          await Promise.all([increment(), increment(), increment()]);
+
+          resolve();
+        });
+
+        return <>{props.children}</>;
+      });
+
+      await promise;
+
+      test.expect(count).toBeLessThan(3);
+
+      unmount();
+    });
+
+    test("concurrent counting works with runWithLock", async (test) => {
+      const { promise, resolve } = getPromiseWithResolve();
+      let count = 0;
+
+      const { unmount } = await renderWithServicesForTest(test.meta.id, (props) => {
+        const lock = useLockService();
+
+        onMount(async () => {
+          const increment = async () => {
+            await runWithLock(lock, async () => {
+              const c = count;
+
+              await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+              count = c + 1;
+            });
+          };
+
+          await Promise.all([increment(), increment(), increment()]);
+
+          resolve();
+        });
+
+        return <>{props.children}</>;
+      });
+
+      await promise;
+
+      test.expect(count).toBe(3);
+
+      unmount();
+    });
+  });
 }
 
 export function createSignalWithLock<T>(service: LockService, value$: () => T, initialValue: T) {
@@ -77,7 +153,7 @@ if (import.meta.vitest) {
 
         async function onClick() {
           setX("updated x");
-          await new Promise((resolve) => queueMicrotask(() => resolve(0)));
+          await new Promise<void>((resolve) => queueMicrotask(resolve));
           setY("updated y");
         }
 
@@ -118,7 +194,7 @@ if (import.meta.vitest) {
 
         async function onClick() {
           setX("updated x");
-          await new Promise((resolve) => queueMicrotask(() => resolve(0)));
+          await new Promise<void>((resolve) => queueMicrotask(resolve));
           setY("updated y");
         }
 
@@ -160,7 +236,7 @@ if (import.meta.vitest) {
         async function onClick() {
           await runWithLock(service, async () => {
             setX("updated x");
-            await new Promise((resolve) => queueMicrotask(() => resolve(0)));
+            await new Promise<void>((resolve) => queueMicrotask(resolve));
             setY("updated y");
           });
         }

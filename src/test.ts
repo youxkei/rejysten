@@ -12,3 +12,13 @@ export function shortenClassName(root: HTMLElement) {
 
   return root;
 }
+
+export function getPromiseWithResolve<T = void>() {
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  let resolve = (_: T) => {};
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+
+  return { promise, resolve };
+}
