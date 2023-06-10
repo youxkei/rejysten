@@ -128,7 +128,7 @@ if (import.meta.vitest) {
   });
 }
 
-export function createSignalWithLock<T>(service: LockService, value$: () => T, initialValue: T) {
+export function createSignalWithLock<T>(service: LockService, value$: () => T, initialValue: T, compare?: boolean) {
   const memo$ = createMemo<{ value: T; lock: boolean }>(
     (prev) => {
       const lock = service.lock$();
@@ -137,7 +137,7 @@ export function createSignalWithLock<T>(service: LockService, value$: () => T, i
       return { value: value$(), lock: false };
     },
     { value: initialValue, lock: false },
-    { equals: (_, next) => next.lock }
+    { equals: (prev, next) => next.lock || (!!compare && prev.value === next.value) }
   );
 
   return () => memo$().value;

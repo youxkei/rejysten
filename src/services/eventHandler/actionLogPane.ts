@@ -58,7 +58,7 @@ async function handleNormalModeEvent(ctx: Context, currentListItem: ListItemDocu
       await addPrevSibling(ctx.rxdb, ctx.now, currentListItem, { id, text: "" });
       await ctx.store.updateStore((store) => {
         store.mode = "insert";
-        store.editor.initialPosition = 0;
+        store.editor.cursorPosition = 0;
         store.actionLogPane.currentListItemId = id;
       });
 
@@ -71,7 +71,7 @@ async function handleNormalModeEvent(ctx: Context, currentListItem: ListItemDocu
       await addNextSibling(ctx.rxdb, ctx.now, currentListItem, { id, text: "" });
       await ctx.store.updateStore((store) => {
         store.mode = "insert";
-        store.editor.initialPosition = 0;
+        store.editor.cursorPosition = 0;
         store.actionLogPane.currentListItemId = id;
       });
 
@@ -103,7 +103,7 @@ async function handleNormalModeEvent(ctx: Context, currentListItem: ListItemDocu
     case "enterInsertMode": {
       await ctx.store.updateStore((store) => {
         store.mode = "insert";
-        store.editor.initialPosition = event.initialPosition;
+        store.editor.cursorPosition = event.cursorPosition;
       });
       break;
     }
@@ -149,7 +149,7 @@ async function handleInsertModeEvent(ctx: Context, currentListItem: ListItemDocu
 
       await indent(ctx.rxdb, ctx.now, currentListItem);
       await ctx.store.updateStore((store) => {
-        store.editor.initialPosition = cursorPosition;
+        store.editor.cursorPosition = cursorPosition;
       });
 
       break;
@@ -170,7 +170,7 @@ async function handleInsertModeEvent(ctx: Context, currentListItem: ListItemDocu
 
       await dedent(ctx.rxdb, ctx.now, currentListItem);
       await ctx.store.updateStore((store) => {
-        store.editor.initialPosition = cursorPosition;
+        store.editor.cursorPosition = cursorPosition;
       });
 
       break;
@@ -197,7 +197,7 @@ async function handleInsertModeEvent(ctx: Context, currentListItem: ListItemDocu
       await newCurrentListItem.patch({ text: textBeforeCursor, updatedAt: ctx.now });
 
       await ctx.store.updateStore((store) => {
-        store.editor.initialPosition = 0;
+        store.editor.cursorPosition = 0;
         store.actionLogPane.currentListItemId = id;
       });
 
@@ -228,7 +228,7 @@ async function handleInsertModeEvent(ctx: Context, currentListItem: ListItemDocu
         currentListItem.parentId === ctx.store.store.actionLogPane.currentActionLogId
       ) {
         await ctx.store.updateStore((store) => {
-          store.editor.initialPosition = -1;
+          store.editor.cursorPosition = -1;
           store.currentPane = "actionLogList";
           store.actionLogListPane.focus = "text";
         });
@@ -241,12 +241,43 @@ async function handleInsertModeEvent(ctx: Context, currentListItem: ListItemDocu
         await aboveListItem.patch({ text: aboveListItem.text + currentListItem.text, updatedAt: ctx.now });
 
         await ctx.store.updateStore((store) => {
-          store.editor.initialPosition = aboveListItem.text.length;
+          store.editor.cursorPosition = aboveListItem.text.length;
           store.actionLogPane.currentListItemId = aboveListItem.id;
         });
 
         await remove(ctx.rxdb, ctx.now, currentListItem);
       }
+
+      event.preventDefault();
+
+      break;
+    }
+
+    case "deleteBelow": {
+      const inputElement = window.document.activeElement as HTMLInputElement | null;
+      if (
+        !inputElement ||
+        inputElement.tagName !== "INPUT" ||
+        inputElement.selectionStart === null ||
+        inputElement.selectionStart !== inputElement.selectionEnd ||
+        inputElement.selectionStart !== currentListItem.text.length
+      ) {
+        break;
+      }
+
+      const belowListItem = await getBelowItem(ctx.rxdb, currentListItem);
+      if (!belowListItem) break;
+
+      const childrenItemsOfBelowListItem = await ctx.rxdb.collections.listItems.find({ selector: { parentId: belowListItem.id } }).exec();
+      if (childrenItemsOfBelowListItem.length > 0) break;
+
+      await remove(ctx.rxdb, ctx.now, belowListItem);
+      const newCurrentListItem = currentListItem.getLatest();
+      await newCurrentListItem.patch({ text: newCurrentListItem.text + belowListItem.text, updatedAt: ctx.now });
+
+      await ctx.store.updateStore((store) => {
+        store.editor.cursorPosition = currentListItem.text.length;
+      });
 
       event.preventDefault();
 

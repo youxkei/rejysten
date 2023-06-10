@@ -1,23 +1,27 @@
-import { onCleanup, onMount } from "solid-js";
+import { createEffect, onCleanup } from "solid-js";
 
 import { useEventService } from "@/services/event";
+import { createSignalWithLock, useLockService } from "@/services/lock";
 import { useStoreService } from "@/services/store";
 import { styles } from "@/styles.css";
 
 export function Editor(props: { text: string }) {
+  const lock = useLockService();
   const { store } = useStoreService();
   const { emitEvent } = useEventService();
 
+  const cursorPosition$ = createSignalWithLock(lock, () => store.editor.cursorPosition, -1, true);
+
   let input!: HTMLInputElement;
 
-  onMount(() => {
+  createEffect(() => {
     input.focus();
+    const pos = cursorPosition$();
 
-    if (store.editor.initialPosition === -1) {
-      const pos = props.text.length;
-      input.setSelectionRange(pos, pos);
+    if (pos === -1) {
+      const len = props.text.length;
+      input.setSelectionRange(len, len);
     } else {
-      const pos = store.editor.initialPosition;
       input.setSelectionRange(pos, pos);
     }
   });

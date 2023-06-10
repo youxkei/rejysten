@@ -48,7 +48,7 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
 
     return createDouble(300, (_, isDouble) => {
       if (isDouble) {
-        emitEvent({ pane: "actionLogList", mode: "normal", type: "enterInsertMode", focus, initialPosition: -1 });
+        emitEvent({ pane: "actionLogList", mode: "normal", type: "enterInsertMode", focus, cursorPosition: -1 });
       } else {
         onClick();
       }

@@ -29,7 +29,7 @@ export function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
 
         case "KeyI": {
           if (!shiftKey) {
-            ctx.emitEvent({ ...normalModeEvent, type: "enterInsertMode", focus: "text", initialPosition: 0 });
+            ctx.emitEvent({ ...normalModeEvent, type: "enterInsertMode", focus: "text", cursorPosition: 0 });
             event.preventDefault();
           }
 
@@ -38,7 +38,7 @@ export function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
 
         case "KeyA": {
           if (!shiftKey) {
-            ctx.emitEvent({ ...normalModeEvent, type: "enterInsertMode", focus: "text", initialPosition: -1 });
+            ctx.emitEvent({ ...normalModeEvent, type: "enterInsertMode", focus: "text", cursorPosition: -1 });
             event.preventDefault();
           }
 

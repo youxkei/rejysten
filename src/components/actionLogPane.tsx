@@ -119,6 +119,24 @@ if (import.meta.vitest) {
         });
       });
 
+      describe("press Delete to remove below item", () => {
+        test.skip("cursor is not on the right edge: below item is not removed", () => {
+          // TODO
+        });
+
+        test.skip("cursor is on the right edge, no below item: nothing happened", () => {
+          // TODO
+        });
+
+        test.skip("cursor is on the right edge, below item has children: below item is not removed", () => {
+          // TODO
+        });
+
+        test.skip("cursor is on the right edge, below item has no children: below item is removed text is merged", () => {
+          // TODO
+        });
+      });
+
       describe("press Enter to add item", () => {
         test.skip("cursor is on the right edge: empty item is added and move to added item", () => {
           // TODO

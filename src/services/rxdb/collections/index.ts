@@ -17,9 +17,9 @@ export const schema = {
           type: "object",
           properties: {
             text: { type: "string" },
-            initialPosition: { type: "integer" },
+            cursorPosition: { type: "integer" },
           },
-          required: ["text", "initialPosition"],
+          required: ["text", "cursorPosition"],
         },
 
         // pane related states
