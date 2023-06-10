@@ -1,8 +1,8 @@
-import type { PaneEvent } from "@/services/event";
+import type { Event } from "@/services/event";
 import type { Context } from "@/services/eventHandler/context";
 import type { JSXElement } from "solid-js";
 
-import { createEffect, untrack } from "solid-js";
+import { untrack } from "solid-js";
 
 import { NeverErrorWithFields } from "@/error";
 import { useEventService } from "@/services/event";
@@ -18,17 +18,14 @@ export function EventHandlerServiceProvider(props: { children: JSXElement }) {
   const lock = useLockService();
   const event = useEventService();
 
-  createEffect(async () => {
-    const currentEvent = event.currentEvent$();
-    if (currentEvent.kind === "initial") return;
-
+  event.registerEventHandler(async (currentEvent: Event) => {
     await untrack(() => runWithLock(lock, () => handlePaneEvent({ now: Date.now(), rxdb, store, event }, currentEvent)));
   });
 
   return props.children;
 }
 
-async function handlePaneEvent(ctx: Context, event: PaneEvent) {
+async function handlePaneEvent(ctx: Context, event: Event) {
   console.debug("event handler start", event);
 
   switch (event.pane) {

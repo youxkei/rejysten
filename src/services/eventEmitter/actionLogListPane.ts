@@ -4,7 +4,7 @@ import { getAboveLog } from "@/services/rxdb/collections/actionLog";
 
 export async function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
   const { shiftKey, isComposing } = event;
-  const actionLogListPaneEvent = { kind: "pane", pane: "actionLogList" } as const;
+  const actionLogListPaneEvent = { pane: "actionLogList" } as const;
 
   switch (ctx.store.mode) {
     case "normal": {

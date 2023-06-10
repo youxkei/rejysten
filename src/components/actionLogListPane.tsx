@@ -39,16 +39,16 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
   const onClick$ = () => {
     const actionLogId = props.actionLog.id;
     return () => {
-      emitEvent({ kind: "pane", pane: "actionLogList", mode: "normal", type: "focus", actionLogId });
+      emitEvent({ pane: "actionLogList", mode: "normal", type: "focus", actionLogId });
     };
   };
 
   function createOnDoubleClick(focus: "text" | "startAt" | "endAt") {
     const onClick = onClick$();
 
-    return createDouble(300, (event: MouseEvent, isDouble) => {
+    return createDouble(300, (_, isDouble) => {
       if (isDouble) {
-        emitEvent({ kind: "pane", pane: "actionLogList", mode: "normal", type: "enterInsertMode", focus, initialPosition: "end" });
+        emitEvent({ pane: "actionLogList", mode: "normal", type: "enterInsertMode", focus, initialPosition: "end" });
       } else {
         onClick();
       }

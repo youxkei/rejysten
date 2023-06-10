@@ -1,14 +1,12 @@
 import type { JSXElement } from "solid-js";
 
-import { createContext, createSignal, useContext } from "solid-js";
+import { createContext, useContext } from "solid-js";
 
 import { ServiceNotAvailable } from "@/services/error";
 
-export type Event = { kind: "initial" } | PaneEvent;
+export type Event = ActionLogListPaneEvent | ActionLogPaneEvent;
 
-export type PaneEvent = ActionLogListPaneEvent | ActionLogPaneEvent;
-
-export type ActionLogListPaneEvent = { kind: "pane"; pane: "actionLogList" } & (
+export type ActionLogListPaneEvent = { pane: "actionLogList" } & (
   | ({ mode: "normal" } & (
       | { type: "moveAbove" | "moveBelow" | "add" | "start" | "finish" | "moveToActionLogPane" }
       | { type: "focus"; actionLogId: string }
@@ -17,7 +15,7 @@ export type ActionLogListPaneEvent = { kind: "pane"; pane: "actionLogList" } & (
   | ({ mode: "insert" } & ({ type: "rotateFocus" | "delete" | "leaveInsertMode" } | { type: "changeEditorText"; newText: string }))
 );
 
-export type ActionLogPaneEvent = { kind: "pane"; pane: "actionLog" } & (
+export type ActionLogPaneEvent = { pane: "actionLog" } & (
   | ({ mode: "normal" } & (
       | { type: "indent" | "dedent" | "addPrev" | "addNext" | "moveAbove" | "moveBelow" | "moveToActionLogListPane" }
       | { type: "enterInsertMode"; initialPosition: "start" | "end" }
@@ -29,16 +27,26 @@ export type ActionLogPaneEvent = { kind: "pane"; pane: "actionLog" } & (
 );
 
 export type EventService = {
-  currentEvent$: () => Event;
+  registerEventHandler: (handler: (event: Event) => unknown) => void;
   emitEvent: (event: Event) => void;
 };
 
 const context = createContext<EventService>();
 
 export function EventServiceProvider(props: { children: JSXElement }) {
-  const [currentEvent$, emitEvent] = createSignal<Event>({ kind: "initial" });
+  const eventHandlers = [] as ((event: Event) => unknown)[];
 
-  return <context.Provider value={{ currentEvent$, emitEvent }}>{props.children}</context.Provider>;
+  function registerEventHandler(handler: (event: Event) => unknown) {
+    eventHandlers.push(handler);
+  }
+
+  function emitEvent(event: Event) {
+    for (const handler of eventHandlers) {
+      handler(event);
+    }
+  }
+
+  return <context.Provider value={{ registerEventHandler, emitEvent }}>{props.children}</context.Provider>;
 }
 
 export function useEventService() {

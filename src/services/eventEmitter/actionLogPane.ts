@@ -20,7 +20,7 @@ export async function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent)
 
 function emitNormalModeEvent(ctx: Context, event: KeyboardEvent) {
   const { shiftKey } = event;
-  const baseEvent = { kind: "pane", pane: "actionLog", mode: "normal" } as const;
+  const baseEvent = { pane: "actionLog", mode: "normal" } as const;
 
   switch (event.code) {
     case "KeyK": {
@@ -94,7 +94,7 @@ function emitNormalModeEvent(ctx: Context, event: KeyboardEvent) {
 
 async function emitInsertModeEvent(ctx: Context, event: KeyboardEvent) {
   const { shiftKey, isComposing } = event;
-  const baseEvent = { kind: "pane", pane: "actionLog", mode: "insert" } as const;
+  const baseEvent = { pane: "actionLog", mode: "insert" } as const;
 
   switch (event.code) {
     case "Tab": {
