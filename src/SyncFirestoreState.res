@@ -268,7 +268,8 @@ module DateActionLog = {
     React.useEffect(() => {
       switch error {
       | None if !loading =>
-        let (dateActionLogMap, latestDateActionLogId) = dateActionLogs->toDateActionLogMap
+        let (dateActionLogMap, _latestDateActionLogId) = dateActionLogs->toDateActionLogMap
+        let latestDateActionLogId = ""
         let oldestRecentDateActionLogId = getOldestRecentDateActionLogId(
           dateActionLogMap,
           latestDateActionLogId,
