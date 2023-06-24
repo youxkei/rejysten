@@ -116,17 +116,16 @@ if (import.meta.vitest) {
         unmount,
         rxdb: { collections },
         findByText,
-      } = await renderWithServicesForTest(ctx.meta.id, (props) => (
-        <>
-          <ItemListChildren parentId="" selectedId="" />
-          {props.children}
-        </>
-      ));
-
-      await collections.listItems.bulkInsert(listItems);
-      for (const listItem of listItems) {
-        await findByText(listItem.text);
-      }
+      } = await renderWithServicesForTest(
+        ctx.meta.id,
+        (props) => (
+          <>
+            <ItemListChildren parentId="" selectedId="" />
+            {props.children}
+          </>
+        ),
+        ({ rxdb: { collections } }) => collections.listItems.bulkInsert(listItems)
+      );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot();
 
@@ -155,23 +154,21 @@ if (import.meta.vitest) {
       rxdb: { collections },
       lock,
       findByText,
-    } = await renderWithServicesForTest(ctx.meta.id, (props) => (
-      <>
-        <ItemListChildren parentId="" selectedId="" />
-        {props.children}
-      </>
-    ));
-
-    const listItems = [
-      { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
-      { id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1", updatedAt: 0 },
-      { id: "3", text: "bar", prevId: "2", nextId: "", parentId: "1", updatedAt: 0 },
-    ];
-
-    await collections.listItems.bulkInsert(listItems);
-    for (const listItem of listItems) {
-      await findByText(listItem.text);
-    }
+    } = await renderWithServicesForTest(
+      ctx.meta.id,
+      (props) => (
+        <>
+          <ItemListChildren parentId="" selectedId="" />
+          {props.children}
+        </>
+      ),
+      ({ rxdb: { collections } }) =>
+        collections.listItems.bulkInsert([
+          { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
+          { id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1", updatedAt: 0 },
+          { id: "3", text: "bar", prevId: "2", nextId: "", parentId: "1", updatedAt: 0 },
+        ])
+    );
 
     ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
@@ -195,22 +192,20 @@ if (import.meta.vitest) {
         unmount,
         rxdb: { collections },
         findByText,
-      } = await renderWithServicesForTest(ctx.meta.id, (props) => (
-        <ErrorBoundary fallback={(error) => `${error}`}>
-          <ItemListChildren parentId="" selectedId="" />
-          {props.children}
-        </ErrorBoundary>
-      ));
-
-      const listItems = [
-        { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
-        { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
-      ];
-
-      await collections.listItems.bulkInsert(listItems);
-      for (const listItem of listItems) {
-        await findByText(listItem.text);
-      }
+      } = await renderWithServicesForTest(
+        ctx.meta.id,
+        (props) => (
+          <ErrorBoundary fallback={(error) => `${error}`}>
+            <ItemListChildren parentId="" selectedId="" />
+            {props.children}
+          </ErrorBoundary>
+        ),
+        ({ rxdb: { collections } }) =>
+          collections.listItems.bulkInsert([
+            { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
+            { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
+          ])
+      );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
@@ -229,22 +224,20 @@ if (import.meta.vitest) {
         unmount,
         rxdb: { collections },
         findByText,
-      } = await renderWithServicesForTest(ctx.meta.id, (props) => (
-        <ErrorBoundary fallback={(error) => `${error}`}>
-          <ItemListChildren parentId="" selectedId="" />
-          {props.children}
-        </ErrorBoundary>
-      ));
-
-      const listItems = [
-        { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
-        { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
-      ];
-
-      await collections.listItems.bulkInsert(listItems);
-      for (const listItem of listItems) {
-        await findByText(listItem.text);
-      }
+      } = await renderWithServicesForTest(
+        ctx.meta.id,
+        (props) => (
+          <ErrorBoundary fallback={(error) => `${error}`}>
+            <ItemListChildren parentId="" selectedId="" />
+            {props.children}
+          </ErrorBoundary>
+        ),
+        ({ rxdb: { collections } }) =>
+          collections.listItems.bulkInsert([
+            { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
+            { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
+          ])
+      );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
@@ -262,22 +255,20 @@ if (import.meta.vitest) {
         unmount,
         rxdb: { collections },
         findByText,
-      } = await renderWithServicesForTest(ctx.meta.id, (props) => (
-        <ErrorBoundary fallback={(error) => `${error}`}>
-          <ItemListChildren parentId="" selectedId="" />
-          {props.children}
-        </ErrorBoundary>
-      ));
-
-      const listItems = [
-        { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
-        { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
-      ];
-
-      await collections.listItems.bulkInsert(listItems);
-      for (const listItem of listItems) {
-        await findByText(listItem.text);
-      }
+      } = await renderWithServicesForTest(
+        ctx.meta.id,
+        (props) => (
+          <ErrorBoundary fallback={(error) => `${error}`}>
+            <ItemListChildren parentId="" selectedId="" />
+            {props.children}
+          </ErrorBoundary>
+        ),
+        ({ rxdb: { collections } }) =>
+          collections.listItems.bulkInsert([
+            { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
+            { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
+          ])
+      );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 

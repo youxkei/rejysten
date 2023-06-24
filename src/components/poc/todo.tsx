@@ -57,27 +57,20 @@ export function Todo() {
 
 if (import.meta.vitest) {
   test("renders", async (ctx) => {
-    const {
-      container,
-      unmount,
-      rxdb: { collections },
-      findByText,
-    } = await renderWithServicesForTest(ctx.meta.id, (props) => (
-      <>
-        <Todo />
-        {props.children}
-      </>
-    ));
-
-    const todos = [
-      { id: "001", text: "foo", updatedAt: 1 },
-      { id: "002", text: "bar", updatedAt: 1 },
-    ];
-
-    await collections.todos.bulkInsert(todos);
-    for (const todo of todos) {
-      await findByText(todo.text);
-    }
+    const { container, unmount } = await renderWithServicesForTest(
+      ctx.meta.id,
+      (props) => (
+        <>
+          <Todo />
+          {props.children}
+        </>
+      ),
+      ({ rxdb: { collections } }) =>
+        collections.todos.bulkInsert([
+          { id: "001", text: "foo", updatedAt: 1 },
+          { id: "002", text: "bar", updatedAt: 1 },
+        ])
+    );
 
     ctx.expect(container).toMatchSnapshot();
 
@@ -86,28 +79,20 @@ if (import.meta.vitest) {
 
   test("add todos", async (ctx) => {
     const user = userEvent.setup();
-    const {
-      container,
-      unmount,
-      rxdb: { collections },
-      findByText,
-      queryByText,
-    } = await renderWithServicesForTest(ctx.meta.id, (props) => (
-      <>
-        <Todo />
-        {props.children}
-      </>
-    ));
-
-    const todos = [
-      { id: "001", text: "foo", updatedAt: 1 },
-      { id: "002", text: "bar", updatedAt: 1 },
-    ];
-
-    await collections.todos.bulkInsert(todos);
-    for (const todo of todos) {
-      await findByText(todo.text);
-    }
+    const { container, unmount, findByText, queryByText } = await renderWithServicesForTest(
+      ctx.meta.id,
+      (props) => (
+        <>
+          <Todo />
+          {props.children}
+        </>
+      ),
+      ({ rxdb: { collections } }) =>
+        collections.todos.bulkInsert([
+          { id: "001", text: "foo", updatedAt: 1 },
+          { id: "002", text: "bar", updatedAt: 1 },
+        ])
+    );
 
     ctx.expect(container).toMatchSnapshot();
 

@@ -163,26 +163,22 @@ export function ActionLogListPane() {
 if (import.meta.vitest) {
   describe("display", () => {
     test("finished actionLogs are sorted by startAt", async (ctx) => {
-      const {
-        container,
-        unmount,
-        rxdb: { collections },
-        lock,
-      } = await renderWithServicesForTest(ctx.meta.id, (props) => (
-        <>
-          <ActionLogListPane />
-          {props.children}
-        </>
-      ));
-
-      await runWithLock(lock, async () => {
-        await collections.actionLogs.bulkInsert([
-          { id: "1", text: "1", startAt: 4, endAt: 9, updatedAt: 9 },
-          { id: "2", text: "2", startAt: 3, endAt: 9, updatedAt: 9 },
-          { id: "3", text: "3", startAt: 1, endAt: 9, updatedAt: 9 },
-          { id: "4", text: "4", startAt: 2, endAt: 9, updatedAt: 9 },
-        ]);
-      });
+      const { container, unmount } = await renderWithServicesForTest(
+        ctx.meta.id,
+        (props) => (
+          <>
+            <ActionLogListPane />
+            {props.children}
+          </>
+        ),
+        ({ rxdb: { collections } }) =>
+          collections.actionLogs.bulkInsert([
+            { id: "1", text: "1", startAt: 4, endAt: 9, updatedAt: 9 },
+            { id: "2", text: "2", startAt: 3, endAt: 9, updatedAt: 9 },
+            { id: "3", text: "3", startAt: 1, endAt: 9, updatedAt: 9 },
+            { id: "4", text: "4", startAt: 2, endAt: 9, updatedAt: 9 },
+          ])
+      );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot();
 
@@ -190,33 +186,29 @@ if (import.meta.vitest) {
     });
 
     test("ongoing actionLogs follows finished actionLogs and sorted by startAt", async (ctx) => {
-      const {
-        container,
-        unmount,
-        rxdb: { collections },
-        lock,
-      } = await renderWithServicesForTest(ctx.meta.id, (props) => (
-        <>
-          <ActionLogListPane />
-          {props.children}
-        </>
-      ));
+      const { container, unmount } = await renderWithServicesForTest(
+        ctx.meta.id,
+        (props) => (
+          <>
+            <ActionLogListPane />
+            {props.children}
+          </>
+        ),
+        ({ rxdb: { collections } }) =>
+          collections.actionLogs.bulkInsert([
+            // ongoing actionLogs
+            { id: "1", text: "1", startAt: 6, endAt: 0, updatedAt: 6 },
+            { id: "2", text: "2", startAt: 8, endAt: 0, updatedAt: 8 },
+            { id: "3", text: "3", startAt: 7, endAt: 0, updatedAt: 7 },
+            { id: "4", text: "4", startAt: 5, endAt: 0, updatedAt: 5 },
 
-      await runWithLock(lock, async () => {
-        await collections.actionLogs.bulkInsert([
-          // ongoing actionLogs
-          { id: "1", text: "1", startAt: 6, endAt: 0, updatedAt: 6 },
-          { id: "2", text: "2", startAt: 8, endAt: 0, updatedAt: 8 },
-          { id: "3", text: "3", startAt: 7, endAt: 0, updatedAt: 7 },
-          { id: "4", text: "4", startAt: 5, endAt: 0, updatedAt: 5 },
-
-          // finished actionLogs
-          { id: "5", text: "5", startAt: 4, endAt: 9, updatedAt: 9 },
-          { id: "6", text: "6", startAt: 3, endAt: 9, updatedAt: 9 },
-          { id: "7", text: "7", startAt: 1, endAt: 9, updatedAt: 9 },
-          { id: "8", text: "8", startAt: 2, endAt: 9, updatedAt: 9 },
-        ]);
-      });
+            // finished actionLogs
+            { id: "5", text: "5", startAt: 4, endAt: 9, updatedAt: 9 },
+            { id: "6", text: "6", startAt: 3, endAt: 9, updatedAt: 9 },
+            { id: "7", text: "7", startAt: 1, endAt: 9, updatedAt: 9 },
+            { id: "8", text: "8", startAt: 2, endAt: 9, updatedAt: 9 },
+          ])
+      );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot();
 
@@ -224,39 +216,35 @@ if (import.meta.vitest) {
     });
 
     test("tentative actionLogs follows ongoing actionLogs and sorted by id", async (ctx) => {
-      const {
-        container,
-        unmount,
-        rxdb: { collections },
-        lock,
-      } = await renderWithServicesForTest(ctx.meta.id, (props) => (
-        <>
-          <ActionLogListPane />
-          {props.children}
-        </>
-      ));
+      const { container, unmount } = await renderWithServicesForTest(
+        ctx.meta.id,
+        (props) => (
+          <>
+            <ActionLogListPane />
+            {props.children}
+          </>
+        ),
+        ({ rxdb: { collections } }) =>
+          collections.actionLogs.bulkInsert([
+            // tentative actionLogs
+            { id: "02", text: "02", startAt: 0, endAt: 0, updatedAt: 10 },
+            { id: "03", text: "03", startAt: 0, endAt: 0, updatedAt: 10 },
+            { id: "04", text: "04", startAt: 0, endAt: 0, updatedAt: 10 },
+            { id: "01", text: "01", startAt: 0, endAt: 0, updatedAt: 10 },
 
-      await runWithLock(lock, async () => {
-        await collections.actionLogs.bulkInsert([
-          // tentative actionLogs
-          { id: "02", text: "02", startAt: 0, endAt: 0, updatedAt: 10 },
-          { id: "03", text: "03", startAt: 0, endAt: 0, updatedAt: 10 },
-          { id: "04", text: "04", startAt: 0, endAt: 0, updatedAt: 10 },
-          { id: "01", text: "01", startAt: 0, endAt: 0, updatedAt: 10 },
+            // ongoing actionLogs
+            { id: "05", text: "05", startAt: 4, endAt: 0, updatedAt: 4 },
+            { id: "06", text: "06", startAt: 3, endAt: 0, updatedAt: 3 },
+            { id: "07", text: "07", startAt: 1, endAt: 0, updatedAt: 1 },
+            { id: "08", text: "08", startAt: 2, endAt: 0, updatedAt: 2 },
 
-          // ongoing actionLogs
-          { id: "05", text: "05", startAt: 4, endAt: 0, updatedAt: 4 },
-          { id: "06", text: "06", startAt: 3, endAt: 0, updatedAt: 3 },
-          { id: "07", text: "07", startAt: 1, endAt: 0, updatedAt: 1 },
-          { id: "08", text: "08", startAt: 2, endAt: 0, updatedAt: 2 },
-
-          // finished actionLogs
-          { id: "09", text: "09", startAt: 6, endAt: 9, updatedAt: 9 },
-          { id: "10", text: "10", startAt: 8, endAt: 9, updatedAt: 9 },
-          { id: "11", text: "11", startAt: 7, endAt: 9, updatedAt: 9 },
-          { id: "12", text: "12", startAt: 5, endAt: 9, updatedAt: 9 },
-        ]);
-      });
+            // finished actionLogs
+            { id: "09", text: "09", startAt: 6, endAt: 9, updatedAt: 9 },
+            { id: "10", text: "10", startAt: 8, endAt: 9, updatedAt: 9 },
+            { id: "11", text: "11", startAt: 7, endAt: 9, updatedAt: 9 },
+            { id: "12", text: "12", startAt: 5, endAt: 9, updatedAt: 9 },
+          ])
+      );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot();
 
@@ -264,30 +252,26 @@ if (import.meta.vitest) {
     });
 
     test("finished actionLog is selected", async (ctx) => {
-      const {
-        container,
-        unmount,
-        rxdb: { collections },
-        lock,
-        store: { updateStore },
-      } = await renderWithServicesForTest(ctx.meta.id, (props) => (
-        <>
-          <ActionLogListPane />
-          {props.children}
-        </>
-      ));
+      const { container, unmount } = await renderWithServicesForTest(
+        ctx.meta.id,
+        (props) => (
+          <>
+            <ActionLogListPane />
+            {props.children}
+          </>
+        ),
+        async ({ rxdb: { collections }, store: { updateStore } }) => {
+          await collections.actionLogs.bulkInsert([
+            { id: "finished", text: "finished", startAt: 1, endAt: 2, updatedAt: 2 },
+            { id: "ongoing", text: "ongoing", startAt: 3, endAt: 0, updatedAt: 3 },
+            { id: "tentative", text: "tentative", startAt: 0, endAt: 0, updatedAt: 4 },
+          ]);
 
-      await runWithLock(lock, async () => {
-        await collections.actionLogs.bulkInsert([
-          { id: "finished", text: "finished", startAt: 1, endAt: 2, updatedAt: 2 },
-          { id: "ongoing", text: "ongoing", startAt: 3, endAt: 0, updatedAt: 3 },
-          { id: "tentative", text: "tentative", startAt: 0, endAt: 0, updatedAt: 4 },
-        ]);
-
-        await updateStore((store) => {
-          store.actionLogListPane.currentActionLogId = "finished";
-        });
-      });
+          await updateStore((store) => {
+            store.actionLogListPane.currentActionLogId = "finished";
+          });
+        }
+      );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot();
 
@@ -314,20 +298,21 @@ if (import.meta.vitest) {
         unmount,
         rxdb: { collections },
         lock,
-      } = await renderWithServicesForTest(ctx.meta.id, (props) => (
-        <>
-          <ActionLogListPane />
-          {props.children}
-        </>
-      ));
-
-      await runWithLock(lock, async () => {
-        await collections.actionLogs.bulkInsert([
-          { id: "finished", text: "finished", startAt: 1, endAt: 2, updatedAt: 2 },
-          { id: "ongoing", text: "ongoing", startAt: 3, endAt: 0, updatedAt: 3 },
-          { id: "tentative", text: "tentative", startAt: 0, endAt: 0, updatedAt: 4 },
-        ]);
-      });
+      } = await renderWithServicesForTest(
+        ctx.meta.id,
+        (props) => (
+          <>
+            <ActionLogListPane />
+            {props.children}
+          </>
+        ),
+        ({ rxdb: { collections } }) =>
+          collections.actionLogs.bulkInsert([
+            { id: "finished", text: "finished", startAt: 1, endAt: 2, updatedAt: 2 },
+            { id: "ongoing", text: "ongoing", startAt: 3, endAt: 0, updatedAt: 3 },
+            { id: "tentative", text: "tentative", startAt: 0, endAt: 0, updatedAt: 4 },
+          ])
+      );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
@@ -358,23 +343,24 @@ if (import.meta.vitest) {
         unmount,
         rxdb: { collections },
         lock,
-      } = await renderWithServicesForTest(ctx.meta.id, (props) => (
-        <>
-          <ActionLogListPane />
-          {props.children}
-        </>
-      ));
-
-      await runWithLock(lock, async () => {
-        await collections.actionLogs.bulkInsert([
-          { id: "finished 1", text: "finished 1", startAt: 2, endAt: 4, updatedAt: 4 },
-          { id: "finished 2", text: "finished 2", startAt: 3, endAt: 4, updatedAt: 4 },
-          { id: "ongoing 1", text: "ongoing 1", startAt: 5, endAt: 0, updatedAt: 5 },
-          { id: "ongoing 2", text: "ongoing 2", startAt: 6, endAt: 0, updatedAt: 6 },
-          { id: "tentative 1", text: "tentative 1", startAt: 0, endAt: 0, updatedAt: 7 },
-          { id: "tentative 2", text: "tentative 2", startAt: 0, endAt: 0, updatedAt: 7 },
-        ]);
-      });
+      } = await renderWithServicesForTest(
+        ctx.meta.id,
+        (props) => (
+          <>
+            <ActionLogListPane />
+            {props.children}
+          </>
+        ),
+        ({ rxdb: { collections } }) =>
+          collections.actionLogs.bulkInsert([
+            { id: "finished 1", text: "finished 1", startAt: 2, endAt: 4, updatedAt: 4 },
+            { id: "finished 2", text: "finished 2", startAt: 3, endAt: 4, updatedAt: 4 },
+            { id: "ongoing 1", text: "ongoing 1", startAt: 5, endAt: 0, updatedAt: 5 },
+            { id: "ongoing 2", text: "ongoing 2", startAt: 6, endAt: 0, updatedAt: 6 },
+            { id: "tentative 1", text: "tentative 1", startAt: 0, endAt: 0, updatedAt: 7 },
+            { id: "tentative 2", text: "tentative 2", startAt: 0, endAt: 0, updatedAt: 7 },
+          ])
+      );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
@@ -405,20 +391,21 @@ if (import.meta.vitest) {
         unmount,
         rxdb: { collections },
         lock,
-      } = await renderWithServicesForTest(ctx.meta.id, (props) => (
-        <>
-          <ActionLogListPane />
-          {props.children}
-        </>
-      ));
-
-      await runWithLock(lock, async () => {
-        await collections.actionLogs.bulkInsert([
-          { id: "finished 1", text: "finished 1", startAt: 1, endAt: 4, updatedAt: 4 },
-          { id: "finished 2", text: "finished 2", startAt: 3, endAt: 4, updatedAt: 4 },
-          { id: "ongoing", text: "ongoing", startAt: 2, endAt: 0, updatedAt: 5 },
-        ]);
-      });
+      } = await renderWithServicesForTest(
+        ctx.meta.id,
+        (props) => (
+          <>
+            <ActionLogListPane />
+            {props.children}
+          </>
+        ),
+        ({ rxdb: { collections } }) =>
+          collections.actionLogs.bulkInsert([
+            { id: "finished 1", text: "finished 1", startAt: 1, endAt: 4, updatedAt: 4 },
+            { id: "finished 2", text: "finished 2", startAt: 3, endAt: 4, updatedAt: 4 },
+            { id: "ongoing", text: "ongoing", startAt: 2, endAt: 0, updatedAt: 5 },
+          ])
+      );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
