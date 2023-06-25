@@ -1,0 +1,51 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PC operations > keyboard operations > press i to enter insert mode > after press i 1`] = `
+<div>
+  root
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item selected"
+    >
+      <input
+        class="editor"
+      />
+    </div>
+    <div
+      class="bulletList_child"
+    />
+  </div>
+</div>
+`;
+
+exports[`PC operations > keyboard operations > press i to enter insert mode > initial 1`] = `
+<div>
+  root
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item selected"
+    >
+      <span>
+        text
+      </span>
+    </div>
+    <div
+      class="bulletList_child"
+    />
+  </div>
+</div>
+`;

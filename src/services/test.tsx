@@ -7,6 +7,7 @@ import { MultiProvider } from "@solid-primitives/context";
 import { Show, createResource, getOwner } from "solid-js";
 
 import { EventServiceProvider } from "@/services/event";
+import { EventEmitterServiceProvider } from "@/services/eventEmitter";
 import { EventHandlerServiceProvider } from "@/services/eventHandler";
 import { createSignalWithLock, runWithLock, LockServiceProvider, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
@@ -24,7 +25,7 @@ export function renderWithServicesForTest(
   return renderAsync(
     (props) => (
       <RxDBServiceProviderForTest tid={tid}>
-        <MultiProvider values={[StoreServiceProvider, LockServiceProvider, EventServiceProvider, EventHandlerServiceProvider]}>
+        <MultiProvider values={[StoreServiceProvider, LockServiceProvider, EventServiceProvider, EventHandlerServiceProvider, EventEmitterServiceProvider]}>
           {(() => {
             if (!setup) {
               return <Component>{props.children}</Component>;

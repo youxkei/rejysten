@@ -87,11 +87,15 @@ if (import.meta.vitest) {
           {props.children}
         </>
       ),
-      ({ rxdb: { collections } }) =>
-        collections.todos.bulkInsert([
+      async ({ rxdb: { collections }, store: { updateStore } }) => {
+        await collections.todos.bulkInsert([
           { id: "001", text: "foo", updatedAt: 1 },
           { id: "002", text: "bar", updatedAt: 1 },
-        ])
+        ]);
+        await updateStore((store) => {
+          store.mode = "insert";
+        });
+      }
     );
 
     ctx.expect(container).toMatchSnapshot();
@@ -99,8 +103,7 @@ if (import.meta.vitest) {
     const input = container.querySelector("input")!;
     const button = container.querySelector("button")!;
 
-    await user.click(input);
-    await user.keyboard("baz");
+    await user.type(input, "baz");
     await findByText("baz");
     ctx.expect(container).toMatchSnapshot();
 

@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { Ulid } from "id128";
 import { Show, onMount } from "solid-js";
 
@@ -7,6 +8,8 @@ import { useRxDBService } from "@/services/rxdb";
 import { getBottomItem } from "@/services/rxdb/collections/listItem";
 import { createSubscribeSignal } from "@/services/rxdb/subscribe";
 import { useStoreService } from "@/services/store";
+import { renderWithServicesForTest } from "@/services/test";
+import { shortenClassName } from "@/test";
 
 export function ActionLogPane() {
   const rxdb = useRxDBService();
@@ -14,6 +17,8 @@ export function ActionLogPane() {
   const { store, updateStore } = useStoreService();
 
   onMount(() => {
+    if (store.actionLogPane.currentListItemId !== "") return;
+
     void runWithLock(lock, async () => {
       const bottomItem = await getBottomItem(rxdb, store.actionLogPane.currentActionLogId);
 
@@ -61,8 +66,38 @@ export function ActionLogPane() {
 if (import.meta.vitest) {
   describe("PC operations", () => {
     describe("keyboard operations", () => {
-      test.skip("press i to enter insert mode", () => {
-        // TODO
+      test("press i to enter insert mode", async (test) => {
+        const user = userEvent.setup();
+        const { container, unmount, findByDisplayValue } = await renderWithServicesForTest(
+          test.meta.id,
+          (props) => (
+            <>
+              <ActionLogPane />
+              {props.children}
+            </>
+          ),
+          async ({ rxdb: { collections }, store: { updateStore } }) => {
+            await collections.actionLogs.insert({ id: "root", text: "root", startAt: 0, endAt: 0, updatedAt: 0 });
+            await collections.listItems.insert({ id: "1", text: "text", parentId: "root", prevId: "", nextId: "", updatedAt: 0 });
+            await updateStore((store) => {
+              store.currentPane = "actionLog";
+              store.actionLogPane.currentActionLogId = "root";
+              store.actionLogPane.currentListItemId = "1";
+            });
+          }
+        );
+
+        test.expect(shortenClassName(container)).toMatchSnapshot("initial");
+
+        await user.keyboard("i");
+
+        const input = await findByDisplayValue<HTMLInputElement>("text");
+
+        test.expect(shortenClassName(container)).toMatchSnapshot("after press i");
+        test.expect(input.selectionStart).toBe(0);
+        test.expect(input.selectionEnd).toBe(0);
+
+        unmount();
       });
 
       test.skip("press a to enter insert mode", () => {
