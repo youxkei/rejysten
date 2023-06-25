@@ -1,6 +1,75 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`PC operations > keyboard operations > press i to enter insert mode > after press i 1`] = `
+exports[`PC operations > keyboard operations > 'press O to add item above' > assert > after press {Shift>}o{/Shift} 1`] = `
+<div>
+  root
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item selected"
+    >
+      <input
+        class="editor"
+      />
+    </div>
+    <div
+      class="bulletList_child"
+    />
+  </div>
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item"
+    >
+      <span>
+        text
+      </span>
+    </div>
+    <div
+      class="bulletList_child"
+    />
+  </div>
+</div>
+`;
+
+exports[`PC operations > keyboard operations > 'press O to add item above' > assert > initial 1`] = `
+<div>
+  root
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item selected"
+    >
+      <span>
+        text
+      </span>
+    </div>
+    <div
+      class="bulletList_child"
+    />
+  </div>
+</div>
+`;
+
+exports[`PC operations > keyboard operations > 'press a to enter insert mode' > assert > after press a 1`] = `
 <div>
   root
   <div
@@ -25,7 +94,126 @@ exports[`PC operations > keyboard operations > press i to enter insert mode > af
 </div>
 `;
 
-exports[`PC operations > keyboard operations > press i to enter insert mode > initial 1`] = `
+exports[`PC operations > keyboard operations > 'press a to enter insert mode' > assert > initial 1`] = `
+<div>
+  root
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item selected"
+    >
+      <span>
+        text
+      </span>
+    </div>
+    <div
+      class="bulletList_child"
+    />
+  </div>
+</div>
+`;
+
+exports[`PC operations > keyboard operations > 'press i to enter insert mode' > assert > after press i 1`] = `
+<div>
+  root
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item selected"
+    >
+      <input
+        class="editor"
+      />
+    </div>
+    <div
+      class="bulletList_child"
+    />
+  </div>
+</div>
+`;
+
+exports[`PC operations > keyboard operations > 'press i to enter insert mode' > assert > initial 1`] = `
+<div>
+  root
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item selected"
+    >
+      <span>
+        text
+      </span>
+    </div>
+    <div
+      class="bulletList_child"
+    />
+  </div>
+</div>
+`;
+
+exports[`PC operations > keyboard operations > 'press o to add item below' > assert > after press o 1`] = `
+<div>
+  root
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item selected"
+    >
+      <span>
+        text
+      </span>
+    </div>
+    <div
+      class="bulletList_child"
+    />
+  </div>
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item selected"
+    >
+      <input
+        class="editor"
+      />
+    </div>
+    <div
+      class="bulletList_child"
+    />
+  </div>
+</div>
+`;
+
+exports[`PC operations > keyboard operations > 'press o to add item below' > assert > initial 1`] = `
 <div>
   root
   <div

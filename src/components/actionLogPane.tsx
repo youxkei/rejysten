@@ -66,50 +66,82 @@ export function ActionLogPane() {
 if (import.meta.vitest) {
   describe("PC operations", () => {
     describe("keyboard operations", () => {
-      test("press i to enter insert mode", async (test) => {
-        const user = userEvent.setup();
-        const { container, unmount, findByDisplayValue } = await renderWithServicesForTest(
-          test.meta.id,
-          (props) => (
-            <>
-              <ActionLogPane />
-              {props.children}
-            </>
-          ),
-          async ({ rxdb: { collections }, store: { updateStore } }) => {
-            await collections.actionLogs.insert({ id: "root", text: "root", startAt: 0, endAt: 0, updatedAt: 0 });
-            await collections.listItems.insert({ id: "1", text: "text", parentId: "root", prevId: "", nextId: "", updatedAt: 0 });
-            await updateStore((store) => {
-              store.currentPane = "actionLog";
-              store.actionLogPane.currentActionLogId = "root";
-              store.actionLogPane.currentListItemId = "1";
-            });
-          }
-        );
+      describe.each([
+        { name: "press i to enter insert mode", key: "i", text: "text", wantCursorPosition: 0 },
+        { name: "press a to enter insert mode", key: "a", text: "text", wantCursorPosition: 4 },
+      ])("$name", ({ key, text, wantCursorPosition }) => {
+        test("assert", async (test) => {
+          const user = userEvent.setup();
+          const { container, unmount, findByDisplayValue } = await renderWithServicesForTest(
+            test.meta.id,
+            (props) => (
+              <>
+                <ActionLogPane />
+                {props.children}
+              </>
+            ),
+            async ({ rxdb: { collections }, store: { updateStore } }) => {
+              await collections.actionLogs.insert({ id: "root", text: "root", startAt: 0, endAt: 0, updatedAt: 0 });
+              await collections.listItems.insert({ id: "1", text, parentId: "root", prevId: "", nextId: "", updatedAt: 0 });
+              await updateStore((store) => {
+                store.currentPane = "actionLog";
+                store.actionLogPane.currentActionLogId = "root";
+                store.actionLogPane.currentListItemId = "1";
+              });
+            }
+          );
 
-        test.expect(shortenClassName(container)).toMatchSnapshot("initial");
+          test.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
-        await user.keyboard("i");
+          await user.keyboard(key);
 
-        const input = await findByDisplayValue<HTMLInputElement>("text");
+          const input = await findByDisplayValue<HTMLInputElement>("text");
 
-        test.expect(shortenClassName(container)).toMatchSnapshot("after press i");
-        test.expect(input.selectionStart).toBe(0);
-        test.expect(input.selectionEnd).toBe(0);
+          test.expect(shortenClassName(container)).toMatchSnapshot("after press " + key);
+          test.expect(input.selectionStart).toBe(wantCursorPosition);
+          test.expect(input.selectionEnd).toBe(wantCursorPosition);
 
-        unmount();
+          unmount();
+        });
       });
 
-      test.skip("press a to enter insert mode", () => {
-        // TODO
-      });
+      describe.each([
+        { name: "press o to add item below", key: "o" },
+        { name: "press O to add item above", key: "{Shift>}o{/Shift}" },
+      ])("$name", ({ key }) => {
+        test("assert", async (test) => {
+          const user = userEvent.setup();
+          const { container, unmount, findByRole } = await renderWithServicesForTest(
+            test.meta.id,
+            (props) => (
+              <>
+                <ActionLogPane />
+                {props.children}
+              </>
+            ),
+            async ({ rxdb: { collections }, store: { updateStore } }) => {
+              await collections.actionLogs.insert({ id: "root", text: "root", startAt: 0, endAt: 0, updatedAt: 0 });
+              await collections.listItems.insert({ id: "1", text: "text", parentId: "root", prevId: "", nextId: "", updatedAt: 0 });
+              await updateStore((store) => {
+                store.currentPane = "actionLog";
+                store.actionLogPane.currentActionLogId = "root";
+                store.actionLogPane.currentListItemId = "1";
+              });
+            }
+          );
 
-      test.skip("press o to add item below", () => {
-        // TODO
-      });
+          test.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
-      test.skip("press O to add item above", () => {
-        // TODO
+          await user.keyboard(key);
+
+          const input = await findByRole<HTMLInputElement>("textbox");
+
+          test.expect(shortenClassName(container)).toMatchSnapshot("after press " + key);
+          test.expect(input.selectionStart).toBe(0);
+          test.expect(input.selectionEnd).toBe(0);
+
+          unmount();
+        });
       });
 
       test.skip("press H to move to ActionLogListPane", () => {
