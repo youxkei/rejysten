@@ -41,19 +41,31 @@ export function useLockService() {
   return service;
 }
 
-export async function runWithLock({ lock$, setLock, rxdb: { collections } }: LockService, runner: () => Promise<unknown>) {
-  // wait for the lock to be released, and then acquire lock
-  await new Promise<void>((resolve) => {
+export function waitLockRelease({ lock$ }: LockService, unlockHook?: () => unknown) {
+  return new Promise<void>((resolve) => {
     createRoot((dispose) => {
       createComputed(() => {
         if (!lock$()) {
-          setLock(true);
+          if (unlockHook) {
+            unlockHook();
+          }
+
           dispose();
           resolve();
         }
       });
     });
   });
+}
+
+export async function runWithLock(lock: LockService, runner: () => Promise<unknown>) {
+  const {
+    setLock,
+    rxdb: { collections },
+  } = lock;
+
+  // wait for the lock to be released, and then acquire lock
+  await waitLockRelease(lock, () => setLock(true));
 
   try {
     await runner();

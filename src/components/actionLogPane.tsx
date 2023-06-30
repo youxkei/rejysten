@@ -3,7 +3,7 @@ import { Ulid } from "id128";
 import { Show, onMount } from "solid-js";
 
 import { ItemListChildren } from "@/components/itemList";
-import { createSignalWithLock, runWithLock, useLockService } from "@/services/lock";
+import { createSignalWithLock, runWithLock, useLockService, waitLockRelease } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
 import { getBottomItem } from "@/services/rxdb/collections/listItem";
 import { createSubscribeSignal } from "@/services/rxdb/subscribe";
@@ -144,15 +144,48 @@ if (import.meta.vitest) {
         });
       });
 
-      test.skip("press Tab in normal mode to indent item", () => {
-        // TODO
+      describe.each([
+        { name: "press Tab in normal mode to indent item", key: "{Tab}" },
+        { name: "press Shift+Tab in normal mode to dedent item", key: "{Shift>}{Tab}{/Shift}" },
+      ])("$name", ({ key }) => {
+        test("assert", async (test) => {
+          const user = userEvent.setup();
+          const { container, unmount, lock } = await renderWithServicesForTest(
+            test.meta.id,
+            (props) => (
+              <>
+                <ActionLogPane />
+                {props.children}
+              </>
+            ),
+            async ({ rxdb: { collections }, store: { updateStore } }) => {
+              await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 1000, endAt: 0, updatedAt: 0 });
+              await collections.listItems.bulkInsert([
+                { id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "", updatedAt: 0 },
+                { id: "item2", text: "item2", parentId: "item1", prevId: "", nextId: "item3", updatedAt: 0 },
+                { id: "item3", text: "item3", parentId: "item1", prevId: "item2", nextId: "", updatedAt: 0 },
+              ]);
+
+              await updateStore((store) => {
+                store.currentPane = "actionLog";
+                store.actionLogPane.currentActionLogId = "log1";
+                store.actionLogPane.currentListItemId = "item3";
+              });
+            }
+          );
+
+          test.expect(shortenClassName(container)).toMatchSnapshot("initial");
+
+          await user.keyboard(key);
+          await waitLockRelease(lock);
+
+          test.expect(shortenClassName(container)).toMatchSnapshot("after press " + key);
+
+          unmount();
+        });
       });
 
       test.skip("press Tab in insert mode to indent item", () => {
-        // TODO
-      });
-
-      test.skip("press Shift+Tab in normal mode to dedent item", () => {
         // TODO
       });
 

@@ -69,6 +69,263 @@ exports[`PC operations > keyboard operations > 'press O to add item above' > ass
 </div>
 `;
 
+exports[`PC operations > keyboard operations > 'press Shift+Tab in normal mode to dedent item' > assert > after press {Shift>}{Tab}{/Shift} 1`] = `
+<div>
+  log1
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item"
+    >
+      <span>
+        item1
+      </span>
+    </div>
+    <div
+      class="bulletList_child"
+    >
+      <div
+        class="bulletList_container"
+      >
+        <div
+          class="bulletList_bullet"
+        >
+          •
+        </div>
+        <div
+          class="bulletList_item"
+        >
+          <span>
+            item2
+          </span>
+        </div>
+        <div
+          class="bulletList_child"
+        />
+      </div>
+    </div>
+  </div>
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item selected"
+    >
+      <span>
+        item3
+      </span>
+    </div>
+    <div
+      class="bulletList_child"
+    />
+  </div>
+</div>
+`;
+
+exports[`PC operations > keyboard operations > 'press Shift+Tab in normal mode to dedent item' > assert > initial 1`] = `
+<div>
+  log1
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item"
+    >
+      <span>
+        item1
+      </span>
+    </div>
+    <div
+      class="bulletList_child"
+    >
+      <div
+        class="bulletList_container"
+      >
+        <div
+          class="bulletList_bullet"
+        >
+          •
+        </div>
+        <div
+          class="bulletList_item"
+        >
+          <span>
+            item2
+          </span>
+        </div>
+        <div
+          class="bulletList_child"
+        />
+      </div>
+      <div
+        class="bulletList_container"
+      >
+        <div
+          class="bulletList_bullet"
+        >
+          •
+        </div>
+        <div
+          class="bulletList_item selected"
+        >
+          <span>
+            item3
+          </span>
+        </div>
+        <div
+          class="bulletList_child"
+        />
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`PC operations > keyboard operations > 'press Tab in normal mode to indent item' > assert > after press {Tab} 1`] = `
+<div>
+  log1
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item"
+    >
+      <span>
+        item1
+      </span>
+    </div>
+    <div
+      class="bulletList_child"
+    >
+      <div
+        class="bulletList_container"
+      >
+        <div
+          class="bulletList_bullet"
+        >
+          •
+        </div>
+        <div
+          class="bulletList_item"
+        >
+          <span>
+            item2
+          </span>
+        </div>
+        <div
+          class="bulletList_child"
+        >
+          <div
+            class="bulletList_container"
+          >
+            <div
+              class="bulletList_bullet"
+            >
+              •
+            </div>
+            <div
+              class="bulletList_item selected"
+            >
+              <span>
+                item3
+              </span>
+            </div>
+            <div
+              class="bulletList_child"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`PC operations > keyboard operations > 'press Tab in normal mode to indent item' > assert > initial 1`] = `
+<div>
+  log1
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item"
+    >
+      <span>
+        item1
+      </span>
+    </div>
+    <div
+      class="bulletList_child"
+    >
+      <div
+        class="bulletList_container"
+      >
+        <div
+          class="bulletList_bullet"
+        >
+          •
+        </div>
+        <div
+          class="bulletList_item"
+        >
+          <span>
+            item2
+          </span>
+        </div>
+        <div
+          class="bulletList_child"
+        />
+      </div>
+      <div
+        class="bulletList_container"
+      >
+        <div
+          class="bulletList_bullet"
+        >
+          •
+        </div>
+        <div
+          class="bulletList_item selected"
+        >
+          <span>
+            item3
+          </span>
+        </div>
+        <div
+          class="bulletList_child"
+        />
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
 exports[`PC operations > keyboard operations > 'press a to enter insert mode' > assert > after press a 1`] = `
 <div>
   root
