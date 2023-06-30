@@ -14,6 +14,7 @@ import { useRxDBService } from "@/services/rxdb";
 import { RxDBServiceProviderForTest } from "@/services/rxdb/test";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
 import { renderAsync } from "@/solid/test";
+import { RxDBSyncFirestoreServiceProvider } from "./rxdbSync/firestore";
 
 type Services = { rxdb: RxDBService; store: StoreService; lock: LockService };
 
@@ -25,7 +26,16 @@ export function renderWithServicesForTest(
   return renderAsync(
     (props) => (
       <RxDBServiceProviderForTest tid={tid}>
-        <MultiProvider values={[StoreServiceProvider, LockServiceProvider, EventServiceProvider, EventHandlerServiceProvider, EventEmitterServiceProvider]}>
+        <MultiProvider
+          values={[
+            RxDBSyncFirestoreServiceProvider,
+            StoreServiceProvider,
+            LockServiceProvider,
+            EventServiceProvider,
+            EventHandlerServiceProvider,
+            EventEmitterServiceProvider,
+          ]}
+        >
           {(() => {
             if (!setup) {
               return <Component>{props.children}</Component>;

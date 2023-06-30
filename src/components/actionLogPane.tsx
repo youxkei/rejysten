@@ -144,10 +144,6 @@ if (import.meta.vitest) {
         });
       });
 
-      test.skip("press H to move to ActionLogListPane", () => {
-        // TODO
-      });
-
       test.skip("press Tab in normal mode to indent item", () => {
         // TODO
       });

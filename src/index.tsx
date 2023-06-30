@@ -2,8 +2,7 @@ import { MultiProvider } from "@solid-primitives/context";
 import { render, Suspense } from "solid-js/web";
 
 import { ErrorBoundary } from "@/components/errorBoundary";
-import { Pane } from "@/components/pane";
-import { RxdbFirestoreSyncConfig } from "@/components/rxdbFirestoreSyncConfig";
+import { Main } from "@/components/main";
 import { EventServiceProvider } from "@/services/event";
 import { EventEmitterServiceProvider } from "@/services/eventEmitter";
 import { EventHandlerServiceProvider } from "@/services/eventHandler";
@@ -27,8 +26,7 @@ function App() {
             EventEmitterServiceProvider,
           ]}
         >
-          <RxdbFirestoreSyncConfig />
-          <Pane />
+          <Main />
         </MultiProvider>
       </Suspense>
     </ErrorBoundary>
