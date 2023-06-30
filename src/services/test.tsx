@@ -12,9 +12,9 @@ import { EventHandlerServiceProvider } from "@/services/eventHandler";
 import { createSignalWithLock, runWithLock, LockServiceProvider, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
 import { RxDBServiceProviderForTest } from "@/services/rxdb/test";
+import { RxDBSyncFirestoreServiceProvider } from "@/services/rxdbSync/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
 import { renderAsync } from "@/solid/test";
-import { RxDBSyncFirestoreServiceProvider } from "./rxdbSync/firestore";
 
 type Services = { rxdb: RxDBService; store: StoreService; lock: LockService };
 

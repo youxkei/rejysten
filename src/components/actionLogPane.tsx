@@ -185,12 +185,54 @@ if (import.meta.vitest) {
         });
       });
 
-      test.skip("press Tab in insert mode to indent item", () => {
-        // TODO
-      });
+      describe.each([
+        { name: "press Tab in insert mode to indent item", key: "{Tab}" },
+        { name: "press Shift+Tab in insert mode to dedent item", key: "{Shift>}{Tab}{/Shift}" },
+      ])("$name", ({ key }) => {
+        test("assert", async (test) => {
+          const cursorPosition = Math.floor(Math.random() * ("item3".length + 1));
 
-      test.skip("press Shift+Tab in insert mode to dedent item", () => {
-        // TODO
+          const user = userEvent.setup();
+          const { container, unmount, lock, findByDisplayValue } = await renderWithServicesForTest(
+            test.meta.id,
+            (props) => (
+              <>
+                <ActionLogPane />
+                {props.children}
+              </>
+            ),
+            async ({ rxdb: { collections }, store: { updateStore } }) => {
+              await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 1000, endAt: 0, updatedAt: 0 });
+              await collections.listItems.bulkInsert([
+                { id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "", updatedAt: 0 },
+                { id: "item2", text: "item2", parentId: "item1", prevId: "", nextId: "item3", updatedAt: 0 },
+                { id: "item3", text: "item3", parentId: "item1", prevId: "item2", nextId: "", updatedAt: 0 },
+              ]);
+
+              await updateStore((store) => {
+                store.currentPane = "actionLog";
+                store.mode = "insert";
+                store.editor.text = "item3";
+                store.editor.cursorPosition = cursorPosition;
+                store.actionLogPane.currentActionLogId = "log1";
+                store.actionLogPane.currentListItemId = "item3";
+              });
+            }
+          );
+
+          test.expect(shortenClassName(container)).toMatchSnapshot("initial");
+
+          await user.keyboard(key);
+          await waitLockRelease(lock);
+
+          const input = await findByDisplayValue<HTMLInputElement>("item3");
+
+          test.expect(shortenClassName(container)).toMatchSnapshot("after press " + key);
+          test.expect(input.selectionStart).toBe(cursorPosition);
+          test.expect(input.selectionEnd).toBe(cursorPosition);
+
+          unmount();
+        });
       });
 
       describe("press Backspace to remove item", () => {

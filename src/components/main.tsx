@@ -3,11 +3,11 @@ import { Match, Switch } from "solid-js";
 
 import { ActionLogListPane } from "@/components/actionLogListPane";
 import { ActionLogPane } from "@/components/actionLogPane";
+import { RxdbFirestoreSyncConfig } from "@/components/rxdbFirestoreSyncConfig";
 import { createSignalWithLock, useLockService } from "@/services/lock";
 import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
 import { shortenClassName } from "@/test";
-import { RxdbFirestoreSyncConfig } from "./rxdbFirestoreSyncConfig";
 
 export function Main() {
   const { store } = useStoreService();
