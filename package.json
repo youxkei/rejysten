@@ -4,11 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "fix": "eslint --fix src/**/*.{ts,tsx}; prettier --write src/**/*.{ts,tsx}",
+    "lint": "eslint src/**/*.{ts,tsx}",
+    "fix": "pnpm run lint --fix; prettier --write src/**/*.{ts,tsx}",
     "build": "vite build",
     "dev": "vite",
     "test": "tsc --noEmit && vitest run",
     "test/nocheck": "vitest run",
+    "prepare": "git config --local core.hooksPath .githooks",
     "postinstall": "patch-package"
   },
   "repository": {
