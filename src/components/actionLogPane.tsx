@@ -235,6 +235,45 @@ if (import.meta.vitest) {
         });
       });
 
+      test("press Backspace to remove a character", async (test) => {
+        const user = userEvent.setup();
+        const { container, unmount, lock, findByDisplayValue } = await renderWithServicesForTest(
+          test.meta.id,
+          (props) => (
+            <>
+              <ActionLogPane />
+              {props.children}
+            </>
+          ),
+          async ({ rxdb: { collections }, store: { updateStore } }) => {
+            await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 1000, endAt: 0, updatedAt: 0 });
+            await collections.listItems.bulkInsert([
+              { id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "item2", updatedAt: 0 },
+              { id: "item2", text: "item2", parentId: "log1", prevId: "item1", nextId: "", updatedAt: 0 },
+            ]);
+
+            await updateStore((store) => {
+              store.currentPane = "actionLog";
+              store.mode = "insert";
+              store.editor.text = "item2";
+              store.editor.cursorPosition = 3; // "ite|m2"
+              store.actionLogPane.currentActionLogId = "log1";
+              store.actionLogPane.currentListItemId = "item2";
+            });
+          }
+        );
+
+        await user.keyboard("{Backspace}");
+
+        const input = await findByDisplayValue<HTMLInputElement>("itm2");
+
+        test.expect(shortenClassName(container)).toMatchSnapshot("after press Backspace");
+        test.expect(input.selectionStart).toBe(2);
+        test.expect(input.selectionEnd).toBe(2);
+
+        unmount();
+      });
+
       describe("press Backspace to remove item", () => {
         test.skip("cursor is not on the left edge: item is not removed", () => {
           // TODO
