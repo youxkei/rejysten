@@ -16,7 +16,7 @@ import { RxDBSyncFirestoreServiceProvider } from "@/services/rxdbSync/firestore"
 import { StoreServiceProvider, useStoreService } from "@/services/store";
 import { renderAsync } from "@/solid/test";
 
-type Services = { rxdb: RxDBService; store: StoreService; lock: LockService };
+export type Services = { rxdb: RxDBService; store: StoreService; lock: LockService };
 
 export function renderWithServicesForTest(
   tid: string,
