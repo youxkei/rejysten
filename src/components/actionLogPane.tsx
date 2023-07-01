@@ -64,6 +64,79 @@ export function ActionLogPane() {
 }
 
 if (import.meta.vitest) {
+  describe("display", () => {
+    test("normal mode", async (test) => {
+      const { container, unmount } = await renderWithServicesForTest(
+        test.meta.id,
+        (props) => (
+          <>
+            <ActionLogPane />
+            {props.children}
+          </>
+        ),
+        async ({ rxdb: { collections }, store: { updateStore } }) => {
+          await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
+          await collections.listItems.bulkInsert([
+            { id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "item2", updatedAt: 0 },
+            /**/ { id: "item1_1", text: "item1_1", parentId: "item1", prevId: "", nextId: "item1_2", updatedAt: 0 },
+            /**/ { id: "item1_2", text: "item1_2", parentId: "item1", prevId: "item1_1", nextId: "", updatedAt: 0 },
+            { id: "item2", text: "item2", parentId: "log1", prevId: "item1", nextId: "", updatedAt: 0 },
+            /**/ { id: "item2_1", text: "item2_1", parentId: "item2", prevId: "", nextId: "", updatedAt: 0 },
+            /*     */ { id: "item2_1_1", text: "item2_1_1", parentId: "item2_1", prevId: "", nextId: "", updatedAt: 0 },
+          ]);
+          await updateStore((store) => {
+            store.currentPane = "actionLog";
+            store.actionLogPane.currentActionLogId = "log1";
+            store.actionLogPane.currentListItemId = "item1_2";
+          });
+        }
+      );
+
+      test.expect(shortenClassName(container)).toMatchSnapshot();
+
+      unmount();
+    });
+
+    test("insert mode", async (test) => {
+      const { container, unmount, findByDisplayValue } = await renderWithServicesForTest(
+        test.meta.id,
+        (props) => (
+          <>
+            <ActionLogPane />
+            {props.children}
+          </>
+        ),
+        async ({ rxdb: { collections }, store: { updateStore } }) => {
+          await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
+          await collections.listItems.bulkInsert([
+            { id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "item2", updatedAt: 0 },
+            /**/ { id: "item1_1", text: "item1_1", parentId: "item1", prevId: "", nextId: "item1_2", updatedAt: 0 },
+            /**/ { id: "item1_2", text: "item1_2", parentId: "item1", prevId: "item1_1", nextId: "", updatedAt: 0 },
+            { id: "item2", text: "item2", parentId: "log1", prevId: "item1", nextId: "", updatedAt: 0 },
+            /**/ { id: "item2_1", text: "item2_1", parentId: "item2", prevId: "", nextId: "", updatedAt: 0 },
+            /*     */ { id: "item2_1_1", text: "item2_1_1", parentId: "item2_1", prevId: "", nextId: "", updatedAt: 0 },
+          ]);
+          await updateStore((store) => {
+            store.currentPane = "actionLog";
+            store.mode = "insert";
+            store.editor.text = "item1_2";
+            store.editor.cursorPosition = 3; // ite|m1_2
+            store.actionLogPane.currentActionLogId = "log1";
+            store.actionLogPane.currentListItemId = "item1_2";
+          });
+        }
+      );
+
+      test.expect(shortenClassName(container)).toMatchSnapshot();
+
+      const input = await findByDisplayValue<HTMLInputElement>("item1_2");
+      test.expect(input.selectionStart).toBe(3);
+      test.expect(input.selectionEnd).toBe(3);
+
+      unmount();
+    });
+  });
+
   describe("PC operations", () => {
     describe("keyboard operations", () => {
       describe.each([
@@ -90,8 +163,6 @@ if (import.meta.vitest) {
               });
             }
           );
-
-          test.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
           await user.keyboard(key);
 
@@ -129,8 +200,6 @@ if (import.meta.vitest) {
               });
             }
           );
-
-          test.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
           await user.keyboard(key);
 
@@ -173,8 +242,6 @@ if (import.meta.vitest) {
               });
             }
           );
-
-          test.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
           await user.keyboard(key);
           await waitLockRelease(lock);
@@ -220,8 +287,6 @@ if (import.meta.vitest) {
             }
           );
 
-          test.expect(shortenClassName(container)).toMatchSnapshot("initial");
-
           await user.keyboard(key);
           await waitLockRelease(lock);
 
@@ -256,7 +321,7 @@ if (import.meta.vitest) {
               store.currentPane = "actionLog";
               store.mode = "insert";
               store.editor.text = "item2";
-              store.editor.cursorPosition = 3; // "ite|m2"
+              store.editor.cursorPosition = 3; // ite|m2
               store.actionLogPane.currentActionLogId = "log1";
               store.actionLogPane.currentListItemId = "item2";
             });
