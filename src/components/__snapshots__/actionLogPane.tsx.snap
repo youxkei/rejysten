@@ -2,7 +2,7 @@
 
 exports[`PC operations > keyboard operations > 'press O to add item above' > assert > after press {Shift>}o{/Shift} 1`] = `
 <div>
-  root
+  log1
   <div
     class="bulletList_container"
   >
@@ -34,7 +34,7 @@ exports[`PC operations > keyboard operations > 'press O to add item above' > ass
       class="bulletList_item"
     >
       <span>
-        text
+        item1
       </span>
     </div>
     <div
@@ -304,7 +304,7 @@ exports[`PC operations > keyboard operations > 'press Tab in normal mode to inde
 
 exports[`PC operations > keyboard operations > 'press a to enter insert mode' > assert > after press a 1`] = `
 <div>
-  root
+  log1
   <div
     class="bulletList_container"
   >
@@ -329,7 +329,7 @@ exports[`PC operations > keyboard operations > 'press a to enter insert mode' > 
 
 exports[`PC operations > keyboard operations > 'press i to enter insert mode' > assert > after press i 1`] = `
 <div>
-  root
+  log1
   <div
     class="bulletList_container"
   >
@@ -354,7 +354,7 @@ exports[`PC operations > keyboard operations > 'press i to enter insert mode' > 
 
 exports[`PC operations > keyboard operations > 'press o to add item below' > assert > after press o 1`] = `
 <div>
-  root
+  log1
   <div
     class="bulletList_container"
   >
@@ -367,7 +367,7 @@ exports[`PC operations > keyboard operations > 'press o to add item below' > ass
       class="bulletList_item"
     >
       <span>
-        text
+        item1
       </span>
     </div>
     <div

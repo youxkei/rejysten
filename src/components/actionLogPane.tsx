@@ -140,9 +140,9 @@ if (import.meta.vitest) {
   describe("PC operations", () => {
     describe("keyboard operations", () => {
       describe.each([
-        { name: "press i to enter insert mode", key: "i", text: "text", wantCursorPosition: 0 },
-        { name: "press a to enter insert mode", key: "a", text: "text", wantCursorPosition: 4 },
-      ])("$name", ({ key, text, wantCursorPosition }) => {
+        { name: "press i to enter insert mode", key: "i", wantCursorPosition: 0 },
+        { name: "press a to enter insert mode", key: "a", wantCursorPosition: "item1".length },
+      ])("$name", ({ key, wantCursorPosition }) => {
         test("assert", async (test) => {
           const user = userEvent.setup();
           const { container, unmount, findByDisplayValue } = await renderWithServicesForTest(
@@ -154,19 +154,19 @@ if (import.meta.vitest) {
               </>
             ),
             async ({ rxdb: { collections }, store: { updateStore } }) => {
-              await collections.actionLogs.insert({ id: "root", text: "root", startAt: 0, endAt: 0, updatedAt: 0 });
-              await collections.listItems.insert({ id: "1", text, parentId: "root", prevId: "", nextId: "", updatedAt: 0 });
+              await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
+              await collections.listItems.insert({ id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "", updatedAt: 0 });
               await updateStore((store) => {
                 store.currentPane = "actionLog";
-                store.actionLogPane.currentActionLogId = "root";
-                store.actionLogPane.currentListItemId = "1";
+                store.actionLogPane.currentActionLogId = "log1";
+                store.actionLogPane.currentListItemId = "item1";
               });
             }
           );
 
           await user.keyboard(key);
 
-          const input = await findByDisplayValue<HTMLInputElement>("text");
+          const input = await findByDisplayValue<HTMLInputElement>("item1");
 
           test.expect(shortenClassName(container)).toMatchSnapshot("after press " + key);
           test.expect(input.selectionStart).toBe(wantCursorPosition);
@@ -191,12 +191,12 @@ if (import.meta.vitest) {
               </>
             ),
             async ({ rxdb: { collections }, store: { updateStore } }) => {
-              await collections.actionLogs.insert({ id: "root", text: "root", startAt: 0, endAt: 0, updatedAt: 0 });
-              await collections.listItems.insert({ id: "1", text: "text", parentId: "root", prevId: "", nextId: "", updatedAt: 0 });
+              await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
+              await collections.listItems.insert({ id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "", updatedAt: 0 });
               await updateStore((store) => {
                 store.currentPane = "actionLog";
-                store.actionLogPane.currentActionLogId = "root";
-                store.actionLogPane.currentListItemId = "1";
+                store.actionLogPane.currentActionLogId = "log1";
+                store.actionLogPane.currentListItemId = "item1";
               });
             }
           );
@@ -302,7 +302,7 @@ if (import.meta.vitest) {
 
       test("press Backspace to remove a character", async (test) => {
         const user = userEvent.setup();
-        const { container, unmount, lock, findByDisplayValue } = await renderWithServicesForTest(
+        const { container, unmount, findByDisplayValue } = await renderWithServicesForTest(
           test.meta.id,
           (props) => (
             <>
