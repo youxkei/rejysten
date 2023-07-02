@@ -9,6 +9,7 @@ import { ItemListChildren } from "@/components/itemList";
 import { createSignalWithLock, runWithLock, useLockService, waitLockRelease } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
 import { getBottomItem } from "@/services/rxdb/collections/listItem";
+import { makeListItem, makeListItems } from "@/services/rxdb/collections/test";
 import { createSubscribeSignal } from "@/services/rxdb/subscribe";
 import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
@@ -84,14 +85,12 @@ if (import.meta.vitest) {
     test("normal mode", async (test) => {
       const { container, unmount } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
         await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
-        await collections.listItems.bulkInsert([
-          { id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "item2", updatedAt: 0 },
-          /**/ { id: "item1_1", text: "item1_1", parentId: "item1", prevId: "", nextId: "item1_2", updatedAt: 0 },
-          /**/ { id: "item1_2", text: "item1_2", parentId: "item1", prevId: "item1_1", nextId: "", updatedAt: 0 },
-          { id: "item2", text: "item2", parentId: "log1", prevId: "item1", nextId: "", updatedAt: 0 },
-          /**/ { id: "item2_1", text: "item2_1", parentId: "item2", prevId: "", nextId: "", updatedAt: 0 },
-          /*     */ { id: "item2_1_1", text: "item2_1_1", parentId: "item2_1", prevId: "", nextId: "", updatedAt: 0 },
-        ]);
+        await collections.listItems.bulkInsert(
+          makeListItems("log1", [
+            { id: "item1", children: [{ id: "item1_1" }, { id: "item1_2" }] },
+            { id: "item2", children: [{ id: "item2_1", children: [{ id: "item2_1_1" }] }] },
+          ])
+        );
         await updateStore((store) => {
           store.currentPane = "actionLog";
           store.actionLogPane.currentActionLogId = "log1";
@@ -107,14 +106,12 @@ if (import.meta.vitest) {
     test("insert mode", async (test) => {
       const { container, unmount, findByDisplayValue } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
         await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
-        await collections.listItems.bulkInsert([
-          { id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "item2", updatedAt: 0 },
-          /**/ { id: "item1_1", text: "item1_1", parentId: "item1", prevId: "", nextId: "item1_2", updatedAt: 0 },
-          /**/ { id: "item1_2", text: "item1_2", parentId: "item1", prevId: "item1_1", nextId: "", updatedAt: 0 },
-          { id: "item2", text: "item2", parentId: "log1", prevId: "item1", nextId: "", updatedAt: 0 },
-          /**/ { id: "item2_1", text: "item2_1", parentId: "item2", prevId: "", nextId: "", updatedAt: 0 },
-          /*     */ { id: "item2_1_1", text: "item2_1_1", parentId: "item2_1", prevId: "", nextId: "", updatedAt: 0 },
-        ]);
+        await collections.listItems.bulkInsert(
+          makeListItems("log1", [
+            { id: "item1", children: [{ id: "item1_1" }, { id: "item1_2" }] },
+            { id: "item2", children: [{ id: "item2_1", children: [{ id: "item2_1_1" }] }] },
+          ])
+        );
         await updateStore((store) => {
           store.currentPane = "actionLog";
           store.mode = "insert";
@@ -201,16 +198,11 @@ if (import.meta.vitest) {
           const user = userEvent.setup();
           const { container, unmount, lock } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
             await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 1000, endAt: 0, updatedAt: 0 });
-            await collections.listItems.bulkInsert([
-              { id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "", updatedAt: 0 },
-              { id: "item2", text: "item2", parentId: "item1", prevId: "", nextId: "item3", updatedAt: 0 },
-              { id: "item3", text: "item3", parentId: "item1", prevId: "item2", nextId: "", updatedAt: 0 },
-            ]);
-
+            await collections.listItems.bulkInsert(makeListItem("log1", { id: "item1", children: [{ id: "item1_1" }, { id: "item1_2" }] }));
             await updateStore((store) => {
               store.currentPane = "actionLog";
               store.actionLogPane.currentActionLogId = "log1";
-              store.actionLogPane.currentListItemId = "item3";
+              store.actionLogPane.currentListItemId = "item1_2";
             });
           });
 
@@ -233,26 +225,21 @@ if (import.meta.vitest) {
           const user = userEvent.setup();
           const { container, unmount, lock, findByDisplayValue } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
             await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 1000, endAt: 0, updatedAt: 0 });
-            await collections.listItems.bulkInsert([
-              { id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "", updatedAt: 0 },
-              { id: "item2", text: "item2", parentId: "item1", prevId: "", nextId: "item3", updatedAt: 0 },
-              { id: "item3", text: "item3", parentId: "item1", prevId: "item2", nextId: "", updatedAt: 0 },
-            ]);
-
+            await collections.listItems.bulkInsert(makeListItem("log1", { id: "item1", children: [{ id: "item1_1" }, { id: "item1_2" }] }));
             await updateStore((store) => {
               store.currentPane = "actionLog";
               store.mode = "insert";
-              store.editor.text = "item3";
+              store.editor.text = "item1_2";
               store.editor.cursorPosition = cursorPosition;
               store.actionLogPane.currentActionLogId = "log1";
-              store.actionLogPane.currentListItemId = "item3";
+              store.actionLogPane.currentListItemId = "item1_2";
             });
           });
 
           await user.keyboard(key);
           await waitLockRelease(lock);
 
-          const input = await findByDisplayValue<HTMLInputElement>("item3");
+          const input = await findByDisplayValue<HTMLInputElement>("item1_2");
 
           test.expect(shortenClassName(container)).toMatchSnapshot("after press " + key);
           test.expect(input.selectionStart).toBe(cursorPosition);
@@ -266,10 +253,7 @@ if (import.meta.vitest) {
         const user = userEvent.setup();
         const { container, unmount, findByDisplayValue } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
           await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 1000, endAt: 0, updatedAt: 0 });
-          await collections.listItems.bulkInsert([
-            { id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "item2", updatedAt: 0 },
-            { id: "item2", text: "item2", parentId: "log1", prevId: "item1", nextId: "", updatedAt: 0 },
-          ]);
+          await collections.listItems.bulkInsert(makeListItems("log1", [{ id: "item1" }, { id: "item2" }]));
 
           await updateStore((store) => {
             store.currentPane = "actionLog";
@@ -296,11 +280,7 @@ if (import.meta.vitest) {
         describe.each([
           {
             name: "item has children",
-            items: [
-              { id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "item2", updatedAt: 0 },
-              { id: "item2", text: "item2", parentId: "log1", prevId: "item1", nextId: "", updatedAt: 0 },
-              /**/ { id: "item2_1", text: "item2_1", parentId: "item2", prevId: "", nextId: "", updatedAt: 0 },
-            ],
+            items: makeListItems("log1", [{ id: "item1" }, { id: "item2", children: [{ id: "item2_1" }] }]),
             currentItem: "item2",
           },
         ])("$name", ({ items, currentItem }) => {
