@@ -292,15 +292,45 @@ if (import.meta.vitest) {
         unmount();
       });
 
+      describe("press Backspace but nothing happened", () => {
+        describe.each([
+          {
+            name: "item has children",
+            items: [
+              { id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "item2", updatedAt: 0 },
+              { id: "item2", text: "item2", parentId: "log1", prevId: "item1", nextId: "", updatedAt: 0 },
+              /**/ { id: "item2_1", text: "item2_1", parentId: "item2", prevId: "", nextId: "", updatedAt: 0 },
+            ],
+            currentItem: "item2",
+          },
+        ])("$name", ({ items, currentItem }) => {
+          test("assert", async (test) => {
+            const user = userEvent.setup();
+            const { container, unmount, lock, findByDisplayValue } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
+              await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
+              await collections.listItems.bulkInsert(items);
+              await updateStore((store) => {
+                store.currentPane = "actionLog";
+                store.mode = "insert";
+                store.editor.text = currentItem;
+                store.editor.cursorPosition = 0;
+                store.actionLogPane.currentActionLogId = "log1";
+                store.actionLogPane.currentListItemId = currentItem;
+              });
+            });
+
+            await user.keyboard("{Backspace}");
+            await waitLockRelease(lock);
+            await findByDisplayValue<HTMLInputElement>(currentItem);
+
+            test.expect(shortenClassName(container)).toMatchSnapshot("after press Backspace");
+
+            unmount();
+          });
+        });
+      });
+
       describe("press Backspace to remove item", () => {
-        test.skip("cursor is not on the left edge: item is not removed", () => {
-          // TODO
-        });
-
-        test.skip("cursor is on the left edge, has children: item is not removed", () => {
-          // TODO
-        });
-
         test.skip("cursor is on the left edge, no children, no above item, has below item: item is not removed", () => {
           // TODO
         });

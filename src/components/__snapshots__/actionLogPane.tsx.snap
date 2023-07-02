@@ -396,6 +396,70 @@ exports[`PC operations > keyboard operations > 'press o to add item below' > ass
 </div>
 `;
 
+exports[`PC operations > keyboard operations > press Backspace but nothing happened > 'item has children' > assert > after press Backspace 1`] = `
+<div>
+  log1
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item"
+    >
+      <span>
+        item1
+      </span>
+    </div>
+    <div
+      class="bulletList_child"
+    />
+  </div>
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item selected"
+    >
+      <input
+        class="editor"
+      />
+    </div>
+    <div
+      class="bulletList_child"
+    >
+      <div
+        class="bulletList_container"
+      >
+        <div
+          class="bulletList_bullet"
+        >
+          •
+        </div>
+        <div
+          class="bulletList_item"
+        >
+          <span>
+            item2_1
+          </span>
+        </div>
+        <div
+          class="bulletList_child"
+        />
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
 exports[`PC operations > keyboard operations > press Backspace to remove a character > after press Backspace 1`] = `
 <div>
   log1
