@@ -9,7 +9,7 @@ import { ItemListChildren } from "@/components/itemList";
 import { createSignalWithLock, runWithLock, useLockService, waitLockRelease } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
 import { getBottomItem } from "@/services/rxdb/collections/listItem";
-import { makeListItem, makeListItems } from "@/services/rxdb/collections/test";
+import { makeListItems } from "@/services/rxdb/collections/test";
 import { createSubscribeSignal } from "@/services/rxdb/subscribe";
 import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
@@ -86,9 +86,17 @@ if (import.meta.vitest) {
       const { container, unmount } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
         await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
         await collections.listItems.bulkInsert(
-          makeListItems("log1", [
-            { id: "item1", children: [{ id: "item1_1" }, { id: "item1_2" }] },
-            { id: "item2", children: [{ id: "item2_1", children: [{ id: "item2_1_1" }] }] },
+          // prettier-ignore
+          makeListItems("log1", 0, [
+            ["item1", [
+              ["item1_1"],
+              ["item1_2"],
+            ]],
+            ["item2", [
+              ["item2_1", [
+                ["item2_1_1"]
+              ]],
+            ]],
           ])
         );
         await updateStore((store) => {
@@ -107,9 +115,17 @@ if (import.meta.vitest) {
       const { container, unmount, findByDisplayValue } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
         await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
         await collections.listItems.bulkInsert(
-          makeListItems("log1", [
-            { id: "item1", children: [{ id: "item1_1" }, { id: "item1_2" }] },
-            { id: "item2", children: [{ id: "item2_1", children: [{ id: "item2_1_1" }] }] },
+          // prettier-ignore
+          makeListItems("log1", 0, [
+            ["item1", [
+              ["item1_1"],
+              ["item1_2"],
+            ]],
+            ["item2", [
+              ["item2_1", [
+                ["item2_1_1"]
+              ]],
+            ]],
           ])
         );
         await updateStore((store) => {
@@ -198,7 +214,15 @@ if (import.meta.vitest) {
           const user = userEvent.setup();
           const { container, unmount, lock } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
             await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 1000, endAt: 0, updatedAt: 0 });
-            await collections.listItems.bulkInsert(makeListItem("log1", { id: "item1", children: [{ id: "item1_1" }, { id: "item1_2" }] }));
+            await collections.listItems.bulkInsert(
+              // prettier-ignore
+              makeListItems("log1", 0, [
+                ["item1", [
+                  ["item1_1"],
+                  ["item1_2"],
+                ]],
+              ])
+            );
             await updateStore((store) => {
               store.currentPane = "actionLog";
               store.actionLogPane.currentActionLogId = "log1";
@@ -225,7 +249,15 @@ if (import.meta.vitest) {
           const user = userEvent.setup();
           const { container, unmount, lock, findByDisplayValue } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
             await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 1000, endAt: 0, updatedAt: 0 });
-            await collections.listItems.bulkInsert(makeListItem("log1", { id: "item1", children: [{ id: "item1_1" }, { id: "item1_2" }] }));
+            await collections.listItems.bulkInsert(
+              // prettier-ignore
+              makeListItems("log1", 0, [
+                ["item1", [
+                  ["item1_1"],
+                  ["item1_2"],
+                ]],
+              ])
+            );
             await updateStore((store) => {
               store.currentPane = "actionLog";
               store.mode = "insert";
@@ -253,7 +285,13 @@ if (import.meta.vitest) {
         const user = userEvent.setup();
         const { container, unmount, findByDisplayValue } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
           await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 1000, endAt: 0, updatedAt: 0 });
-          await collections.listItems.bulkInsert(makeListItems("log1", [{ id: "item1" }, { id: "item2" }]));
+          await collections.listItems.bulkInsert(
+            // prettier-ignore
+            makeListItems("log1", 0, [
+              ["item1"],
+              ["item2"],
+            ])
+          );
 
           await updateStore((store) => {
             store.currentPane = "actionLog";
@@ -280,7 +318,13 @@ if (import.meta.vitest) {
         describe.each([
           {
             name: "item has children",
-            items: makeListItems("log1", [{ id: "item1" }, { id: "item2", children: [{ id: "item2_1" }] }]),
+            // prettier-ignore
+            items: makeListItems("log1", 0, [
+              ["item1"],
+              ["item2", [
+                ["item2_1"],
+              ]],
+            ]),
             currentItem: "item2",
           },
         ])("$name", ({ items, currentItem }) => {
