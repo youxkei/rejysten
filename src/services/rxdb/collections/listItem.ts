@@ -450,38 +450,47 @@ if (import.meta.vitest) {
       const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await service.collections.listItems.bulkUpsert([{ id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
+      await service.collections.listItems.bulkInsert(makeListItems("", 0, [["base"]]));
 
-      await addPrevSibling(service, now, (await service.collections.listItems.findOne("1").exec())!, {
-        id: "2",
+      await addPrevSibling(service, now, (await service.collections.listItems.findOne("base").exec())!, {
+        id: "new",
         text: "new",
       });
 
-      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "base", prevId: "2", nextId: "", parentId: "0", updatedAt: now },
-        { id: "2", text: "new", prevId: "", nextId: "1", parentId: "0", updatedAt: now },
-      ]);
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual(
+        // prettier-ignore
+        makeListItems("", now, [
+          ["new"],
+          ["base"],
+        ])
+      );
     });
 
     test("insert", async (test) => {
       const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await service.collections.listItems.bulkUpsert([
-        { id: "1", text: "base", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "prev", prevId: "", nextId: "1", parentId: "0", updatedAt: 0 },
-      ]);
+      await service.collections.listItems.bulkInsert(
+        // prettier-ignore
+        makeListItems("", 0, [
+          ["prev"],
+          ["base"],
+        ])
+      );
 
-      await addPrevSibling(service, now, (await service.collections.listItems.findOne("1").exec())!, {
-        id: "3",
+      await addPrevSibling(service, now, (await service.collections.listItems.findOne("base").exec())!, {
+        id: "new",
         text: "new",
       });
 
-      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "base", prevId: "3", nextId: "", parentId: "0", updatedAt: now },
-        { id: "2", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
-        { id: "3", text: "new", prevId: "2", nextId: "1", parentId: "0", updatedAt: now },
-      ]);
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual(
+        // prettier-ignore
+        makeListItems("", now, [
+          ["prev"],
+          ["new"],
+          ["base"],
+        ])
+      );
     });
   });
 }
@@ -547,38 +556,47 @@ if (import.meta.vitest) {
       const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await service.collections.listItems.bulkUpsert([{ id: "1", text: "base", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
+      await service.collections.listItems.bulkInsert(makeListItems("", 0, [["base"]]));
 
-      await addNextSibling(service, now, (await service.collections.listItems.findOne("1").exec())!, {
-        id: "2",
+      await addNextSibling(service, now, (await service.collections.listItems.findOne("base").exec())!, {
+        id: "new",
         text: "new",
       });
 
-      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "base", prevId: "", nextId: "2", parentId: "0", updatedAt: now },
-        { id: "2", text: "new", prevId: "1", nextId: "", parentId: "0", updatedAt: now },
-      ]);
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual(
+        // prettier-ignore
+        makeListItems("", now, [
+          ["base"],
+          ["new"],
+        ])
+      );
     });
 
     test("insert", async (test) => {
       const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await service.collections.listItems.bulkUpsert([
-        { id: "1", text: "base", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
-      ]);
+      await service.collections.listItems.bulkInsert(
+        // prettier-ignore
+        makeListItems("", 0, [
+          ["base"],
+          ["next"],
+        ])
+      );
 
-      await addNextSibling(service, now, (await service.collections.listItems.findOne("1").exec())!, {
-        id: "3",
+      await addNextSibling(service, now, (await service.collections.listItems.findOne("base").exec())!, {
+        id: "new",
         text: "new",
       });
 
-      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "base", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
-        { id: "2", text: "next", prevId: "3", nextId: "", parentId: "0", updatedAt: now },
-        { id: "3", text: "new", prevId: "1", nextId: "2", parentId: "0", updatedAt: now },
-      ]);
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual(
+        // prettier-ignore
+        makeListItems("", now, [
+          ["base"],
+          ["new"],
+          ["next"],
+        ])
+      );
     });
   });
 }
