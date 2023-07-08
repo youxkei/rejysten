@@ -625,57 +625,78 @@ if (import.meta.vitest) {
     test("cannot indent due to no prev item", async (test) => {
       const service = await createRxDBServiceForTest(test.meta.id);
 
-      await service.collections.listItems.bulkUpsert([
-        { id: "1", text: "target", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
-      ]);
+      await service.collections.listItems.bulkInsert(
+        // prettier-ignore
+        makeListItems("", 0, [
+          ["target"],
+          ["next"],
+        ])
+      );
 
-      await indent(service, Date.now(), (await service.collections.listItems.findOne("1").exec())!);
+      await indent(service, Date.now(), (await service.collections.listItems.findOne("target").exec())!);
 
-      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "target", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
-      ]);
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual(
+        // prettier-ignore
+        makeListItems("", 0, [
+          ["target"],
+          ["next"],
+        ])
+      );
     });
 
     test("indent with prev item without children", async (test) => {
       const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await service.collections.listItems.bulkUpsert([
-        { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "target", prevId: "1", nextId: "3", parentId: "0", updatedAt: 0 },
-        { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
-      ]);
+      await service.collections.listItems.bulkInsert(
+        // prettier-ignore
+        makeListItems("", 0, [
+          ["prev"],
+          ["target"],
+          ["next"],
+        ])
+      );
 
-      await indent(service, now, (await service.collections.listItems.findOne("2").exec())!);
+      await indent(service, now, (await service.collections.listItems.findOne("target").exec())!);
 
-      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
-        { id: "2", text: "target", prevId: "", nextId: "", parentId: "1", updatedAt: now },
-        { id: "3", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: now },
-      ]);
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual(
+        // prettier-ignore
+        makeListItems("", now, [
+          ["prev", [
+            ["target"],
+          ]],
+          ["next"],
+        ])
+      );
     });
 
     test("indent with prev item with children", async (test) => {
       const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await service.collections.listItems.bulkUpsert([
-        { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "child of prev", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
-        { id: "3", text: "target", prevId: "1", nextId: "4", parentId: "0", updatedAt: 0 },
-        { id: "4", text: "next", prevId: "3", nextId: "", parentId: "0", updatedAt: 0 },
-      ]);
+      await service.collections.listItems.bulkInsert(
+        // prettier-ignore
+        makeListItems("", 0, [
+          ["prev", [
+            ["child of prev"],
+          ]],
+          ["target"],
+          ["next"],
+        ])
+      );
 
-      await indent(service, now, (await service.collections.listItems.findOne("3").exec())!);
+      await indent(service, now, (await service.collections.listItems.findOne("target").exec())!);
 
-      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "prev", prevId: "", nextId: "4", parentId: "0", updatedAt: now },
-        { id: "2", text: "child of prev", prevId: "", nextId: "3", parentId: "1", updatedAt: now },
-        { id: "3", text: "target", prevId: "2", nextId: "", parentId: "1", updatedAt: now },
-        { id: "4", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: now },
-      ]);
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual(
+        // prettier-ignore
+        makeListItems("", now, [
+          ["prev", [
+            ["child of prev"],
+            ["target"],
+          ]],
+          ["next"],
+        ])
+      );
     });
   });
 }
@@ -693,63 +714,85 @@ if (import.meta.vitest) {
     test("cannot dedent due to no parent item", async (test) => {
       const service = await createRxDBServiceForTest(test.meta.id);
 
-      await service.collections.listItems.bulkUpsert([
-        { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "target", prevId: "1", nextId: "3", parentId: "0", updatedAt: 0 },
-        { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
-      ]);
+      await service.collections.listItems.bulkInsert(
+        // prettier-ignore
+        makeListItems("", 0, [
+          ["prev"],
+          ["target"],
+          ["next"],
+        ])
+      );
 
-      await dedent(service, Date.now(), (await service.collections.listItems.findOne("2").exec())!);
+      await dedent(service, Date.now(), (await service.collections.listItems.findOne("target").exec())!);
 
-      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "target", prevId: "1", nextId: "3", parentId: "0", updatedAt: 0 },
-        { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
-      ]);
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual(
+        // prettier-ignore
+        makeListItems("", 0, [
+          ["prev"],
+          ["target"],
+          ["next"],
+        ])
+      );
     });
 
     test("dedent with parent item without next item", async (test) => {
       const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await service.collections.listItems.bulkUpsert([
-        { id: "1", text: "parent", prevId: "", nextId: "", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "prev", prevId: "", nextId: "3", parentId: "1", updatedAt: 0 },
-        { id: "3", text: "target", prevId: "2", nextId: "4", parentId: "1", updatedAt: 0 },
-        { id: "4", text: "next", prevId: "3", nextId: "", parentId: "1", updatedAt: 0 },
-      ]);
+      await service.collections.listItems.bulkInsert(
+        // prettier-ignore
+        makeListItems("", 0, [
+          ["parent", [
+            ["prev"],
+            ["target"],
+            ["next"],
+          ]],
+        ])
+      );
 
-      await dedent(service, now, (await service.collections.listItems.findOne("3").exec())!);
+      await dedent(service, now, (await service.collections.listItems.findOne("target").exec())!);
 
-      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "parent", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
-        { id: "2", text: "prev", prevId: "", nextId: "4", parentId: "1", updatedAt: now },
-        { id: "3", text: "target", prevId: "1", nextId: "", parentId: "0", updatedAt: now },
-        { id: "4", text: "next", prevId: "2", nextId: "", parentId: "1", updatedAt: now },
-      ]);
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual(
+        // prettier-ignore
+        makeListItems("", now, [
+          ["parent", [
+            ["prev"],
+            ["next"],
+          ]],
+          ["target"],
+        ])
+      );
     });
 
     test("dedent with parent item with next item", async (test) => {
       const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await service.collections.listItems.bulkUpsert([
-        { id: "1", text: "parent", prevId: "", nextId: "5", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "prev", prevId: "", nextId: "3", parentId: "1", updatedAt: 0 },
-        { id: "3", text: "target", prevId: "2", nextId: "4", parentId: "1", updatedAt: 0 },
-        { id: "4", text: "next", prevId: "3", nextId: "", parentId: "1", updatedAt: 0 },
-        { id: "5", text: "next of parent", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
-      ]);
+      await service.collections.listItems.bulkInsert(
+        // prettier-ignore
+        makeListItems("", 0, [
+          ["parent", [
+            ["prev"],
+            ["target"],
+            ["next"],
+          ]],
+          ["next of parent"],
+        ])
+      );
 
-      await dedent(service, now, (await service.collections.listItems.findOne("3").exec())!);
+      await dedent(service, now, (await service.collections.listItems.findOne("target").exec())!);
 
-      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "parent", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
-        { id: "2", text: "prev", prevId: "", nextId: "4", parentId: "1", updatedAt: now },
-        { id: "3", text: "target", prevId: "1", nextId: "5", parentId: "0", updatedAt: now },
-        { id: "4", text: "next", prevId: "2", nextId: "", parentId: "1", updatedAt: now },
-        { id: "5", text: "next of parent", prevId: "3", nextId: "", parentId: "0", updatedAt: now },
-      ]);
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual(
+        // prettier-ignore
+        makeListItems("", now, [
+          ["parent", [
+            ["prev"],
+            ["next"],
+          ]],
+          ["target"],
+          ["next of parent"],
+        ])
+      );
     });
   });
 }
@@ -764,9 +807,9 @@ if (import.meta.vitest) {
     test("remove item without siblings", async (test) => {
       const service = await createRxDBServiceForTest(test.meta.id);
 
-      await service.collections.listItems.bulkUpsert([{ id: "1", text: "target", prevId: "", nextId: "", parentId: "0", updatedAt: 0 }]);
+      await service.collections.listItems.bulkInsert(makeListItems("", 0, [["target"]]));
 
-      await remove(service, Date.now(), (await service.collections.listItems.findOne("1").exec())!);
+      await remove(service, Date.now(), (await service.collections.listItems.findOne("target").exec())!);
 
       test.expect(await service.collections.listItems.find().exec()).toEqual([]);
     });
@@ -775,50 +818,68 @@ if (import.meta.vitest) {
       const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await service.collections.listItems.bulkUpsert([
-        { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "target", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
-      ]);
+      await service.collections.listItems.bulkInsert(
+        // prettier-ignore
+        makeListItems("", 0, [
+          ["prev"],
+          ["target"],
+        ])
+      );
 
-      await remove(service, now, (await service.collections.listItems.findOne("2").exec())!);
+      await remove(service, now, (await service.collections.listItems.findOne("target").exec())!);
 
-      test
-        .expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON()))
-        .toEqual([{ id: "1", text: "prev", prevId: "", nextId: "", parentId: "0", updatedAt: now }]);
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual(
+        // prettier-ignore
+        makeListItems("", now, [
+          ["prev"],
+        ])
+      );
     });
 
     test("remove item with next item without prev item", async (test) => {
       const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await service.collections.listItems.bulkUpsert([
-        { id: "1", text: "target", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: 0 },
-      ]);
+      await service.collections.listItems.bulkInsert(
+        // prettier-ignore
+        makeListItems("", 0, [
+          ["target"],
+          ["next"],
+        ])
+      );
 
-      await remove(service, now, (await service.collections.listItems.findOne("1").exec())!);
+      await remove(service, now, (await service.collections.listItems.findOne("target").exec())!);
 
-      test
-        .expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON()))
-        .toEqual([{ id: "2", text: "next", prevId: "", nextId: "", parentId: "0", updatedAt: now }]);
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual(
+        // prettier-ignore
+        makeListItems("", now, [
+          ["next"],
+        ])
+      );
     });
 
     test("remove item with siblings", async (test) => {
       const service = await createRxDBServiceForTest(test.meta.id);
       const now = Date.now();
 
-      await service.collections.listItems.bulkUpsert([
-        { id: "1", text: "prev", prevId: "", nextId: "2", parentId: "0", updatedAt: 0 },
-        { id: "2", text: "target", prevId: "1", nextId: "3", parentId: "0", updatedAt: 0 },
-        { id: "3", text: "next", prevId: "2", nextId: "", parentId: "0", updatedAt: 0 },
-      ]);
+      await service.collections.listItems.bulkInsert(
+        // prettier-ignore
+        makeListItems("", 0, [
+          ["prev"],
+          ["target"],
+          ["next"],
+        ])
+      );
 
-      await remove(service, now, (await service.collections.listItems.findOne("2").exec())!);
+      await remove(service, now, (await service.collections.listItems.findOne("target").exec())!);
 
-      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual([
-        { id: "1", text: "prev", prevId: "", nextId: "3", parentId: "0", updatedAt: now },
-        { id: "3", text: "next", prevId: "1", nextId: "", parentId: "0", updatedAt: now },
-      ]);
+      test.expect((await service.collections.listItems.find().exec()).map((x) => x.toJSON())).toEqual(
+        // prettier-ignore
+        makeListItems("", now, [
+          ["prev"],
+          ["next"],
+        ])
+      );
     });
   });
 }
