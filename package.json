@@ -11,7 +11,9 @@
     "test": "tsc --noEmit && vitest run",
     "test/nocheck": "vitest run",
     "prepare": "git config --local core.hooksPath .githooks",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "repository": {
     "type": "git",
@@ -26,6 +28,12 @@
   "devDependencies": {
     "@blitz/eslint-plugin": "github:stackblitz/eslint-plugin#93190f5",
     "@solidjs/testing-library": "^0.7.0",
+    "@storybook/addon-console": "^2.0.0",
+    "@storybook/addon-essentials": "^7.0.26",
+    "@storybook/addon-interactions": "^7.0.26",
+    "@storybook/addon-links": "^7.0.26",
+    "@storybook/blocks": "^7.0.26",
+    "@storybook/testing-library": "^0.0.14-next.2",
     "@testing-library/user-event": "^14.4.3",
     "@types/js-yaml": "^4.0.5",
     "@typescript-eslint/eslint-plugin": "^5.58.0",
@@ -35,11 +43,17 @@
     "eslint": "^8.38.0",
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-no-relative-import-paths": "^1.5.2",
+    "eslint-plugin-storybook": "^0.6.12",
     "eslint-plugin-unused-imports": "^2.0.0",
     "fake-indexeddb": "^4.0.1",
     "happy-dom": "^9.1.9",
     "patch-package": "^6.5.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "solid-devtools": "^0.26.0",
+    "storybook": "^7.0.26",
+    "storybook-solidjs": "^1.0.0-beta.2",
+    "storybook-solidjs-vite": "^1.0.0-beta.2",
     "type-fest": "^3.10.0",
     "typescript": "^5.0.4",
     "vite": "^4.2.1",
@@ -79,7 +93,8 @@
       "eslint:recommended",
       "plugin:@typescript-eslint/recommended",
       "plugin:@typescript-eslint/recommended-requiring-type-checking",
-      "plugin:@typescript-eslint/strict"
+      "plugin:@typescript-eslint/strict",
+      "plugin:storybook/recommended"
     ],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
