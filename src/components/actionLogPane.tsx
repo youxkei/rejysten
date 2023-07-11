@@ -232,6 +232,7 @@ if (import.meta.vitest) {
 
           await user.keyboard(key);
           await waitLockRelease(lock);
+          await new Promise<void>((resolve) => queueMicrotask(resolve));
 
           test.expect(shortenClassName(container)).toMatchSnapshot("after press " + key);
 
@@ -304,6 +305,7 @@ if (import.meta.vitest) {
         });
 
         await user.keyboard("{Backspace}");
+        await new Promise<void>((resolve) => queueMicrotask(resolve));
 
         const input = await findByDisplayValue<HTMLInputElement>("itm2");
 

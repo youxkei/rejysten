@@ -1,34 +1,41 @@
 import type { ListItemDocument } from "@/services/rxdb/collections/listItem";
 
-import { Show, ErrorBoundary, Index } from "solid-js";
+import { Show, ErrorBoundary, For } from "solid-js";
 
 import { BulletList } from "@/components/bulletList";
 import { Editor } from "@/components/editor";
 import { createSignalWithLock, runWithLock, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
-import { createSubscribeAllSignal } from "@/services/rxdb/subscribe";
+import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/rxdb/subscribe";
 import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
 import { shortenClassName } from "@/test";
 
-export function ItemList(props: { listItem: ListItemDocument; selectedId: string }) {
+export function ItemList(props: { listItemId: string; selectedId: string }) {
+  const { collections } = useRxDBService();
   const { store } = useStoreService();
   const lock = useLockService();
 
-  const isSelected$ = createSignalWithLock(lock, () => props.listItem.id === props.selectedId, false);
+  const listItem$ = createSubscribeSignal(() => collections.listItems.findOne(props.listItemId));
+  const listItemWithLock$ = createSignalWithLock(lock, () => listItem$(), null);
+  const isSelected$ = createSignalWithLock(lock, () => props.listItemId === props.selectedId, false);
   const isEditor$ = createSignalWithLock(lock, () => isSelected$() && store.mode === "insert", false);
 
   return (
-    <BulletList
-      bullet={"•"}
-      item={
-        <Show when={isEditor$()} fallback={<span>{props.listItem.text}</span>}>
-          <Editor text={props.listItem.text} />
-        </Show>
-      }
-      child={<ItemListChildren parentId={props.listItem.id} selectedId={props.selectedId} />}
-      isSelected={isSelected$()}
-    />
+    <Show when={listItemWithLock$()}>
+      {(listItem$) => (
+        <BulletList
+          bullet={"•"}
+          item={
+            <Show when={isEditor$()} fallback={<span>{listItem$().text}</span>}>
+              <Editor text={listItem$().text} />
+            </Show>
+          }
+          child={<ItemListChildren parentId={props.listItemId} selectedId={props.selectedId} />}
+          isSelected={isSelected$()}
+        />
+      )}
+    </Show>
   );
 }
 
@@ -44,7 +51,7 @@ export function ItemListChildren(props: { parentId: string; selectedId: string }
 
   const childrenWithLock$ = createSignalWithLock(lock, children$, []);
 
-  const sortedChildren$ = () => {
+  const sortedChildrenIds$ = () => {
     const children = childrenWithLock$();
     if (children.length === 0) {
       return [];
@@ -84,10 +91,10 @@ export function ItemListChildren(props: { parentId: string; selectedId: string }
       );
     }
 
-    return sortedChildren;
+    return sortedChildren.map((child) => child.id);
   };
 
-  return <Index each={sortedChildren$()}>{(listItem) => <ItemList listItem={listItem()} selectedId={props.selectedId} />}</Index>;
+  return <For each={sortedChildrenIds$()}>{(listItemId) => <ItemList listItemId={listItemId} selectedId={props.selectedId} />}</For>;
 }
 
 if (import.meta.vitest) {
