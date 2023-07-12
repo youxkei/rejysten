@@ -2,7 +2,7 @@ import type { RxDBService } from "@/services/rxdb";
 import type { JSXElement } from "solid-js";
 
 import userEvent from "@testing-library/user-event";
-import { createComputed, createRoot, onMount, createEffect, createContext, createMemo, createSignal, startTransition, useContext } from "solid-js";
+import { createRenderEffect, createRoot, onMount, createEffect, createContext, createMemo, createSignal, startTransition, useContext } from "solid-js";
 
 import { ServiceNotAvailable } from "@/services/error";
 import { useRxDBService } from "@/services/rxdb";
@@ -44,7 +44,7 @@ export function useLockService() {
 export function waitLockRelease({ lock$ }: LockService, unlockHook?: () => unknown) {
   return new Promise<void>((resolve) => {
     createRoot((dispose) => {
-      createComputed(() => {
+      createRenderEffect(() => {
         if (!lock$()) {
           if (unlockHook) {
             unlockHook();

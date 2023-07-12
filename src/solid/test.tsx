@@ -1,7 +1,7 @@
 import type { JSXElement } from "solid-js";
 
 import { render } from "@solidjs/testing-library";
-import { createEffect, Suspense } from "solid-js";
+import { onMount, Suspense } from "solid-js";
 
 import { getPromiseWithResolve } from "@/test";
 
@@ -15,7 +15,7 @@ export async function renderAsync<T extends object>(
     <Suspense>
       <Component>
         {(() => {
-          createEffect(() => {
+          onMount(() => {
             resolver(resolve);
           });
 
