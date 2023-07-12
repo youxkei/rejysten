@@ -396,7 +396,7 @@ exports[`PC operations > keyboard operations > 'press o to add item below' > ass
 </div>
 `;
 
-exports[`PC operations > keyboard operations > press Backspace but nothing happened > 'item has children' > assert > after press Backspace 1`] = `
+exports[`PC operations > keyboard operations > press Backspace but nothing happened > 'cursor is on the left edge, has children' > assert > after press Backspace 1`] = `
 <div>
   log1
   <div
@@ -456,6 +456,50 @@ exports[`PC operations > keyboard operations > press Backspace but nothing happe
         />
       </div>
     </div>
+  </div>
+</div>
+`;
+
+exports[`PC operations > keyboard operations > press Backspace but nothing happened > 'cursor is on the left edge, no above item, has below item' > assert > after press Backspace 1`] = `
+<div>
+  log1
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item selected"
+    >
+      <input
+        class="editor"
+      />
+    </div>
+    <div
+      class="bulletList_child"
+    />
+  </div>
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item"
+    >
+      <span>
+        item2
+      </span>
+    </div>
+    <div
+      class="bulletList_child"
+    />
   </div>
 </div>
 `;

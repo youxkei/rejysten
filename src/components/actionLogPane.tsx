@@ -318,7 +318,7 @@ if (import.meta.vitest) {
       describe("press Backspace but nothing happened", () => {
         describe.each([
           {
-            name: "item has children",
+            name: "cursor is on the left edge, has children",
             // prettier-ignore
             items: makeListItems("log1", 0, [
               ["item1"],
@@ -327,6 +327,15 @@ if (import.meta.vitest) {
               ]],
             ]),
             currentItem: "item2",
+          },
+          {
+            name: "cursor is on the left edge, no above item, has below item",
+            // prettier-ignore
+            items: makeListItems("log1", 0, [
+              ["item1"],
+              ["item2"],
+            ]),
+            currentItem: "item1",
           },
         ])("$name", ({ items, currentItem }) => {
           test("assert", async (test) => {
@@ -356,10 +365,6 @@ if (import.meta.vitest) {
       });
 
       describe("press Backspace to remove item", () => {
-        test.skip("cursor is on the left edge, no children, no above item, has below item: item is not removed", () => {
-          // TODO
-        });
-
         test.skip("cursor is on the left edge, no children, has above item: item is removed and move to above item", () => {
           // TODO
         });
