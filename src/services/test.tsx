@@ -1,6 +1,7 @@
 import type { LockService } from "@/services/lock";
 import type { RxDBService } from "@/services/rxdb";
 import type { StoreService } from "@/services/store";
+import type { UserEvent } from "@testing-library/user-event/dist/types/setup/setup";
 import type { JSXElement, Owner } from "solid-js";
 
 import { MultiProvider } from "@solid-primitives/context";
@@ -9,7 +10,7 @@ import { Show, createResource, getOwner } from "solid-js";
 import { EventServiceProvider } from "@/services/event";
 import { EventEmitterServiceProvider } from "@/services/eventEmitter";
 import { EventHandlerServiceProvider } from "@/services/eventHandler";
-import { createSignalWithLock, runWithLock, LockServiceProvider, useLockService } from "@/services/lock";
+import { waitLockRelease, createSignalWithLock, runWithLock, LockServiceProvider, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
 import { RxDBServiceProviderForTest } from "@/services/rxdb/test";
 import { RxDBSyncFirestoreServiceProvider } from "@/services/rxdbSync/firestore";
@@ -72,4 +73,11 @@ export function renderWithServicesForTest(
       resolve({ owner, rxdb, store, lock });
     }
   );
+}
+
+export async function keyboard(user: UserEvent, lock: LockService, text: string) {
+  for (const char of text) {
+    await user.keyboard(char);
+    await waitLockRelease(lock);
+  }
 }

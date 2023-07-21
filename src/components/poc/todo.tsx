@@ -3,25 +3,29 @@ import userEvent from "@testing-library/user-event";
 import { Ulid } from "id128";
 import { For } from "solid-js";
 
+import { createSignalWithLock, runWithLock, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeSignal, createSubscribeAllSignal } from "@/services/rxdb/subscribe";
-import { renderWithServicesForTest } from "@/services/test";
+import { keyboard, renderWithServicesForTest } from "@/services/test";
 
 export function Todo() {
   const { collections } = useRxDBService();
+  const lock = useLockService();
 
   const todos$ = createSubscribeAllSignal(() => collections.todos.find());
 
   const editor$ = createSubscribeSignal(() => collections.editors.findOne("const"));
 
-  const text$ = () => editor$()?.text ?? "";
+  const text$ = createSignalWithLock(lock, () => editor$()?.text ?? "", "", true);
 
-  const onInput = async (event: { currentTarget: HTMLInputElement }) => {
-    await collections.editors.upsert({
-      id: "const",
-      text: event.currentTarget.value,
-      updatedAt: Date.now(),
-    });
+  const onInput = (event: { target: HTMLInputElement }) => {
+    void runWithLock(lock, () =>
+      collections.editors.upsert({
+        id: "const",
+        text: event.target.value,
+        updatedAt: Date.now(),
+      })
+    );
   };
 
   const onClick = async () => {
@@ -79,7 +83,7 @@ if (import.meta.vitest) {
 
   test("add todos", async (ctx) => {
     const user = userEvent.setup();
-    const { container, unmount, findByText, queryByText } = await renderWithServicesForTest(
+    const { container, unmount, lock, findByText, queryByText } = await renderWithServicesForTest(
       ctx.meta.id,
       (props) => (
         <>
@@ -103,8 +107,10 @@ if (import.meta.vitest) {
     const input = container.querySelector("input")!;
     const button = container.querySelector("button")!;
 
-    await user.type(input, "baz");
+    await user.click(input);
+    await keyboard(user, lock, "baz");
     await findByText("baz");
+
     ctx.expect(container).toMatchSnapshot();
 
     await user.click(button);
