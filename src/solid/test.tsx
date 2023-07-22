@@ -29,3 +29,12 @@ export async function renderAsync<T extends object>(
 
   return { ...value, ...result };
 }
+
+export function intercept<T>(signal: () => T, callback: (value: T) => unknown) {
+  return () => {
+    const value = signal();
+    callback(value);
+
+    return value;
+  };
+}

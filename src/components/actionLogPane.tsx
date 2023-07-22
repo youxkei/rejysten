@@ -296,7 +296,6 @@ if (import.meta.vitest) {
           await updateStore((store) => {
             store.currentPane = "actionLog";
             store.mode = "insert";
-            store.editor.text = "item2";
             store.editor.cursorPosition = 3; // ite|m2
             store.actionLogPane.currentActionLogId = "log1";
             store.actionLogPane.currentListItemId = "item2";
@@ -304,7 +303,6 @@ if (import.meta.vitest) {
         });
 
         await user.keyboard("{Backspace}");
-        await new Promise<void>((resolve) => queueMicrotask(resolve)); // to avoid mysterious flaky behavior
 
         const input = await findByDisplayValue<HTMLInputElement>("itm2");
 

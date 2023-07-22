@@ -7,15 +7,14 @@ import { createSignalWithLock, runWithLock, useLockService } from "@/services/lo
 import { useRxDBService } from "@/services/rxdb";
 import { createSubscribeSignal, createSubscribeAllSignal } from "@/services/rxdb/subscribe";
 import { keyboard, renderWithServicesForTest } from "@/services/test";
+import { Input } from "@/solid/input";
 
 export function Todo() {
   const { collections } = useRxDBService();
   const lock = useLockService();
 
   const todos$ = createSubscribeAllSignal(() => collections.todos.find());
-
   const editor$ = createSubscribeSignal(() => collections.editors.findOne("const"));
-
   const text$ = createSignalWithLock(lock, () => editor$()?.text ?? "", "", true);
 
   const onInput = (event: { target: HTMLInputElement }) => {
@@ -28,22 +27,23 @@ export function Todo() {
     );
   };
 
-  const onClick = async () => {
-    const text = text$();
+  const onClick = () => {
+    void runWithLock(lock, async () => {
+      const text = text$();
+      const id = Ulid.generate();
+      const updatedAt = id.time.getTime();
 
-    const id = Ulid.generate();
-    const updatedAt = id.time.getTime();
+      await collections.todos.insert({
+        id: id.toCanonical(),
+        text,
+        updatedAt,
+      });
 
-    await collections.todos.insert({
-      id: id.toCanonical(),
-      text,
-      updatedAt,
-    });
-
-    await collections.editors.upsert({
-      id: "const",
-      text: "",
-      updatedAt,
+      await collections.editors.upsert({
+        id: "const",
+        text: "",
+        updatedAt,
+      });
     });
   };
 
@@ -53,7 +53,7 @@ export function Todo() {
         <For each={todos$()}>{(todo) => <li>{todo.text}</li>}</For>
       </ul>
       <p>{text$()}</p>
-      <input value={text$()} onInput={onInput} />
+      <Input value={text$()} onInput={onInput} />
       <button onClick={onClick}>add</button>
     </div>
   );
@@ -108,14 +108,14 @@ if (import.meta.vitest) {
     const button = container.querySelector("button")!;
 
     await user.click(input);
-    await keyboard(user, lock, "baz");
-    await findByText("baz");
+    await keyboard(user, lock, "the quick brown fox jumps over the lazy dog");
+    await findByText("the quick brown fox jumps over the lazy dog");
 
     ctx.expect(container).toMatchSnapshot();
 
     await user.click(button);
-    await waitForElementToBeRemoved(() => queryByText("baz", { selector: "p" }));
-    await findByText("baz");
+    await waitForElementToBeRemoved(() => queryByText("the quick brown fox jumps over the lazy dog", { selector: "p" }));
+    await findByText("the quick brown fox jumps over the lazy dog");
     ctx.expect(container).toMatchSnapshot();
 
     unmount();

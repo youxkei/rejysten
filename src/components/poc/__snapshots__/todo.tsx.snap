@@ -32,7 +32,7 @@ exports[`add todos 2`] = `
       </li>
     </ul>
     <p>
-      baz
+      the quick brown fox jumps over the lazy dog
     </p>
     <input />
     <button>
@@ -53,7 +53,7 @@ exports[`add todos 3`] = `
         bar
       </li>
       <li>
-        baz
+        the quick brown fox jumps over the lazy dog
       </li>
     </ul>
     <p>
