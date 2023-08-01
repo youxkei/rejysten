@@ -548,6 +548,31 @@ exports[`PC operations > keyboard operations > press Backspace to remove a chara
 </div>
 `;
 
+exports[`PC operations > keyboard operations > press Backspace to remove item > cursor is on the left edge, no children, has above item: item is removed and move to above item > after press Backspace 1`] = `
+<div>
+  log1
+  <div
+    class="bulletList_container"
+  >
+    <div
+      class="bulletList_bullet"
+    >
+      •
+    </div>
+    <div
+      class="bulletList_item selected"
+    >
+      <input
+        class="editor"
+      />
+    </div>
+    <div
+      class="bulletList_child"
+    />
+  </div>
+</div>
+`;
+
 exports[`display > insert mode 1`] = `
 <div>
   log1

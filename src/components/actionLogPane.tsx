@@ -363,8 +363,33 @@ if (import.meta.vitest) {
       });
 
       describe("press Backspace to remove item", () => {
-        test.skip("cursor is on the left edge, no children, has above item: item is removed and move to above item", () => {
-          // TODO
+        test("cursor is on the left edge, no children, has above item: item is removed and move to above item", async (test) => {
+          const user = userEvent.setup();
+          const { container, unmount, lock, findByDisplayValue } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
+            await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
+            await collections.listItems.bulkInsert(
+              // prettier-ignore
+              makeListItems("log1", 0, [
+                ["item1"],
+                ["item2"],
+              ])
+            );
+            await updateStore((store) => {
+              store.currentPane = "actionLog";
+              store.mode = "insert";
+              store.editor.cursorPosition = 0;
+              store.actionLogPane.currentActionLogId = "log1";
+              store.actionLogPane.currentListItemId = "item2";
+            });
+          });
+
+          await user.keyboard("{Backspace}");
+          await waitLockRelease(lock);
+          await findByDisplayValue<HTMLInputElement>("item1item2");
+
+          test.expect(shortenClassName(container)).toMatchSnapshot("after press Backspace");
+
+          unmount();
         });
 
         test.skip("text is empty, no parent, no children, no above item, no below item: item is removed and move to ActionLogListPane", () => {
