@@ -53,7 +53,11 @@ if (import.meta.vitest) {
                 value={text$()}
                 onInput={(e) =>
                   runWithLock(lock, async () => {
-                    await collections.editors.upsert({ id: "const", text: e.target.value, updatedAt: 0 });
+                    await collections.editors.upsert({
+                      id: "const",
+                      text: e.target.value,
+                      updatedAt: 0,
+                    });
                   })
                 }
               />

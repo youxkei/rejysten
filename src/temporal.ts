@@ -1,7 +1,9 @@
 import { Temporal } from "@js-temporal/polyfill";
 
 export function epochMsToPlainDateTime(epochMs: number) {
-  return Temporal.Instant.fromEpochMilliseconds(epochMs).toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainDateTime();
+  return Temporal.Instant.fromEpochMilliseconds(epochMs)
+    .toZonedDateTimeISO(Temporal.Now.timeZoneId())
+    .toPlainDateTime();
 }
 
 export function epochMsToTimeText(epochMs: number, withoutSeparator?: boolean) {
@@ -24,9 +26,12 @@ export function epochMsToTimeText(epochMs: number, withoutSeparator?: boolean) {
 
 if (import.meta.vitest) {
   describe("epochMsToTimeText", () => {
-    test.each([{ timeText: "20230528 225512" }, { timeText: "19700101 000000" }, { timeText: "20240229 235959" }])("$timeText", ({ timeText }) => {
-      expect(epochMsToTimeText(timeTextToEpochMs(timeText), true)).toBe(timeText);
-    });
+    test.each([{ timeText: "20230528 225512" }, { timeText: "19700101 000000" }, { timeText: "20240229 235959" }])(
+      "$timeText",
+      ({ timeText }) => {
+        expect(epochMsToTimeText(timeTextToEpochMs(timeText), true)).toBe(timeText);
+      }
+    );
   });
 }
 
@@ -80,7 +85,8 @@ export function timeTextToEpochMs(text: string) {
         second >= 0 &&
         second <= 59
       ) {
-        return new Temporal.PlainDateTime(year, month, day, hour, minute, second).toZonedDateTime(now.timeZoneId).epochMilliseconds;
+        return new Temporal.PlainDateTime(year, month, day, hour, minute, second).toZonedDateTime(now.timeZoneId)
+          .epochMilliseconds;
       }
     }
   }
@@ -90,20 +96,25 @@ export function timeTextToEpochMs(text: string) {
 
 if (import.meta.vitest) {
   describe("timeTextToEpochMs", () => {
-    test.each([{ epochMs: 1685282112000 }, { epochMs: -32400000 }, { epochMs: 1709218799000 }])("$epochMs", ({ epochMs }) => {
-      expect(timeTextToEpochMs(epochMsToTimeText(epochMs, true))).toBe(epochMs);
-    });
+    test.each([{ epochMs: 1685282112000 }, { epochMs: -32400000 }, { epochMs: 1709218799000 }])(
+      "$epochMs",
+      ({ epochMs }) => {
+        expect(timeTextToEpochMs(epochMsToTimeText(epochMs, true))).toBe(epochMs);
+      }
+    );
   });
 }
 
 export function durationTextBetweenEpochMs(start: number, end: number) {
   if (start === 0 || end === 0) return "";
 
-  const duration = Temporal.Instant.fromEpochMilliseconds(start).until(Temporal.Instant.fromEpochMilliseconds(end)).round({
-    largestUnit: "minute",
-    smallestUnit: "second",
-    roundingMode: "floor",
-  });
+  const duration = Temporal.Instant.fromEpochMilliseconds(start)
+    .until(Temporal.Instant.fromEpochMilliseconds(end))
+    .round({
+      largestUnit: "minute",
+      smallestUnit: "second",
+      roundingMode: "floor",
+    });
 
   return `${duration.minutes.toString().padStart(2, "0")}:${duration.seconds.toString().padStart(2, "0")}`;
 }

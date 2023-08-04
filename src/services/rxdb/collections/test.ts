@@ -20,5 +20,15 @@ export function makeListItems(parentId: string, updatedAt: number, fixtures: Lis
 }
 
 function makeListItem(parentId: string, updatedAt: number, [id, children, options]: ListItemFixture): ListItem[] {
-  return [{ id, text: options?.text ?? id, prevId: "", nextId: "", parentId, updatedAt }, ...makeListItems(id, updatedAt, children ?? [])];
+  return [
+    {
+      id,
+      text: options?.text ?? id,
+      prevId: "",
+      nextId: "",
+      parentId,
+      updatedAt,
+    },
+    ...makeListItems(id, updatedAt, children ?? []),
+  ];
 }

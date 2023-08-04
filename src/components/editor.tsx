@@ -36,7 +36,11 @@ export function Editor(props: { text: string }) {
 
   const onBlur = () => {
     if (active) {
-      emitEvent({ pane: store.currentPane, mode: "insert", type: "leaveInsertMode" });
+      emitEvent({
+        pane: store.currentPane,
+        mode: "insert",
+        type: "leaveInsertMode",
+      });
     }
   };
 
@@ -44,7 +48,14 @@ export function Editor(props: { text: string }) {
     <Input
       class={styles.editor}
       ref={input}
-      onInput={(event) => emitEvent({ pane: store.currentPane, mode: "insert", type: "changeEditorText", newText: event.target.value })}
+      onInput={(event) =>
+        emitEvent({
+          pane: store.currentPane,
+          mode: "insert",
+          type: "changeEditorText",
+          newText: event.target.value,
+        })
+      }
       onBlur={onBlur}
       value={text$()}
     />

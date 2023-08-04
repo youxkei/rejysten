@@ -24,7 +24,9 @@ function isActionLog(actionLogOrDateSeparator: ActionLogOrDateSeparator): action
   return actionLogOrDateSeparator.type === "actionLog";
 }
 
-function isDateSeparator(actionLogOrDateSeparator: ActionLogOrDateSeparator): actionLogOrDateSeparator is DateSeparator {
+function isDateSeparator(
+  actionLogOrDateSeparator: ActionLogOrDateSeparator
+): actionLogOrDateSeparator is DateSeparator {
   return actionLogOrDateSeparator.type === "dateSeparator";
 }
 
@@ -33,13 +35,22 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
   const lock = useLockService();
   const { emitEvent } = useEventService();
 
-  const isSelected$ = createSignalWithLock(lock, () => props.actionLog.id === store.actionLogListPane.currentActionLogId, false);
+  const isSelected$ = createSignalWithLock(
+    lock,
+    () => props.actionLog.id === store.actionLogListPane.currentActionLogId,
+    false
+  );
   const isEditor$ = createSignalWithLock(lock, () => isSelected$() && store.mode === "insert", false);
 
   const onClick$ = () => {
     const actionLogId = props.actionLog.id;
     return () => {
-      emitEvent({ pane: "actionLogList", mode: "normal", type: "focus", actionLogId });
+      emitEvent({
+        pane: "actionLogList",
+        mode: "normal",
+        type: "focus",
+        actionLogId,
+      });
     };
   };
 
@@ -48,7 +59,13 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
 
     return createDouble(300, (_, isDouble) => {
       if (isDouble) {
-        emitEvent({ pane: "actionLogList", mode: "normal", type: "enterInsertMode", focus, cursorPosition: -1 });
+        emitEvent({
+          pane: "actionLogList",
+          mode: "normal",
+          type: "enterInsertMode",
+          focus,
+          cursorPosition: -1,
+        });
       } else {
         onClick();
       }
@@ -56,18 +73,32 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
   }
 
   return (
-    <div classList={{ [styles.actionLogList.actionLog.container]: true, [styles.selected]: isSelected$() }} onClick={onClick$()}>
+    <div
+      classList={{
+        [styles.actionLogList.actionLog.container]: true,
+        [styles.selected]: isSelected$(),
+      }}
+      onClick={onClick$()}
+    >
       <div class={styles.actionLogList.actionLog.startAt} onClick={createOnDoubleClick("startAt")}>
-        <Show when={isEditor$() && store.actionLogListPane.focus === "startAt"} fallback={epochMsToTimeText(props.actionLog.startAt) || "N/A"}>
+        <Show
+          when={isEditor$() && store.actionLogListPane.focus === "startAt"}
+          fallback={epochMsToTimeText(props.actionLog.startAt) || "N/A"}
+        >
           <Editor text={store.editor.text} />
         </Show>
       </div>
       <div class={styles.actionLogList.actionLog.endAt} onClick={createOnDoubleClick("endAt")}>
-        <Show when={isEditor$() && store.actionLogListPane.focus === "endAt"} fallback={epochMsToTimeText(props.actionLog.endAt) || "N/A"}>
+        <Show
+          when={isEditor$() && store.actionLogListPane.focus === "endAt"}
+          fallback={epochMsToTimeText(props.actionLog.endAt) || "N/A"}
+        >
           <Editor text={store.editor.text} />
         </Show>
       </div>
-      <div class={styles.actionLogList.actionLog.duration}>{durationTextBetweenEpochMs(props.actionLog.startAt, props.actionLog.endAt) || "N/A"}</div>
+      <div class={styles.actionLogList.actionLog.duration}>
+        {durationTextBetweenEpochMs(props.actionLog.startAt, props.actionLog.endAt) || "N/A"}
+      </div>
       <div class={styles.actionLogList.actionLog.text} onClick={createOnDoubleClick("text")}>
         <Show when={isEditor$() && store.actionLogListPane.focus === "text"} fallback={props.actionLog.text}>
           <Editor text={props.actionLog.text} />
@@ -101,7 +132,10 @@ export function ActionLogListPane() {
     if (actionLogs.length === 0) return [];
 
     const actionLogsWithSeparators = [
-      { type: "dateSeparator", value: epochMsToPlainDateTime(actionLogs[0].startAt).toPlainDate() },
+      {
+        type: "dateSeparator",
+        value: epochMsToPlainDateTime(actionLogs[0].startAt).toPlainDate(),
+      },
       { type: "actionLog", value: actionLogs[0] },
     ] as ActionLogOrDateSeparator[];
 
@@ -110,10 +144,16 @@ export function ActionLogListPane() {
       const afterDate = epochMsToPlainDateTime(actionLogs[i].startAt).toPlainDate();
 
       if (beforeDate.until(afterDate).days > 0) {
-        actionLogsWithSeparators.push({ type: "dateSeparator", value: afterDate });
+        actionLogsWithSeparators.push({
+          type: "dateSeparator",
+          value: afterDate,
+        });
       }
 
-      actionLogsWithSeparators.push({ type: "actionLog", value: actionLogs[i] });
+      actionLogsWithSeparators.push({
+        type: "actionLog",
+        value: actionLogs[i],
+      });
     }
 
     return actionLogsWithSeparators;
@@ -141,8 +181,12 @@ export function ActionLogListPane() {
       <Index each={finishedActionLogsWithDateSeparators$()}>
         {(actionLogOrDateSeparator) => (
           <Switch>
-            <Match when={matches(actionLogOrDateSeparator(), isActionLog)}>{(actionLog) => <ActionLog actionLog={actionLog().value} />}</Match>
-            <Match when={matches(actionLogOrDateSeparator(), isDateSeparator)}>{(dateSeparator) => <DateSeparator date={dateSeparator().value} />}</Match>
+            <Match when={matches(actionLogOrDateSeparator(), isActionLog)}>
+              {(actionLog) => <ActionLog actionLog={actionLog().value} />}
+            </Match>
+            <Match when={matches(actionLogOrDateSeparator(), isDateSeparator)}>
+              {(dateSeparator) => <DateSeparator date={dateSeparator().value} />}
+            </Match>
           </Switch>
         )}
       </Index>
@@ -172,6 +216,7 @@ if (import.meta.vitest) {
           </>
         ),
         ({ rxdb: { collections } }) =>
+          // prettier-ignore
           collections.actionLogs.bulkInsert([
             { id: "1", text: "1", startAt: 4, endAt: 9, updatedAt: 9 },
             { id: "2", text: "2", startAt: 3, endAt: 9, updatedAt: 9 },
@@ -195,6 +240,7 @@ if (import.meta.vitest) {
           </>
         ),
         ({ rxdb: { collections } }) =>
+          // prettier-ignore
           collections.actionLogs.bulkInsert([
             // ongoing actionLogs
             { id: "1", text: "1", startAt: 6, endAt: 0, updatedAt: 6 },
@@ -225,6 +271,7 @@ if (import.meta.vitest) {
           </>
         ),
         ({ rxdb: { collections } }) =>
+          // prettier-ignore
           collections.actionLogs.bulkInsert([
             // tentative actionLogs
             { id: "02", text: "02", startAt: 0, endAt: 0, updatedAt: 10 },
@@ -261,9 +308,10 @@ if (import.meta.vitest) {
           </>
         ),
         async ({ rxdb: { collections }, store: { updateStore } }) => {
+          // prettier-ignore
           await collections.actionLogs.bulkInsert([
-            { id: "finished", text: "finished", startAt: 1, endAt: 2, updatedAt: 2 },
-            { id: "ongoing", text: "ongoing", startAt: 3, endAt: 0, updatedAt: 3 },
+            { id: "finished",  text: "finished",  startAt: 1, endAt: 2, updatedAt: 2 },
+            { id: "ongoing",   text: "ongoing",   startAt: 3, endAt: 0, updatedAt: 3 },
             { id: "tentative", text: "tentative", startAt: 0, endAt: 0, updatedAt: 4 },
           ]);
 
@@ -307,9 +355,10 @@ if (import.meta.vitest) {
           </>
         ),
         ({ rxdb: { collections } }) =>
+          // prettier-ignore
           collections.actionLogs.bulkInsert([
-            { id: "finished", text: "finished", startAt: 1, endAt: 2, updatedAt: 2 },
-            { id: "ongoing", text: "ongoing", startAt: 3, endAt: 0, updatedAt: 3 },
+            { id: "finished",  text: "finished",  startAt: 1, endAt: 2, updatedAt: 2 },
+            { id: "ongoing",   text: "ongoing",   startAt: 3, endAt: 0, updatedAt: 3 },
             { id: "tentative", text: "tentative", startAt: 0, endAt: 0, updatedAt: 4 },
           ])
       );
@@ -317,19 +366,37 @@ if (import.meta.vitest) {
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
       await runWithLock(lock, async () => {
-        await collections.actionLogs.bulkUpsert([{ id: "finished", text: "changed finished", startAt: 1, endAt: 2, updatedAt: 5 }]);
+        await collections.actionLogs.upsert({
+          id: "finished",
+          text: "changed finished",
+          startAt: 1,
+          endAt: 2,
+          updatedAt: 5,
+        });
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("text of finished changed");
 
       await runWithLock(lock, async () => {
-        await collections.actionLogs.bulkUpsert([{ id: "ongoing", text: "changed ongoing", startAt: 3, endAt: 0, updatedAt: 6 }]);
+        await collections.actionLogs.upsert({
+          id: "ongoing",
+          text: "changed ongoing",
+          startAt: 3,
+          endAt: 0,
+          updatedAt: 6,
+        });
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("text of ongoing changed");
 
       await runWithLock(lock, async () => {
-        await collections.actionLogs.bulkUpsert([{ id: "tentative", text: "changed tentative", startAt: 0, endAt: 0, updatedAt: 7 }]);
+        await collections.actionLogs.upsert({
+          id: "tentative",
+          text: "changed tentative",
+          startAt: 0,
+          endAt: 0,
+          updatedAt: 7,
+        });
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("text of tentative changed");
@@ -352,11 +419,12 @@ if (import.meta.vitest) {
           </>
         ),
         ({ rxdb: { collections } }) =>
+          // prettier-ignore
           collections.actionLogs.bulkInsert([
-            { id: "finished 1", text: "finished 1", startAt: 2, endAt: 4, updatedAt: 4 },
-            { id: "finished 2", text: "finished 2", startAt: 3, endAt: 4, updatedAt: 4 },
-            { id: "ongoing 1", text: "ongoing 1", startAt: 5, endAt: 0, updatedAt: 5 },
-            { id: "ongoing 2", text: "ongoing 2", startAt: 6, endAt: 0, updatedAt: 6 },
+            { id: "finished 1",  text: "finished 1",  startAt: 2, endAt: 4, updatedAt: 4 },
+            { id: "finished 2",  text: "finished 2",  startAt: 3, endAt: 4, updatedAt: 4 },
+            { id: "ongoing 1",   text: "ongoing 1",   startAt: 5, endAt: 0, updatedAt: 5 },
+            { id: "ongoing 2",   text: "ongoing 2",   startAt: 6, endAt: 0, updatedAt: 6 },
             { id: "tentative 1", text: "tentative 1", startAt: 0, endAt: 0, updatedAt: 7 },
             { id: "tentative 2", text: "tentative 2", startAt: 0, endAt: 0, updatedAt: 7 },
           ])
@@ -365,19 +433,37 @@ if (import.meta.vitest) {
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
       await runWithLock(lock, async () => {
-        await collections.actionLogs.bulkUpsert([{ id: "finished 2", text: "finished 2", startAt: 1, endAt: 4, updatedAt: 8 }]);
+        await collections.actionLogs.upsert({
+          id: "finished 2",
+          text: "finished 2",
+          startAt: 1,
+          endAt: 4,
+          updatedAt: 8,
+        });
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("startAt of finished 2 changed");
 
       await runWithLock(lock, async () => {
-        await collections.actionLogs.bulkUpsert([{ id: "ongoing 2", text: "ongoing 2", startAt: 3, endAt: 0, updatedAt: 9 }]);
+        await collections.actionLogs.upsert({
+          id: "ongoing 2",
+          text: "ongoing 2",
+          startAt: 3,
+          endAt: 0,
+          updatedAt: 9,
+        });
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("startAt of ongoing 2 changed");
 
       await runWithLock(lock, async () => {
-        await collections.actionLogs.bulkUpsert([{ id: "tentative 2", text: "tentative 2", startAt: 4, endAt: 0, updatedAt: 10 }]);
+        await collections.actionLogs.upsert({
+          id: "tentative 2",
+          text: "tentative 2",
+          startAt: 4,
+          endAt: 0,
+          updatedAt: 10,
+        });
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("startAt of tentative 2 changed");
@@ -400,17 +486,24 @@ if (import.meta.vitest) {
           </>
         ),
         ({ rxdb: { collections } }) =>
+          // prettier-ignore
           collections.actionLogs.bulkInsert([
             { id: "finished 1", text: "finished 1", startAt: 1, endAt: 4, updatedAt: 4 },
             { id: "finished 2", text: "finished 2", startAt: 3, endAt: 4, updatedAt: 4 },
-            { id: "ongoing", text: "ongoing", startAt: 2, endAt: 0, updatedAt: 5 },
+            { id: "ongoing",    text: "ongoing",    startAt: 2, endAt: 0, updatedAt: 5 },
           ])
       );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
       await runWithLock(lock, async () => {
-        await collections.actionLogs.bulkUpsert([{ id: "ongoing", text: "ongoing", startAt: 2, endAt: 6, updatedAt: 6 }]);
+        await collections.actionLogs.upsert({
+          id: "ongoing",
+          text: "ongoing",
+          startAt: 2,
+          endAt: 6,
+          updatedAt: 6,
+        });
       });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("endAt of ongoing changed");

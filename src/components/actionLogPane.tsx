@@ -60,7 +60,10 @@ export function ActionLogPane() {
       {(actionLog$) => (
         <>
           {actionLog$().text}
-          <ItemListChildren parentId={store.actionLogPane.currentActionLogId} selectedId={store.actionLogPane.currentListItemId} />
+          <ItemListChildren
+            parentId={store.actionLogPane.currentActionLogId}
+            selectedId={store.actionLogPane.currentListItemId}
+          />
         </>
       )}
     </Show>
@@ -84,7 +87,13 @@ if (import.meta.vitest) {
   describe("display", () => {
     test("normal mode", async (test) => {
       const { container, unmount } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
-        await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
+        await collections.actionLogs.insert({
+          id: "log1",
+          text: "log1",
+          startAt: 0,
+          endAt: 0,
+          updatedAt: 0,
+        });
         await collections.listItems.bulkInsert(
           // prettier-ignore
           makeListItems("log1", 0, [
@@ -112,31 +121,40 @@ if (import.meta.vitest) {
     });
 
     test("insert mode", async (test) => {
-      const { container, unmount, findByDisplayValue } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
-        await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
-        await collections.listItems.bulkInsert(
-          // prettier-ignore
-          makeListItems("log1", 0, [
-            ["item1", [
-              ["item1_1"],
-              ["item1_2"],
-            ]],
-            ["item2", [
-              ["item2_1", [
-                ["item2_1_1"]
+      const { container, unmount, findByDisplayValue } = await render(
+        test,
+        async ({ rxdb: { collections }, store: { updateStore } }) => {
+          await collections.actionLogs.insert({
+            id: "log1",
+            text: "log1",
+            startAt: 0,
+            endAt: 0,
+            updatedAt: 0,
+          });
+          await collections.listItems.bulkInsert(
+            // prettier-ignore
+            makeListItems("log1", 0, [
+              ["item1", [
+                ["item1_1"],
+                ["item1_2"],
               ]],
-            ]],
-          ])
-        );
-        await updateStore((store) => {
-          store.currentPane = "actionLog";
-          store.mode = "insert";
-          store.editor.text = "item1_2";
-          store.editor.cursorPosition = 3; // ite|m1_2
-          store.actionLogPane.currentActionLogId = "log1";
-          store.actionLogPane.currentListItemId = "item1_2";
-        });
-      });
+              ["item2", [
+                ["item2_1", [
+                  ["item2_1_1"]
+                ]],
+              ]],
+            ])
+          );
+          await updateStore((store) => {
+            store.currentPane = "actionLog";
+            store.mode = "insert";
+            store.editor.text = "item1_2";
+            store.editor.cursorPosition = 3; // ite|m1_2
+            store.actionLogPane.currentActionLogId = "log1";
+            store.actionLogPane.currentListItemId = "item1_2";
+          });
+        }
+      );
 
       test.expect(shortenClassName(container)).toMatchSnapshot();
 
@@ -151,20 +169,44 @@ if (import.meta.vitest) {
   describe("PC operations", () => {
     describe("keyboard operations", () => {
       describe.each([
-        { name: "press i to enter insert mode", key: "i", wantCursorPosition: 0 },
-        { name: "press a to enter insert mode", key: "a", wantCursorPosition: "item1".length },
+        {
+          name: "press i to enter insert mode",
+          key: "i",
+          wantCursorPosition: 0,
+        },
+        {
+          name: "press a to enter insert mode",
+          key: "a",
+          wantCursorPosition: "item1".length,
+        },
       ])("$name", ({ key, wantCursorPosition }) => {
         test("assert", async (test) => {
           const user = userEvent.setup();
-          const { container, unmount, findByDisplayValue } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
-            await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
-            await collections.listItems.insert({ id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "", updatedAt: 0 });
-            await updateStore((store) => {
-              store.currentPane = "actionLog";
-              store.actionLogPane.currentActionLogId = "log1";
-              store.actionLogPane.currentListItemId = "item1";
-            });
-          });
+          const { container, unmount, findByDisplayValue } = await render(
+            test,
+            async ({ rxdb: { collections }, store: { updateStore } }) => {
+              await collections.actionLogs.insert({
+                id: "log1",
+                text: "log1",
+                startAt: 0,
+                endAt: 0,
+                updatedAt: 0,
+              });
+              await collections.listItems.insert({
+                id: "item1",
+                text: "item1",
+                parentId: "log1",
+                prevId: "",
+                nextId: "",
+                updatedAt: 0,
+              });
+              await updateStore((store) => {
+                store.currentPane = "actionLog";
+                store.actionLogPane.currentActionLogId = "log1";
+                store.actionLogPane.currentListItemId = "item1";
+              });
+            }
+          );
 
           await user.keyboard(key);
 
@@ -184,15 +226,31 @@ if (import.meta.vitest) {
       ])("$name", ({ key }) => {
         test("assert", async (test) => {
           const user = userEvent.setup();
-          const { container, unmount, findByRole } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
-            await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
-            await collections.listItems.insert({ id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "", updatedAt: 0 });
-            await updateStore((store) => {
-              store.currentPane = "actionLog";
-              store.actionLogPane.currentActionLogId = "log1";
-              store.actionLogPane.currentListItemId = "item1";
-            });
-          });
+          const { container, unmount, findByRole } = await render(
+            test,
+            async ({ rxdb: { collections }, store: { updateStore } }) => {
+              await collections.actionLogs.insert({
+                id: "log1",
+                text: "log1",
+                startAt: 0,
+                endAt: 0,
+                updatedAt: 0,
+              });
+              await collections.listItems.insert({
+                id: "item1",
+                text: "item1",
+                parentId: "log1",
+                prevId: "",
+                nextId: "",
+                updatedAt: 0,
+              });
+              await updateStore((store) => {
+                store.currentPane = "actionLog";
+                store.actionLogPane.currentActionLogId = "log1";
+                store.actionLogPane.currentListItemId = "item1";
+              });
+            }
+          );
 
           await user.keyboard(key);
 
@@ -208,27 +266,39 @@ if (import.meta.vitest) {
 
       describe.each([
         { name: "press Tab in normal mode to indent item", key: "{Tab}" },
-        { name: "press Shift+Tab in normal mode to dedent item", key: "{Shift>}{Tab}{/Shift}" },
+        {
+          name: "press Shift+Tab in normal mode to dedent item",
+          key: "{Shift>}{Tab}{/Shift}",
+        },
       ])("$name", ({ key }) => {
         test("assert", async (test) => {
           const user = userEvent.setup();
-          const { container, unmount, lock } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
-            await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 1000, endAt: 0, updatedAt: 0 });
-            await collections.listItems.bulkInsert(
-              // prettier-ignore
-              makeListItems("log1", 0, [
-                ["item1", [
-                  ["item1_1"],
-                  ["item1_2"],
-                ]],
-              ])
-            );
-            await updateStore((store) => {
-              store.currentPane = "actionLog";
-              store.actionLogPane.currentActionLogId = "log1";
-              store.actionLogPane.currentListItemId = "item1_2";
-            });
-          });
+          const { container, unmount, lock } = await render(
+            test,
+            async ({ rxdb: { collections }, store: { updateStore } }) => {
+              await collections.actionLogs.insert({
+                id: "log1",
+                text: "log1",
+                startAt: 1000,
+                endAt: 0,
+                updatedAt: 0,
+              });
+              await collections.listItems.bulkInsert(
+                // prettier-ignore
+                makeListItems("log1", 0, [
+                  ["item1", [
+                    ["item1_1"],
+                    ["item1_2"],
+                  ]],
+                ])
+              );
+              await updateStore((store) => {
+                store.currentPane = "actionLog";
+                store.actionLogPane.currentActionLogId = "log1";
+                store.actionLogPane.currentListItemId = "item1_2";
+              });
+            }
+          );
 
           await user.keyboard(key);
           await waitLockRelease(lock);
@@ -241,32 +311,44 @@ if (import.meta.vitest) {
 
       describe.each([
         { name: "press Tab in insert mode to indent item", key: "{Tab}" },
-        { name: "press Shift+Tab in insert mode to dedent item", key: "{Shift>}{Tab}{/Shift}" },
+        {
+          name: "press Shift+Tab in insert mode to dedent item",
+          key: "{Shift>}{Tab}{/Shift}",
+        },
       ])("$name", ({ key }) => {
         test("assert", async (test) => {
           const cursorPosition = Math.floor(Math.random() * ("item3".length + 1));
 
           const user = userEvent.setup();
-          const { container, unmount, lock, findByDisplayValue } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
-            await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 1000, endAt: 0, updatedAt: 0 });
-            await collections.listItems.bulkInsert(
-              // prettier-ignore
-              makeListItems("log1", 0, [
-                ["item1", [
-                  ["item1_1"],
-                  ["item1_2"],
-                ]],
-              ])
-            );
-            await updateStore((store) => {
-              store.currentPane = "actionLog";
-              store.mode = "insert";
-              store.editor.text = "item1_2";
-              store.editor.cursorPosition = cursorPosition;
-              store.actionLogPane.currentActionLogId = "log1";
-              store.actionLogPane.currentListItemId = "item1_2";
-            });
-          });
+          const { container, unmount, lock, findByDisplayValue } = await render(
+            test,
+            async ({ rxdb: { collections }, store: { updateStore } }) => {
+              await collections.actionLogs.insert({
+                id: "log1",
+                text: "log1",
+                startAt: 1000,
+                endAt: 0,
+                updatedAt: 0,
+              });
+              await collections.listItems.bulkInsert(
+                // prettier-ignore
+                makeListItems("log1", 0, [
+                  ["item1", [
+                    ["item1_1"],
+                    ["item1_2"],
+                  ]],
+                ])
+              );
+              await updateStore((store) => {
+                store.currentPane = "actionLog";
+                store.mode = "insert";
+                store.editor.text = "item1_2";
+                store.editor.cursorPosition = cursorPosition;
+                store.actionLogPane.currentActionLogId = "log1";
+                store.actionLogPane.currentListItemId = "item1_2";
+              });
+            }
+          );
 
           await user.keyboard(key);
           await waitLockRelease(lock);
@@ -283,24 +365,33 @@ if (import.meta.vitest) {
 
       test("press Backspace to remove a character", async (test) => {
         const user = userEvent.setup();
-        const { container, unmount, findByDisplayValue } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
-          await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 1000, endAt: 0, updatedAt: 0 });
-          await collections.listItems.bulkInsert(
-            // prettier-ignore
-            makeListItems("log1", 0, [
-              ["item1"],
-              ["item2"],
-            ])
-          );
+        const { container, unmount, findByDisplayValue } = await render(
+          test,
+          async ({ rxdb: { collections }, store: { updateStore } }) => {
+            await collections.actionLogs.insert({
+              id: "log1",
+              text: "log1",
+              startAt: 1000,
+              endAt: 0,
+              updatedAt: 0,
+            });
+            await collections.listItems.bulkInsert(
+              // prettier-ignore
+              makeListItems("log1", 0, [
+                ["item1"],
+                ["item2"],
+              ])
+            );
 
-          await updateStore((store) => {
-            store.currentPane = "actionLog";
-            store.mode = "insert";
-            store.editor.cursorPosition = 3; // ite|m2
-            store.actionLogPane.currentActionLogId = "log1";
-            store.actionLogPane.currentListItemId = "item2";
-          });
-        });
+            await updateStore((store) => {
+              store.currentPane = "actionLog";
+              store.mode = "insert";
+              store.editor.cursorPosition = 3; // ite|m2
+              store.actionLogPane.currentActionLogId = "log1";
+              store.actionLogPane.currentListItemId = "item2";
+            });
+          }
+        );
 
         await user.keyboard("{Backspace}");
 
@@ -338,18 +429,27 @@ if (import.meta.vitest) {
         ])("$name", ({ items, currentItem }) => {
           test("assert", async (test) => {
             const user = userEvent.setup();
-            const { container, unmount, lock, findByDisplayValue } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
-              await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
-              await collections.listItems.bulkInsert(items);
-              await updateStore((store) => {
-                store.currentPane = "actionLog";
-                store.mode = "insert";
-                store.editor.text = currentItem;
-                store.editor.cursorPosition = 0;
-                store.actionLogPane.currentActionLogId = "log1";
-                store.actionLogPane.currentListItemId = currentItem;
-              });
-            });
+            const { container, unmount, lock, findByDisplayValue } = await render(
+              test,
+              async ({ rxdb: { collections }, store: { updateStore } }) => {
+                await collections.actionLogs.insert({
+                  id: "log1",
+                  text: "log1",
+                  startAt: 0,
+                  endAt: 0,
+                  updatedAt: 0,
+                });
+                await collections.listItems.bulkInsert(items);
+                await updateStore((store) => {
+                  store.currentPane = "actionLog";
+                  store.mode = "insert";
+                  store.editor.text = currentItem;
+                  store.editor.cursorPosition = 0;
+                  store.actionLogPane.currentActionLogId = "log1";
+                  store.actionLogPane.currentListItemId = currentItem;
+                });
+              }
+            );
 
             await user.keyboard("{Backspace}");
             await waitLockRelease(lock);
@@ -365,23 +465,32 @@ if (import.meta.vitest) {
       describe("press Backspace to remove item", () => {
         test("cursor is on the left edge, no children, has above item: item is removed and move to above item", async (test) => {
           const user = userEvent.setup();
-          const { container, unmount, lock, findByDisplayValue } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
-            await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
-            await collections.listItems.bulkInsert(
-              // prettier-ignore
-              makeListItems("log1", 0, [
-                ["item1"],
-                ["item2"],
-              ])
-            );
-            await updateStore((store) => {
-              store.currentPane = "actionLog";
-              store.mode = "insert";
-              store.editor.cursorPosition = 0;
-              store.actionLogPane.currentActionLogId = "log1";
-              store.actionLogPane.currentListItemId = "item2";
-            });
-          });
+          const { container, unmount, lock, findByDisplayValue } = await render(
+            test,
+            async ({ rxdb: { collections }, store: { updateStore } }) => {
+              await collections.actionLogs.insert({
+                id: "log1",
+                text: "log1",
+                startAt: 0,
+                endAt: 0,
+                updatedAt: 0,
+              });
+              await collections.listItems.bulkInsert(
+                // prettier-ignore
+                makeListItems("log1", 0, [
+                  ["item1"],
+                  ["item2"],
+                ])
+              );
+              await updateStore((store) => {
+                store.currentPane = "actionLog";
+                store.mode = "insert";
+                store.editor.cursorPosition = 0;
+                store.actionLogPane.currentActionLogId = "log1";
+                store.actionLogPane.currentListItemId = "item2";
+              });
+            }
+          );
 
           await user.keyboard("{Backspace}");
           await waitLockRelease(lock);

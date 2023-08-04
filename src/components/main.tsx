@@ -44,11 +44,19 @@ if (import.meta.vitest) {
             </>
           ),
           async ({ rxdb: { collections }, store: { updateStore } }) => {
+            // prettier-ignore
             await collections.actionLogs.bulkInsert([
               { id: "log1", text: "log1", startAt: 1000, endAt: 0, updatedAt: 0 },
               { id: "log2", text: "log2", startAt: 2000, endAt: 0, updatedAt: 0 },
             ]);
-            await collections.listItems.insert({ id: "item1", text: "item1", parentId: "log1", prevId: "", nextId: "", updatedAt: 0 });
+            await collections.listItems.insert({
+              id: "item1",
+              text: "item1",
+              parentId: "log1",
+              prevId: "",
+              nextId: "",
+              updatedAt: 0,
+            });
 
             await updateStore((store) => {
               store.currentPane = "actionLog";
@@ -78,8 +86,21 @@ if (import.meta.vitest) {
             </>
           ),
           async ({ rxdb: { collections }, store: { updateStore } }) => {
-            await collections.actionLogs.insert({ id: "log1", text: "log1", startAt: 0, endAt: 0, updatedAt: 0 });
-            await collections.listItems.insert({ id: "item1", text: "", parentId: "log1", prevId: "", nextId: "", updatedAt: 0 });
+            await collections.actionLogs.insert({
+              id: "log1",
+              text: "log1",
+              startAt: 0,
+              endAt: 0,
+              updatedAt: 0,
+            });
+            await collections.listItems.insert({
+              id: "item1",
+              text: "",
+              parentId: "log1",
+              prevId: "",
+              nextId: "",
+              updatedAt: 0,
+            });
 
             await updateStore((store) => {
               store.currentPane = "actionLog";

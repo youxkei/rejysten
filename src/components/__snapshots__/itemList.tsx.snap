@@ -585,7 +585,7 @@ exports[`add child > initial 1`] = `
 
 exports[`inconsistent error > an item is not in linked list > error 1`] = `
 <div>
-  Error: there is an inconsistency in listItem in the children of '1': some listItems are not in linked list: children = [2,3], sortedChildren = [2]
+  Error: there is an inconsistency in listItem in the children of 'root': some listItems are not in linked list: children = [bar,foo], sortedChildren = [foo]
 </div>
 `;
 
@@ -635,7 +635,7 @@ exports[`inconsistent error > an item is not in linked list > initial 1`] = `
 
 exports[`inconsistent error > first item not found > error 1`] = `
 <div>
-  Error: there is an inconsistency in listItem in the children of '1': no listItem with prevId = ''
+  Error: there is an inconsistency in listItem in the children of 'root': no listItem with prevId = ''
 </div>
 `;
 
@@ -685,7 +685,7 @@ exports[`inconsistent error > first item not found > initial 1`] = `
 
 exports[`inconsistent error > next item not found > error 1`] = `
 <div>
-  Error: there is an inconsistency in listItem in the children of '1': no listItem with id = '3'
+  Error: there is an inconsistency in listItem in the children of 'root': no listItem with id = 'bar'
 </div>
 `;
 

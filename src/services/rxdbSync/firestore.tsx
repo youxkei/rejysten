@@ -7,7 +7,17 @@ import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from
 import { getFirestore, collection as getCollection } from "firebase/firestore";
 import YAML from "js-yaml";
 import { replicateFirestore } from "rxdb/plugins/replication-firestore";
-import { batch, createContext, createEffect, createMemo, createSignal, onMount, useContext, onCleanup, createResource } from "solid-js";
+import {
+  batch,
+  createContext,
+  createEffect,
+  createMemo,
+  createSignal,
+  onMount,
+  useContext,
+  onCleanup,
+  createResource,
+} from "solid-js";
 import * as s from "superstruct";
 
 import { ServiceNotAvailable } from "@/services/error";

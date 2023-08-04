@@ -10,14 +10,24 @@ import { Show, createResource, getOwner } from "solid-js";
 import { EventServiceProvider } from "@/services/event";
 import { EventEmitterServiceProvider } from "@/services/eventEmitter";
 import { EventHandlerServiceProvider } from "@/services/eventHandler";
-import { waitLockRelease, createSignalWithLock, runWithLock, LockServiceProvider, useLockService } from "@/services/lock";
+import {
+  waitLockRelease,
+  createSignalWithLock,
+  runWithLock,
+  LockServiceProvider,
+  useLockService,
+} from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
 import { RxDBServiceProviderForTest } from "@/services/rxdb/test";
 import { RxDBSyncFirestoreServiceProvider } from "@/services/rxdbSync/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
 import { renderAsync } from "@/solid/test";
 
-export type Services = { rxdb: RxDBService; store: StoreService; lock: LockService };
+export type Services = {
+  rxdb: RxDBService;
+  store: StoreService;
+  lock: LockService;
+};
 
 export function renderWithServicesForTest(
   tid: string,

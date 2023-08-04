@@ -2,7 +2,17 @@ import type { RxDBService } from "@/services/rxdb";
 import type { JSXElement } from "solid-js";
 
 import userEvent from "@testing-library/user-event";
-import { createRenderEffect, createRoot, onMount, createEffect, createContext, createMemo, createSignal, startTransition, useContext } from "solid-js";
+import {
+  createRenderEffect,
+  createRoot,
+  onMount,
+  createEffect,
+  createContext,
+  createMemo,
+  createSignal,
+  startTransition,
+  useContext,
+} from "solid-js";
 
 import { ServiceNotAvailable } from "@/services/error";
 import { useRxDBService } from "@/services/rxdb";
@@ -149,7 +159,9 @@ export function createSignalWithLock<T>(service: LockService, value$: () => T, i
       return { value: value$(), lock: false };
     },
     { value: initialValue, lock: false },
-    { equals: (prev, next) => next.lock || (!!compare && prev.value === next.value) }
+    {
+      equals: (prev, next) => next.lock || (!!compare && prev.value === next.value),
+    }
   );
 
   return () => memo$().value;

@@ -150,7 +150,9 @@ export const schema = {
 } as const;
 
 export type CollectionNameToDocumentType = {
-  [CollectionName in keyof typeof schema]: ExtractDocumentTypeFromTypedRxJsonSchema<(typeof schema)[CollectionName]["schema"]>;
+  [CollectionName in keyof typeof schema]: ExtractDocumentTypeFromTypedRxJsonSchema<
+    (typeof schema)[CollectionName]["schema"]
+  >;
 };
 
 export type Collections = {

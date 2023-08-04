@@ -17,7 +17,9 @@ async function getPrevItem(service: RxDBService, baseItem: RxDocument<ListItem>)
     prevItem = (await service.collections.listItems.findOne(baseItem.prevId).exec()) ?? undefined;
 
     if (!prevItem) {
-      throw new InconsistentError("baseItem.prevId is invalid", { baseItem: baseItem.toJSON() });
+      throw new InconsistentError("baseItem.prevId is invalid", {
+        baseItem: baseItem.toJSON(),
+      });
     }
 
     if (prevItem.nextId !== baseItem.id) {
@@ -45,7 +47,9 @@ async function getNextItem(service: RxDBService, baseItem: RxDocument<ListItem>)
     nextItem = (await service.collections.listItems.findOne(baseItem.nextId).exec()) ?? undefined;
 
     if (!nextItem) {
-      throw new InconsistentError("baseItem.nextId is invalid", { baseItem: baseItem.toJSON() });
+      throw new InconsistentError("baseItem.nextId is invalid", {
+        baseItem: baseItem.toJSON(),
+      });
     }
 
     if (nextItem.prevId !== baseItem.id) {
@@ -147,7 +151,9 @@ async function unlinkFromSiblings(service: RxDBService, updatedAt: number, item:
   }
 }
 
-function isRxDocument<T>(document: Omit<T, "parentId" | "prevId" | "nextId" | "updatedAt"> | RxDocument<T>): document is RxDocument<T> {
+function isRxDocument<T>(
+  document: Omit<T, "parentId" | "prevId" | "nextId" | "updatedAt"> | RxDocument<T>
+): document is RxDocument<T> {
   return "isInstanceOfRxDocument" in document;
 }
 
@@ -375,7 +381,9 @@ export async function getBottomItem(service: RxDBService, parentId: string) {
   if (!lastItem) return null;
 
   for (;;) {
-    const nextLastItem: ListItemDocument | null = await service.collections.listItems.findOne({ selector: { parentId: lastItem.id, nextId: "" } }).exec();
+    const nextLastItem: ListItemDocument | null = await service.collections.listItems
+      .findOne({ selector: { parentId: lastItem.id, nextId: "" } })
+      .exec();
     if (!nextLastItem) return lastItem;
 
     lastItem = nextLastItem;

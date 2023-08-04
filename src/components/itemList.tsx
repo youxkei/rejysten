@@ -6,6 +6,7 @@ import { BulletList } from "@/components/bulletList";
 import { Editor } from "@/components/editor";
 import { createSignalWithLock, runWithLock, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
+import { makeListItems } from "@/services/rxdb/collections/test";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/rxdb/subscribe";
 import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
@@ -69,14 +70,18 @@ export function ItemListChildren(props: { parentId: string; selectedId: string }
     }
 
     if (currentChildId === undefined) {
-      throw new Error(`there is an inconsistency in listItem in the children of '${props.parentId}': no listItem with prevId = ''`);
+      throw new Error(
+        `there is an inconsistency in listItem in the children of '${props.parentId}': no listItem with prevId = ''`
+      );
     }
 
     while (currentChildId !== "") {
       const currentChild = childMap.get(currentChildId);
 
       if (currentChild === undefined) {
-        throw new Error(`there is an inconsistency in listItem in the children of '${props.parentId}': no listItem with id = '${currentChildId}'`);
+        throw new Error(
+          `there is an inconsistency in listItem in the children of '${props.parentId}': no listItem with id = '${currentChildId}'`
+        );
       }
 
       sortedChildren.push(currentChild);
@@ -85,7 +90,9 @@ export function ItemListChildren(props: { parentId: string; selectedId: string }
 
     if (children.length != sortedChildren.length) {
       throw new Error(
-        `there is an inconsistency in listItem in the children of '${props.parentId}': some listItems are not in linked list: children = [${children.map(
+        `there is an inconsistency in listItem in the children of '${
+          props.parentId
+        }': some listItems are not in linked list: children = [${children.map(
           (child) => child.id
         )}], sortedChildren = [${sortedChildren.map((child) => child.id)}]`
       );
@@ -94,27 +101,36 @@ export function ItemListChildren(props: { parentId: string; selectedId: string }
     return sortedChildren.map((child) => child.id);
   };
 
-  return <For each={sortedChildrenIds$()}>{(listItemId) => <ItemList listItemId={listItemId} selectedId={props.selectedId} />}</For>;
+  return (
+    <For each={sortedChildrenIds$()}>
+      {(listItemId) => <ItemList listItemId={listItemId} selectedId={props.selectedId} />}
+    </For>
+  );
 }
 
 if (import.meta.vitest) {
   describe.each([
     {
       name: "swapped items",
-      listItems: [
-        { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
-        { id: "2", text: "foo", prevId: "3", nextId: "", parentId: "1", updatedAt: 0 },
-        { id: "3", text: "bar", prevId: "", nextId: "2", parentId: "1", updatedAt: 0 },
-      ],
+      // prettier-ignore
+      listItems: makeListItems("", 0, [
+        ["root", [
+          ["bar"],
+          ["foo"],
+        ]]
+      ]),
     },
     {
       name: "nested items",
-      listItems: [
-        { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
-        { id: "2", text: "foo", prevId: "", nextId: "4", parentId: "1", updatedAt: 0 },
-        { id: "3", text: "foofoo", prevId: "", nextId: "", parentId: "2", updatedAt: 0 },
-        { id: "4", text: "bar", prevId: "2", nextId: "", parentId: "1", updatedAt: 0 },
-      ],
+      // prettier-ignore
+      listItems: makeListItems("", 0, [
+        ["root", [
+          ["foo", [
+            ["foofoo"],
+          ]],
+          ["bar"],
+        ]],
+      ]),
     },
   ])("$name", ({ listItems }) => {
     test("text changes", async (ctx) => {
@@ -136,14 +152,14 @@ if (import.meta.vitest) {
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot();
 
-      await (await collections.listItems.findOne("1").exec())!.patch({
+      await (await collections.listItems.findOne("root").exec())!.patch({
         text: "changed root",
       });
       await findByText("changed root");
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot();
 
-      await (await collections.listItems.findOne("2").exec())!.patch({
+      await (await collections.listItems.findOne("foo").exec())!.patch({
         text: "changed foo",
       });
       await findByText("changed foo");
@@ -170,19 +186,22 @@ if (import.meta.vitest) {
         </>
       ),
       ({ rxdb: { collections } }) =>
-        collections.listItems.bulkInsert([
-          { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
-          { id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1", updatedAt: 0 },
-          { id: "3", text: "bar", prevId: "2", nextId: "", parentId: "1", updatedAt: 0 },
-        ])
+        // prettier-ignore
+        collections.listItems.bulkInsert(makeListItems("", 0, [
+          ["root", [
+            ["foo"],
+            ["bar"],
+          ]],
+        ]))
     );
 
     ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
     await runWithLock(lock, async () => {
+      // prettier-ignore
       await collections.listItems.bulkUpsert([
-        { id: "3", text: "bar", prevId: "2", nextId: "4", parentId: "1", updatedAt: 1 },
-        { id: "4", text: "baz", prevId: "3", nextId: "", parentId: "1", updatedAt: 1 },
+        { id: "bar", text: "bar", prevId: "faa", nextId: "baz", parentId: "root", updatedAt: 1, },
+        { id: "baz", text: "baz", prevId: "bar", nextId: "",    parentId: "root", updatedAt: 1, },
       ]);
     });
     await findByText("baz");
@@ -208,17 +227,26 @@ if (import.meta.vitest) {
           </ErrorBoundary>
         ),
         ({ rxdb: { collections } }) =>
-          collections.listItems.bulkInsert([
-            { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
-            { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
-          ])
+          // prettier-ignore
+          collections.listItems.bulkInsert(makeListItems("", 0, [
+            ["root", [
+              ["foo"],
+            ]],
+          ]))
       );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
-      await collections.listItems.insert({ id: "3", text: "bar", prevId: "2", nextId: "", parentId: "1", updatedAt: 1 });
+      await collections.listItems.insert({
+        id: "bar",
+        text: "bar",
+        prevId: "foo",
+        nextId: "",
+        parentId: "root",
+        updatedAt: 1,
+      });
       await findByText(
-        "Error: there is an inconsistency in listItem in the children of '1': some listItems are not in linked list: children = [2,3], sortedChildren = [2]"
+        "Error: there is an inconsistency in listItem in the children of 'root': some listItems are not in linked list: children = [bar,foo], sortedChildren = [foo]"
       );
       ctx.expect(shortenClassName(container)).toMatchSnapshot("error");
 
@@ -240,16 +268,27 @@ if (import.meta.vitest) {
           </ErrorBoundary>
         ),
         ({ rxdb: { collections } }) =>
-          collections.listItems.bulkInsert([
-            { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
-            { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
-          ])
+          // prettier-ignore
+          collections.listItems.bulkInsert(makeListItems("", 0, [
+            ["root", [
+              ["foo"],
+            ]],
+          ]))
       );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
-      await collections.listItems.upsert({ id: "2", text: "foo", prevId: "", nextId: "3", parentId: "1", updatedAt: 1 });
-      await findByText("Error: there is an inconsistency in listItem in the children of '1': no listItem with id = '3'");
+      await collections.listItems.upsert({
+        id: "foo",
+        text: "foo",
+        prevId: "",
+        nextId: "bar",
+        parentId: "root",
+        updatedAt: 1,
+      });
+      await findByText(
+        "Error: there is an inconsistency in listItem in the children of 'root': no listItem with id = 'bar'"
+      );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("error");
 
@@ -271,16 +310,27 @@ if (import.meta.vitest) {
           </ErrorBoundary>
         ),
         ({ rxdb: { collections } }) =>
-          collections.listItems.bulkInsert([
-            { id: "1", text: "root", prevId: "", nextId: "", parentId: "", updatedAt: 0 },
-            { id: "2", text: "foo", prevId: "", nextId: "", parentId: "1", updatedAt: 0 },
-          ])
+          // prettier-ignore
+          collections.listItems.bulkInsert(makeListItems("", 0, [
+            ["root", [
+              ["foo"],
+            ]],
+          ]))
       );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
 
-      await collections.listItems.upsert({ id: "2", text: "foo", prevId: "3", nextId: "3", parentId: "1", updatedAt: 1 });
-      await findByText("Error: there is an inconsistency in listItem in the children of '1': no listItem with prevId = ''");
+      await collections.listItems.upsert({
+        id: "foo",
+        text: "foo",
+        prevId: "bar",
+        nextId: "baz",
+        parentId: "root",
+        updatedAt: 1,
+      });
+      await findByText(
+        "Error: there is an inconsistency in listItem in the children of 'root': no listItem with prevId = ''"
+      );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("error");
 

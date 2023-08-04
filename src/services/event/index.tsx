@@ -8,9 +8,15 @@ export type Event = ActionLogListPaneEvent | ActionLogPaneEvent;
 
 export type ActionLogListPaneEvent = { pane: "actionLogList" } & (
   | ({ mode: "normal" } & (
-      | { type: "moveAbove" | "moveBelow" | "add" | "start" | "finish" | "moveToActionLogPane" }
+      | {
+          type: "moveAbove" | "moveBelow" | "add" | "start" | "finish" | "moveToActionLogPane";
+        }
       | { type: "focus"; actionLogId: string }
-      | { type: "enterInsertMode"; focus: "text" | "startAt" | "endAt"; cursorPosition: number }
+      | {
+          type: "enterInsertMode";
+          focus: "text" | "startAt" | "endAt";
+          cursorPosition: number;
+        }
     ))
   | ({ mode: "insert" } & (
       | { type: "rotateFocus" | "leaveInsertMode" }
@@ -21,7 +27,9 @@ export type ActionLogListPaneEvent = { pane: "actionLogList" } & (
 
 export type ActionLogPaneEvent = { pane: "actionLog" } & (
   | ({ mode: "normal" } & (
-      | { type: "indent" | "dedent" | "addPrev" | "addNext" | "moveAbove" | "moveBelow" | "moveToActionLogListPane" }
+      | {
+          type: "indent" | "dedent" | "addPrev" | "addNext" | "moveAbove" | "moveBelow" | "moveToActionLogListPane";
+        }
       | { type: "enterInsertMode"; cursorPosition: number }
     ))
   | ({ mode: "insert" } & (

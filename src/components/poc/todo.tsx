@@ -114,7 +114,11 @@ if (import.meta.vitest) {
     ctx.expect(container).toMatchSnapshot();
 
     await user.click(button);
-    await waitForElementToBeRemoved(() => queryByText("the quick brown fox jumps over the lazy dog", { selector: "p" }));
+    await waitForElementToBeRemoved(() =>
+      queryByText("the quick brown fox jumps over the lazy dog", {
+        selector: "p",
+      })
+    );
     await findByText("the quick brown fox jumps over the lazy dog");
     ctx.expect(container).toMatchSnapshot();
 

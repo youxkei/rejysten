@@ -44,7 +44,10 @@ export function StoreServiceProvider(props: { children: JSXElement }) {
   const [store, setStore] = createStore<Store>(structuredClone(initialStore));
 
   async function updateStore(updater: (store: Store) => void) {
-    await collections.stores.upsert({ id: "const", ...produce(structuredClone(unwrap(store)), updater) });
+    await collections.stores.upsert({
+      id: "const",
+      ...produce(structuredClone(unwrap(store)), updater),
+    });
   }
 
   const storeDocument$ = createSubscribeSignal(() => collections.stores.findOne("const"));
@@ -148,7 +151,10 @@ if (import.meta.vitest) {
       });
     });
 
-    const storePromise = new Promise<{ currentPane: string; currentListItemId: string }>((resolve) => {
+    const storePromise = new Promise<{
+      currentPane: string;
+      currentListItemId: string;
+    }>((resolve) => {
       let initial = true;
 
       createRoot(() =>
@@ -160,12 +166,18 @@ if (import.meta.vitest) {
             return;
           }
 
-          resolve({ currentPane: store.currentPane, currentListItemId: store.actionLogPane.currentListItemId });
+          resolve({
+            currentPane: store.currentPane,
+            currentListItemId: store.actionLogPane.currentListItemId,
+          });
         })
       );
     });
 
-    const storeDocumentPromise = new Promise<{ currentPane: string; currentListItemId: string }>((resolve) => {
+    const storeDocumentPromise = new Promise<{
+      currentPane: string;
+      currentListItemId: string;
+    }>((resolve) => {
       let initial = true;
 
       collections.stores.findOne("const").$.subscribe((storeDocument) => {
@@ -176,7 +188,10 @@ if (import.meta.vitest) {
           return;
         }
 
-        resolve({ currentPane: storeDocument.currentPane, currentListItemId: storeDocument.actionLogPane.currentListItemId });
+        resolve({
+          currentPane: storeDocument.currentPane,
+          currentListItemId: storeDocument.actionLogPane.currentListItemId,
+        });
       });
     });
 
@@ -185,8 +200,14 @@ if (import.meta.vitest) {
       store.actionLogPane.currentListItemId = "placeholderListItemId";
     });
 
-    test.expect(await storePromise).toEqual({ currentPane: "actionLog", currentListItemId: "placeholderListItemId" });
-    test.expect(await storeDocumentPromise).toEqual({ currentPane: "actionLog", currentListItemId: "placeholderListItemId" });
+    test.expect(await storePromise).toEqual({
+      currentPane: "actionLog",
+      currentListItemId: "placeholderListItemId",
+    });
+    test.expect(await storeDocumentPromise).toEqual({
+      currentPane: "actionLog",
+      currentListItemId: "placeholderListItemId",
+    });
 
     unmount();
   });

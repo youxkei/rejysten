@@ -11,7 +11,11 @@ function getAboveFinishedLog({ collections }: RxDBService, baseLog: ActionLogDoc
   return collections.actionLogs
     .findOne({
       // use $lte instead of $lt due to a bug https://github.com/pubkey/rxdb/pull/4751
-      selector: { id: { $lte: baseLog.id }, startAt: { $gt: 0, $lte: baseLog.startAt }, endAt: { $gt: 0 } },
+      selector: {
+        id: { $lte: baseLog.id },
+        startAt: { $gt: 0, $lte: baseLog.startAt },
+        endAt: { $gt: 0 },
+      },
       sort: [{ id: "desc", startAt: "desc" }],
     })
     .exec();
@@ -20,7 +24,11 @@ function getAboveFinishedLog({ collections }: RxDBService, baseLog: ActionLogDoc
 function getBelowFinishedLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
   return collections.actionLogs
     .findOne({
-      selector: { id: { $gt: baseLog.id }, startAt: { $gt: 0, $gte: baseLog.startAt }, endAt: { $gt: 0 } },
+      selector: {
+        id: { $gt: baseLog.id },
+        startAt: { $gt: 0, $gte: baseLog.startAt },
+        endAt: { $gt: 0 },
+      },
       sort: [{ startAt: "asc" }],
     })
     .exec();
@@ -30,7 +38,11 @@ function getAboveOngoingLog({ collections }: RxDBService, baseLog: ActionLogDocu
   return collections.actionLogs
     .findOne({
       // use $lte instead of $lt due to a bug https://github.com/pubkey/rxdb/pull/4751
-      selector: { id: { $lte: baseLog.id }, startAt: { $gt: 0, $lte: baseLog.startAt }, endAt: 0 },
+      selector: {
+        id: { $lte: baseLog.id },
+        startAt: { $gt: 0, $lte: baseLog.startAt },
+        endAt: 0,
+      },
       sort: [{ id: "desc", startAt: "desc" }],
     })
     .exec();
@@ -39,7 +51,11 @@ function getAboveOngoingLog({ collections }: RxDBService, baseLog: ActionLogDocu
 function getBelowOngoingLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
   return collections.actionLogs
     .findOne({
-      selector: { id: { $gt: baseLog.id }, startAt: { $gte: baseLog.startAt }, endAt: 0 },
+      selector: {
+        id: { $gt: baseLog.id },
+        startAt: { $gte: baseLog.startAt },
+        endAt: 0,
+      },
       sort: [{ startAt: "asc" }],
     })
     .exec();

@@ -5,14 +5,27 @@ import type { ListItemDocument } from "@/services/rxdb/collections/listItem";
 import { Ulid } from "id128";
 
 import { ErrorWithFields, NeverErrorWithFields } from "@/error";
-import { addNextSibling, addPrevSibling, dedent, getBelowItem, getAboveItem, indent, remove } from "@/services/rxdb/collections/listItem";
+import {
+  addNextSibling,
+  addPrevSibling,
+  dedent,
+  getBelowItem,
+  getAboveItem,
+  indent,
+  remove,
+} from "@/services/rxdb/collections/listItem";
 
 export async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent) {
   if (ctx.store.store.currentPane !== "actionLog") {
-    throw new ErrorWithFields("ActionLogPaneEvent must be emitted when currentPane is actionLog", { event, store: ctx.store.store });
+    throw new ErrorWithFields("ActionLogPaneEvent must be emitted when currentPane is actionLog", {
+      event,
+      store: ctx.store.store,
+    });
   }
 
-  const currentListItem = await ctx.rxdb.collections.listItems.findOne(ctx.store.store.actionLogPane.currentListItemId).exec();
+  const currentListItem = await ctx.rxdb.collections.listItems
+    .findOne(ctx.store.store.actionLogPane.currentListItemId)
+    .exec();
   if (!currentListItem) return;
 
   switch (event.mode) {
@@ -38,7 +51,11 @@ export async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPan
   }
 }
 
-async function handleNormalModeEvent(ctx: Context, currentListItem: ListItemDocument, event: ActionLogPaneEvent & { mode: "normal" }) {
+async function handleNormalModeEvent(
+  ctx: Context,
+  currentListItem: ListItemDocument,
+  event: ActionLogPaneEvent & { mode: "normal" }
+) {
   switch (event.type) {
     case "indent": {
       await indent(ctx.rxdb, ctx.now, currentListItem);
@@ -55,7 +72,10 @@ async function handleNormalModeEvent(ctx: Context, currentListItem: ListItemDocu
     case "addPrev": {
       const id = Ulid.generate({ time: ctx.now }).toCanonical();
 
-      await addPrevSibling(ctx.rxdb, ctx.now, currentListItem, { id, text: "" });
+      await addPrevSibling(ctx.rxdb, ctx.now, currentListItem, {
+        id,
+        text: "",
+      });
       await ctx.store.updateStore((store) => {
         store.mode = "insert";
         store.editor.cursorPosition = 0;
@@ -68,7 +88,10 @@ async function handleNormalModeEvent(ctx: Context, currentListItem: ListItemDocu
     case "addNext": {
       const id = Ulid.generate({ time: ctx.now }).toCanonical();
 
-      await addNextSibling(ctx.rxdb, ctx.now, currentListItem, { id, text: "" });
+      await addNextSibling(ctx.rxdb, ctx.now, currentListItem, {
+        id,
+        text: "",
+      });
       await ctx.store.updateStore((store) => {
         store.mode = "insert";
         store.editor.cursorPosition = 0;
@@ -124,7 +147,11 @@ async function handleNormalModeEvent(ctx: Context, currentListItem: ListItemDocu
   }
 }
 
-async function handleInsertModeEvent(ctx: Context, currentListItem: ListItemDocument, event: ActionLogPaneEvent & { mode: "insert" }) {
+async function handleInsertModeEvent(
+  ctx: Context,
+  currentListItem: ListItemDocument,
+  event: ActionLogPaneEvent & { mode: "insert" }
+) {
   switch (event.type) {
     case "leaveInsertMode": {
       await ctx.store.updateStore((store) => {
@@ -191,10 +218,16 @@ async function handleInsertModeEvent(ctx: Context, currentListItem: ListItemDocu
       const textBeforeCursor = currentListItem.text.substring(0, inputElement.selectionStart);
       const textAfterCursor = currentListItem.text.substring(inputElement.selectionStart);
 
-      await addNextSibling(ctx.rxdb, ctx.now, currentListItem, { id, text: textAfterCursor });
+      await addNextSibling(ctx.rxdb, ctx.now, currentListItem, {
+        id,
+        text: textAfterCursor,
+      });
 
       const newCurrentListItem = currentListItem.getLatest();
-      await newCurrentListItem.patch({ text: textBeforeCursor, updatedAt: ctx.now });
+      await newCurrentListItem.patch({
+        text: textBeforeCursor,
+        updatedAt: ctx.now,
+      });
 
       await ctx.store.updateStore((store) => {
         store.editor.cursorPosition = 0;
@@ -218,7 +251,9 @@ async function handleInsertModeEvent(ctx: Context, currentListItem: ListItemDocu
         break;
       }
 
-      const childrenItems = await ctx.rxdb.collections.listItems.find({ selector: { parentId: currentListItem.id } }).exec();
+      const childrenItems = await ctx.rxdb.collections.listItems
+        .find({ selector: { parentId: currentListItem.id } })
+        .exec();
       if (childrenItems.length > 0) break;
 
       if (
@@ -238,7 +273,10 @@ async function handleInsertModeEvent(ctx: Context, currentListItem: ListItemDocu
         const aboveListItem = await getAboveItem(ctx.rxdb, currentListItem);
         if (!aboveListItem) break;
 
-        await aboveListItem.patch({ text: aboveListItem.text + currentListItem.text, updatedAt: ctx.now });
+        await aboveListItem.patch({
+          text: aboveListItem.text + currentListItem.text,
+          updatedAt: ctx.now,
+        });
 
         await ctx.store.updateStore((store) => {
           store.editor.cursorPosition = aboveListItem.text.length;
@@ -268,12 +306,17 @@ async function handleInsertModeEvent(ctx: Context, currentListItem: ListItemDocu
       const belowListItem = await getBelowItem(ctx.rxdb, currentListItem);
       if (!belowListItem) break;
 
-      const childrenItemsOfBelowListItem = await ctx.rxdb.collections.listItems.find({ selector: { parentId: belowListItem.id } }).exec();
+      const childrenItemsOfBelowListItem = await ctx.rxdb.collections.listItems
+        .find({ selector: { parentId: belowListItem.id } })
+        .exec();
       if (childrenItemsOfBelowListItem.length > 0) break;
 
       await remove(ctx.rxdb, ctx.now, belowListItem);
       const newCurrentListItem = currentListItem.getLatest();
-      await newCurrentListItem.patch({ text: newCurrentListItem.text + belowListItem.text, updatedAt: ctx.now });
+      await newCurrentListItem.patch({
+        text: newCurrentListItem.text + belowListItem.text,
+        updatedAt: ctx.now,
+      });
 
       await ctx.store.updateStore((store) => {
         store.editor.cursorPosition = currentListItem.text.length;

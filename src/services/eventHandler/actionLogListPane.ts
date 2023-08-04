@@ -9,10 +9,15 @@ import { epochMsToTimeText, timeTextToEpochMs } from "@/temporal";
 
 export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPaneEvent) {
   if (ctx.store.store.currentPane !== "actionLogList") {
-    throw new ErrorWithFields("ActionLogListPaneEvent must be emitted when currentPane is actionLogList", { event, store: ctx.store.store });
+    throw new ErrorWithFields("ActionLogListPaneEvent must be emitted when currentPane is actionLogList", {
+      event,
+      store: ctx.store.store,
+    });
   }
 
-  const currentActionLog = await ctx.rxdb.collections.actionLogs.findOne(ctx.store.store.actionLogListPane.currentActionLogId).exec();
+  const currentActionLog = await ctx.rxdb.collections.actionLogs
+    .findOne(ctx.store.store.actionLogListPane.currentActionLogId)
+    .exec();
   if (!currentActionLog) return;
 
   switch (event.mode) {
@@ -104,9 +109,15 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
           const aboveActionLog = await getAboveLog(ctx.rxdb, currentActionLog);
 
           if (aboveActionLog && aboveActionLog.endAt > 0) {
-            await currentActionLog.patch({ startAt: aboveActionLog.endAt, updatedAt: ctx.now });
+            await currentActionLog.patch({
+              startAt: aboveActionLog.endAt,
+              updatedAt: ctx.now,
+            });
           } else {
-            await currentActionLog.patch({ startAt: (ctx.now / 1000) * 1000, updatedAt: ctx.now });
+            await currentActionLog.patch({
+              startAt: (ctx.now / 1000) * 1000,
+              updatedAt: ctx.now,
+            });
           }
 
           break;
@@ -115,7 +126,10 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
         case "finish": {
           if (currentActionLog.endAt !== 0) break;
 
-          await currentActionLog.patch({ endAt: (ctx.now / 1000) * 1000, updatedAt: ctx.now });
+          await currentActionLog.patch({
+            endAt: (ctx.now / 1000) * 1000,
+            updatedAt: ctx.now,
+          });
 
           break;
         }
@@ -147,7 +161,10 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
         case "changeEditorText": {
           switch (ctx.store.store.actionLogListPane.focus) {
             case "text": {
-              await currentActionLog.patch({ text: event.newText, updatedAt: ctx.now });
+              await currentActionLog.patch({
+                text: event.newText,
+                updatedAt: ctx.now,
+              });
 
               break;
             }
@@ -243,7 +260,9 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
         case "delete": {
           if (currentActionLog.text !== "") break;
 
-          const items = await ctx.rxdb.collections.listItems.find({ selector: { parentId: currentActionLog.id } }).exec();
+          const items = await ctx.rxdb.collections.listItems
+            .find({ selector: { parentId: currentActionLog.id } })
+            .exec();
           if (items.length > 0) break;
 
           const aboveActionLog = await getAboveLog(ctx.rxdb, currentActionLog);

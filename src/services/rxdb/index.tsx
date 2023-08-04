@@ -67,7 +67,10 @@ function createRxDBServiceSignal(databaseCreator$: () => RxDatabaseCreator<Dexie
   };
 }
 
-export function RxDBServiceProvider(props: { children: JSXElement; databaseCreator?: RxDatabaseCreator<DexieStorageInternals> }) {
+export function RxDBServiceProvider(props: {
+  children: JSXElement;
+  databaseCreator?: RxDatabaseCreator<DexieStorageInternals>;
+}) {
   const rxdb$ = createRxDBServiceSignal(
     () =>
       props.databaseCreator ?? {

@@ -19,7 +19,9 @@ export function EventHandlerServiceProvider(props: { children: JSXElement }) {
   const event = useEventService();
 
   event.registerEventHandler(async (currentEvent: Event) => {
-    await untrack(() => runWithLock(lock, () => handlePaneEvent({ now: Date.now(), rxdb, store, event }, currentEvent)));
+    await untrack(() =>
+      runWithLock(lock, () => handlePaneEvent({ now: Date.now(), rxdb, store, event }, currentEvent))
+    );
   });
 
   return props.children;

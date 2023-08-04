@@ -6,7 +6,10 @@ export function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
 
   switch (ctx.store.mode) {
     case "normal": {
-      const normalModeEvent = { ...actionLogListPaneEvent, mode: "normal" } as const;
+      const normalModeEvent = {
+        ...actionLogListPaneEvent,
+        mode: "normal",
+      } as const;
 
       switch (event.code) {
         case "KeyK": {
@@ -29,7 +32,12 @@ export function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
 
         case "KeyI": {
           if (!shiftKey) {
-            ctx.emitEvent({ ...normalModeEvent, type: "enterInsertMode", focus: "text", cursorPosition: 0 });
+            ctx.emitEvent({
+              ...normalModeEvent,
+              type: "enterInsertMode",
+              focus: "text",
+              cursorPosition: 0,
+            });
             event.preventDefault();
           }
 
@@ -38,7 +46,12 @@ export function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
 
         case "KeyA": {
           if (!shiftKey) {
-            ctx.emitEvent({ ...normalModeEvent, type: "enterInsertMode", focus: "text", cursorPosition: -1 });
+            ctx.emitEvent({
+              ...normalModeEvent,
+              type: "enterInsertMode",
+              focus: "text",
+              cursorPosition: -1,
+            });
             event.preventDefault();
           }
 
@@ -84,7 +97,10 @@ export function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
     }
 
     case "insert": {
-      const insertModeEvent = { ...actionLogListPaneEvent, mode: "insert" } as const;
+      const insertModeEvent = {
+        ...actionLogListPaneEvent,
+        mode: "insert",
+      } as const;
       switch (event.code) {
         case "Tab": {
           if (!shiftKey) {
@@ -107,7 +123,11 @@ export function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
         case "Backspace": {
           if (shiftKey || isComposing || ctx.store.actionLogListPane.focus !== "text") break;
 
-          ctx.emitEvent({ ...insertModeEvent, type: "delete", preventDefault: () => event.preventDefault() });
+          ctx.emitEvent({
+            ...insertModeEvent,
+            type: "delete",
+            preventDefault: () => event.preventDefault(),
+          });
 
           break;
         }

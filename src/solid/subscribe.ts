@@ -46,7 +46,10 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
   return resource;
 }
 
-export function createSubscribeWithSignal<Value, InitialValue>(subscriber: (setValue: (value: Value) => void) => void, initialValue: InitialValue) {
+export function createSubscribeWithSignal<Value, InitialValue>(
+  subscriber: (setValue: (value: Value) => void) => void,
+  initialValue: InitialValue
+) {
   const [signal, setSignal] = createSignal<Value | InitialValue>(initialValue);
 
   createEffect(() => {

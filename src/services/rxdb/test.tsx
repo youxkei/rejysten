@@ -27,5 +27,9 @@ export async function createRxDBServiceForTest(tid: string) {
 }
 
 export function RxDBServiceProviderForTest(props: { tid: string; children: JSXElement }) {
-  return <RxDBServiceProvider databaseCreator={createDatabaseCreatorForTest(props.tid)}>{props.children}</RxDBServiceProvider>;
+  return (
+    <RxDBServiceProvider databaseCreator={createDatabaseCreatorForTest(props.tid)}>
+      {props.children}
+    </RxDBServiceProvider>
+  );
 }
