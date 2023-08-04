@@ -121,7 +121,7 @@ if (import.meta.vitest) {
     });
 
     test("insert mode", async (test) => {
-      const { container, unmount, findByDisplayValue } = await render(
+      const { container, unmount, getByDisplayValue } = await render(
         test,
         async ({ rxdb: { collections }, store: { updateStore } }) => {
           await collections.actionLogs.insert({
@@ -158,7 +158,7 @@ if (import.meta.vitest) {
 
       test.expect(shortenClassName(container)).toMatchSnapshot();
 
-      const input = await findByDisplayValue<HTMLInputElement>("item1_2");
+      const input = getByDisplayValue<HTMLInputElement>("item1_2");
       test.expect(input.selectionStart).toBe(3);
       test.expect(input.selectionEnd).toBe(3);
 
@@ -182,7 +182,7 @@ if (import.meta.vitest) {
       ])("$name", ({ key, wantCursorPosition }) => {
         test("assert", async (test) => {
           const user = userEvent.setup();
-          const { container, unmount, findByDisplayValue } = await render(
+          const { container, unmount, lock, getByDisplayValue } = await render(
             test,
             async ({ rxdb: { collections }, store: { updateStore } }) => {
               await collections.actionLogs.insert({
@@ -209,8 +209,9 @@ if (import.meta.vitest) {
           );
 
           await user.keyboard(key);
+          await waitLockRelease(lock);
 
-          const input = await findByDisplayValue<HTMLInputElement>("item1");
+          const input = getByDisplayValue<HTMLInputElement>("item1");
 
           test.expect(shortenClassName(container)).toMatchSnapshot("after press " + key);
           test.expect(input.selectionStart).toBe(wantCursorPosition);
@@ -226,7 +227,7 @@ if (import.meta.vitest) {
       ])("$name", ({ key }) => {
         test("assert", async (test) => {
           const user = userEvent.setup();
-          const { container, unmount, findByRole } = await render(
+          const { container, unmount, lock, getByRole } = await render(
             test,
             async ({ rxdb: { collections }, store: { updateStore } }) => {
               await collections.actionLogs.insert({
@@ -253,8 +254,9 @@ if (import.meta.vitest) {
           );
 
           await user.keyboard(key);
+          await waitLockRelease(lock);
 
-          const input = await findByRole<HTMLInputElement>("textbox");
+          const input = getByRole<HTMLInputElement>("textbox");
 
           test.expect(shortenClassName(container)).toMatchSnapshot("after press " + key);
           test.expect(input.selectionStart).toBe(0);
@@ -320,7 +322,7 @@ if (import.meta.vitest) {
           const cursorPosition = Math.floor(Math.random() * ("item3".length + 1));
 
           const user = userEvent.setup();
-          const { container, unmount, lock, findByDisplayValue } = await render(
+          const { container, unmount, lock, getByDisplayValue } = await render(
             test,
             async ({ rxdb: { collections }, store: { updateStore } }) => {
               await collections.actionLogs.insert({
@@ -353,7 +355,7 @@ if (import.meta.vitest) {
           await user.keyboard(key);
           await waitLockRelease(lock);
 
-          const input = await findByDisplayValue<HTMLInputElement>("item1_2");
+          const input = getByDisplayValue<HTMLInputElement>("item1_2");
 
           test.expect(shortenClassName(container)).toMatchSnapshot("after press " + key);
           test.expect(input.selectionStart).toBe(cursorPosition);
@@ -365,7 +367,7 @@ if (import.meta.vitest) {
 
       test("press Backspace to remove a character", async (test) => {
         const user = userEvent.setup();
-        const { container, unmount, findByDisplayValue } = await render(
+        const { container, unmount, lock, getByDisplayValue } = await render(
           test,
           async ({ rxdb: { collections }, store: { updateStore } }) => {
             await collections.actionLogs.insert({
@@ -394,8 +396,9 @@ if (import.meta.vitest) {
         );
 
         await user.keyboard("{Backspace}");
+        await waitLockRelease(lock);
 
-        const input = await findByDisplayValue<HTMLInputElement>("itm2");
+        const input = getByDisplayValue<HTMLInputElement>("itm2");
 
         test.expect(shortenClassName(container)).toMatchSnapshot("after press Backspace");
         test.expect(input.selectionStart).toBe(2);
@@ -429,7 +432,7 @@ if (import.meta.vitest) {
         ])("$name", ({ items, currentItem }) => {
           test("assert", async (test) => {
             const user = userEvent.setup();
-            const { container, unmount, lock, findByDisplayValue } = await render(
+            const { container, unmount, lock, getByDisplayValue } = await render(
               test,
               async ({ rxdb: { collections }, store: { updateStore } }) => {
                 await collections.actionLogs.insert({
@@ -453,9 +456,12 @@ if (import.meta.vitest) {
 
             await user.keyboard("{Backspace}");
             await waitLockRelease(lock);
-            await findByDisplayValue<HTMLInputElement>(currentItem);
+
+            const input = getByDisplayValue<HTMLInputElement>(currentItem);
 
             test.expect(shortenClassName(container)).toMatchSnapshot("after press Backspace");
+            test.expect(input.selectionStart).toBe(0);
+            test.expect(input.selectionEnd).toBe(0);
 
             unmount();
           });
@@ -465,7 +471,7 @@ if (import.meta.vitest) {
       describe("press Backspace to remove item", () => {
         test("cursor is on the left edge, no children, has above item: item is removed and move to above item", async (test) => {
           const user = userEvent.setup();
-          const { container, unmount, lock, findByDisplayValue } = await render(
+          const { container, unmount, lock, getByDisplayValue } = await render(
             test,
             async ({ rxdb: { collections }, store: { updateStore } }) => {
               await collections.actionLogs.insert({
@@ -494,9 +500,12 @@ if (import.meta.vitest) {
 
           await user.keyboard("{Backspace}");
           await waitLockRelease(lock);
-          await findByDisplayValue<HTMLInputElement>("item1item2");
+
+          const input = getByDisplayValue<HTMLInputElement>("item1item2");
 
           test.expect(shortenClassName(container)).toMatchSnapshot("after press Backspace");
+          test.expect(input.selectionStart).toBe(5);
+          test.expect(input.selectionEnd).toBe(5);
 
           unmount();
         });
