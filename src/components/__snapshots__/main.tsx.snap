@@ -1,5 +1,55 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`PC operations > keyboard operations > in ActionLogPane, press Backspace to remove empty item and move to ActionLogListPane > after press Backspace 1`] = `
+<div>
+  <div>
+    <input />
+  </div>
+  <button>
+    start sync
+  </button>
+  <pre />
+  <div
+    class="actionLogList_container"
+  >
+    
+    
+    
+    <div
+      class="actionLogList_separator"
+    >
+      tentative
+    </div>
+    <div
+      class="actionLogList_actionLog_container selected"
+    >
+      <div
+        class="actionLogList_actionLog_startAt"
+      >
+        N/A
+      </div>
+      <div
+        class="actionLogList_actionLog_endAt"
+      >
+        N/A
+      </div>
+      <div
+        class="actionLogList_actionLog_duration"
+      >
+        N/A
+      </div>
+      <div
+        class="actionLogList_actionLog_text"
+      >
+        <input
+          class="editor"
+        />
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
 exports[`PC operations > keyboard operations > in ActionLogPane, press h to move to ActionLogListPane > after press h 1`] = `
 <div>
   <div>
@@ -68,38 +118,6 @@ exports[`PC operations > keyboard operations > in ActionLogPane, press h to move
     </div>
     
     
-  </div>
-</div>
-`;
-
-exports[`PC operations > keyboard operations > in ActionLogPane, press h to move to ActionLogListPane > initial 1`] = `
-<div>
-  <div>
-    <input />
-  </div>
-  <button>
-    start sync
-  </button>
-  <pre />
-  log1
-  <div
-    class="bulletList_container"
-  >
-    <div
-      class="bulletList_bullet"
-    >
-      •
-    </div>
-    <div
-      class="bulletList_item selected"
-    >
-      <span>
-        item1
-      </span>
-    </div>
-    <div
-      class="bulletList_child"
-    />
   </div>
 </div>
 `;

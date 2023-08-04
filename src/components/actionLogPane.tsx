@@ -391,10 +391,6 @@ if (import.meta.vitest) {
 
           unmount();
         });
-
-        test.skip("text is empty, no parent, no children, no above item, no below item: item is removed and move to ActionLogListPane", () => {
-          // TODO
-        });
       });
 
       describe("press Delete to remove below item", () => {
