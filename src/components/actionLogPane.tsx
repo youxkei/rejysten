@@ -3,9 +3,10 @@ import type { TestContext } from "vitest";
 
 import userEvent from "@testing-library/user-event";
 import { Ulid } from "id128";
-import { Show, onMount } from "solid-js";
+import { Match, Show, Switch, onMount } from "solid-js";
 
 import { ItemListChildren } from "@/components/itemList";
+import { useEventService } from "@/services/event";
 import { createSignalWithLock, runWithLock, useLockService, waitLockRelease } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
 import { getBottomItem } from "@/services/rxdb/collections/listItem";
@@ -13,9 +14,134 @@ import { makeListItems } from "@/services/rxdb/collections/test";
 import { createSubscribeSignal } from "@/services/rxdb/subscribe";
 import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
+import { styles } from "@/styles.css";
 import { shortenClassName } from "@/test";
 
 export function ActionLogPane() {
+  return (
+    <div class={styles.actionLogPane.container}>
+      <ActionLog />
+      <Buttons />
+    </div>
+  );
+}
+
+function Buttons() {
+  const { store } = useStoreService();
+  const lock = useLockService();
+  const { emitEvent } = useEventService();
+
+  const mode$ = createSignalWithLock(lock, () => store.mode, "normal");
+
+  return (
+    <div class={styles.actionLogListPane.buttons}>
+      <Switch>
+        <Match when={mode$() === "normal"}>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({ pane: "actionLog", mode: "normal", type: "moveAbove" });
+            }}
+          >
+            ⬆
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({ pane: "actionLog", mode: "normal", type: "moveBelow" });
+            }}
+          >
+            ⬇
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({ pane: "actionLog", mode: "normal", type: "moveToActionLogListPane" });
+            }}
+          >
+            ⬅
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({ pane: "actionLog", mode: "normal", type: "dedent" });
+            }}
+          >
+            ⏮
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({ pane: "actionLog", mode: "normal", type: "indent" });
+            }}
+          >
+            ⏭
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({
+                pane: "actionLog",
+                mode: "normal",
+                type: "enterInsertMode",
+                cursorPosition: -1,
+              });
+            }}
+          >
+            📝
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({ pane: "actionLog", mode: "normal", type: "addNext" });
+            }}
+          >
+            🆕
+          </button>
+        </Match>
+        <Match when={mode$() === "insert"}>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) =>
+              emitEvent({
+                pane: "actionLog",
+                mode: "insert",
+                type: "delete",
+                preventDefault: () => e.preventDefault(),
+              })
+            }
+          >
+            🗑️
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({ pane: "actionLog", mode: "insert", type: "dedent" });
+            }}
+          >
+            ⏮
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({ pane: "actionLog", mode: "insert", type: "indent" });
+            }}
+          >
+            ⏭
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => emitEvent({ pane: "actionLog", mode: "insert", type: "leaveInsertMode" })}
+          >
+            🔙
+          </button>
+        </Match>
+      </Switch>
+    </div>
+  );
+}
+
+export function ActionLog() {
   const rxdb = useRxDBService();
   const lock = useLockService();
   const { store, updateStore } = useStoreService();
@@ -56,17 +182,19 @@ export function ActionLogPane() {
   );
 
   return (
-    <Show when={actionLog$()}>
-      {(actionLog$) => (
-        <>
-          {actionLog$().text}
-          <ItemListChildren
-            parentId={store.actionLogPane.currentActionLogId}
-            selectedId={store.actionLogPane.currentListItemId}
-          />
-        </>
-      )}
-    </Show>
+    <div class={styles.actionLogPane.actionLog}>
+      <Show when={actionLog$()}>
+        {(actionLog$) => (
+          <>
+            {actionLog$().text}
+            <ItemListChildren
+              parentId={store.actionLogPane.currentActionLogId}
+              selectedId={store.actionLogPane.currentListItemId}
+            />
+          </>
+        )}
+      </Show>
+    </div>
   );
 }
 
@@ -75,7 +203,7 @@ function render(test: TestContext, setup: (services: Services) => Promise<unknow
     test.meta.id,
     (props) => (
       <>
-        <ActionLogPane />
+        <ActionLog />
         {props.children}
       </>
     ),

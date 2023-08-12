@@ -128,6 +128,26 @@ export const styles = {
       },
     },
   },
+
+  actionLogPane: {
+    container: style({
+      display: "grid",
+      gridTemplateRows: "minmax(0, 1fr) auto",
+      gridRowGap: "0.5ch",
+    }),
+    buttons: style({
+      gridRowStart: 2,
+      display: "flex",
+      justifyContent: "space-between",
+
+      fontSize: "120%",
+    }),
+    actionLog: style({
+      gridRowStart: 1,
+      height: "100%",
+      overflow: "auto",
+    }),
+  },
 };
 
 globalStyle("body", {
