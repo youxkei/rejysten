@@ -75,12 +75,12 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
   return (
     <div
       classList={{
-        [styles.actionLogList.actionLog.container]: true,
+        [styles.actionLogListPane.actionLogList.actionLog.container]: true,
         [styles.selected]: isSelected$(),
       }}
       onClick={onClick$()}
     >
-      <div class={styles.actionLogList.actionLog.startAt} onClick={createOnDoubleClick("startAt")}>
+      <div class={styles.actionLogListPane.actionLogList.actionLog.startAt} onClick={createOnDoubleClick("startAt")}>
         <Show
           when={isEditor$() && store.actionLogListPane.focus === "startAt"}
           fallback={epochMsToTimeText(props.actionLog.startAt) || "N/A"}
@@ -88,7 +88,7 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
           <Editor text={store.editor.text} />
         </Show>
       </div>
-      <div class={styles.actionLogList.actionLog.endAt} onClick={createOnDoubleClick("endAt")}>
+      <div class={styles.actionLogListPane.actionLogList.actionLog.endAt} onClick={createOnDoubleClick("endAt")}>
         <Show
           when={isEditor$() && store.actionLogListPane.focus === "endAt"}
           fallback={epochMsToTimeText(props.actionLog.endAt) || "N/A"}
@@ -96,10 +96,10 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
           <Editor text={store.editor.text} />
         </Show>
       </div>
-      <div class={styles.actionLogList.actionLog.duration}>
+      <div class={styles.actionLogListPane.actionLogList.actionLog.duration}>
         {durationTextBetweenEpochMs(props.actionLog.startAt, props.actionLog.endAt) || "N/A"}
       </div>
-      <div class={styles.actionLogList.actionLog.text} onClick={createOnDoubleClick("text")}>
+      <div class={styles.actionLogListPane.actionLogList.actionLog.text} onClick={createOnDoubleClick("text")}>
         <Show when={isEditor$() && store.actionLogListPane.focus === "text"} fallback={props.actionLog.text}>
           <Editor text={props.actionLog.text} />
         </Show>
@@ -109,10 +109,147 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
 }
 
 function DateSeparator(props: { date: Temporal.PlainDate }) {
-  return <div class={styles.actionLogList.separator}>{props.date.toString()}</div>;
+  return <div class={styles.actionLogListPane.actionLogList.separator}>{props.date.toString()}</div>;
+}
+
+function Buttons() {
+  const { store } = useStoreService();
+  const lock = useLockService();
+  const { emitEvent } = useEventService();
+
+  const mode$ = createSignalWithLock(lock, () => store.mode, "normal");
+
+  return (
+    <div class={styles.actionLogListPane.buttons}>
+      <Switch>
+        <Match when={mode$() === "normal"}>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({ pane: "actionLogList", mode: "normal", type: "moveAbove" });
+            }}
+          >
+            ⬆
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({ pane: "actionLogList", mode: "normal", type: "moveBelow" });
+            }}
+          >
+            ⬇
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({ pane: "actionLogList", mode: "normal", type: "moveToActionLogPane" });
+            }}
+          >
+            ➡
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({
+                pane: "actionLogList",
+                mode: "normal",
+                type: "enterInsertMode",
+                focus: "text",
+                cursorPosition: -1,
+              });
+            }}
+          >
+            📝
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({
+                pane: "actionLogList",
+                mode: "normal",
+                type: "enterInsertMode",
+                focus: "startAt",
+                cursorPosition: -1,
+              });
+            }}
+          >
+            ⏪
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({
+                pane: "actionLogList",
+                mode: "normal",
+                type: "enterInsertMode",
+                focus: "endAt",
+                cursorPosition: -1,
+              });
+            }}
+          >
+            ⏩
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({ pane: "actionLogList", mode: "normal", type: "start" });
+            }}
+          >
+            ▶️
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({ pane: "actionLogList", mode: "normal", type: "finish" });
+            }}
+          >
+            ⏹️
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              emitEvent({ pane: "actionLogList", mode: "normal", type: "add" });
+            }}
+          >
+            🆕
+          </button>
+        </Match>
+        <Match when={mode$() === "insert"}>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) =>
+              emitEvent({
+                pane: "actionLogList",
+                mode: "insert",
+                type: "delete",
+                preventDefault: () => e.preventDefault(),
+              })
+            }
+          >
+            🗑️
+          </button>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => emitEvent({ pane: "actionLogList", mode: "insert", type: "leaveInsertMode" })}
+          >
+            🔙
+          </button>
+        </Match>
+      </Switch>
+    </div>
+  );
 }
 
 export function ActionLogListPane() {
+  return (
+    <div class={styles.actionLogListPane.container}>
+      <ActionLogList />
+      <Buttons />
+    </div>
+  );
+}
+
+function ActionLogList() {
   const { collections } = useRxDBService();
   const lock = useLockService();
 
@@ -177,7 +314,7 @@ export function ActionLogListPane() {
   );
 
   return (
-    <div class={styles.actionLogList.container}>
+    <div class={styles.actionLogListPane.actionLogList.container}>
       <Index each={finishedActionLogsWithDateSeparators$()}>
         {(actionLogOrDateSeparator) => (
           <Switch>
@@ -192,12 +329,12 @@ export function ActionLogListPane() {
       </Index>
 
       <Show when={ongoingActionLogs$().length > 0}>
-        <div class={styles.actionLogList.separator}>ongoing</div>
+        <div class={styles.actionLogListPane.actionLogList.separator}>ongoing</div>
       </Show>
       <Index each={ongoingActionLogs$()}>{(actionLog) => <ActionLog actionLog={actionLog()} />}</Index>
 
       <Show when={tentativeActionLogs$().length > 0}>
-        <div class={styles.actionLogList.separator}>tentative</div>
+        <div class={styles.actionLogListPane.actionLogList.separator}>tentative</div>
       </Show>
       <Index each={tentativeActionLogs$()}>{(actionLog) => <ActionLog actionLog={actionLog()} />}</Index>
     </div>
@@ -211,7 +348,7 @@ if (import.meta.vitest) {
         ctx.meta.id,
         (props) => (
           <>
-            <ActionLogListPane />
+            <ActionLogList />
             {props.children}
           </>
         ),
@@ -235,7 +372,7 @@ if (import.meta.vitest) {
         ctx.meta.id,
         (props) => (
           <>
-            <ActionLogListPane />
+            <ActionLogList />
             {props.children}
           </>
         ),
@@ -266,7 +403,7 @@ if (import.meta.vitest) {
         ctx.meta.id,
         (props) => (
           <>
-            <ActionLogListPane />
+            <ActionLogList />
             {props.children}
           </>
         ),
@@ -303,7 +440,7 @@ if (import.meta.vitest) {
         ctx.meta.id,
         (props) => (
           <>
-            <ActionLogListPane />
+            <ActionLogList />
             {props.children}
           </>
         ),
@@ -350,7 +487,7 @@ if (import.meta.vitest) {
         ctx.meta.id,
         (props) => (
           <>
-            <ActionLogListPane />
+            <ActionLogList />
             {props.children}
           </>
         ),
@@ -414,7 +551,7 @@ if (import.meta.vitest) {
         ctx.meta.id,
         (props) => (
           <>
-            <ActionLogListPane />
+            <ActionLogList />
             {props.children}
           </>
         ),
@@ -481,7 +618,7 @@ if (import.meta.vitest) {
         ctx.meta.id,
         (props) => (
           <>
-            <ActionLogListPane />
+            <ActionLogList />
             {props.children}
           </>
         ),

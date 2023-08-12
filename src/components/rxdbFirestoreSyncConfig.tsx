@@ -11,7 +11,7 @@ export function RxdbFirestoreSyncConfig() {
   });
 
   return (
-    <>
+    <div>
       <div>
         <input onInput={(e) => setConfigYAMLWithStopSyncing(e.currentTarget.value)} value={configYAML$()} />
       </div>
@@ -27,6 +27,6 @@ export function RxdbFirestoreSyncConfig() {
         start sync
       </button>
       <pre>{errors$().join("\n")}</pre>
-    </>
+    </div>
   );
 }

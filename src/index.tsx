@@ -33,6 +33,10 @@ function App() {
   );
 }
 
+if ("virtualKeyboard" in navigator) {
+  (navigator as { virtualKeyboard: { overlaysContent: boolean } }).virtualKeyboard.overlaysContent = true;
+}
+
 const root = document.getElementById("root");
 if (root) {
   render(() => <App />, root);

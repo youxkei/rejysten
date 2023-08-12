@@ -3,81 +3,81 @@
 exports[`RxDB changes > endAt changes > endAt of ongoing changed 1`] = `
 <div>
   <div
-    class="actionLogList_container"
+    class="actionLogListPane_actionLogList_container"
   >
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       1970-01-01
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         finished 1
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         ongoing
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         finished 2
       </div>
@@ -93,86 +93,86 @@ exports[`RxDB changes > endAt changes > endAt of ongoing changed 1`] = `
 exports[`RxDB changes > endAt changes > initial 1`] = `
 <div>
   <div
-    class="actionLogList_container"
+    class="actionLogListPane_actionLogList_container"
   >
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       1970-01-01
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         finished 1
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         finished 2
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       ongoing
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         ongoing
       </div>
@@ -186,163 +186,163 @@ exports[`RxDB changes > endAt changes > initial 1`] = `
 exports[`RxDB changes > startAt changes > initial 1`] = `
 <div>
   <div
-    class="actionLogList_container"
+    class="actionLogListPane_actionLogList_container"
   >
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       1970-01-01
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         finished 1
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         finished 2
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       ongoing
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         ongoing 1
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         ongoing 2
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       tentative
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         tentative 1
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         tentative 2
       </div>
@@ -354,163 +354,163 @@ exports[`RxDB changes > startAt changes > initial 1`] = `
 exports[`RxDB changes > startAt changes > startAt of finished 2 changed 1`] = `
 <div>
   <div
-    class="actionLogList_container"
+    class="actionLogListPane_actionLogList_container"
   >
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       1970-01-01
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         finished 2
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         finished 1
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       ongoing
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         ongoing 1
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         ongoing 2
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       tentative
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         tentative 1
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         tentative 2
       </div>
@@ -522,163 +522,163 @@ exports[`RxDB changes > startAt changes > startAt of finished 2 changed 1`] = `
 exports[`RxDB changes > startAt changes > startAt of ongoing 2 changed 1`] = `
 <div>
   <div
-    class="actionLogList_container"
+    class="actionLogListPane_actionLogList_container"
   >
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       1970-01-01
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         finished 2
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         finished 1
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       ongoing
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         ongoing 2
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         ongoing 1
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       tentative
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         tentative 1
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         tentative 2
       </div>
@@ -690,163 +690,163 @@ exports[`RxDB changes > startAt changes > startAt of ongoing 2 changed 1`] = `
 exports[`RxDB changes > startAt changes > startAt of tentative 2 changed 1`] = `
 <div>
   <div
-    class="actionLogList_container"
+    class="actionLogListPane_actionLogList_container"
   >
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       1970-01-01
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         finished 2
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         finished 1
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       ongoing
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         ongoing 2
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         tentative 2
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         ongoing 1
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       tentative
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         tentative 1
       </div>
@@ -858,91 +858,91 @@ exports[`RxDB changes > startAt changes > startAt of tentative 2 changed 1`] = `
 exports[`RxDB changes > text changes > initial 1`] = `
 <div>
   <div
-    class="actionLogList_container"
+    class="actionLogListPane_actionLogList_container"
   >
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       1970-01-01
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         finished
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       ongoing
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         ongoing
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       tentative
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         tentative
       </div>
@@ -954,91 +954,91 @@ exports[`RxDB changes > text changes > initial 1`] = `
 exports[`RxDB changes > text changes > text of finished changed 1`] = `
 <div>
   <div
-    class="actionLogList_container"
+    class="actionLogListPane_actionLogList_container"
   >
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       1970-01-01
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         changed finished
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       ongoing
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         ongoing
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       tentative
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         tentative
       </div>
@@ -1050,91 +1050,91 @@ exports[`RxDB changes > text changes > text of finished changed 1`] = `
 exports[`RxDB changes > text changes > text of ongoing changed 1`] = `
 <div>
   <div
-    class="actionLogList_container"
+    class="actionLogListPane_actionLogList_container"
   >
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       1970-01-01
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         changed finished
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       ongoing
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         changed ongoing
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       tentative
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         tentative
       </div>
@@ -1146,91 +1146,91 @@ exports[`RxDB changes > text changes > text of ongoing changed 1`] = `
 exports[`RxDB changes > text changes > text of tentative changed 1`] = `
 <div>
   <div
-    class="actionLogList_container"
+    class="actionLogListPane_actionLogList_container"
   >
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       1970-01-01
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         changed finished
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       ongoing
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         changed ongoing
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       tentative
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         changed tentative
       </div>
@@ -1242,91 +1242,91 @@ exports[`RxDB changes > text changes > text of tentative changed 1`] = `
 exports[`display > finished actionLog is selected 1`] = `
 <div>
   <div
-    class="actionLogList_container"
+    class="actionLogListPane_actionLogList_container"
   >
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       1970-01-01
     </div>
     <div
-      class="actionLogList_actionLog_container selected"
+      class="actionLogListPane_actionLogList_actionLog_container selected"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         finished
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       ongoing
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         ongoing
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       tentative
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         tentative
       </div>
@@ -1338,105 +1338,105 @@ exports[`display > finished actionLog is selected 1`] = `
 exports[`display > finished actionLogs are sorted by startAt 1`] = `
 <div>
   <div
-    class="actionLogList_container"
+    class="actionLogListPane_actionLogList_container"
   >
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       1970-01-01
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         3
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         4
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         2
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         1
       </div>
@@ -1452,206 +1452,206 @@ exports[`display > finished actionLogs are sorted by startAt 1`] = `
 exports[`display > ongoing actionLogs follows finished actionLogs and sorted by startAt 1`] = `
 <div>
   <div
-    class="actionLogList_container"
+    class="actionLogListPane_actionLogList_container"
   >
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       1970-01-01
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         7
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         8
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         6
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         5
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       ongoing
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         4
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         1
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         3
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         2
       </div>
@@ -1665,307 +1665,307 @@ exports[`display > ongoing actionLogs follows finished actionLogs and sorted by 
 exports[`display > tentative actionLogs follows ongoing actionLogs and sorted by id 1`] = `
 <div>
   <div
-    class="actionLogList_container"
+    class="actionLogListPane_actionLogList_container"
   >
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       1970-01-01
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         12
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         09
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         11
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         00:00
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         10
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       ongoing
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         07
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         08
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         06
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         1970-01-01 09:00:00
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         05
       </div>
     </div>
     <div
-      class="actionLogList_separator"
+      class="actionLogListPane_actionLogList_separator"
     >
       tentative
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         01
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         02
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         03
       </div>
     </div>
     <div
-      class="actionLogList_actionLog_container"
+      class="actionLogListPane_actionLogList_actionLog_container"
     >
       <div
-        class="actionLogList_actionLog_startAt"
+        class="actionLogListPane_actionLogList_actionLog_startAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_endAt"
+        class="actionLogListPane_actionLogList_actionLog_endAt"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_duration"
+        class="actionLogListPane_actionLogList_actionLog_duration"
       >
         N/A
       </div>
       <div
-        class="actionLogList_actionLog_text"
+        class="actionLogListPane_actionLogList_actionLog_text"
       >
         04
       </div>

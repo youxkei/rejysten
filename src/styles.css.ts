@@ -72,39 +72,60 @@ export const styles = {
     }),
   },
 
-  actionLogList: {
+  main: style({
+    display: "grid",
+    gridTemplateRows: "auto minmax(0, 1fr)",
+    height: "100%",
+  }),
+
+  actionLogListPane: {
     container: style({
       display: "grid",
-      gridTemplateColumns: "auto",
+      gridTemplateRows: "minmax(0, 1fr) auto",
       gridRowGap: "0.5ch",
     }),
-    separator: style({
-      gridColumn: "1 / -1",
-    }),
-    actionLog: {
-      container: style({
-        display: "grid",
-        gridColumn: "1 / -1",
-        gridTemplateColumns: "18ch 18ch max-content auto",
-        gridTemplateRows: "1.5em 1.5em",
-        gridColumnGap: "0.5ch",
+    buttons: style({
+      gridRowStart: 2,
+      display: "flex",
+      justifyContent: "space-between",
 
-        boxSizing: "border-box",
-        marginLeft: "1ch",
+      fontSize: "120%",
+    }),
+    actionLogList: {
+      container: style({
+        display: "flex",
+        flexFlow: "column nowrap",
+        gap: "0.5ch",
+        height: "100%",
+        overflow: "auto",
       }),
-      startAt: style({
+      separator: style({
         gridColumnStart: 1,
       }),
-      endAt: style({
-        gridColumnStart: 2,
-      }),
-      duration: style({
-        gridColumnStart: 3,
-      }),
-      text: style({
-        gridRowStart: 2,
-        gridColumn: "1 / -1",
-      }),
+      actionLog: {
+        container: style({
+          display: "grid",
+          gridTemplateColumns: "18ch 18ch max-content auto",
+          gridTemplateRows: "1.5em 1.5em",
+          gridColumnGap: "0.5ch",
+
+          boxSizing: "border-box",
+          marginLeft: "1ch",
+        }),
+        startAt: style({
+          gridColumnStart: 1,
+        }),
+        endAt: style({
+          gridColumnStart: 2,
+        }),
+        duration: style({
+          gridColumnStart: 3,
+        }),
+        text: style({
+          gridRowStart: 2,
+          gridColumn: "1 / -1",
+        }),
+      },
     },
   },
 };
@@ -113,4 +134,19 @@ globalStyle("body", {
   fontFamily: "sans-serif",
   color: nord[5],
   backgroundColor: nord[0],
+
+  boxSizing: "border-box",
+  height: "calc(100svh - env(keyboard-inset-height))",
+  margin: 0,
+  padding: 8,
+});
+
+globalStyle("button", {
+  fontFamily: "inherit",
+  fontSize: "inherit",
+});
+
+globalStyle("#root", {
+  width: "100%",
+  height: "100%",
 });

@@ -7,6 +7,7 @@ import { RxdbFirestoreSyncConfig } from "@/components/rxdbFirestoreSyncConfig";
 import { createSignalWithLock, useLockService, waitLockRelease } from "@/services/lock";
 import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
+import { styles } from "@/styles.css";
 import { shortenClassName } from "@/test";
 
 export function Main() {
@@ -16,7 +17,7 @@ export function Main() {
   const currentPane$ = createSignalWithLock(lock, () => store.currentPane, "");
 
   return (
-    <>
+    <div class={styles.main}>
       <RxdbFirestoreSyncConfig />
       <Switch>
         <Match when={currentPane$() == "actionLog"}>
@@ -26,7 +27,7 @@ export function Main() {
           <ActionLogListPane />
         </Match>
       </Switch>
-    </>
+    </div>
   );
 }
 
