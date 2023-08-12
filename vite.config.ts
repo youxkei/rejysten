@@ -6,6 +6,7 @@ import tsconfigPaths from "vite-tsconfig-paths";
 // @ts-ignore
 import nodePolyfills from "vite-plugin-node-stdlib-browser";
 import devtools from "solid-devtools/vite";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   server: {
@@ -24,6 +25,13 @@ export default defineConfig({
     tsconfigPaths(),
     devtools({
       autoname: true,
+    }),
+    VitePWA({
+      registerType: "autoUpdate",
+      manifest: {
+        name: "Rejysten",
+        icons: [{ src: "logo.svg", sizes: "512x512", type: "image/svg+xml" }],
+      },
     }),
     ...(process.env.VITEST ? [] : [nodePolyfills()]),
   ],
