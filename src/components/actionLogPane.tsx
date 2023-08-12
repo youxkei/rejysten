@@ -141,7 +141,7 @@ function Buttons() {
   );
 }
 
-export function ActionLog() {
+function ActionLog() {
   const rxdb = useRxDBService();
   const lock = useLockService();
   const { store, updateStore } = useStoreService();

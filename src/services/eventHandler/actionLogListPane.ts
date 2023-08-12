@@ -18,16 +18,15 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
   const currentActionLog = await ctx.rxdb.collections.actionLogs
     .findOne(ctx.store.store.actionLogListPane.currentActionLogId)
     .exec();
-  if (!currentActionLog) return;
 
   switch (event.mode) {
     case "normal": {
-      if (ctx.store.store.mode !== "normal") {
-        return;
-      }
+      if (ctx.store.store.mode !== "normal") break;
 
       switch (event.type) {
         case "moveAbove": {
+          if (!currentActionLog) break;
+
           const aboveActionLog = await getAboveLog(ctx.rxdb, currentActionLog);
           if (aboveActionLog) {
             await ctx.store.updateStore((store) => {
@@ -39,6 +38,8 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
         }
 
         case "moveBelow": {
+          if (!currentActionLog) break;
+
           const belowActionLog = await getBelowLog(ctx.rxdb, currentActionLog);
           if (belowActionLog) {
             await ctx.store.updateStore((store) => {
@@ -55,7 +56,7 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
           await ctx.rxdb.collections.actionLogs.insert({
             id,
             text: "",
-            startAt: currentActionLog.endAt || (ctx.now / 1000) * 1000,
+            startAt: (currentActionLog?.endAt ?? 0) || (ctx.now / 1000) * 1000,
             endAt: 0,
             updatedAt: ctx.now,
           });
@@ -82,6 +83,8 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
         }
 
         case "enterInsertMode": {
+          if (!currentActionLog) break;
+
           await ctx.store.updateStore((store) => {
             store.mode = "insert";
             store.actionLogListPane.focus = event.focus;
@@ -104,6 +107,7 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
         }
 
         case "start": {
+          if (!currentActionLog) break;
           if (currentActionLog.startAt !== 0) break;
 
           const aboveActionLog = await getAboveLog(ctx.rxdb, currentActionLog);
@@ -124,6 +128,7 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
         }
 
         case "finish": {
+          if (!currentActionLog) break;
           if (currentActionLog.endAt !== 0) break;
 
           await currentActionLog.patch({
@@ -135,6 +140,8 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
         }
 
         case "moveToActionLogPane": {
+          if (!currentActionLog) break;
+
           await ctx.store.updateStore((store) => {
             store.currentPane = "actionLog";
             store.actionLogPane.currentListItemId = "";
@@ -153,9 +160,8 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
     }
 
     case "insert": {
-      if (ctx.store.store.mode !== "insert") {
-        return;
-      }
+      if (ctx.store.store.mode !== "insert") break;
+      if (!currentActionLog) break;
 
       switch (event.type) {
         case "changeEditorText": {
@@ -258,8 +264,6 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
         }
 
         case "delete": {
-          if (currentActionLog.text !== "") break;
-
           const items = await ctx.rxdb.collections.listItems
             .find({ selector: { parentId: currentActionLog.id } })
             .exec();
