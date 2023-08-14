@@ -66,10 +66,12 @@ if (import.meta.vitest) {
           {props.children}
         </>
       ),
-      async ({ store: { updateStore } }) => {
-        await updateStore((store) => {
-          store.mode = "insert";
+      ({ store: { updateState } }) => {
+        updateState((state) => {
+          state.mode = "insert";
         });
+
+        return Promise.resolve();
       }
     );
 

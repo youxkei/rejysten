@@ -11,10 +11,10 @@ import { styles } from "@/styles.css";
 import { shortenClassName } from "@/test";
 
 export function Main() {
-  const { store } = useStoreService();
+  const { state } = useStoreService();
   const lock = useLockService();
 
-  const currentPane$ = createSignalWithLock(lock, () => store.currentPane, "");
+  const currentPane$ = createSignalWithLock(lock, () => state.currentPane, "");
 
   return (
     <div class={styles.main}>
@@ -44,7 +44,7 @@ if (import.meta.vitest) {
               {props.children}
             </>
           ),
-          async ({ rxdb: { collections }, store: { updateStore } }) => {
+          async ({ rxdb: { collections }, store: { updateState } }) => {
             // prettier-ignore
             await collections.actionLogs.bulkInsert([
               { id: "log1", text: "log1", startAt: 1000, endAt: 0, updatedAt: 0 },
@@ -59,11 +59,11 @@ if (import.meta.vitest) {
               updatedAt: 0,
             });
 
-            await updateStore((store) => {
-              store.currentPane = "actionLog";
-              store.actionLogPane.currentActionLogId = "log1";
-              store.actionLogPane.currentListItemId = "item1";
-              store.actionLogListPane.currentActionLogId = "log1";
+            updateState((state) => {
+              state.currentPane = "actionLog";
+              state.actionLogPane.currentActionLogId = "log1";
+              state.actionLogPane.currentListItemId = "item1";
+              state.actionLogListPane.currentActionLogId = "log1";
             });
           }
         );
@@ -86,7 +86,7 @@ if (import.meta.vitest) {
               {props.children}
             </>
           ),
-          async ({ rxdb: { collections }, store: { updateStore } }) => {
+          async ({ rxdb: { collections }, store: { updateState } }) => {
             await collections.actionLogs.insert({
               id: "log1",
               text: "log1",
@@ -103,13 +103,13 @@ if (import.meta.vitest) {
               updatedAt: 0,
             });
 
-            await updateStore((store) => {
-              store.currentPane = "actionLog";
-              store.mode = "insert";
-              store.editor.cursorPosition = 0;
-              store.actionLogPane.currentActionLogId = "log1";
-              store.actionLogPane.currentListItemId = "item1";
-              store.actionLogListPane.currentActionLogId = "log1";
+            updateState((state) => {
+              state.currentPane = "actionLog";
+              state.mode = "insert";
+              state.editor.cursorPosition = 0;
+              state.actionLogPane.currentActionLogId = "log1";
+              state.actionLogPane.currentListItemId = "item1";
+              state.actionLogListPane.currentActionLogId = "log1";
             });
           }
         );

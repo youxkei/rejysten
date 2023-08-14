@@ -10,7 +10,7 @@ import { emitActionLogPaneEvent } from "@/services/eventEmitter/actionLogPane";
 import { useStoreService } from "@/services/store";
 
 export function EventEmitterServiceProvider(props: { children: JSXElement }) {
-  const { store } = useStoreService();
+  const { state } = useStoreService();
   const { emitEvent } = useEventService();
 
   const keyDownEvent$ = useKeyDownEvent();
@@ -26,9 +26,9 @@ export function EventEmitterServiceProvider(props: { children: JSXElement }) {
     }
 
     untrack(() => {
-      const ctx = { store, emitEvent };
+      const ctx = { state, emitEvent };
 
-      switch (store.currentPane) {
+      switch (state.currentPane) {
         case "actionLogList": {
           emitActionLogListPaneEvent(ctx, event);
           break;
@@ -40,7 +40,7 @@ export function EventEmitterServiceProvider(props: { children: JSXElement }) {
         }
 
         default: {
-          throw new NeverErrorWithFields("unknown store.currentPane", { store }, store.currentPane);
+          throw new NeverErrorWithFields("unknown store.currentPane", { store: state }, state.currentPane);
         }
       }
     });

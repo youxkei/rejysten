@@ -31,16 +31,16 @@ function isDateSeparator(
 }
 
 function ActionLog(props: { actionLog: ActionLogDocument }) {
-  const { store } = useStoreService();
+  const { state } = useStoreService();
   const lock = useLockService();
   const { emitEvent } = useEventService();
 
   const isSelected$ = createSignalWithLock(
     lock,
-    () => props.actionLog.id === store.actionLogListPane.currentActionLogId,
+    () => props.actionLog.id === state.actionLogListPane.currentActionLogId,
     false
   );
-  const isEditor$ = createSignalWithLock(lock, () => isSelected$() && store.mode === "insert", false);
+  const isEditor$ = createSignalWithLock(lock, () => isSelected$() && state.mode === "insert", false);
 
   const onClick$ = () => {
     const actionLogId = props.actionLog.id;
@@ -82,25 +82,25 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
     >
       <div class={styles.actionLogListPane.actionLogList.actionLog.startAt} onClick={createOnDoubleClick("startAt")}>
         <Show
-          when={isEditor$() && store.actionLogListPane.focus === "startAt"}
+          when={isEditor$() && state.actionLogListPane.focus === "startAt"}
           fallback={epochMsToTimeText(props.actionLog.startAt) || "N/A"}
         >
-          <Editor text={store.editor.text} />
+          <Editor text={state.editor.text} />
         </Show>
       </div>
       <div class={styles.actionLogListPane.actionLogList.actionLog.endAt} onClick={createOnDoubleClick("endAt")}>
         <Show
-          when={isEditor$() && store.actionLogListPane.focus === "endAt"}
+          when={isEditor$() && state.actionLogListPane.focus === "endAt"}
           fallback={epochMsToTimeText(props.actionLog.endAt) || "N/A"}
         >
-          <Editor text={store.editor.text} />
+          <Editor text={state.editor.text} />
         </Show>
       </div>
       <div class={styles.actionLogListPane.actionLogList.actionLog.duration}>
         {durationTextBetweenEpochMs(props.actionLog.startAt, props.actionLog.endAt) || "N/A"}
       </div>
       <div class={styles.actionLogListPane.actionLogList.actionLog.text} onClick={createOnDoubleClick("text")}>
-        <Show when={isEditor$() && store.actionLogListPane.focus === "text"} fallback={props.actionLog.text}>
+        <Show when={isEditor$() && state.actionLogListPane.focus === "text"} fallback={props.actionLog.text}>
           <Editor text={props.actionLog.text} />
         </Show>
       </div>
@@ -113,11 +113,11 @@ function DateSeparator(props: { date: Temporal.PlainDate }) {
 }
 
 function Buttons() {
-  const { store } = useStoreService();
+  const { state } = useStoreService();
   const lock = useLockService();
   const { emitEvent } = useEventService();
 
-  const mode$ = createSignalWithLock(lock, () => store.mode, "normal");
+  const mode$ = createSignalWithLock(lock, () => state.mode, "normal");
 
   return (
     <div class={styles.actionLogListPane.buttons}>
@@ -444,7 +444,7 @@ if (import.meta.vitest) {
             {props.children}
           </>
         ),
-        async ({ rxdb: { collections }, store: { updateStore } }) => {
+        async ({ rxdb: { collections }, store: { updateState } }) => {
           // prettier-ignore
           await collections.actionLogs.bulkInsert([
             { id: "finished",  text: "finished",  startAt: 1, endAt: 2, updatedAt: 2 },
@@ -452,8 +452,8 @@ if (import.meta.vitest) {
             { id: "tentative", text: "tentative", startAt: 0, endAt: 0, updatedAt: 4 },
           ]);
 
-          await updateStore((store) => {
-            store.actionLogListPane.currentActionLogId = "finished";
+          updateState((state) => {
+            state.actionLogListPane.currentActionLogId = "finished";
           });
         }
       );

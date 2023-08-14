@@ -1,0 +1,14 @@
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+index e82e5b23af330b3b5f3f53cf77adc7f9ecec0eb7..fef0869780ea183d87e944a7736aec4638d98e33 100644
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -1,7 +1,8 @@
+ import { Accessor, Setter } from 'solid-js';
+-import { PageEvent } from 'solid-start';
+ import { Store, SetStoreFunction } from 'solid-js/store';
+ 
++type PageEvent = any;
++
+ type StorageWithOptions<O> = {
+     clear: () => void;
+     getItem: (key: string, options?: O) => string | null;

@@ -2,7 +2,7 @@ import { ItemListChildren } from "@/components/itemList";
 import { useStoreService } from "@/services/store";
 
 export function ShowItemList() {
-  const { store } = useStoreService();
+  const { state } = useStoreService();
 
-  return <ItemListChildren parentId="__testItemList" selectedId={store.actionLogPane.currentListItemId} />;
+  return <ItemListChildren parentId="__testItemList" selectedId={state.actionLogPane.currentListItemId} />;
 }

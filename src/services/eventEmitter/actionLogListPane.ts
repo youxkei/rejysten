@@ -4,7 +4,7 @@ export function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
   const { shiftKey, isComposing } = event;
   const actionLogListPaneEvent = { pane: "actionLogList" } as const;
 
-  switch (ctx.store.mode) {
+  switch (ctx.state.mode) {
     case "normal": {
       const normalModeEvent = {
         ...actionLogListPaneEvent,
@@ -121,7 +121,7 @@ export function emitActionLogListPaneEvent(ctx: Context, event: KeyboardEvent) {
         }
 
         case "Backspace": {
-          if (shiftKey || isComposing || ctx.store.actionLogListPane.focus !== "text") break;
+          if (shiftKey || isComposing || ctx.state.actionLogListPane.focus !== "text") break;
 
           ctx.emitEvent({
             ...insertModeEvent,

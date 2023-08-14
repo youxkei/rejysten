@@ -91,13 +91,13 @@ if (import.meta.vitest) {
           {props.children}
         </>
       ),
-      async ({ rxdb: { collections }, store: { updateStore } }) => {
+      async ({ rxdb: { collections }, store: { updateState } }) => {
         await collections.todos.bulkInsert([
           { id: "001", text: "foo", updatedAt: 1 },
           { id: "002", text: "bar", updatedAt: 1 },
         ]);
-        await updateStore((store) => {
-          store.mode = "insert";
+        updateState((state) => {
+          state.mode = "insert";
         });
       }
     );

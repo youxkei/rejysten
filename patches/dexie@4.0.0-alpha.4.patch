@@ -1,7 +1,7 @@
-diff --git a/node_modules/dexie/package.json b/node_modules/dexie/package.json
-index 3833af9..2f8077f 100644
---- a/node_modules/dexie/package.json
-+++ b/node_modules/dexie/package.json
+diff --git a/package.json b/package.json
+index 3833af93a47de2c776d63eb450442fb2a8023d9a..2f8077fc2a586de51702aad0ad081292e8006366 100644
+--- a/package.json
++++ b/package.json
 @@ -15,7 +15,6 @@
          "default": "./dist/dexie.min.js"
        },

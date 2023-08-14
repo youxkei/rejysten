@@ -10,10 +10,10 @@ export function Editor(props: { text: string }) {
   let input!: HTMLInputElement;
 
   const lock = useLockService();
-  const { store } = useStoreService();
+  const { state } = useStoreService();
   const { emitEvent } = useEventService();
 
-  const cursorPosition$ = createSignalWithLock(lock, () => store.editor.cursorPosition, -1, true);
+  const cursorPosition$ = createSignalWithLock(lock, () => state.editor.cursorPosition, -1, true);
   const text$ = createSignalWithLock(lock, () => props.text, "", true);
 
   createEffect(() => {
@@ -37,7 +37,7 @@ export function Editor(props: { text: string }) {
   const onBlur = () => {
     if (active) {
       emitEvent({
-        pane: store.currentPane,
+        pane: state.currentPane,
         mode: "insert",
         type: "leaveInsertMode",
       });
@@ -50,7 +50,7 @@ export function Editor(props: { text: string }) {
       ref={input}
       onInput={(event) =>
         emitEvent({
-          pane: store.currentPane,
+          pane: state.currentPane,
           mode: "insert",
           type: "changeEditorText",
           newText: event.target.value,

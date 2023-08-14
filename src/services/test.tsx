@@ -37,40 +37,41 @@ export function renderWithServicesForTest(
   return renderAsync(
     (props) => (
       <RxDBServiceProviderForTest tid={tid}>
-        <MultiProvider
-          values={[
-            RxDBSyncFirestoreServiceProvider,
-            StoreServiceProvider,
-            LockServiceProvider,
-            EventServiceProvider,
-            EventHandlerServiceProvider,
-            EventEmitterServiceProvider,
-          ]}
-        >
-          {(() => {
-            if (!setup) {
-              return <Component>{props.children}</Component>;
-            }
+        <StoreServiceProvider localStorageNamePostfix={tid}>
+          <MultiProvider
+            values={[
+              RxDBSyncFirestoreServiceProvider,
+              LockServiceProvider,
+              EventServiceProvider,
+              EventHandlerServiceProvider,
+              EventEmitterServiceProvider,
+            ]}
+          >
+            {(() => {
+              if (!setup) {
+                return <Component>{props.children}</Component>;
+              }
 
-            const rxdb = useRxDBService();
-            const store = useStoreService();
-            const lock = useLockService();
-            const services = { rxdb, store, lock };
+              const rxdb = useRxDBService();
+              const store = useStoreService();
+              const lock = useLockService();
+              const services = { rxdb, store, lock };
 
-            const [done$] = createResource(async () => {
-              await runWithLock(lock, () => setup(services));
-              return true;
-            });
+              const [done$] = createResource(async () => {
+                await runWithLock(lock, () => setup(services));
+                return true;
+              });
 
-            const doneWithLock$ = createSignalWithLock(lock, () => done$(), false);
+              const doneWithLock$ = createSignalWithLock(lock, () => done$(), false);
 
-            return (
-              <Show when={doneWithLock$()}>
-                <Component>{props.children}</Component>
-              </Show>
-            );
-          })()}
-        </MultiProvider>
+              return (
+                <Show when={doneWithLock$()}>
+                  <Component>{props.children}</Component>
+                </Show>
+              );
+            })()}
+          </MultiProvider>
+        </StoreServiceProvider>
       </RxDBServiceProviderForTest>
     ),
     (resolve: (value: { owner: Owner } & Services) => void) => {

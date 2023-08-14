@@ -27,11 +27,11 @@ export function ActionLogPane() {
 }
 
 function Buttons() {
-  const { store } = useStoreService();
+  const { state } = useStoreService();
   const lock = useLockService();
   const { emitEvent } = useEventService();
 
-  const mode$ = createSignalWithLock(lock, () => store.mode, "normal");
+  const mode$ = createSignalWithLock(lock, () => state.mode, "normal");
 
   return (
     <div class={styles.actionLogListPane.buttons}>
@@ -144,13 +144,13 @@ function Buttons() {
 function ActionLog() {
   const rxdb = useRxDBService();
   const lock = useLockService();
-  const { store, updateStore } = useStoreService();
+  const { state, updateState } = useStoreService();
 
   onMount(() => {
-    if (store.actionLogPane.currentListItemId !== "") return;
+    if (state.actionLogPane.currentListItemId !== "") return;
 
     void runWithLock(lock, async () => {
-      const bottomItem = await getBottomItem(rxdb, store.actionLogPane.currentActionLogId);
+      const bottomItem = await getBottomItem(rxdb, state.actionLogPane.currentActionLogId);
 
       let id = "";
       if (bottomItem) {
@@ -164,12 +164,12 @@ function ActionLog() {
           text: "",
           nextId: "",
           prevId: "",
-          parentId: store.actionLogPane.currentActionLogId,
+          parentId: state.actionLogPane.currentActionLogId,
           updatedAt: Date.now(),
         });
       }
 
-      await updateStore((store) => {
+      updateState((store) => {
         store.actionLogPane.currentListItemId = id;
       });
     });
@@ -177,7 +177,7 @@ function ActionLog() {
 
   const actionLog$ = createSignalWithLock(
     lock,
-    createSubscribeSignal(() => rxdb.collections.actionLogs.findOne(store.actionLogPane.currentActionLogId)),
+    createSubscribeSignal(() => rxdb.collections.actionLogs.findOne(state.actionLogPane.currentActionLogId)),
     null
   );
 
@@ -188,8 +188,8 @@ function ActionLog() {
           <>
             {actionLog$().text}
             <ItemListChildren
-              parentId={store.actionLogPane.currentActionLogId}
-              selectedId={store.actionLogPane.currentListItemId}
+              parentId={state.actionLogPane.currentActionLogId}
+              selectedId={state.actionLogPane.currentListItemId}
             />
           </>
         )}
@@ -214,7 +214,7 @@ function render(test: TestContext, setup: (services: Services) => Promise<unknow
 if (import.meta.vitest) {
   describe("display", () => {
     test("normal mode", async (test) => {
-      const { container, unmount } = await render(test, async ({ rxdb: { collections }, store: { updateStore } }) => {
+      const { container, unmount } = await render(test, async ({ rxdb: { collections }, store: { updateState } }) => {
         await collections.actionLogs.insert({
           id: "log1",
           text: "log1",
@@ -236,10 +236,10 @@ if (import.meta.vitest) {
             ]],
           ])
         );
-        await updateStore((store) => {
-          store.currentPane = "actionLog";
-          store.actionLogPane.currentActionLogId = "log1";
-          store.actionLogPane.currentListItemId = "item1_2";
+        updateState((state) => {
+          state.currentPane = "actionLog";
+          state.actionLogPane.currentActionLogId = "log1";
+          state.actionLogPane.currentListItemId = "item1_2";
         });
       });
 
@@ -251,7 +251,7 @@ if (import.meta.vitest) {
     test("insert mode", async (test) => {
       const { container, unmount, getByDisplayValue } = await render(
         test,
-        async ({ rxdb: { collections }, store: { updateStore } }) => {
+        async ({ rxdb: { collections }, store: { updateState } }) => {
           await collections.actionLogs.insert({
             id: "log1",
             text: "log1",
@@ -273,13 +273,13 @@ if (import.meta.vitest) {
               ]],
             ])
           );
-          await updateStore((store) => {
-            store.currentPane = "actionLog";
-            store.mode = "insert";
-            store.editor.text = "item1_2";
-            store.editor.cursorPosition = 3; // ite|m1_2
-            store.actionLogPane.currentActionLogId = "log1";
-            store.actionLogPane.currentListItemId = "item1_2";
+          updateState((state) => {
+            state.currentPane = "actionLog";
+            state.mode = "insert";
+            state.editor.text = "item1_2";
+            state.editor.cursorPosition = 3; // ite|m1_2
+            state.actionLogPane.currentActionLogId = "log1";
+            state.actionLogPane.currentListItemId = "item1_2";
           });
         }
       );
@@ -312,7 +312,7 @@ if (import.meta.vitest) {
           const user = userEvent.setup();
           const { container, unmount, lock, getByDisplayValue } = await render(
             test,
-            async ({ rxdb: { collections }, store: { updateStore } }) => {
+            async ({ rxdb: { collections }, store: { updateState } }) => {
               await collections.actionLogs.insert({
                 id: "log1",
                 text: "log1",
@@ -328,10 +328,10 @@ if (import.meta.vitest) {
                 nextId: "",
                 updatedAt: 0,
               });
-              await updateStore((store) => {
-                store.currentPane = "actionLog";
-                store.actionLogPane.currentActionLogId = "log1";
-                store.actionLogPane.currentListItemId = "item1";
+              updateState((state) => {
+                state.currentPane = "actionLog";
+                state.actionLogPane.currentActionLogId = "log1";
+                state.actionLogPane.currentListItemId = "item1";
               });
             }
           );
@@ -357,7 +357,7 @@ if (import.meta.vitest) {
           const user = userEvent.setup();
           const { container, unmount, lock, getByRole } = await render(
             test,
-            async ({ rxdb: { collections }, store: { updateStore } }) => {
+            async ({ rxdb: { collections }, store: { updateState } }) => {
               await collections.actionLogs.insert({
                 id: "log1",
                 text: "log1",
@@ -373,10 +373,10 @@ if (import.meta.vitest) {
                 nextId: "",
                 updatedAt: 0,
               });
-              await updateStore((store) => {
-                store.currentPane = "actionLog";
-                store.actionLogPane.currentActionLogId = "log1";
-                store.actionLogPane.currentListItemId = "item1";
+              updateState((state) => {
+                state.currentPane = "actionLog";
+                state.actionLogPane.currentActionLogId = "log1";
+                state.actionLogPane.currentListItemId = "item1";
               });
             }
           );
@@ -405,7 +405,7 @@ if (import.meta.vitest) {
           const user = userEvent.setup();
           const { container, unmount, lock } = await render(
             test,
-            async ({ rxdb: { collections }, store: { updateStore } }) => {
+            async ({ rxdb: { collections }, store: { updateState } }) => {
               await collections.actionLogs.insert({
                 id: "log1",
                 text: "log1",
@@ -422,10 +422,10 @@ if (import.meta.vitest) {
                   ]],
                 ])
               );
-              await updateStore((store) => {
-                store.currentPane = "actionLog";
-                store.actionLogPane.currentActionLogId = "log1";
-                store.actionLogPane.currentListItemId = "item1_2";
+              updateState((state) => {
+                state.currentPane = "actionLog";
+                state.actionLogPane.currentActionLogId = "log1";
+                state.actionLogPane.currentListItemId = "item1_2";
               });
             }
           );
@@ -452,7 +452,7 @@ if (import.meta.vitest) {
           const user = userEvent.setup();
           const { container, unmount, lock, getByDisplayValue } = await render(
             test,
-            async ({ rxdb: { collections }, store: { updateStore } }) => {
+            async ({ rxdb: { collections }, store: { updateState } }) => {
               await collections.actionLogs.insert({
                 id: "log1",
                 text: "log1",
@@ -469,13 +469,13 @@ if (import.meta.vitest) {
                   ]],
                 ])
               );
-              await updateStore((store) => {
-                store.currentPane = "actionLog";
-                store.mode = "insert";
-                store.editor.text = "item1_2";
-                store.editor.cursorPosition = cursorPosition;
-                store.actionLogPane.currentActionLogId = "log1";
-                store.actionLogPane.currentListItemId = "item1_2";
+              updateState((state) => {
+                state.currentPane = "actionLog";
+                state.mode = "insert";
+                state.editor.text = "item1_2";
+                state.editor.cursorPosition = cursorPosition;
+                state.actionLogPane.currentActionLogId = "log1";
+                state.actionLogPane.currentListItemId = "item1_2";
               });
             }
           );
@@ -497,7 +497,7 @@ if (import.meta.vitest) {
         const user = userEvent.setup();
         const { container, unmount, lock, getByDisplayValue } = await render(
           test,
-          async ({ rxdb: { collections }, store: { updateStore } }) => {
+          async ({ rxdb: { collections }, store: { updateState } }) => {
             await collections.actionLogs.insert({
               id: "log1",
               text: "log1",
@@ -513,12 +513,12 @@ if (import.meta.vitest) {
               ])
             );
 
-            await updateStore((store) => {
-              store.currentPane = "actionLog";
-              store.mode = "insert";
-              store.editor.cursorPosition = 3; // ite|m2
-              store.actionLogPane.currentActionLogId = "log1";
-              store.actionLogPane.currentListItemId = "item2";
+            updateState((state) => {
+              state.currentPane = "actionLog";
+              state.mode = "insert";
+              state.editor.cursorPosition = 3; // ite|m2
+              state.actionLogPane.currentActionLogId = "log1";
+              state.actionLogPane.currentListItemId = "item2";
             });
           }
         );
@@ -562,7 +562,7 @@ if (import.meta.vitest) {
             const user = userEvent.setup();
             const { container, unmount, lock, getByDisplayValue } = await render(
               test,
-              async ({ rxdb: { collections }, store: { updateStore } }) => {
+              async ({ rxdb: { collections }, store: { updateState } }) => {
                 await collections.actionLogs.insert({
                   id: "log1",
                   text: "log1",
@@ -571,13 +571,13 @@ if (import.meta.vitest) {
                   updatedAt: 0,
                 });
                 await collections.listItems.bulkInsert(items);
-                await updateStore((store) => {
-                  store.currentPane = "actionLog";
-                  store.mode = "insert";
-                  store.editor.text = currentItem;
-                  store.editor.cursorPosition = 0;
-                  store.actionLogPane.currentActionLogId = "log1";
-                  store.actionLogPane.currentListItemId = currentItem;
+                updateState((state) => {
+                  state.currentPane = "actionLog";
+                  state.mode = "insert";
+                  state.editor.text = currentItem;
+                  state.editor.cursorPosition = 0;
+                  state.actionLogPane.currentActionLogId = "log1";
+                  state.actionLogPane.currentListItemId = currentItem;
                 });
               }
             );
@@ -601,7 +601,7 @@ if (import.meta.vitest) {
           const user = userEvent.setup();
           const { container, unmount, lock, getByDisplayValue } = await render(
             test,
-            async ({ rxdb: { collections }, store: { updateStore } }) => {
+            async ({ rxdb: { collections }, store: { updateState } }) => {
               await collections.actionLogs.insert({
                 id: "log1",
                 text: "log1",
@@ -616,12 +616,12 @@ if (import.meta.vitest) {
                   ["item2"],
                 ])
               );
-              await updateStore((store) => {
-                store.currentPane = "actionLog";
-                store.mode = "insert";
-                store.editor.cursorPosition = 0;
-                store.actionLogPane.currentActionLogId = "log1";
-                store.actionLogPane.currentListItemId = "item2";
+              updateState((state) => {
+                state.currentPane = "actionLog";
+                state.mode = "insert";
+                state.editor.cursorPosition = 0;
+                state.actionLogPane.currentActionLogId = "log1";
+                state.actionLogPane.currentListItemId = "item2";
               });
             }
           );

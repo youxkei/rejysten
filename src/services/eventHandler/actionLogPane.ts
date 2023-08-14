@@ -16,21 +16,21 @@ import {
 } from "@/services/rxdb/collections/listItem";
 
 export async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPaneEvent) {
-  if (ctx.store.store.currentPane !== "actionLog") {
+  if (ctx.store.state.currentPane !== "actionLog") {
     throw new ErrorWithFields("ActionLogPaneEvent must be emitted when currentPane is actionLog", {
       event,
-      store: ctx.store.store,
+      state: ctx.store.state,
     });
   }
 
   const currentListItem = await ctx.rxdb.collections.listItems
-    .findOne(ctx.store.store.actionLogPane.currentListItemId)
+    .findOne(ctx.store.state.actionLogPane.currentListItemId)
     .exec();
   if (!currentListItem) return;
 
   switch (event.mode) {
     case "normal": {
-      if (ctx.store.store.mode !== "normal") return;
+      if (ctx.store.state.mode !== "normal") return;
 
       await handleNormalModeEvent(ctx, currentListItem, event);
 
@@ -38,7 +38,7 @@ export async function handleActionLogPaneEvent(ctx: Context, event: ActionLogPan
     }
 
     case "insert": {
-      if (ctx.store.store.mode !== "insert") return;
+      if (ctx.store.state.mode !== "insert") return;
 
       await handleInsertModeEvent(ctx, currentListItem, event);
 
@@ -76,10 +76,10 @@ async function handleNormalModeEvent(
         id,
         text: "",
       });
-      await ctx.store.updateStore((store) => {
-        store.mode = "insert";
-        store.editor.cursorPosition = 0;
-        store.actionLogPane.currentListItemId = id;
+      ctx.store.updateState((state) => {
+        state.mode = "insert";
+        state.editor.cursorPosition = 0;
+        state.actionLogPane.currentListItemId = id;
       });
 
       break;
@@ -92,10 +92,10 @@ async function handleNormalModeEvent(
         id,
         text: "",
       });
-      await ctx.store.updateStore((store) => {
-        store.mode = "insert";
-        store.editor.cursorPosition = 0;
-        store.actionLogPane.currentListItemId = id;
+      ctx.store.updateState((state) => {
+        state.mode = "insert";
+        state.editor.cursorPosition = 0;
+        state.actionLogPane.currentListItemId = id;
       });
 
       break;
@@ -104,8 +104,8 @@ async function handleNormalModeEvent(
     case "moveAbove": {
       const prevItem = await getAboveItem(ctx.rxdb, currentListItem);
       if (prevItem) {
-        await ctx.store.updateStore((store) => {
-          store.actionLogPane.currentListItemId = prevItem.id;
+        ctx.store.updateState((state) => {
+          state.actionLogPane.currentListItemId = prevItem.id;
         });
       }
 
@@ -115,8 +115,8 @@ async function handleNormalModeEvent(
     case "moveBelow": {
       const nextItem = await getBelowItem(ctx.rxdb, currentListItem);
       if (nextItem) {
-        await ctx.store.updateStore((store) => {
-          store.actionLogPane.currentListItemId = nextItem.id;
+        ctx.store.updateState((state) => {
+          state.actionLogPane.currentListItemId = nextItem.id;
         });
       }
 
@@ -124,18 +124,18 @@ async function handleNormalModeEvent(
     }
 
     case "enterInsertMode": {
-      await ctx.store.updateStore((store) => {
-        store.mode = "insert";
-        store.editor.cursorPosition = event.cursorPosition;
+      ctx.store.updateState((state) => {
+        state.mode = "insert";
+        state.editor.cursorPosition = event.cursorPosition;
       });
       break;
     }
 
     case "moveToActionLogListPane": {
-      await ctx.store.updateStore((store) => {
-        store.currentPane = "actionLogList";
-        store.actionLogPane.currentListItemId = "";
-        store.actionLogPane.currentActionLogId = "";
+      ctx.store.updateState((state) => {
+        state.currentPane = "actionLogList";
+        state.actionLogPane.currentListItemId = "";
+        state.actionLogPane.currentActionLogId = "";
       });
 
       break;
@@ -154,8 +154,8 @@ async function handleInsertModeEvent(
 ) {
   switch (event.type) {
     case "leaveInsertMode": {
-      await ctx.store.updateStore((store) => {
-        store.mode = "normal";
+      ctx.store.updateState((state) => {
+        state.mode = "normal";
       });
 
       break;
@@ -175,8 +175,8 @@ async function handleInsertModeEvent(
       const cursorPosition = inputElement.selectionStart;
 
       await indent(ctx.rxdb, ctx.now, currentListItem);
-      await ctx.store.updateStore((store) => {
-        store.editor.cursorPosition = cursorPosition;
+      ctx.store.updateState((state) => {
+        state.editor.cursorPosition = cursorPosition;
       });
 
       break;
@@ -196,8 +196,8 @@ async function handleInsertModeEvent(
       const cursorPosition = inputElement.selectionStart;
 
       await dedent(ctx.rxdb, ctx.now, currentListItem);
-      await ctx.store.updateStore((store) => {
-        store.editor.cursorPosition = cursorPosition;
+      ctx.store.updateState((state) => {
+        state.editor.cursorPosition = cursorPosition;
       });
 
       break;
@@ -229,9 +229,9 @@ async function handleInsertModeEvent(
         updatedAt: ctx.now,
       });
 
-      await ctx.store.updateStore((store) => {
-        store.editor.cursorPosition = 0;
-        store.actionLogPane.currentListItemId = id;
+      ctx.store.updateState((state) => {
+        state.editor.cursorPosition = 0;
+        state.actionLogPane.currentListItemId = id;
       });
 
       event.preventDefault();
@@ -260,12 +260,12 @@ async function handleInsertModeEvent(
         currentListItem.text === "" &&
         currentListItem.prevId === "" &&
         currentListItem.nextId === "" &&
-        currentListItem.parentId === ctx.store.store.actionLogPane.currentActionLogId
+        currentListItem.parentId === ctx.store.state.actionLogPane.currentActionLogId
       ) {
-        await ctx.store.updateStore((store) => {
-          store.editor.cursorPosition = -1;
-          store.currentPane = "actionLogList";
-          store.actionLogListPane.focus = "text";
+        ctx.store.updateState((state) => {
+          state.editor.cursorPosition = -1;
+          state.currentPane = "actionLogList";
+          state.actionLogListPane.focus = "text";
         });
 
         await currentListItem.remove();
@@ -278,9 +278,9 @@ async function handleInsertModeEvent(
           updatedAt: ctx.now,
         });
 
-        await ctx.store.updateStore((store) => {
-          store.editor.cursorPosition = aboveListItem.text.length;
-          store.actionLogPane.currentListItemId = aboveListItem.id;
+        ctx.store.updateState((state) => {
+          state.editor.cursorPosition = aboveListItem.text.length;
+          state.actionLogPane.currentListItemId = aboveListItem.id;
         });
 
         await remove(ctx.rxdb, ctx.now, currentListItem);
@@ -318,8 +318,8 @@ async function handleInsertModeEvent(
         updatedAt: ctx.now,
       });
 
-      await ctx.store.updateStore((store) => {
-        store.editor.cursorPosition = currentListItem.text.length;
+      ctx.store.updateState((state) => {
+        state.editor.cursorPosition = currentListItem.text.length;
       });
 
       event.preventDefault();

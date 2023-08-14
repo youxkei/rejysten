@@ -1,7 +1,7 @@
 import type { Event } from "@/services/event";
-import type { Store } from "@/services/store";
+import type { State } from "@/services/store";
 
 export type Context = {
-  store: Store;
+  state: State;
   emitEvent: (event: Event) => void;
 };

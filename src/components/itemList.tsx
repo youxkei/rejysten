@@ -14,13 +14,13 @@ import { shortenClassName } from "@/test";
 
 export function ItemList(props: { listItemId: string; selectedId: string }) {
   const { collections } = useRxDBService();
-  const { store } = useStoreService();
+  const { state } = useStoreService();
   const lock = useLockService();
 
   const listItem$ = createSubscribeSignal(() => collections.listItems.findOne(props.listItemId));
   const listItemWithLock$ = createSignalWithLock(lock, () => listItem$(), null);
   const isSelected$ = createSignalWithLock(lock, () => props.listItemId === props.selectedId, false);
-  const isEditor$ = createSignalWithLock(lock, () => isSelected$() && store.mode === "insert", false);
+  const isEditor$ = createSignalWithLock(lock, () => isSelected$() && state.mode === "insert", false);
 
   return (
     <Show when={listItemWithLock$()}>

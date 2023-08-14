@@ -8,20 +8,20 @@ import { getAboveLog, getBelowLog } from "@/services/rxdb/collections/actionLog"
 import { epochMsToTimeText, timeTextToEpochMs } from "@/temporal";
 
 export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLogListPaneEvent) {
-  if (ctx.store.store.currentPane !== "actionLogList") {
+  if (ctx.store.state.currentPane !== "actionLogList") {
     throw new ErrorWithFields("ActionLogListPaneEvent must be emitted when currentPane is actionLogList", {
       event,
-      store: ctx.store.store,
+      state: ctx.store.state,
     });
   }
 
   const currentActionLog = await ctx.rxdb.collections.actionLogs
-    .findOne(ctx.store.store.actionLogListPane.currentActionLogId)
+    .findOne(ctx.store.state.actionLogListPane.currentActionLogId)
     .exec();
 
   switch (event.mode) {
     case "normal": {
-      if (ctx.store.store.mode !== "normal") break;
+      if (ctx.store.state.mode !== "normal") break;
 
       switch (event.type) {
         case "moveAbove": {
@@ -29,8 +29,8 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
 
           const aboveActionLog = await getAboveLog(ctx.rxdb, currentActionLog);
           if (aboveActionLog) {
-            await ctx.store.updateStore((store) => {
-              store.actionLogListPane.currentActionLogId = aboveActionLog.id;
+            ctx.store.updateState((state) => {
+              state.actionLogListPane.currentActionLogId = aboveActionLog.id;
             });
           }
 
@@ -42,8 +42,8 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
 
           const belowActionLog = await getBelowLog(ctx.rxdb, currentActionLog);
           if (belowActionLog) {
-            await ctx.store.updateStore((store) => {
-              store.actionLogListPane.currentActionLogId = belowActionLog.id;
+            ctx.store.updateState((state) => {
+              state.actionLogListPane.currentActionLogId = belowActionLog.id;
             });
           }
 
@@ -61,11 +61,11 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
             updatedAt: ctx.now,
           });
 
-          await ctx.store.updateStore((store) => {
-            store.mode = "insert";
-            store.editor.cursorPosition = -1;
-            store.actionLogListPane.currentActionLogId = id;
-            store.actionLogListPane.focus = "text";
+          ctx.store.updateState((state) => {
+            state.mode = "insert";
+            state.editor.cursorPosition = -1;
+            state.actionLogListPane.currentActionLogId = id;
+            state.actionLogListPane.focus = "text";
           });
 
           break;
@@ -74,8 +74,8 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
         case "focus": {
           const nextActionLog = await ctx.rxdb.collections.actionLogs.findOne(event.actionLogId).exec();
           if (nextActionLog) {
-            await ctx.store.updateStore((store) => {
-              store.actionLogListPane.currentActionLogId = nextActionLog.id;
+            ctx.store.updateState((state) => {
+              state.actionLogListPane.currentActionLogId = nextActionLog.id;
             });
           }
 
@@ -85,19 +85,19 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
         case "enterInsertMode": {
           if (!currentActionLog) break;
 
-          await ctx.store.updateStore((store) => {
-            store.mode = "insert";
-            store.actionLogListPane.focus = event.focus;
-            store.editor.cursorPosition = event.cursorPosition;
+          ctx.store.updateState((state) => {
+            state.mode = "insert";
+            state.actionLogListPane.focus = event.focus;
+            state.editor.cursorPosition = event.cursorPosition;
 
             switch (event.focus) {
               case "startAt": {
-                store.editor.text = epochMsToTimeText(currentActionLog.startAt, true);
+                state.editor.text = epochMsToTimeText(currentActionLog.startAt, true);
                 break;
               }
 
               case "endAt": {
-                store.editor.text = epochMsToTimeText(currentActionLog.endAt, true);
+                state.editor.text = epochMsToTimeText(currentActionLog.endAt, true);
                 break;
               }
             }
@@ -142,10 +142,10 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
         case "moveToActionLogPane": {
           if (!currentActionLog) break;
 
-          await ctx.store.updateStore((store) => {
-            store.currentPane = "actionLog";
-            store.actionLogPane.currentListItemId = "";
-            store.actionLogPane.currentActionLogId = currentActionLog.id;
+          ctx.store.updateState((state) => {
+            state.currentPane = "actionLog";
+            state.actionLogPane.currentListItemId = "";
+            state.actionLogPane.currentActionLogId = currentActionLog.id;
           });
 
           break;
@@ -160,12 +160,12 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
     }
 
     case "insert": {
-      if (ctx.store.store.mode !== "insert") break;
+      if (ctx.store.state.mode !== "insert") break;
       if (!currentActionLog) break;
 
       switch (event.type) {
         case "changeEditorText": {
-          switch (ctx.store.store.actionLogListPane.focus) {
+          switch (ctx.store.state.actionLogListPane.focus) {
             case "text": {
               await currentActionLog.patch({
                 text: event.newText,
@@ -177,8 +177,8 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
 
             case "startAt":
             case "endAt": {
-              await ctx.store.updateStore((store) => {
-                store.editor.text = event.newText;
+              ctx.store.updateState((state) => {
+                state.editor.text = event.newText;
               });
 
               break;
@@ -189,9 +189,9 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
         }
 
         case "rotateFocus": {
-          switch (ctx.store.store.actionLogListPane.focus) {
+          switch (ctx.store.state.actionLogListPane.focus) {
             case "startAt": {
-              const startAt = timeTextToEpochMs(ctx.store.store.editor.text);
+              const startAt = timeTextToEpochMs(ctx.store.state.editor.text);
               if (isFinite(startAt)) {
                 await currentActionLog.patch({ startAt, updatedAt: ctx.now });
               }
@@ -200,7 +200,7 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
             }
 
             case "endAt": {
-              const endAt = timeTextToEpochMs(ctx.store.store.editor.text);
+              const endAt = timeTextToEpochMs(ctx.store.state.editor.text);
               if (isFinite(endAt)) {
                 await currentActionLog.patch({ endAt, updatedAt: ctx.now });
               }
@@ -209,23 +209,23 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
             }
           }
 
-          await ctx.store.updateStore((store) => {
-            switch (store.actionLogListPane.focus) {
+          ctx.store.updateState((state) => {
+            switch (state.actionLogListPane.focus) {
               case "text": {
-                store.actionLogListPane.focus = "startAt";
-                store.editor.text = epochMsToTimeText(currentActionLog.startAt, true);
+                state.actionLogListPane.focus = "startAt";
+                state.editor.text = epochMsToTimeText(currentActionLog.startAt, true);
                 break;
               }
 
               case "startAt": {
-                store.actionLogListPane.focus = "endAt";
-                store.editor.text = epochMsToTimeText(currentActionLog.endAt, true);
+                state.actionLogListPane.focus = "endAt";
+                state.editor.text = epochMsToTimeText(currentActionLog.endAt, true);
                 break;
               }
 
               case "endAt": {
-                store.actionLogListPane.focus = "text";
-                store.editor.text = "";
+                state.actionLogListPane.focus = "text";
+                state.editor.text = "";
                 break;
               }
             }
@@ -235,9 +235,9 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
         }
 
         case "leaveInsertMode": {
-          switch (ctx.store.store.actionLogListPane.focus) {
+          switch (ctx.store.state.actionLogListPane.focus) {
             case "startAt": {
-              const startAt = timeTextToEpochMs(ctx.store.store.editor.text);
+              const startAt = timeTextToEpochMs(ctx.store.state.editor.text);
               if (isFinite(startAt)) {
                 await currentActionLog.patch({ startAt, updatedAt: ctx.now });
               }
@@ -246,7 +246,7 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
             }
 
             case "endAt": {
-              const endAt = timeTextToEpochMs(ctx.store.store.editor.text);
+              const endAt = timeTextToEpochMs(ctx.store.state.editor.text);
               if (isFinite(endAt)) {
                 await currentActionLog.patch({ endAt, updatedAt: ctx.now });
               }
@@ -255,9 +255,9 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
             }
           }
 
-          await ctx.store.updateStore((store) => {
-            store.mode = "normal";
-            store.editor.text = "";
+          ctx.store.updateState((state) => {
+            state.mode = "normal";
+            state.editor.text = "";
           });
 
           break;
@@ -272,9 +272,9 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
           const aboveActionLog = await getAboveLog(ctx.rxdb, currentActionLog);
           if (!aboveActionLog) break;
 
-          await ctx.store.updateStore((store) => {
-            store.editor.cursorPosition = -1;
-            store.actionLogListPane.currentActionLogId = aboveActionLog.id;
+          ctx.store.updateState((state) => {
+            state.editor.cursorPosition = -1;
+            state.actionLogListPane.currentActionLogId = aboveActionLog.id;
           });
 
           await currentActionLog.remove();

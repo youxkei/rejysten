@@ -1,7 +1,7 @@
 import type { Context } from "@/services/eventEmitter/context";
 
 export function emitActionLogPaneEvent(ctx: Context, event: KeyboardEvent) {
-  switch (ctx.store.mode) {
+  switch (ctx.state.mode) {
     case "normal": {
       emitNormalModeEvent(ctx, event);
 
