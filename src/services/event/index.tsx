@@ -21,7 +21,7 @@ export type ActionLogListPaneEvent = { pane: "actionLogList" } & (
   | ({ mode: "insert" } & (
       | { type: "rotateFocus" | "leaveInsertMode" }
       | { type: "delete"; preventDefault: () => void }
-      | { type: "changeEditorText"; newText: string }
+      | { type: "changeEditorText" }
     ))
 );
 
@@ -35,7 +35,7 @@ export type ActionLogPaneEvent = { pane: "actionLog" } & (
   | ({ mode: "insert" } & (
       | { type: "indent" | "dedent" | "leaveInsertMode" }
       | { type: "add" | "delete" | "deleteBelow"; preventDefault: () => void }
-      | { type: "changeEditorText"; newText: string }
+      | { type: "changeEditorText" }
     ))
 );
 

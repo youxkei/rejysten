@@ -29,7 +29,7 @@ export function ItemList(props: { listItemId: string; selectedId: string }) {
           bullet={"•"}
           item={
             <Show when={isEditor$()} fallback={<span>{listItem$().text}</span>}>
-              <Editor text={listItem$().text} />
+              <Editor />
             </Show>
           }
           child={<ItemListChildren parentId={props.listItemId} selectedId={props.selectedId} />}

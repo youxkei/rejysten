@@ -91,6 +91,11 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
             state.editor.cursorPosition = event.cursorPosition;
 
             switch (event.focus) {
+              case "text": {
+                state.editor.text = currentActionLog.text;
+                break;
+              }
+
               case "startAt": {
                 state.editor.text = epochMsToTimeText(currentActionLog.startAt, true);
                 break;
@@ -168,7 +173,7 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
           switch (ctx.store.state.actionLogListPane.focus) {
             case "text": {
               await currentActionLog.patch({
-                text: event.newText,
+                text: ctx.store.state.editor.text,
                 updatedAt: ctx.now,
               });
 
@@ -177,10 +182,7 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
 
             case "startAt":
             case "endAt": {
-              ctx.store.updateState((state) => {
-                state.editor.text = event.newText;
-              });
-
+              // do nothing because saving startAt and endAt partially cause undesirable behavior
               break;
             }
           }
@@ -214,18 +216,21 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
               case "text": {
                 state.actionLogListPane.focus = "startAt";
                 state.editor.text = epochMsToTimeText(currentActionLog.startAt, true);
+
                 break;
               }
 
               case "startAt": {
                 state.actionLogListPane.focus = "endAt";
                 state.editor.text = epochMsToTimeText(currentActionLog.endAt, true);
+
                 break;
               }
 
               case "endAt": {
                 state.actionLogListPane.focus = "text";
-                state.editor.text = "";
+                state.editor.text = currentActionLog.text;
+
                 break;
               }
             }
@@ -236,6 +241,12 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
 
         case "leaveInsertMode": {
           switch (ctx.store.state.actionLogListPane.focus) {
+            case "text": {
+              await currentActionLog.patch({ text: ctx.store.state.editor.text, updatedAt: ctx.now });
+
+              break;
+            }
+
             case "startAt": {
               const startAt = timeTextToEpochMs(ctx.store.state.editor.text);
               if (isFinite(startAt)) {
@@ -273,6 +284,7 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
           if (!aboveActionLog) break;
 
           ctx.store.updateState((state) => {
+            state.editor.text = aboveActionLog.text;
             state.editor.cursorPosition = -1;
             state.actionLogListPane.currentActionLogId = aboveActionLog.id;
           });

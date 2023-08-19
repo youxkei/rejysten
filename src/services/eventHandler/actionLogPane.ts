@@ -78,6 +78,7 @@ async function handleNormalModeEvent(
       });
       ctx.store.updateState((state) => {
         state.mode = "insert";
+        state.editor.text = "";
         state.editor.cursorPosition = 0;
         state.actionLogPane.currentListItemId = id;
       });
@@ -94,6 +95,7 @@ async function handleNormalModeEvent(
       });
       ctx.store.updateState((state) => {
         state.mode = "insert";
+        state.editor.text = "";
         state.editor.cursorPosition = 0;
         state.actionLogPane.currentListItemId = id;
       });
@@ -127,6 +129,7 @@ async function handleNormalModeEvent(
       ctx.store.updateState((state) => {
         state.mode = "insert";
         state.editor.cursorPosition = event.cursorPosition;
+        state.editor.text = currentListItem.text;
       });
       break;
     }
@@ -154,6 +157,8 @@ async function handleInsertModeEvent(
 ) {
   switch (event.type) {
     case "leaveInsertMode": {
+      await currentListItem.patch({ text: ctx.store.state.editor.text, updatedAt: ctx.now });
+
       ctx.store.updateState((state) => {
         state.mode = "normal";
       });
@@ -215,8 +220,8 @@ async function handleInsertModeEvent(
       }
 
       const id = Ulid.generate({ time: ctx.now }).toCanonical();
-      const textBeforeCursor = currentListItem.text.substring(0, inputElement.selectionStart);
-      const textAfterCursor = currentListItem.text.substring(inputElement.selectionStart);
+      const textBeforeCursor = ctx.store.state.editor.text.substring(0, inputElement.selectionStart);
+      const textAfterCursor = ctx.store.state.editor.text.substring(inputElement.selectionStart);
 
       await addNextSibling(ctx.rxdb, ctx.now, currentListItem, {
         id,
@@ -230,6 +235,7 @@ async function handleInsertModeEvent(
       });
 
       ctx.store.updateState((state) => {
+        state.editor.text = textAfterCursor;
         state.editor.cursorPosition = 0;
         state.actionLogPane.currentListItemId = id;
       });
@@ -257,12 +263,18 @@ async function handleInsertModeEvent(
       if (childrenItems.length > 0) break;
 
       if (
-        currentListItem.text === "" &&
+        ctx.store.state.editor.text === "" &&
         currentListItem.prevId === "" &&
         currentListItem.nextId === "" &&
         currentListItem.parentId === ctx.store.state.actionLogPane.currentActionLogId
       ) {
+        const currentActionLog = await ctx.rxdb.collections.actionLogs
+          .findOne(ctx.store.state.actionLogPane.currentActionLogId)
+          .exec();
+        if (!currentActionLog) break;
+
         ctx.store.updateState((state) => {
+          state.editor.text = currentActionLog.text;
           state.editor.cursorPosition = -1;
           state.currentPane = "actionLogList";
           state.actionLogListPane.focus = "text";
@@ -274,11 +286,12 @@ async function handleInsertModeEvent(
         if (!aboveListItem) break;
 
         await aboveListItem.patch({
-          text: aboveListItem.text + currentListItem.text,
+          text: aboveListItem.text + ctx.store.state.editor.text,
           updatedAt: ctx.now,
         });
 
         ctx.store.updateState((state) => {
+          state.editor.text = aboveListItem.text + state.editor.text;
           state.editor.cursorPosition = aboveListItem.text.length;
           state.actionLogPane.currentListItemId = aboveListItem.id;
         });
@@ -298,7 +311,7 @@ async function handleInsertModeEvent(
         inputElement.tagName !== "INPUT" ||
         inputElement.selectionStart === null ||
         inputElement.selectionStart !== inputElement.selectionEnd ||
-        inputElement.selectionStart !== currentListItem.text.length
+        inputElement.selectionStart !== ctx.store.state.editor.text.length
       ) {
         break;
       }
@@ -314,12 +327,13 @@ async function handleInsertModeEvent(
       await remove(ctx.rxdb, ctx.now, belowListItem);
       const newCurrentListItem = currentListItem.getLatest();
       await newCurrentListItem.patch({
-        text: newCurrentListItem.text + belowListItem.text,
+        text: ctx.store.state.editor.text + belowListItem.text,
         updatedAt: ctx.now,
       });
 
       ctx.store.updateState((state) => {
-        state.editor.cursorPosition = currentListItem.text.length;
+        state.editor.cursorPosition = state.editor.text.length;
+        state.editor.text = state.editor.text + belowListItem.text;
       });
 
       event.preventDefault();
@@ -328,7 +342,7 @@ async function handleInsertModeEvent(
     }
 
     case "changeEditorText": {
-      await currentListItem.patch({ text: event.newText, updatedAt: ctx.now });
+      await currentListItem.patch({ text: ctx.store.state.editor.text, updatedAt: ctx.now });
 
       break;
     }

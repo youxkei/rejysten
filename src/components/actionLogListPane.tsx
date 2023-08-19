@@ -85,7 +85,7 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
           when={isEditor$() && state.actionLogListPane.focus === "startAt"}
           fallback={epochMsToTimeText(props.actionLog.startAt) || "N/A"}
         >
-          <Editor text={state.editor.text} />
+          <Editor />
         </Show>
       </div>
       <div class={styles.actionLogListPane.actionLogList.actionLog.endAt} onClick={createOnDoubleClick("endAt")}>
@@ -93,7 +93,7 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
           when={isEditor$() && state.actionLogListPane.focus === "endAt"}
           fallback={epochMsToTimeText(props.actionLog.endAt) || "N/A"}
         >
-          <Editor text={state.editor.text} />
+          <Editor />
         </Show>
       </div>
       <div class={styles.actionLogListPane.actionLogList.actionLog.duration}>
@@ -101,7 +101,7 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
       </div>
       <div class={styles.actionLogListPane.actionLogList.actionLog.text} onClick={createOnDoubleClick("text")}>
         <Show when={isEditor$() && state.actionLogListPane.focus === "text"} fallback={props.actionLog.text}>
-          <Editor text={props.actionLog.text} />
+          <Editor />
         </Show>
       </div>
     </div>

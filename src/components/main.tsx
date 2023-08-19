@@ -106,6 +106,7 @@ if (import.meta.vitest) {
             updateState((state) => {
               state.currentPane = "actionLog";
               state.mode = "insert";
+              state.editor.text = "";
               state.editor.cursorPosition = 0;
               state.actionLogPane.currentActionLogId = "log1";
               state.actionLogPane.currentListItemId = "item1";

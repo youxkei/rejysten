@@ -1,20 +1,20 @@
-import { createEffect, onCleanup } from "solid-js";
+import { debounce } from "@solid-primitives/scheduled";
+import { createEffect, onCleanup, untrack } from "solid-js";
 
 import { useEventService } from "@/services/event";
 import { createSignalWithLock, useLockService } from "@/services/lock";
 import { useStoreService } from "@/services/store";
-import { Input } from "@/solid/input";
 import { styles } from "@/styles.css";
 
-export function Editor(props: { text: string }) {
+export function Editor() {
   let input!: HTMLInputElement;
 
   const lock = useLockService();
-  const { state } = useStoreService();
+  const { state, updateState } = useStoreService();
   const { emitEvent } = useEventService();
 
+  const text$ = createSignalWithLock(lock, () => state.editor.text, "", true);
   const cursorPosition$ = createSignalWithLock(lock, () => state.editor.cursorPosition, -1, true);
-  const text$ = createSignalWithLock(lock, () => props.text, "", true);
 
   createEffect(() => {
     input.focus();
@@ -22,12 +22,20 @@ export function Editor(props: { text: string }) {
     const pos = cursorPosition$();
 
     if (pos === -1) {
-      const len = props.text.length;
+      const len = untrack(text$).length;
       input.setSelectionRange(len, len);
     } else {
       input.setSelectionRange(pos, pos);
     }
   });
+
+  const emitChangeEditorText = debounce(() => {
+    emitEvent({
+      pane: state.currentPane,
+      mode: "insert",
+      type: "changeEditorText",
+    });
+  }, 500);
 
   let active = true;
   onCleanup(() => {
@@ -45,17 +53,18 @@ export function Editor(props: { text: string }) {
   };
 
   return (
-    <Input
+    <input
       class={styles.editor}
       ref={input}
-      onInput={(event) =>
-        emitEvent({
-          pane: state.currentPane,
-          mode: "insert",
-          type: "changeEditorText",
-          newText: event.target.value,
-        })
-      }
+      onInput={(event) => {
+        const newText = event.target.value;
+
+        updateState((state) => {
+          state.editor.text = newText;
+        });
+
+        emitChangeEditorText();
+      }}
       onBlur={onBlur}
       value={text$()}
     />
