@@ -63,6 +63,7 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
 
           ctx.store.updateState((state) => {
             state.mode = "insert";
+            state.editor.text = "";
             state.editor.cursorPosition = -1;
             state.actionLogListPane.currentActionLogId = id;
             state.actionLogListPane.focus = "text";

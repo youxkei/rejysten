@@ -161,6 +161,7 @@ async function handleInsertModeEvent(
 
       ctx.store.updateState((state) => {
         state.mode = "normal";
+        state.editor.text = "";
       });
 
       break;
