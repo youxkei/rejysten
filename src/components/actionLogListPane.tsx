@@ -1,7 +1,7 @@
 import type { ActionLogDocument } from "@/services/rxdb/collections/actionLog";
 import type { Temporal } from "@js-temporal/polyfill";
 
-import { Index, Match, Show, Switch } from "solid-js";
+import { Index, Match, Show, Switch, createEffect } from "solid-js";
 
 import { Editor } from "@/components/editor";
 import { createDouble } from "@/components/event";
@@ -35,12 +35,30 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
   const lock = useLockService();
   const { emitEvent } = useEventService();
 
+  let container: HTMLDivElement | undefined;
+
   const isSelected$ = createSignalWithLock(
     lock,
     () => props.actionLog.id === state.actionLogListPane.currentActionLogId,
-    false
+    false,
+    true
   );
   const isEditor$ = createSignalWithLock(lock, () => isSelected$() && state.mode === "insert", false);
+
+  createEffect(() => {
+    if (!isSelected$() || !container || !container.parentElement) return;
+
+    const parentRect = container.parentElement.getBoundingClientRect();
+    const rect = container.getBoundingClientRect();
+
+    if (rect.top < parentRect.top) {
+      container.scrollIntoView({ block: "start" });
+    }
+
+    if (rect.bottom > parentRect.bottom) {
+      container.scrollIntoView({ block: "end" });
+    }
+  });
 
   const onClick$ = () => {
     const actionLogId = props.actionLog.id;
@@ -74,6 +92,7 @@ function ActionLog(props: { actionLog: ActionLogDocument }) {
 
   return (
     <div
+      ref={container}
       classList={{
         [styles.actionLogListPane.actionLogList.actionLog.container]: true,
         [styles.selected]: isSelected$(),
