@@ -16,7 +16,7 @@ function getAboveFinishedLog({ collections }: RxDBService, baseLog: ActionLogDoc
         startAt: { $gt: 0, $lte: baseLog.startAt },
         endAt: { $gt: 0 },
       },
-      sort: [{ id: "desc", startAt: "desc" }],
+      sort: [{ startAt: "desc" }, { id: "desc" }],
     })
     .exec();
 }
@@ -43,7 +43,7 @@ function getAboveOngoingLog({ collections }: RxDBService, baseLog: ActionLogDocu
         startAt: { $gt: 0, $lte: baseLog.startAt },
         endAt: 0,
       },
-      sort: [{ id: "desc", startAt: "desc" }],
+      sort: [{ startAt: "desc" }, { id: "desc" }],
     })
     .exec();
 }
@@ -84,7 +84,7 @@ function getLastFinishedLog({ collections }: RxDBService) {
   return collections.actionLogs
     .findOne({
       selector: { startAt: { $gt: 0 }, endAt: { $gt: 0 } },
-      sort: [{ id: "desc", endAt: "desc" }],
+      sort: [{ startAt: "desc" }, { id: "desc" }],
     })
     .exec();
 }
@@ -102,7 +102,7 @@ function getLastOngoingLog({ collections }: RxDBService) {
   return collections.actionLogs
     .findOne({
       selector: { startAt: { $gt: 0 }, endAt: 0 },
-      sort: [{ id: "desc", startAt: "desc" }],
+      sort: [{ startAt: "desc" }, { id: "desc" }],
     })
     .exec();
 }
@@ -156,6 +156,16 @@ if (import.meta.vitest) {
         wantActionLogId: "2",
       },
       {
+        name: "finished log, has above finished logs with reversed startAt",
+        actionLogs: [
+          { id: "1", text: "", startAt: 2, endAt: 9, updatedAt: 9 },
+          { id: "2", text: "", startAt: 1, endAt: 9, updatedAt: 9 },
+          { id: "3", text: "", startAt: 3, endAt: 9, updatedAt: 9 },
+        ],
+        currentActionLogId: "3",
+        wantActionLogId: "1",
+      },
+      {
         name: "finished log, has above and below finished logs with same startAt",
         actionLogs: [
           { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
@@ -185,6 +195,16 @@ if (import.meta.vitest) {
         wantActionLogId: "2",
       },
       {
+        name: "ongoing log, no above ongoing log, has the last finished log with reversed startAt",
+        actionLogs: [
+          { id: "1", text: "", startAt: 2, endAt: 9, updatedAt: 9 },
+          { id: "2", text: "", startAt: 1, endAt: 9, updatedAt: 9 },
+          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+        ],
+        currentActionLogId: "3",
+        wantActionLogId: "1",
+      },
+      {
         name: "ongoing log, no above ongoing log, has the last finished log with same startAt",
         actionLogs: [
           { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
@@ -205,6 +225,16 @@ if (import.meta.vitest) {
         ],
         currentActionLogId: "3",
         wantActionLogId: "2",
+      },
+      {
+        name: "ongoing log, has above ongoing logs with reversed startAt",
+        actionLogs: [
+          { id: "1", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
+          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+          { id: "3", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
+        ],
+        currentActionLogId: "3",
+        wantActionLogId: "1",
       },
       {
         name: "ongoing log, has above and below ongoing logs with same startAt",
@@ -236,6 +266,16 @@ if (import.meta.vitest) {
         wantActionLogId: "2",
       },
       {
+        name: "tentative log, no above tentative log, no ongoing log, has the last finished log with reversed startAt",
+        actionLogs: [
+          { id: "1", text: "", startAt: 2, endAt: 9, updatedAt: 9 },
+          { id: "2", text: "", startAt: 1, endAt: 9, updatedAt: 9 },
+          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+        ],
+        currentActionLogId: "3",
+        wantActionLogId: "1",
+      },
+      {
         name: "tentative log, no above tentative log, no ongoing log, has the last finished log with same startAt",
         actionLogs: [
           { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
@@ -256,6 +296,16 @@ if (import.meta.vitest) {
         ],
         currentActionLogId: "3",
         wantActionLogId: "2",
+      },
+      {
+        name: "tentative log, no above tentative log, has the last ongoing log with reversed startAt",
+        actionLogs: [
+          { id: "1", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
+          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+        ],
+        currentActionLogId: "3",
+        wantActionLogId: "1",
       },
       {
         name: "tentative log, no above tentative log, has the last ongoing log with same startAt",
@@ -359,6 +409,16 @@ if (import.meta.vitest) {
         wantActionLogId: "2",
       },
       {
+        name: "ongoing log, has below ongoing logs with reversed startAt",
+        actionLogs: [
+          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+          { id: "2", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
+          { id: "3", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
+        ],
+        currentActionLogId: "1",
+        wantActionLogId: "3",
+      },
+      {
         name: "ongoing log, has above and below ongoing logs with same startAt",
         actionLogs: [
           { id: "0", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
@@ -398,6 +458,16 @@ if (import.meta.vitest) {
         wantActionLogId: "2",
       },
       {
+        name: "finished log, no below finished log, has the first ongoing log with reversed startAt",
+        actionLogs: [
+          { id: "1", text: "", startAt: 9, endAt: 9, updatedAt: 9 },
+          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
+          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+        ],
+        currentActionLogId: "1",
+        wantActionLogId: "3",
+      },
+      {
         name: "finished log, no below finished log, has the first ongoing log with same startAt",
         actionLogs: [
           { id: "1", text: "", startAt: 9, endAt: 9, updatedAt: 9 },
@@ -420,6 +490,16 @@ if (import.meta.vitest) {
         wantActionLogId: "2",
       },
       {
+        name: "finished log, has a below finished log with reversed startAt",
+        actionLogs: [
+          { id: "1", text: "", startAt: 1, endAt: 9, updatedAt: 9 },
+          { id: "2", text: "", startAt: 3, endAt: 9, updatedAt: 9 },
+          { id: "3", text: "", startAt: 2, endAt: 9, updatedAt: 9 },
+        ],
+        currentActionLogId: "1",
+        wantActionLogId: "3",
+      },
+      {
         name: "finished log, has above and below finished logs with same startAt",
         actionLogs: [
           { id: "0", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
@@ -440,6 +520,159 @@ if (import.meta.vitest) {
         const currentActionLog = (await service.collections.actionLogs.findOne(currentActionLogId).exec())!;
 
         test.expect((await getBelowLog(service, currentActionLog))?.id).toBe(wantActionLogId);
+      });
+    });
+  });
+}
+
+export function queryFinishedLogs({ collections }: RxDBService) {
+  return collections.actionLogs.find({
+    selector: { startAt: { $gt: 0 }, endAt: { $gt: 0 } },
+    sort: [{ startAt: "asc" }],
+  });
+}
+
+if (import.meta.vitest) {
+  describe("queryFinishedLogs", () => {
+    describe.each([
+      {
+        name: "no finished log",
+        actionLogs: [
+          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+        ],
+        wantActionLogIds: [],
+      },
+      {
+        name: "has multiple finished logs",
+        actionLogs: [
+          { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
+          { id: "2", text: "", startAt: 2, endAt: 2, updatedAt: 9 },
+          { id: "3", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
+        ],
+        wantActionLogIds: ["1", "2", "3"],
+      },
+      {
+        name: "has multiple finished logs with reverse startAt",
+        actionLogs: [
+          { id: "1", text: "", startAt: 3, endAt: 9, updatedAt: 9 },
+          { id: "2", text: "", startAt: 2, endAt: 9, updatedAt: 9 },
+          { id: "3", text: "", startAt: 1, endAt: 9, updatedAt: 9 },
+        ],
+        wantActionLogIds: ["3", "2", "1"],
+      },
+      {
+        name: "has multiple finished logs with same startAt",
+        actionLogs: [
+          { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
+          { id: "2", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
+          { id: "3", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
+        ],
+        wantActionLogIds: ["1", "2", "3"],
+      },
+    ])("$name", ({ actionLogs, wantActionLogIds }) => {
+      test("assert", async (test) => {
+        const service = await createRxDBServiceForTest(test.meta.id);
+
+        await service.collections.actionLogs.bulkInsert(actionLogs);
+        const finishedLogs = await queryFinishedLogs(service).exec();
+
+        test.expect(finishedLogs.map((log) => log.id)).toEqual(wantActionLogIds);
+      });
+    });
+  });
+}
+
+export function queryOngoingLogs({ collections }: RxDBService) {
+  return collections.actionLogs.find({
+    selector: { startAt: { $gt: 0 }, endAt: 0 },
+    sort: [{ startAt: "asc" }],
+  });
+}
+
+if (import.meta.vitest) {
+  describe("queryOngoingLogs", () => {
+    describe.each([
+      {
+        name: "no ongoing log",
+        actionLogs: [
+          { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
+          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+        ],
+        wantActionLogIds: [],
+      },
+      {
+        name: "has multiple ongoing logs",
+        actionLogs: [
+          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
+          { id: "3", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
+        ],
+        wantActionLogIds: ["1", "2", "3"],
+      },
+      {
+        name: "has multiple ongoing logs with reverse startAt",
+        actionLogs: [
+          { id: "1", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
+          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
+          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+        ],
+        wantActionLogIds: ["3", "2", "1"],
+      },
+      {
+        name: "has multiple ongoing logs with same startAt",
+        actionLogs: [
+          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+        ],
+        wantActionLogIds: ["1", "2", "3"],
+      },
+    ])("$name", ({ actionLogs, wantActionLogIds }) => {
+      test("assert", async (test) => {
+        const service = await createRxDBServiceForTest(test.meta.id);
+
+        await service.collections.actionLogs.bulkInsert(actionLogs);
+        const ongoingLogs = await queryOngoingLogs(service).exec();
+
+        test.expect(ongoingLogs.map((log) => log.id)).toEqual(wantActionLogIds);
+      });
+    });
+  });
+}
+
+export function queryTentativeLogs({ collections }: RxDBService) {
+  return collections.actionLogs.find({ selector: { startAt: 0 } });
+}
+
+if (import.meta.vitest) {
+  describe("queryTentativeLogs", () => {
+    describe.each([
+      {
+        name: "no tentative log",
+        actionLogs: [
+          { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
+          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+        ],
+        wantActionLogIds: [],
+      },
+      {
+        name: "has multiple tentative logs",
+        actionLogs: [
+          { id: "1", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+        ],
+        wantActionLogIds: ["1", "2", "3"],
+      },
+    ])("$name", ({ actionLogs, wantActionLogIds }) => {
+      test("assert", async (test) => {
+        const service = await createRxDBServiceForTest(test.meta.id);
+
+        await service.collections.actionLogs.bulkInsert(actionLogs);
+        const tentativeLogs = await queryTentativeLogs(service).exec();
+
+        test.expect(tentativeLogs.map((log) => log.id)).toEqual(wantActionLogIds);
       });
     });
   });

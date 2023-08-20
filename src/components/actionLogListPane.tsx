@@ -8,6 +8,7 @@ import { createDouble } from "@/components/event";
 import { useEventService } from "@/services/event";
 import { createSignalWithLock, runWithLock, useLockService } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
+import { queryFinishedLogs, queryOngoingLogs, queryTentativeLogs } from "@/services/rxdb/collections/actionLog";
 import { createSubscribeAllSignal } from "@/services/rxdb/subscribe";
 import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
@@ -269,17 +270,12 @@ export function ActionLogListPane() {
 }
 
 function ActionLogList() {
-  const { collections } = useRxDBService();
+  const rxdb = useRxDBService();
   const lock = useLockService();
 
   const finishedActionLogs$ = createSignalWithLock(
     lock,
-    createSubscribeAllSignal(() =>
-      collections.actionLogs.find({
-        selector: { startAt: { $gt: 0 }, endAt: { $gt: 0 } },
-        sort: [{ startAt: "asc" }],
-      })
-    ),
+    createSubscribeAllSignal(() => queryFinishedLogs(rxdb)),
     []
   );
 
@@ -317,18 +313,13 @@ function ActionLogList() {
 
   const ongoingActionLogs$ = createSignalWithLock(
     lock,
-    createSubscribeAllSignal(() =>
-      collections.actionLogs.find({
-        selector: { startAt: { $gt: 0 }, endAt: 0 },
-        sort: [{ startAt: "asc" }],
-      })
-    ),
+    createSubscribeAllSignal(() => queryOngoingLogs(rxdb)),
     []
   );
 
   const tentativeActionLogs$ = createSignalWithLock(
     lock,
-    createSubscribeAllSignal(() => collections.actionLogs.find({ selector: { startAt: 0 } })),
+    createSubscribeAllSignal(() => queryTentativeLogs(rxdb)),
     []
   );
 
