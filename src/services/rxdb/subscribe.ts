@@ -22,7 +22,9 @@ export function createSubscribeSignal<T, U>(query$: () => RxQuery<T, RxDocument<
   return () => document$()?.content;
 }
 
-export function createSubscribeAllSignal<T, U>(query$: () => RxQuery<T, RxDocument<T, U>[]> | undefined) {
+export function createSubscribeAllSignal<T extends { id: string }, U>(
+  query$: () => RxQuery<T, RxDocument<T, U>[]> | undefined
+) {
   const documents$ = createSubscribeWithResource(
     query$,
     (query, setValue: (value: RxDocument<T, U>[]) => void) => {
@@ -37,21 +39,22 @@ export function createSubscribeAllSignal<T, U>(query$: () => RxQuery<T, RxDocume
     []
   );
 
-  const documentsWithRevisions$ = createMemo(
+  const documentsWithIdsRevisions = createMemo(
     () =>
       documents$().map((item) => ({
+        id: item.id,
         revision: item.revision,
         item,
       })),
     [],
     {
-      equals(lhss, rhss) {
-        if (lhss.length !== rhss.length) {
+      equals(prevs, nexts) {
+        if (prevs.length !== nexts.length) {
           return false;
         }
 
-        for (const [i, lhs] of lhss.entries()) {
-          if (lhs.revision !== rhss[i].revision) {
+        for (const [i, prev] of prevs.entries()) {
+          if (prev.id !== nexts[i].id || prev.revision !== nexts[i].revision) {
             return false;
           }
         }
@@ -61,5 +64,5 @@ export function createSubscribeAllSignal<T, U>(query$: () => RxQuery<T, RxDocume
     }
   );
 
-  return createMemo(() => documentsWithRevisions$().map(({ item }) => item));
+  return createMemo(() => documentsWithIdsRevisions().map(({ item }) => item));
 }
