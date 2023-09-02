@@ -13,7 +13,7 @@ import { mapSignal } from "@/solid/signal";
 import { matches } from "@/solid/switch";
 import { styles } from "@/styles.css";
 import { durationTextBetweenEpochMs, epochMsToPlainDateTime, epochMsToTimeText } from "@/temporal";
-import { shortenClassName } from "@/test";
+import { randomPosInt, shortenClassName } from "@/test";
 
 type ActionLogId = string;
 type DateSeparator = number;
@@ -360,7 +360,7 @@ function ActionLogList() {
 
 if (import.meta.vitest) {
   describe("display", () => {
-    test("finished actionLogs are sorted by startAt", async (ctx) => {
+    test("finished actionLogs are sorted by endAt", async (ctx) => {
       const { container, unmount } = await renderWithServicesForTest(
         ctx.meta.id,
         (props) => (
@@ -372,10 +372,10 @@ if (import.meta.vitest) {
         ({ rxdb: { collections } }) =>
           // prettier-ignore
           collections.actionLogs.bulkInsert([
-            { id: "1", text: "1", startAt: 4, endAt: 9, updatedAt: 9 },
-            { id: "2", text: "2", startAt: 3, endAt: 9, updatedAt: 9 },
-            { id: "3", text: "3", startAt: 1, endAt: 9, updatedAt: 9 },
-            { id: "4", text: "4", startAt: 2, endAt: 9, updatedAt: 9 },
+            { id: "1", text: "1", startAt: 1, endAt: 4, updatedAt: randomPosInt() },
+            { id: "2", text: "2", startAt: 1, endAt: 3, updatedAt: randomPosInt() },
+            { id: "3", text: "3", startAt: 1, endAt: 1, updatedAt: randomPosInt() },
+            { id: "4", text: "4", startAt: 1, endAt: 2, updatedAt: randomPosInt() },
           ])
       );
 
@@ -397,16 +397,16 @@ if (import.meta.vitest) {
           // prettier-ignore
           collections.actionLogs.bulkInsert([
             // ongoing actionLogs
-            { id: "1", text: "1", startAt: 6, endAt: 0, updatedAt: 6 },
-            { id: "2", text: "2", startAt: 8, endAt: 0, updatedAt: 8 },
-            { id: "3", text: "3", startAt: 7, endAt: 0, updatedAt: 7 },
-            { id: "4", text: "4", startAt: 5, endAt: 0, updatedAt: 5 },
+            { id: "1", text: "1", startAt: 6, endAt: 0, updatedAt: randomPosInt() },
+            { id: "2", text: "2", startAt: 8, endAt: 0, updatedAt: randomPosInt() },
+            { id: "3", text: "3", startAt: 7, endAt: 0, updatedAt: randomPosInt() },
+            { id: "4", text: "4", startAt: 5, endAt: 0, updatedAt: randomPosInt() },
 
             // finished actionLogs
-            { id: "5", text: "5", startAt: 4, endAt: 9, updatedAt: 9 },
-            { id: "6", text: "6", startAt: 3, endAt: 9, updatedAt: 9 },
-            { id: "7", text: "7", startAt: 1, endAt: 9, updatedAt: 9 },
-            { id: "8", text: "8", startAt: 2, endAt: 9, updatedAt: 9 },
+            { id: "5", text: "5", startAt: 1, endAt: 4, updatedAt: randomPosInt() },
+            { id: "6", text: "6", startAt: 1, endAt: 3, updatedAt: randomPosInt() },
+            { id: "7", text: "7", startAt: 1, endAt: 1, updatedAt: randomPosInt() },
+            { id: "8", text: "8", startAt: 1, endAt: 2, updatedAt: randomPosInt() },
           ])
       );
 
@@ -428,22 +428,22 @@ if (import.meta.vitest) {
           // prettier-ignore
           collections.actionLogs.bulkInsert([
             // tentative actionLogs
-            { id: "02", text: "02", startAt: 0, endAt: 0, updatedAt: 10 },
-            { id: "03", text: "03", startAt: 0, endAt: 0, updatedAt: 10 },
-            { id: "04", text: "04", startAt: 0, endAt: 0, updatedAt: 10 },
-            { id: "01", text: "01", startAt: 0, endAt: 0, updatedAt: 10 },
+            { id: "02", text: "02", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+            { id: "03", text: "03", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+            { id: "04", text: "04", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+            { id: "01", text: "01", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
 
             // ongoing actionLogs
-            { id: "05", text: "05", startAt: 4, endAt: 0, updatedAt: 4 },
-            { id: "06", text: "06", startAt: 3, endAt: 0, updatedAt: 3 },
-            { id: "07", text: "07", startAt: 1, endAt: 0, updatedAt: 1 },
-            { id: "08", text: "08", startAt: 2, endAt: 0, updatedAt: 2 },
+            { id: "05", text: "05", startAt: 4, endAt: 0, updatedAt: randomPosInt() },
+            { id: "06", text: "06", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
+            { id: "07", text: "07", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+            { id: "08", text: "08", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
 
             // finished actionLogs
-            { id: "09", text: "09", startAt: 6, endAt: 9, updatedAt: 9 },
-            { id: "10", text: "10", startAt: 8, endAt: 9, updatedAt: 9 },
-            { id: "11", text: "11", startAt: 7, endAt: 9, updatedAt: 9 },
-            { id: "12", text: "12", startAt: 5, endAt: 9, updatedAt: 9 },
+            { id: "09", text: "09", startAt: 1, endAt: 6, updatedAt: randomPosInt() },
+            { id: "10", text: "10", startAt: 1, endAt: 8, updatedAt: randomPosInt() },
+            { id: "11", text: "11", startAt: 1, endAt: 7, updatedAt: randomPosInt() },
+            { id: "12", text: "12", startAt: 1, endAt: 5, updatedAt: randomPosInt() },
           ])
       );
 
@@ -576,12 +576,12 @@ if (import.meta.vitest) {
         ({ rxdb: { collections } }) =>
           // prettier-ignore
           collections.actionLogs.bulkInsert([
-            { id: "finished 1",  text: "finished 1",  startAt: 2, endAt: 4, updatedAt: 4 },
-            { id: "finished 2",  text: "finished 2",  startAt: 3, endAt: 4, updatedAt: 4 },
-            { id: "ongoing 1",   text: "ongoing 1",   startAt: 5, endAt: 0, updatedAt: 5 },
-            { id: "ongoing 2",   text: "ongoing 2",   startAt: 6, endAt: 0, updatedAt: 6 },
-            { id: "tentative 1", text: "tentative 1", startAt: 0, endAt: 0, updatedAt: 7 },
-            { id: "tentative 2", text: "tentative 2", startAt: 0, endAt: 0, updatedAt: 7 },
+            { id: "finished 1",  text: "finished 1",  startAt: 2, endAt: 8, updatedAt: randomPosInt() },
+            { id: "finished 2",  text: "finished 2",  startAt: 3, endAt: 9, updatedAt: randomPosInt() },
+            { id: "ongoing 1",   text: "ongoing 1",   startAt: 5, endAt: 0, updatedAt: randomPosInt() },
+            { id: "ongoing 2",   text: "ongoing 2",   startAt: 6, endAt: 0, updatedAt: randomPosInt() },
+            { id: "tentative 1", text: "tentative 1", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+            { id: "tentative 2", text: "tentative 2", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
           ])
       );
 
@@ -645,9 +645,9 @@ if (import.meta.vitest) {
         ({ rxdb: { collections } }) =>
           // prettier-ignore
           collections.actionLogs.bulkInsert([
-            { id: "finished 1", text: "finished 1", startAt: 1, endAt: 4, updatedAt: 4 },
-            { id: "finished 2", text: "finished 2", startAt: 3, endAt: 4, updatedAt: 4 },
-            { id: "ongoing",    text: "ongoing",    startAt: 2, endAt: 0, updatedAt: 5 },
+            { id: "finished 1", text: "finished 1", startAt: 1, endAt: 1, updatedAt: randomPosInt() },
+            { id: "finished 2", text: "finished 2", startAt: 1, endAt: 3, updatedAt: randomPosInt() },
+            { id: "ongoing",    text: "ongoing",    startAt: 1, endAt: 0, updatedAt: randomPosInt() },
           ])
       );
 
@@ -657,9 +657,9 @@ if (import.meta.vitest) {
         await collections.actionLogs.upsert({
           id: "ongoing",
           text: "ongoing",
-          startAt: 2,
-          endAt: 6,
-          updatedAt: 6,
+          startAt: 1,
+          endAt: 2,
+          updatedAt: randomPosInt(),
         });
       });
 

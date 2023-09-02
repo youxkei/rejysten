@@ -1335,7 +1335,7 @@ exports[`display > finished actionLog is selected 1`] = `
 </div>
 `;
 
-exports[`display > finished actionLogs are sorted by startAt 1`] = `
+exports[`display > finished actionLogs are sorted by endAt 1`] = `
 <div>
   <div
     class="actionLogListPane_actionLogList_container"

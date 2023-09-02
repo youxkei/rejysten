@@ -3,57 +3,107 @@ import type { CollectionNameToDocumentType } from "@/services/rxdb/collections";
 import type { RxDocument } from "rxdb";
 
 import { createRxDBServiceForTest } from "@/services/rxdb/test";
+import { randomPosInt } from "@/test";
 
 export type ActionLog = CollectionNameToDocumentType["actionLogs"];
 export type ActionLogDocument = RxDocument<ActionLog>;
 
-function getAboveFinishedLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
-  return collections.actionLogs
+async function getAboveFinishedLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
+  const aboveFinishedLogWithSameEndAt = await collections.actionLogs
     .findOne({
-      // use $lte instead of $lt due to a bug https://github.com/pubkey/rxdb/pull/4751
       selector: {
+        // use $lte instead of $lt due to a bug https://github.com/pubkey/rxdb/pull/4751
         id: { $lte: baseLog.id },
-        startAt: { $gt: 0, $lte: baseLog.startAt },
-        endAt: { $gt: 0 },
+        startAt: { $gt: 0 },
+        endAt: baseLog.endAt,
       },
-      sort: [{ startAt: "desc" }, { id: "desc" }],
+      sort: [{ id: "desc" }],
+    })
+    .exec();
+
+  if (aboveFinishedLogWithSameEndAt) return aboveFinishedLogWithSameEndAt;
+
+  return await collections.actionLogs
+    .findOne({
+      selector: {
+        startAt: { $gt: 0 },
+        endAt: { $gt: 0, $lt: baseLog.endAt },
+      },
+      sort: [{ endAt: "desc" }],
     })
     .exec();
 }
 
-function getBelowFinishedLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
+async function getBelowFinishedLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
+  const belowFinishedLogWithSameEndAt = await collections.actionLogs
+    .findOne({
+      selector: {
+        // use $gte instead of $gt due to a bug https://github.com/pubkey/rxdb/pull/4751
+        id: { $gte: baseLog.id },
+        startAt: { $gt: 0 },
+        endAt: baseLog.endAt,
+      },
+    })
+    .exec();
+
+  if (belowFinishedLogWithSameEndAt) return belowFinishedLogWithSameEndAt;
+
   return collections.actionLogs
     .findOne({
       selector: {
-        id: { $gt: baseLog.id },
-        startAt: { $gt: 0, $gte: baseLog.startAt },
-        endAt: { $gt: 0 },
+        startAt: { $gt: 0 },
+        endAt: { $gt: baseLog.endAt },
       },
-      sort: [{ startAt: "asc" }],
+      sort: [{ endAt: "asc" }],
     })
     .exec();
 }
 
-function getAboveOngoingLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
-  return collections.actionLogs
+async function getAboveOngoingLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
+  const aboveOngoingLogWithSameStartAt = await collections.actionLogs
     .findOne({
-      // use $lte instead of $lt due to a bug https://github.com/pubkey/rxdb/pull/4751
       selector: {
+        // use $lte instead of $lt due to a bug
         id: { $lte: baseLog.id },
-        startAt: { $gt: 0, $lte: baseLog.startAt },
+        startAt: baseLog.startAt,
         endAt: 0,
       },
-      sort: [{ startAt: "desc" }, { id: "desc" }],
+      sort: [{ id: "desc" }],
+    })
+    .exec();
+
+  if (aboveOngoingLogWithSameStartAt) return aboveOngoingLogWithSameStartAt;
+
+  return await collections.actionLogs
+    .findOne({
+      // use $lte instead of $lt due to a bug https://github.com/pubkey/rxdb/pull/4751
+      selector: {
+        startAt: { $gt: 0, $lt: baseLog.startAt },
+        endAt: 0,
+      },
+      sort: [{ startAt: "desc" }],
     })
     .exec();
 }
 
-function getBelowOngoingLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
-  return collections.actionLogs
+async function getBelowOngoingLog({ collections }: RxDBService, baseLog: ActionLogDocument) {
+  const belowOngoingLogWithSameStartAt = await collections.actionLogs
     .findOne({
       selector: {
-        id: { $gt: baseLog.id },
-        startAt: { $gte: baseLog.startAt },
+        // use $gte instead of $gt due to a bug https://github.com/pubkey/rxdb/pull/4751
+        id: { $gte: baseLog.id },
+        startAt: baseLog.startAt,
+        endAt: 0,
+      },
+    })
+    .exec();
+
+  if (belowOngoingLogWithSameStartAt) return belowOngoingLogWithSameStartAt;
+
+  return await collections.actionLogs
+    .findOne({
+      selector: {
+        startAt: { $gt: baseLog.startAt },
         endAt: 0,
       },
       sort: [{ startAt: "asc" }],
@@ -84,7 +134,7 @@ function getLastFinishedLog({ collections }: RxDBService) {
   return collections.actionLogs
     .findOne({
       selector: { startAt: { $gt: 0 }, endAt: { $gt: 0 } },
-      sort: [{ startAt: "desc" }, { id: "desc" }],
+      sort: [{ endAt: "desc" }, { id: "desc" }],
     })
     .exec();
 }
@@ -141,65 +191,75 @@ if (import.meta.vitest) {
     describe.each([
       {
         name: "finished log, no above log",
-        actionLogs: [{ id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 }],
+        actionLogs: [{ id: "1", text: "", startAt: randomPosInt(), endAt: randomPosInt(), updatedAt: randomPosInt() }],
         currentActionLogId: "1",
         wantActionLogId: undefined,
       },
       {
         name: "finished log, has an above finished log",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 2, updatedAt: 9 },
-          { id: "3", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 2, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "3",
         wantActionLogId: "2",
       },
       {
-        name: "finished log, has above finished logs with reversed startAt",
+        name: "finished log, has an above finished log with reversed endAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 2, endAt: 9, updatedAt: 9 },
-          { id: "2", text: "", startAt: 1, endAt: 9, updatedAt: 9 },
-          { id: "3", text: "", startAt: 3, endAt: 9, updatedAt: 9 },
+          { id: "3", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 2, updatedAt: randomPosInt() },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
+        ],
+        currentActionLogId: "1",
+        wantActionLogId: "2",
+      },
+      {
+        name: "finished log, has above finished logs with reversed endAt",
+        actionLogs: [
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 2, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "3",
         wantActionLogId: "1",
       },
       {
-        name: "finished log, has above and below finished logs with same startAt",
+        name: "finished log, has above and below finished logs with same endAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 2, updatedAt: 9 },
-          { id: "3", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
-          { id: "4", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
-          { id: "5", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
-          { id: "6", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 2, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
+          { id: "4", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
+          { id: "5", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
+          { id: "6", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "5",
         wantActionLogId: "4",
       },
       {
         name: "ongoing log, no above ongoing log, no finished log",
-        actionLogs: [{ id: "1", text: "", startAt: 3, endAt: 0, updatedAt: 9 }],
+        actionLogs: [{ id: "1", text: "", startAt: randomPosInt(), endAt: 0, updatedAt: randomPosInt() }],
         currentActionLogId: "1",
         wantActionLogId: undefined,
       },
       {
         name: "ongoing log, no above ongoing log, has the last finished log",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 2, updatedAt: 9 },
-          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 2, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: randomPosInt(), endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "3",
         wantActionLogId: "2",
       },
       {
-        name: "ongoing log, no above ongoing log, has the last finished log with reversed startAt",
+        name: "ongoing log, no above ongoing log, has the last finished log with reversed endAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 2, endAt: 9, updatedAt: 9 },
-          { id: "2", text: "", startAt: 1, endAt: 9, updatedAt: 9 },
-          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 2, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: randomPosInt(), endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "3",
         wantActionLogId: "1",
@@ -207,11 +267,11 @@ if (import.meta.vitest) {
       {
         name: "ongoing log, no above ongoing log, has the last finished log with same startAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 2, updatedAt: 9 },
-          { id: "3", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
-          { id: "4", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
-          { id: "5", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 2, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
+          { id: "4", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
+          { id: "5", text: "", startAt: randomPosInt(), endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "5",
         wantActionLogId: "4",
@@ -219,19 +279,29 @@ if (import.meta.vitest) {
       {
         name: "ongoing log, has an above ongoing log",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "3",
         wantActionLogId: "2",
       },
       {
+        name: "ongoing log, has an above ongoing log with reversed startAt",
+        actionLogs: [
+          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
+          { id: "1", text: "", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
+        ],
+        currentActionLogId: "1",
+        wantActionLogId: "2",
+      },
+      {
         name: "ongoing log, has above ongoing logs with reversed startAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
+          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "1", text: "", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "3",
         wantActionLogId: "1",
@@ -239,50 +309,50 @@ if (import.meta.vitest) {
       {
         name: "ongoing log, has above and below ongoing logs with same startAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
-          { id: "4", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
-          { id: "5", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
-          { id: "6", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
+          { id: "4", text: "", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
+          { id: "5", text: "", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
+          { id: "6", text: "", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "5",
         wantActionLogId: "4",
       },
       {
         name: "tentative log, no above tentative log, no ongoing log, no finished log",
-        actionLogs: [{ id: "1", text: "", startAt: 0, endAt: 0, updatedAt: 9 }],
+        actionLogs: [{ id: "1", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() }],
         currentActionLogId: "1",
         wantActionLogId: undefined,
       },
       {
         name: "tentative log, no above tentative log, no ongoing log, has the last finished log",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 2, updatedAt: 9 },
-          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 2, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "3",
         wantActionLogId: "2",
       },
       {
-        name: "tentative log, no above tentative log, no ongoing log, has the last finished log with reversed startAt",
+        name: "tentative log, no above tentative log, no ongoing log, has the last finished log with reversed endAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 2, endAt: 9, updatedAt: 9 },
-          { id: "2", text: "", startAt: 1, endAt: 9, updatedAt: 9 },
-          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 2, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "3",
         wantActionLogId: "1",
       },
       {
-        name: "tentative log, no above tentative log, no ongoing log, has the last finished log with same startAt",
+        name: "tentative log, no above tentative log, no ongoing log, has the last finished log with same endAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 2, updatedAt: 9 },
-          { id: "3", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
-          { id: "4", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
-          { id: "5", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 2, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
+          { id: "4", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
+          { id: "5", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "5",
         wantActionLogId: "4",
@@ -290,9 +360,9 @@ if (import.meta.vitest) {
       {
         name: "tentative log, no above tentative log, has the last ongoing log",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "3",
         wantActionLogId: "2",
@@ -300,9 +370,9 @@ if (import.meta.vitest) {
       {
         name: "tentative log, no above tentative log, has the last ongoing log with reversed startAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "1", text: "", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "3",
         wantActionLogId: "1",
@@ -310,11 +380,11 @@ if (import.meta.vitest) {
       {
         name: "tentative log, no above tentative log, has the last ongoing log with same startAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
-          { id: "4", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
-          { id: "5", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
+          { id: "4", text: "", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
+          { id: "5", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "5",
         wantActionLogId: "4",
@@ -322,9 +392,9 @@ if (import.meta.vitest) {
       {
         name: "tentative log, has an above tentative log",
         actionLogs: [
-          { id: "1", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "3",
         wantActionLogId: "2",
@@ -368,32 +438,32 @@ if (import.meta.vitest) {
     describe.each([
       {
         name: "tentative log, no below tentative log",
-        actionLogs: [{ id: "1", text: "", startAt: 0, endAt: 0, updatedAt: 9 }],
+        actionLogs: [{ id: "1", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() }],
         currentActionLogId: "1",
         wantActionLogId: undefined,
       },
       {
         name: "tentative log, has a below tentative log",
         actionLogs: [
-          { id: "1", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "1",
         wantActionLogId: "2",
       },
       {
         name: "ongoing log, no below ongoing log, no tentative log",
-        actionLogs: [{ id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 }],
+        actionLogs: [{ id: "1", text: "", startAt: randomPosInt(), endAt: 0, updatedAt: randomPosInt() }],
         currentActionLogId: "1",
         wantActionLogId: undefined,
       },
       {
         name: "ongoing log, no below ongoing log, has the first tentative log",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "1",
         wantActionLogId: "2",
@@ -401,19 +471,29 @@ if (import.meta.vitest) {
       {
         name: "ongoing log, has a below ongoing log",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "1",
         wantActionLogId: "2",
       },
       {
+        name: "ongoing log, has a below ongoing log with reversed startAt",
+        actionLogs: [
+          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
+          { id: "1", text: "", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
+        ],
+        currentActionLogId: "3",
+        wantActionLogId: "2",
+      },
+      {
         name: "ongoing log, has below ongoing logs with reversed startAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "1",
         wantActionLogId: "3",
@@ -421,28 +501,28 @@ if (import.meta.vitest) {
       {
         name: "ongoing log, has above and below ongoing logs with same startAt",
         actionLogs: [
-          { id: "0", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "4", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
-          { id: "5", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "4", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "5", text: "", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
+          { id: "6", text: "", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
         ],
-        currentActionLogId: "1",
-        wantActionLogId: "2",
+        currentActionLogId: "2",
+        wantActionLogId: "3",
       },
       {
         name: "finished log, no below finished log, no ongoing log, no tentative log",
-        actionLogs: [{ id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 }],
+        actionLogs: [{ id: "1", text: "", startAt: randomPosInt(), endAt: randomPosInt(), updatedAt: randomPosInt() }],
         currentActionLogId: "1",
         wantActionLogId: undefined,
       },
       {
         name: "finished log, no below finished log, no ongoing log, has the first tentative log",
         actionLogs: [
-          { id: "1", text: "", startAt: 9, endAt: 9, updatedAt: 9 },
-          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: randomPosInt(), updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "1",
         wantActionLogId: "2",
@@ -450,9 +530,9 @@ if (import.meta.vitest) {
       {
         name: "finished log, no below finished log, has the first ongoing log",
         actionLogs: [
-          { id: "1", text: "", startAt: 9, endAt: 9, updatedAt: 9 },
-          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: randomPosInt(), updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "1",
         wantActionLogId: "2",
@@ -460,9 +540,9 @@ if (import.meta.vitest) {
       {
         name: "finished log, no below finished log, has the first ongoing log with reversed startAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 9, endAt: 9, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: randomPosInt(), updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "1",
         wantActionLogId: "3",
@@ -470,11 +550,11 @@ if (import.meta.vitest) {
       {
         name: "finished log, no below finished log, has the first ongoing log with same startAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 9, endAt: 9, updatedAt: 9 },
-          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "4", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
-          { id: "5", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: randomPosInt(), updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "4", text: "", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
+          { id: "5", text: "", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "1",
         wantActionLogId: "2",
@@ -482,35 +562,45 @@ if (import.meta.vitest) {
       {
         name: "finished log, has a below finished log",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 2, updatedAt: 9 },
-          { id: "3", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 2, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "1",
         wantActionLogId: "2",
       },
       {
-        name: "finished log, has a below finished log with reversed startAt",
+        name: "finished log, has a below finished log with reversed endAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 9, updatedAt: 9 },
-          { id: "2", text: "", startAt: 3, endAt: 9, updatedAt: 9 },
-          { id: "3", text: "", startAt: 2, endAt: 9, updatedAt: 9 },
+          { id: "3", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 2, updatedAt: randomPosInt() },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
+        ],
+        currentActionLogId: "3",
+        wantActionLogId: "2",
+      },
+      {
+        name: "finished log, has below finished logs with reversed endAt",
+        actionLogs: [
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: randomPosInt(), endAt: 2, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
         ],
         currentActionLogId: "1",
         wantActionLogId: "3",
       },
       {
-        name: "finished log, has above and below finished logs with same startAt",
+        name: "finished log, has above and below finished logs with same endAt",
         actionLogs: [
-          { id: "0", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
-          { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
-          { id: "2", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
-          { id: "3", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
-          { id: "4", text: "", startAt: 2, endAt: 2, updatedAt: 9 },
-          { id: "5", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "4", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "5", text: "", startAt: randomPosInt(), endAt: 2, updatedAt: randomPosInt() },
+          { id: "6", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
         ],
-        currentActionLogId: "1",
-        wantActionLogId: "2",
+        currentActionLogId: "2",
+        wantActionLogId: "3",
       },
     ])("$name", ({ actionLogs, currentActionLogId, wantActionLogId }) => {
       test("assert", async (test) => {
@@ -528,7 +618,7 @@ if (import.meta.vitest) {
 export function queryFinishedLogs({ collections }: RxDBService) {
   return collections.actionLogs.find({
     selector: { startAt: { $gt: 0 }, endAt: { $gt: 0 } },
-    sort: [{ startAt: "asc" }],
+    sort: [{ endAt: "asc" }],
   });
 }
 
@@ -538,35 +628,35 @@ if (import.meta.vitest) {
       {
         name: "no finished log",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
         ],
         wantActionLogIds: [],
       },
       {
         name: "has multiple finished logs",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 2, updatedAt: 9 },
-          { id: "3", text: "", startAt: 3, endAt: 3, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 2, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
         ],
         wantActionLogIds: ["1", "2", "3"],
       },
       {
-        name: "has multiple finished logs with reverse startAt",
+        name: "has multiple finished logs with reverse endAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 3, endAt: 9, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 9, updatedAt: 9 },
-          { id: "3", text: "", startAt: 1, endAt: 9, updatedAt: 9 },
+          { id: "3", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 2, updatedAt: randomPosInt() },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 3, updatedAt: randomPosInt() },
         ],
         wantActionLogIds: ["3", "2", "1"],
       },
       {
-        name: "has multiple finished logs with same startAt",
+        name: "has multiple finished logs with same endAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
-          { id: "2", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
-          { id: "3", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: randomPosInt(), endAt: 1, updatedAt: randomPosInt() },
         ],
         wantActionLogIds: ["1", "2", "3"],
       },
@@ -596,35 +686,35 @@ if (import.meta.vitest) {
       {
         name: "no ongoing log",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
-          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: randomPosInt(), updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
         ],
         wantActionLogIds: [],
       },
       {
         name: "has multiple ongoing logs",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
         ],
         wantActionLogIds: ["1", "2", "3"],
       },
       {
         name: "has multiple ongoing logs with reverse startAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 3, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
+          { id: "1", text: "", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
         ],
         wantActionLogIds: ["3", "2", "1"],
       },
       {
         name: "has multiple ongoing logs with same startAt",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
         ],
         wantActionLogIds: ["1", "2", "3"],
       },
@@ -651,17 +741,17 @@ if (import.meta.vitest) {
       {
         name: "no tentative log",
         actionLogs: [
-          { id: "1", text: "", startAt: 1, endAt: 1, updatedAt: 9 },
-          { id: "2", text: "", startAt: 1, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: randomPosInt(), endAt: randomPosInt(), updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: randomPosInt(), endAt: 0, updatedAt: randomPosInt() },
         ],
         wantActionLogIds: [],
       },
       {
         name: "has multiple tentative logs",
         actionLogs: [
-          { id: "1", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
-          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
-          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: 9 },
+          { id: "1", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
         ],
         wantActionLogIds: ["1", "2", "3"],
       },

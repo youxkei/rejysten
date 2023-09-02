@@ -22,3 +22,7 @@ export function getPromiseWithResolve<T = void>() {
 
   return { promise, resolve };
 }
+
+export function randomPosInt() {
+  return Math.floor(Math.random() * 1024) + 1;
+}

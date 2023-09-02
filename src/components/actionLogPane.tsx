@@ -599,7 +599,7 @@ if (import.meta.vitest) {
       });
 
       describe("press Backspace to remove item", () => {
-        test.only("cursor is on the left edge, no children, has above item: item is removed and move to above item", async (test) => {
+        test("cursor is on the left edge, no children, has above item: item is removed and move to above item", async (test) => {
           const user = userEvent.setup();
           const { container, unmount, lock, getByDisplayValue } = await render(
             test,
