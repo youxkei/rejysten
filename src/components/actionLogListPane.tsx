@@ -48,8 +48,7 @@ function ActionLog(props: { actionLogId: string }) {
   const isSelected$ = createSignalWithLock(
     lock,
     () => actionLog$()?.id === state.actionLogListPane.currentActionLogId,
-    false,
-    true
+    false
   );
   const isEditor$ = createSignalWithLock(lock, () => isSelected$() && state.mode === "insert", false);
 
@@ -289,7 +288,10 @@ function ActionLogList() {
   const finishedActionLogIdsWithDateSeparators$ = mapSignal(
     createSignalWithLock(
       lock,
-      createSubscribeAllSignal(() => queryFinishedLogs(rxdb)),
+      createSubscribeAllSignal(() => queryFinishedLogs(rxdb), {
+        abstract: (actionLog) => actionLog.endAt,
+        equals: (prev, next) => prev === next,
+      }),
       []
     ),
     (actionLogs) => {

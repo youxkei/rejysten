@@ -15,7 +15,7 @@ export function Todo() {
 
   const todos$ = createSubscribeAllSignal(() => collections.todos.find());
   const editor$ = createSubscribeSignal(() => collections.editors.findOne("const"));
-  const text$ = createSignalWithLock(lock, () => editor$()?.text ?? "", "", true);
+  const text$ = createSignalWithLock(lock, () => editor$()?.text ?? "", "");
 
   const onInput = (event: { target: HTMLInputElement }) => {
     void runWithLock(lock, () =>

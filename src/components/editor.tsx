@@ -13,8 +13,8 @@ export function Editor() {
   const { state, updateState } = useStoreService();
   const { emitEvent } = useEventService();
 
-  const text$ = createSignalWithLock(lock, () => state.editor.text, "", true);
-  const cursorPosition$ = createSignalWithLock(lock, () => state.editor.cursorPosition, -1, true);
+  const text$ = createSignalWithLock(lock, () => state.editor.text, "");
+  const cursorPosition$ = createSignalWithLock(lock, () => state.editor.cursorPosition, -1);
 
   createEffect(() => {
     input.focus();
