@@ -297,14 +297,14 @@ function ActionLogList() {
     (actionLogs) => {
       if (actionLogs.length === 0) return [];
 
-      const actionLogsWithSeparators = [actionLogs[0].startAt, actionLogs[0].id] as ActionLogIdOrDateSeparator[];
+      const actionLogsWithSeparators = [actionLogs[0].endAt, actionLogs[0].id] as ActionLogIdOrDateSeparator[];
 
       for (let i = 1; i < actionLogs.length; i++) {
-        const beforeDate = epochMsToPlainDateTime(actionLogs[i - 1].startAt).toPlainDate();
-        const afterDate = epochMsToPlainDateTime(actionLogs[i].startAt).toPlainDate();
+        const beforeDate = epochMsToPlainDateTime(actionLogs[i - 1].endAt).toPlainDate();
+        const afterDate = epochMsToPlainDateTime(actionLogs[i].endAt).toPlainDate();
 
         if (beforeDate.until(afterDate).days > 0) {
-          actionLogsWithSeparators.push(actionLogs[i].startAt);
+          actionLogsWithSeparators.push(actionLogs[i].endAt);
         }
 
         actionLogsWithSeparators.push(actionLogs[i].id);
