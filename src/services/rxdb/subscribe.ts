@@ -2,6 +2,7 @@ import type { RxQuery, RxDocument } from "rxdb";
 
 import { createMemo, onCleanup } from "solid-js";
 
+import { mapSignal } from "@/solid/signal";
 import { createSubscribeWithResource } from "@/solid/subscribe";
 
 export function createSubscribeSignal<T, U>(query$: () => RxQuery<T, RxDocument<T, U> | null> | undefined) {
@@ -19,7 +20,31 @@ export function createSubscribeSignal<T, U>(query$: () => RxQuery<T, RxDocument<
     undefined
   );
 
-  return () => document$()?.content;
+  return mapSignal(
+    createMemo(
+      () => {
+        const document = document$();
+        if (!document) return;
+
+        const content = document.content;
+
+        return {
+          ...document,
+          revision: content ? parseInt(content.revision) : -1,
+        };
+      },
+      undefined,
+      {
+        equals(prev, next) {
+          if (!prev || !next) return false;
+
+          // Somehow there is some cases where revision is rewinded, so we need to ignore it
+          return prev.revision >= next.revision;
+        },
+      }
+    ),
+    (documentWithMetadata) => documentWithMetadata?.content
+  );
 }
 
 export function createSubscribeAllSignal<T extends { id: string }, U, A>(

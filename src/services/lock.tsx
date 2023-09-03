@@ -154,7 +154,10 @@ export function createSignalWithLock<T>(service: LockService, value$: () => T, i
   const memo$ = createMemo<{ value: T; lock: boolean }>(
     (prev) => {
       const lock = service.lock$();
-      if (lock) return { value: prev.value, lock: true };
+
+      if (lock) {
+        return { value: prev.value, lock: true };
+      }
 
       return { value: value$(), lock: false };
     },
