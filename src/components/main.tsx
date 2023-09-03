@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import { Match, Switch } from "solid-js";
-import { registerSW } from "virtual:pwa-register";
 
 import { ActionLogListPane } from "@/components/actionLogListPane";
 import { ActionLogPane } from "@/components/actionLogPane";
@@ -10,8 +9,6 @@ import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
 import { styles } from "@/styles.css";
 import { shortenClassName } from "@/test";
-
-registerSW({ immediate: true });
 
 export function Main() {
   const { state } = useStoreService();

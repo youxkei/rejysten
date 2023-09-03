@@ -1,5 +1,6 @@
 import { MultiProvider } from "@solid-primitives/context";
 import { render, Suspense } from "solid-js/web";
+import { registerSW } from "virtual:pwa-register";
 
 import { ErrorBoundary } from "@/components/errorBoundary";
 import { Main } from "@/components/main";
@@ -10,6 +11,8 @@ import { LockServiceProvider } from "@/services/lock";
 import { RxDBServiceProvider } from "@/services/rxdb";
 import { RxDBSyncFirestoreServiceProvider } from "@/services/rxdbSync/firestore";
 import { StoreServiceProvider } from "@/services/store";
+
+registerSW({ immediate: true });
 
 function App() {
   return (
