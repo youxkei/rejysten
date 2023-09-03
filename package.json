@@ -60,7 +60,8 @@
     "vite-plugin-pwa": "^0.16.4",
     "vite-plugin-solid": "^2.7.0",
     "vite-tsconfig-paths": "^4.0.8",
-    "vitest": "^0.31.1"
+    "vitest": "^0.31.1",
+    "workbox-window": "^7.0.0"
   },
   "dependencies": {
     "@js-temporal/polyfill": "^0.4.4",
