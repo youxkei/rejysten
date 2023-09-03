@@ -1,4 +1,4 @@
-import { For, Match, Show, Switch, createEffect } from "solid-js";
+import { For, Match, Show, Switch, createEffect, createMemo, createSignal } from "solid-js";
 
 import { Editor } from "@/components/editor";
 import { createDouble } from "@/components/event";
@@ -31,7 +31,7 @@ function isDateSeparator(
   return typeof actionLogIdOrDateSeparator === "number";
 }
 
-function ActionLog(props: { actionLogId: string }) {
+function ActionLog(props: { actionLogId: string; actionLogsUpdated$: () => unknown }) {
   const { state } = useStoreService();
   const { collections } = useRxDBService();
   const lock = useLockService();
@@ -54,6 +54,8 @@ function ActionLog(props: { actionLogId: string }) {
 
   createEffect(() => {
     if (!isSelected$() || !container || !container.parentElement) return;
+
+    props.actionLogsUpdated$();
 
     const parentRect = container.parentElement.getBoundingClientRect();
     const rect = container.getBoundingClientRect();
@@ -285,52 +287,74 @@ function ActionLogList() {
   const rxdb = useRxDBService();
   const lock = useLockService();
 
-  const finishedActionLogIdsWithDateSeparators$ = mapSignal(
-    createSignalWithLock(
-      lock,
-      createSubscribeAllSignal(() => queryFinishedLogs(rxdb), {
-        abstract: (actionLog) => actionLog.endAt,
-        equals: (prev, next) => prev === next,
-      }),
-      []
-    ),
-    (actionLogs) => {
-      if (actionLogs.length === 0) return [];
+  const [actionLogsUpdated$, emitActionLogsUpdated] = createSignal(false);
 
-      const actionLogsWithSeparators = [actionLogs[0].endAt, actionLogs[0].id] as ActionLogIdOrDateSeparator[];
+  const finishedActionLogIdsWithDateSeparators$ = createMemo(
+    mapSignal(
+      createSignalWithLock(
+        lock,
+        createSubscribeAllSignal(() => queryFinishedLogs(rxdb), {
+          abstract: (actionLog) => actionLog.endAt,
+          equals: (prev, next) => prev === next,
+        }),
+        []
+      ),
+      (actionLogs) => {
+        if (actionLogs.length === 0) return [];
 
-      for (let i = 1; i < actionLogs.length; i++) {
-        const beforeDate = epochMsToPlainDateTime(actionLogs[i - 1].endAt).toPlainDate();
-        const afterDate = epochMsToPlainDateTime(actionLogs[i].endAt).toPlainDate();
+        const actionLogsWithSeparators = [actionLogs[0].endAt, actionLogs[0].id] as ActionLogIdOrDateSeparator[];
 
-        if (beforeDate.until(afterDate).days > 0) {
-          actionLogsWithSeparators.push(actionLogs[i].endAt);
+        for (let i = 1; i < actionLogs.length; i++) {
+          const beforeDate = epochMsToPlainDateTime(actionLogs[i - 1].endAt).toPlainDate();
+          const afterDate = epochMsToPlainDateTime(actionLogs[i].endAt).toPlainDate();
+
+          if (beforeDate.until(afterDate).days > 0) {
+            actionLogsWithSeparators.push(actionLogs[i].endAt);
+          }
+
+          actionLogsWithSeparators.push(actionLogs[i].id);
         }
 
-        actionLogsWithSeparators.push(actionLogs[i].id);
+        return actionLogsWithSeparators;
       }
-
-      return actionLogsWithSeparators;
-    }
+    )
   );
 
-  const ongoingActionLogIds$ = mapSignal(
-    createSignalWithLock(
-      lock,
-      createSubscribeAllSignal(() => queryOngoingLogs(rxdb)),
-      []
-    ),
-    (actionLogs) => actionLogs.map((actionLog) => actionLog.id)
+  const ongoingActionLogIds$ = createMemo(
+    mapSignal(
+      createSignalWithLock(
+        lock,
+        createSubscribeAllSignal(() => queryOngoingLogs(rxdb), {
+          abstract: (actionLog) => actionLog.startAt,
+          equals: (prev, next) => prev === next,
+        }),
+        []
+      ),
+      (actionLogs) => actionLogs.map((actionLog) => actionLog.id)
+    )
   );
 
-  const tentativeActionLogs$ = mapSignal(
-    createSignalWithLock(
-      lock,
-      createSubscribeAllSignal(() => queryTentativeLogs(rxdb)),
-      []
-    ),
-    (actionLogs) => actionLogs.map((actionLog) => actionLog.id)
+  const tentativeActionLogs$ = createMemo(
+    mapSignal(
+      createSignalWithLock(
+        lock,
+        createSubscribeAllSignal(() => queryTentativeLogs(rxdb), {
+          abstract: (_actionLog) => true,
+          equals: (_prev, _next) => true,
+        }),
+        []
+      ),
+      (actionLogs) => actionLogs.map((actionLog) => actionLog.id)
+    )
   );
+
+  createEffect(() => {
+    finishedActionLogIdsWithDateSeparators$();
+    ongoingActionLogIds$();
+    tentativeActionLogs$();
+
+    emitActionLogsUpdated((prev) => !prev);
+  });
 
   return (
     <div class={styles.actionLogListPane.actionLogList.container}>
@@ -338,7 +362,7 @@ function ActionLogList() {
         {(actionLogIdOrDateSeparator) => (
           <Switch>
             <Match when={matches(actionLogIdOrDateSeparator, isActionLogId)}>
-              {(actionLogId) => <ActionLog actionLogId={actionLogId()} />}
+              {(actionLogId) => <ActionLog actionLogId={actionLogId()} actionLogsUpdated$={actionLogsUpdated$} />}
             </Match>
             <Match when={matches(actionLogIdOrDateSeparator, isDateSeparator)}>
               {(dateSeparator) => <DateSeparator epochMs={dateSeparator()} />}
@@ -350,12 +374,16 @@ function ActionLogList() {
       <Show when={ongoingActionLogIds$().length > 0}>
         <div class={styles.actionLogListPane.actionLogList.separator}>ongoing</div>
       </Show>
-      <For each={ongoingActionLogIds$()}>{(actionLogId) => <ActionLog actionLogId={actionLogId} />}</For>
+      <For each={ongoingActionLogIds$()}>
+        {(actionLogId) => <ActionLog actionLogId={actionLogId} actionLogsUpdated$={actionLogsUpdated$} />}
+      </For>
 
       <Show when={tentativeActionLogs$().length > 0}>
         <div class={styles.actionLogListPane.actionLogList.separator}>tentative</div>
       </Show>
-      <For each={tentativeActionLogs$()}>{(actionLogId) => <ActionLog actionLogId={actionLogId} />}</For>
+      <For each={tentativeActionLogs$()}>
+        {(actionLogId) => <ActionLog actionLogId={actionLogId} actionLogsUpdated$={actionLogsUpdated$} />}
+      </For>
     </div>
   );
 }
