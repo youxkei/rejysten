@@ -277,6 +277,7 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
 
         case "delete": {
           if (ctx.store.state.editor.text !== "") break;
+          if (currentActionLog.startAt !== 0 || currentActionLog.endAt !== 0) break;
 
           const items = await ctx.rxdb.collections.listItems
             .find({ selector: { parentId: currentActionLog.id } })
