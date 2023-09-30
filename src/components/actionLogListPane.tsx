@@ -1,9 +1,13 @@
+import type { Services } from "@/services/test";
+import type { TestContext } from "vitest";
+
+import userEvent from "@testing-library/user-event";
 import { For, Match, Show, Switch, createEffect, createMemo, createSignal } from "solid-js";
 
 import { Editor } from "@/components/editor";
 import { createDouble } from "@/components/event";
 import { useEventService } from "@/services/event";
-import { createSignalWithLock, runWithLock, useLockService } from "@/services/lock";
+import { createSignalWithLock, runWithLock, useLockService, waitLockRelease } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
 import { queryFinishedLogs, queryOngoingLogs, queryTentativeLogs } from "@/services/rxdb/collections/actionLog";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/rxdb/subscribe";
@@ -388,25 +392,30 @@ function ActionLogList() {
   );
 }
 
+function render(test: TestContext, setup: (services: Services) => Promise<unknown>) {
+  return renderWithServicesForTest(
+    test.meta.id,
+    (props) => (
+      <>
+        <ActionLogList />
+        {props.children}
+      </>
+    ),
+    setup
+  );
+}
+
 if (import.meta.vitest) {
   describe("display", () => {
     test("finished actionLogs are sorted by endAt", async (ctx) => {
-      const { container, unmount } = await renderWithServicesForTest(
-        ctx.meta.id,
-        (props) => (
-          <>
-            <ActionLogList />
-            {props.children}
-          </>
-        ),
-        ({ rxdb: { collections } }) =>
-          // prettier-ignore
-          collections.actionLogs.bulkInsert([
-            { id: "1", text: "1", startAt: 1, endAt: 4, updatedAt: randomPosInt() },
-            { id: "2", text: "2", startAt: 1, endAt: 3, updatedAt: randomPosInt() },
-            { id: "3", text: "3", startAt: 1, endAt: 1, updatedAt: randomPosInt() },
-            { id: "4", text: "4", startAt: 1, endAt: 2, updatedAt: randomPosInt() },
-          ])
+      const { container, unmount } = await render(ctx, ({ rxdb: { collections } }) =>
+        // prettier-ignore
+        collections.actionLogs.bulkInsert([
+          { id: "1", text: "1", startAt: 1, endAt: 4, updatedAt: randomPosInt() },
+          { id: "2", text: "2", startAt: 1, endAt: 3, updatedAt: randomPosInt() },
+          { id: "3", text: "3", startAt: 1, endAt: 1, updatedAt: randomPosInt() },
+          { id: "4", text: "4", startAt: 1, endAt: 2, updatedAt: randomPosInt() },
+        ])
       );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot();
@@ -415,29 +424,21 @@ if (import.meta.vitest) {
     });
 
     test("ongoing actionLogs follows finished actionLogs and sorted by startAt", async (ctx) => {
-      const { container, unmount } = await renderWithServicesForTest(
-        ctx.meta.id,
-        (props) => (
-          <>
-            <ActionLogList />
-            {props.children}
-          </>
-        ),
-        ({ rxdb: { collections } }) =>
-          // prettier-ignore
-          collections.actionLogs.bulkInsert([
-            // ongoing actionLogs
-            { id: "1", text: "1", startAt: 6, endAt: 0, updatedAt: randomPosInt() },
-            { id: "2", text: "2", startAt: 8, endAt: 0, updatedAt: randomPosInt() },
-            { id: "3", text: "3", startAt: 7, endAt: 0, updatedAt: randomPosInt() },
-            { id: "4", text: "4", startAt: 5, endAt: 0, updatedAt: randomPosInt() },
+      const { container, unmount } = await render(ctx, ({ rxdb: { collections } }) =>
+        // prettier-ignore
+        collections.actionLogs.bulkInsert([
+          // ongoing actionLogs
+          { id: "1", text: "1", startAt: 6, endAt: 0, updatedAt: randomPosInt() },
+          { id: "2", text: "2", startAt: 8, endAt: 0, updatedAt: randomPosInt() },
+          { id: "3", text: "3", startAt: 7, endAt: 0, updatedAt: randomPosInt() },
+          { id: "4", text: "4", startAt: 5, endAt: 0, updatedAt: randomPosInt() },
 
-            // finished actionLogs
-            { id: "5", text: "5", startAt: 1, endAt: 4, updatedAt: randomPosInt() },
-            { id: "6", text: "6", startAt: 1, endAt: 3, updatedAt: randomPosInt() },
-            { id: "7", text: "7", startAt: 1, endAt: 1, updatedAt: randomPosInt() },
-            { id: "8", text: "8", startAt: 1, endAt: 2, updatedAt: randomPosInt() },
-          ])
+          // finished actionLogs
+          { id: "5", text: "5", startAt: 1, endAt: 4, updatedAt: randomPosInt() },
+          { id: "6", text: "6", startAt: 1, endAt: 3, updatedAt: randomPosInt() },
+          { id: "7", text: "7", startAt: 1, endAt: 1, updatedAt: randomPosInt() },
+          { id: "8", text: "8", startAt: 1, endAt: 2, updatedAt: randomPosInt() },
+        ])
       );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot();
@@ -446,35 +447,27 @@ if (import.meta.vitest) {
     });
 
     test("tentative actionLogs follows ongoing actionLogs and sorted by id", async (ctx) => {
-      const { container, unmount } = await renderWithServicesForTest(
-        ctx.meta.id,
-        (props) => (
-          <>
-            <ActionLogList />
-            {props.children}
-          </>
-        ),
-        ({ rxdb: { collections } }) =>
-          // prettier-ignore
-          collections.actionLogs.bulkInsert([
-            // tentative actionLogs
-            { id: "02", text: "02", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
-            { id: "03", text: "03", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
-            { id: "04", text: "04", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
-            { id: "01", text: "01", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+      const { container, unmount } = await render(ctx, ({ rxdb: { collections } }) =>
+        // prettier-ignore
+        collections.actionLogs.bulkInsert([
+          // tentative actionLogs
+          { id: "02", text: "02", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+          { id: "03", text: "03", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+          { id: "04", text: "04", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+          { id: "01", text: "01", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
 
-            // ongoing actionLogs
-            { id: "05", text: "05", startAt: 4, endAt: 0, updatedAt: randomPosInt() },
-            { id: "06", text: "06", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
-            { id: "07", text: "07", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
-            { id: "08", text: "08", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
+          // ongoing actionLogs
+          { id: "05", text: "05", startAt: 4, endAt: 0, updatedAt: randomPosInt() },
+          { id: "06", text: "06", startAt: 3, endAt: 0, updatedAt: randomPosInt() },
+          { id: "07", text: "07", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+          { id: "08", text: "08", startAt: 2, endAt: 0, updatedAt: randomPosInt() },
 
-            // finished actionLogs
-            { id: "09", text: "09", startAt: 1, endAt: 6, updatedAt: randomPosInt() },
-            { id: "10", text: "10", startAt: 1, endAt: 8, updatedAt: randomPosInt() },
-            { id: "11", text: "11", startAt: 1, endAt: 7, updatedAt: randomPosInt() },
-            { id: "12", text: "12", startAt: 1, endAt: 5, updatedAt: randomPosInt() },
-          ])
+          // finished actionLogs
+          { id: "09", text: "09", startAt: 1, endAt: 6, updatedAt: randomPosInt() },
+          { id: "10", text: "10", startAt: 1, endAt: 8, updatedAt: randomPosInt() },
+          { id: "11", text: "11", startAt: 1, endAt: 7, updatedAt: randomPosInt() },
+          { id: "12", text: "12", startAt: 1, endAt: 5, updatedAt: randomPosInt() },
+        ])
       );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot();
@@ -483,27 +476,18 @@ if (import.meta.vitest) {
     });
 
     test("finished actionLog is selected", async (ctx) => {
-      const { container, unmount } = await renderWithServicesForTest(
-        ctx.meta.id,
-        (props) => (
-          <>
-            <ActionLogList />
-            {props.children}
-          </>
-        ),
-        async ({ rxdb: { collections }, store: { updateState } }) => {
-          // prettier-ignore
-          await collections.actionLogs.bulkInsert([
-            { id: "finished",  text: "finished",  startAt: 1, endAt: 2, updatedAt: 2 },
-            { id: "ongoing",   text: "ongoing",   startAt: 3, endAt: 0, updatedAt: 3 },
-            { id: "tentative", text: "tentative", startAt: 0, endAt: 0, updatedAt: 4 },
-          ]);
+      const { container, unmount } = await render(ctx, async ({ rxdb: { collections }, store: { updateState } }) => {
+        // prettier-ignore
+        await collections.actionLogs.bulkInsert([
+          { id: "finished",  text: "finished",  startAt: 1, endAt: 2, updatedAt: 2 },
+          { id: "ongoing",   text: "ongoing",   startAt: 3, endAt: 0, updatedAt: 3 },
+          { id: "tentative", text: "tentative", startAt: 0, endAt: 0, updatedAt: 4 },
+        ]);
 
-          updateState((state) => {
-            state.actionLogListPane.currentActionLogId = "finished";
-          });
-        }
-      );
+        updateState((state) => {
+          state.actionLogListPane.currentActionLogId = "finished";
+        });
+      });
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot();
 
@@ -530,21 +514,13 @@ if (import.meta.vitest) {
         unmount,
         rxdb: { collections },
         lock,
-      } = await renderWithServicesForTest(
-        ctx.meta.id,
-        (props) => (
-          <>
-            <ActionLogList />
-            {props.children}
-          </>
-        ),
-        ({ rxdb: { collections } }) =>
-          // prettier-ignore
-          collections.actionLogs.bulkInsert([
-            { id: "finished",  text: "finished",  startAt: 1, endAt: 2, updatedAt: 2 },
-            { id: "ongoing",   text: "ongoing",   startAt: 3, endAt: 0, updatedAt: 3 },
-            { id: "tentative", text: "tentative", startAt: 0, endAt: 0, updatedAt: 4 },
-          ])
+      } = await render(ctx, ({ rxdb: { collections } }) =>
+        // prettier-ignore
+        collections.actionLogs.bulkInsert([
+          { id: "finished",  text: "finished",  startAt: 1, endAt: 2, updatedAt: 2 },
+          { id: "ongoing",   text: "ongoing",   startAt: 3, endAt: 0, updatedAt: 3 },
+          { id: "tentative", text: "tentative", startAt: 0, endAt: 0, updatedAt: 4 },
+        ])
       );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
@@ -595,24 +571,16 @@ if (import.meta.vitest) {
         unmount,
         rxdb: { collections },
         lock,
-      } = await renderWithServicesForTest(
-        ctx.meta.id,
-        (props) => (
-          <>
-            <ActionLogList />
-            {props.children}
-          </>
-        ),
-        ({ rxdb: { collections } }) =>
-          // prettier-ignore
-          collections.actionLogs.bulkInsert([
-            { id: "finished 1",  text: "finished 1",  startAt: 2, endAt: 8, updatedAt: randomPosInt() },
-            { id: "finished 2",  text: "finished 2",  startAt: 3, endAt: 9, updatedAt: randomPosInt() },
-            { id: "ongoing 1",   text: "ongoing 1",   startAt: 5, endAt: 0, updatedAt: randomPosInt() },
-            { id: "ongoing 2",   text: "ongoing 2",   startAt: 6, endAt: 0, updatedAt: randomPosInt() },
-            { id: "tentative 1", text: "tentative 1", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
-            { id: "tentative 2", text: "tentative 2", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
-          ])
+      } = await render(ctx, ({ rxdb: { collections } }) =>
+        // prettier-ignore
+        collections.actionLogs.bulkInsert([
+          { id: "finished 1",  text: "finished 1",  startAt: 2, endAt: 8, updatedAt: randomPosInt() },
+          { id: "finished 2",  text: "finished 2",  startAt: 3, endAt: 9, updatedAt: randomPosInt() },
+          { id: "ongoing 1",   text: "ongoing 1",   startAt: 5, endAt: 0, updatedAt: randomPosInt() },
+          { id: "ongoing 2",   text: "ongoing 2",   startAt: 6, endAt: 0, updatedAt: randomPosInt() },
+          { id: "tentative 1", text: "tentative 1", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+          { id: "tentative 2", text: "tentative 2", startAt: 0, endAt: 0, updatedAt: randomPosInt() },
+        ])
       );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
@@ -664,21 +632,13 @@ if (import.meta.vitest) {
         unmount,
         rxdb: { collections },
         lock,
-      } = await renderWithServicesForTest(
-        ctx.meta.id,
-        (props) => (
-          <>
-            <ActionLogList />
-            {props.children}
-          </>
-        ),
-        ({ rxdb: { collections } }) =>
-          // prettier-ignore
-          collections.actionLogs.bulkInsert([
-            { id: "finished 1", text: "finished 1", startAt: 1, endAt: 1, updatedAt: randomPosInt() },
-            { id: "finished 2", text: "finished 2", startAt: 1, endAt: 3, updatedAt: randomPosInt() },
-            { id: "ongoing",    text: "ongoing",    startAt: 1, endAt: 0, updatedAt: randomPosInt() },
-          ])
+      } = await render(ctx, ({ rxdb: { collections } }) =>
+        // prettier-ignore
+        collections.actionLogs.bulkInsert([
+          { id: "finished 1", text: "finished 1", startAt: 1, endAt: 1, updatedAt: randomPosInt() },
+          { id: "finished 2", text: "finished 2", startAt: 1, endAt: 3, updatedAt: randomPosInt() },
+          { id: "ongoing",    text: "ongoing",    startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+        ])
       );
 
       ctx.expect(shortenClassName(container)).toMatchSnapshot("initial");
@@ -709,8 +669,90 @@ if (import.meta.vitest) {
         // TODO
       });
 
-      test.skip("press L to move to ActionLogPane", () => {
-        // TODO
+      describe("press Tab to rotate focus in insert mode", () => {
+        test("text -> startAt", async (ctx) => {
+          const user = userEvent.setup();
+          const { container, unmount, lock } = await render(
+            ctx,
+            async ({ rxdb: { collections }, store: { updateState } }) => {
+              await collections.actionLogs.bulkInsert([
+                { id: "ongoing", text: "ongoing", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+              ]);
+
+              updateState((state) => {
+                state.currentPane = "actionLogList";
+                state.mode = "insert";
+                state.editor.text = "ongoing modified";
+                state.editor.cursorPosition = -1;
+                state.actionLogListPane.currentActionLogId = "ongoing";
+                state.actionLogListPane.focus = "text";
+              });
+            }
+          );
+
+          await user.keyboard("{Tab}");
+          await waitLockRelease(lock);
+
+          ctx.expect(shortenClassName(container)).toMatchSnapshot();
+
+          unmount();
+        });
+
+        test("startAt -> endAt", async (ctx) => {
+          const user = userEvent.setup();
+          const { container, unmount, lock } = await render(
+            ctx,
+            async ({ rxdb: { collections }, store: { updateState } }) => {
+              await collections.actionLogs.bulkInsert([
+                { id: "ongoing", text: "ongoing", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+              ]);
+
+              updateState((state) => {
+                state.currentPane = "actionLogList";
+                state.mode = "insert";
+                state.editor.text = "20230930 123456";
+                state.editor.cursorPosition = -1;
+                state.actionLogListPane.currentActionLogId = "ongoing";
+                state.actionLogListPane.focus = "startAt";
+              });
+            }
+          );
+
+          await user.keyboard("{Tab}");
+          await waitLockRelease(lock);
+
+          ctx.expect(shortenClassName(container)).toMatchSnapshot();
+
+          unmount();
+        });
+
+        test("endAt -> text", async (ctx) => {
+          const user = userEvent.setup();
+          const { container, unmount, lock } = await render(
+            ctx,
+            async ({ rxdb: { collections }, store: { updateState } }) => {
+              await collections.actionLogs.bulkInsert([
+                { id: "ongoing", text: "ongoing", startAt: 1, endAt: 0, updatedAt: randomPosInt() },
+              ]);
+
+              updateState((state) => {
+                state.currentPane = "actionLogList";
+                state.mode = "insert";
+                state.editor.text = "20230930 123456";
+                state.editor.cursorPosition = -1;
+                state.actionLogListPane.currentActionLogId = "ongoing";
+                state.actionLogListPane.focus = "endAt";
+              });
+            }
+          );
+
+          await user.keyboard("{Tab}");
+          await waitLockRelease(lock);
+
+          ctx.expect(shortenClassName(container)).toMatchSnapshot();
+
+          unmount();
+        });
       });
     });
 

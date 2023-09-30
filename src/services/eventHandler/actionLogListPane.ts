@@ -193,6 +193,12 @@ export async function handleActionLogListPaneEvent(ctx: Context, event: ActionLo
 
         case "rotateFocus": {
           switch (ctx.store.state.actionLogListPane.focus) {
+            case "text": {
+              await currentActionLog.patch({ text: ctx.store.state.editor.text, updatedAt: ctx.now });
+
+              break;
+            }
+
             case "startAt": {
               const startAt = timeTextToEpochMs(ctx.store.state.editor.text);
               if (isFinite(startAt)) {
