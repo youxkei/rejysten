@@ -64,7 +64,6 @@
     "workbox-window": "^7.0.0"
   },
   "dependencies": {
-    "@js-temporal/polyfill": "^0.4.4",
     "@solid-primitives/context": "^0.2.1",
     "@solid-primitives/keyboard": "^1.2.0",
     "@solid-primitives/scheduled": "^1.4.1",

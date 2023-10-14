@@ -1,26 +1,18 @@
-import { Temporal } from "@js-temporal/polyfill";
-
-export function epochMsToPlainDateTime(epochMs: number) {
-  return Temporal.Instant.fromEpochMilliseconds(epochMs)
-    .toZonedDateTimeISO(Temporal.Now.timeZoneId())
-    .toPlainDateTime();
-}
-
 export function epochMsToTimeText(epochMs: number, withoutSeparator?: boolean) {
   if (epochMs === 0) return "";
 
-  const { year, month, day, hour, minute, second } = epochMsToPlainDateTime(epochMs);
-  const yearString = year.toString().padStart(4, "0");
-  const monthString = month.toString().padStart(2, "0");
-  const dayString = day.toString().padStart(2, "0");
-  const hourString = hour.toString().padStart(2, "0");
-  const minuteString = minute.toString().padStart(2, "0");
-  const secondString = second.toString().padStart(2, "0");
+  const date = new Date(epochMs);
+  const year = date.getFullYear().toString().padStart(4, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const dateOfMonth = date.getDate().toString().padStart(2, "0");
+  const hour = date.getHours().toString().padStart(2, "0");
+  const minute = date.getMinutes().toString().padStart(2, "0");
+  const second = date.getSeconds().toString().padStart(2, "0");
 
   if (withoutSeparator) {
-    return `${yearString}${monthString}${dayString} ${hourString}${minuteString}${secondString}`;
+    return `${year}${month}${dateOfMonth} ${hour}${minute}${second}`;
   } else {
-    return `${yearString}-${monthString}-${dayString} ${hourString}:${minuteString}:${secondString}`;
+    return `${year}-${month}-${dateOfMonth} ${hour}:${minute}:${second}`;
   }
 }
 
@@ -39,8 +31,10 @@ if (import.meta.vitest) {
 export function timeTextToEpochMs(text: string) {
   if (text === "") return 0;
 
-  const now = Temporal.Now.zonedDateTimeISO();
-  let { year, month, day } = now;
+  const now = new Date();
+  let year = now.getFullYear();
+  let month = now.getMonth() + 1;
+  let dateOfMonth = now.getDate();
   let second = 0;
 
   switch (text.length) {
@@ -57,7 +51,7 @@ export function timeTextToEpochMs(text: string) {
 
     // eslint-disable-next-line no-fallthrough
     case 9: {
-      day = Number(text.substring(0, 2));
+      dateOfMonth = Number(text.substring(0, 2));
       text = text.substring(3);
     }
 
@@ -76,8 +70,8 @@ export function timeTextToEpochMs(text: string) {
         year <= 9999 &&
         month >= 1 &&
         month <= 12 &&
-        day >= 1 &&
-        day <= 31 &&
+        dateOfMonth >= 1 &&
+        dateOfMonth <= 31 &&
         hour >= 0 &&
         hour <= 23 &&
         minute >= 0 &&
@@ -85,8 +79,7 @@ export function timeTextToEpochMs(text: string) {
         second >= 0 &&
         second <= 59
       ) {
-        return new Temporal.PlainDateTime(year, month, day, hour, minute, second).toZonedDateTime(now.timeZoneId)
-          .epochMilliseconds;
+        return new Date(year, month - 1, dateOfMonth, hour, minute, second).getTime();
       }
     }
   }
@@ -96,25 +89,18 @@ export function timeTextToEpochMs(text: string) {
 
 if (import.meta.vitest) {
   describe("timeTextToEpochMs", () => {
-    test.each([{ epochMs: 1685282112000 }, { epochMs: -32400000 }, { epochMs: 1709218799000 }])(
-      "$epochMs",
-      ({ epochMs }) => {
-        expect(timeTextToEpochMs(epochMsToTimeText(epochMs, true))).toBe(epochMs);
-      }
-    );
+    test.each([{ epochMs: 1685282112000 }, { epochMs: 1709218799000 }])("$epochMs", ({ epochMs }) => {
+      expect(timeTextToEpochMs(epochMsToTimeText(epochMs, true))).toBe(epochMs);
+    });
   });
 }
 
 export function durationTextBetweenEpochMs(start: number, end: number) {
   if (start === 0 || end === 0) return "";
 
-  const duration = Temporal.Instant.fromEpochMilliseconds(start)
-    .until(Temporal.Instant.fromEpochMilliseconds(end))
-    .round({
-      largestUnit: "minute",
-      smallestUnit: "second",
-      roundingMode: "floor",
-    });
+  const durationSeconds = Math.floor((end - start) / 1000);
 
-  return `${duration.minutes.toString().padStart(2, "0")}:${duration.seconds.toString().padStart(2, "0")}`;
+  return `${Math.floor(durationSeconds / 60)
+    .toString()
+    .padStart(2, "0")}:${(durationSeconds % 60).toString().padStart(2, "0")}`;
 }

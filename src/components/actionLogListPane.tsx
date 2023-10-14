@@ -16,7 +16,7 @@ import { renderWithServicesForTest } from "@/services/test";
 import { mapSignal } from "@/solid/signal";
 import { matches } from "@/solid/switch";
 import { styles } from "@/styles.css";
-import { durationTextBetweenEpochMs, epochMsToPlainDateTime, epochMsToTimeText } from "@/temporal";
+import { durationTextBetweenEpochMs, epochMsToTimeText } from "@/temporal";
 import { randomPosInt, shortenClassName } from "@/test";
 
 type ActionLogId = string;
@@ -145,7 +145,10 @@ function ActionLog(props: { actionLogId: string; actionLogsUpdated$: () => unkno
 function DateSeparator(props: { epochMs: number }) {
   return (
     <div class={styles.actionLogListPane.actionLogList.separator}>
-      {epochMsToPlainDateTime(props.epochMs).toPlainDate().toString()}
+      {
+        // locale "lt" is used to get "yyyy-mm-dd" format
+        new Date(props.epochMs).toLocaleDateString("lt")
+      }
     </div>
   );
 }
@@ -309,10 +312,10 @@ function ActionLogList() {
         const actionLogsWithSeparators = [actionLogs[0].endAt, actionLogs[0].id] as ActionLogIdOrDateSeparator[];
 
         for (let i = 1; i < actionLogs.length; i++) {
-          const beforeDate = epochMsToPlainDateTime(actionLogs[i - 1].endAt).toPlainDate();
-          const afterDate = epochMsToPlainDateTime(actionLogs[i].endAt).toPlainDate();
+          const beforeDate = new Date(actionLogs[i - 1].endAt);
+          const afterDate = new Date(actionLogs[i].endAt);
 
-          if (beforeDate.until(afterDate).days > 0) {
+          if (beforeDate.getDay() < afterDate.getDay()) {
             actionLogsWithSeparators.push(actionLogs[i].endAt);
           }
 
