@@ -1,2 +1,4 @@
 /node_modules
 /dist
+/dexie-cloud.json
+/dexie-cloud.key
