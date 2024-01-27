@@ -1,7 +1,7 @@
 export type FirestoreSchema = {
   firestoretest: {
     text: string;
-    bigram: object;
+    bigram: Record<string, boolean>;
     updatedAt: Date;
   };
 };
