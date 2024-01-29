@@ -78,7 +78,8 @@
     "rxdb": "^14.12.0",
     "rxjs": "^7.8.1",
     "solid-js": "^1.7.3",
-    "superstruct": "^1.0.3"
+    "superstruct": "^1.0.3",
+    "uuidv7": "^0.6.3"
   },
   "overrides": {
     "@vanilla-extract/vite-plugin": {
