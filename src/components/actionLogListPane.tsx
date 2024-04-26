@@ -9,7 +9,12 @@ import { createDouble } from "@/components/event";
 import { useEventService } from "@/services/event";
 import { createSignalWithLock, runWithLock, useLockService, waitLockRelease } from "@/services/lock";
 import { useRxDBService } from "@/services/rxdb";
-import { queryFinishedLogs, queryOngoingLogs, queryTentativeLogs } from "@/services/rxdb/collections/actionLog";
+import {
+  queryFinishedLogs,
+  queryFinishedLogsFrom,
+  queryOngoingLogs,
+  queryTentativeLogs,
+} from "@/services/rxdb/collections/actionLog";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/rxdb/subscribe";
 import { useStoreService } from "@/services/store";
 import { renderWithServicesForTest } from "@/services/test";
@@ -284,13 +289,13 @@ function Buttons() {
 export function ActionLogListPane() {
   return (
     <div class={styles.actionLogListPane.container}>
-      <ActionLogList />
+      <ActionLogList limit={true} />
       <Buttons />
     </div>
   );
 }
 
-function ActionLogList() {
+function ActionLogList(props: { limit?: boolean }) {
   const rxdb = useRxDBService();
   const lock = useLockService();
 
@@ -300,10 +305,17 @@ function ActionLogList() {
     mapSignal(
       createSignalWithLock(
         lock,
-        createSubscribeAllSignal(() => queryFinishedLogs(rxdb), {
-          abstract: (actionLog) => actionLog.endAt,
-          equals: (prev, next) => prev === next,
-        }),
+        createSubscribeAllSignal(
+          () => {
+            if (props.limit) return queryFinishedLogsFrom(rxdb, Date.now() - 1000 * 60 * 60 * 24 * 7);
+
+            return queryFinishedLogs(rxdb);
+          },
+          {
+            abstract: (actionLog) => actionLog.endAt,
+            equals: (prev, next) => prev === next,
+          }
+        ),
         []
       ),
       (actionLogs) => {

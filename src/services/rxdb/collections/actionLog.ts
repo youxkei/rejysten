@@ -673,6 +673,13 @@ if (import.meta.vitest) {
   });
 }
 
+export function queryFinishedLogsFrom({ collections }: RxDBService, from: number) {
+  return collections.actionLogs.find({
+    selector: { startAt: { $gt: 0 }, endAt: { $gt: from } },
+    sort: [{ endAt: "asc" }],
+  });
+}
+
 export function queryOngoingLogs({ collections }: RxDBService) {
   return collections.actionLogs.find({
     selector: { startAt: { $gt: 0 }, endAt: 0 },
