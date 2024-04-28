@@ -6,6 +6,7 @@ import { uuidv7 } from "uuidv7";
 
 import { FirebaseServiceProvoider, getCollection, useFirebaseService } from "@/services/firebase";
 import { createSubscribeAllSignal } from "@/services/firebase/subscribe";
+import { dumpSignal } from "@/solid/signal";
 
 export default {
   title: "poc/firebase",
@@ -112,6 +113,34 @@ export const FirestorePublish: StoryObj = {
               </>
             );
           })()}
+        </FirebaseServiceProvoider>
+      </>
+    );
+  },
+};
+
+export const FirestoreSubscribe: StoryObj = {
+  render() {
+    const [errors$, setErrors] = createSignal([] as string[]);
+
+    return (
+      <>
+        <pre>{errors$().join("\n")}</pre>
+
+        <FirebaseServiceProvoider useEmulator configYAML={firebaseConfig} setErrors={setErrors}>
+          <Suspense fallback={<p>loading...</p>}>
+            {(() => {
+              const firebase = useFirebaseService();
+              const itemCollection = getCollection(firebase, "pocFirestorePubsub");
+              const items$ = dumpSignal(createSubscribeAllSignal(() => itemCollection));
+              return (
+                <>
+                  <p>items:</p>
+                  <For each={items$()}>{(item) => <p>{item.id}</p>}</For>
+                </>
+              );
+            })()}
+          </Suspense>
         </FirebaseServiceProvoider>
       </>
     );
