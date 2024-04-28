@@ -10,7 +10,8 @@ import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   server: {
-    port: 8080,
+    // for firebase emulator
+    port: 8081,
   },
   optimizeDeps: {
     // @ts-ignore

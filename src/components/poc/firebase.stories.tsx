@@ -1,53 +1,48 @@
 import type { Meta, StoryObj } from "storybook-solidjs";
 
 import { doc, getDocs, deleteDoc, runTransaction } from "firebase/firestore";
-import { For, createResource, createSignal } from "solid-js";
+import { For, Suspense, createSignal } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
 import { FirebaseServiceProvoider, getCollection, useFirebaseService } from "@/services/firebase";
+import { createSubscribeAllSignal } from "@/services/firebase/subscribe";
 
 export default {
   title: "poc/firebase",
 } satisfies Meta;
 
+const firebaseConfig = `{ apiKey: "apiKey", authDomain: "authDomain", projectId: "demo", storageBucket: "", messagingSenderId: "", appId: "", measurementId: "" }`;
+
 export const FirestoreTest: StoryObj = {
   render() {
-    const [configYAML$, setConfigYAML] = createSignal("");
     const [errors$, setErrors] = createSignal([] as string[]);
 
     return (
       <>
-        <input
-          type="text"
-          value={configYAML$()}
-          onInput={(e) => {
-            setErrors([]);
-            setConfigYAML(e.currentTarget.value);
-          }}
-        />
-
         <pre>{errors$().join("\n")}</pre>
 
-        <FirebaseServiceProvoider configYAML={configYAML$()} setErrors={setErrors}>
-          {(() => {
-            const firebase = useFirebaseService();
-            const itemCollection = getCollection(firebase, "pocFirestoreTest");
+        <FirebaseServiceProvoider useEmulator configYAML={firebaseConfig} setErrors={setErrors}>
+          <Suspense fallback={<p>loading...</p>}>
+            {(() => {
+              const firebase = useFirebaseService();
+              const itemCollection = getCollection(firebase, "pocFirestoreTest");
 
-            const [items$] = createResource(() => getDocs(itemCollection));
+              const items$ = createSubscribeAllSignal(() => itemCollection);
 
-            return (
-              <>
-                <p>items:</p>
-                <For each={items$()?.docs}>
-                  {(item) => (
-                    <p>
-                      {item.id}: {item.data().text}
-                    </p>
-                  )}
-                </For>
-              </>
-            );
-          })()}
+              return (
+                <>
+                  <p>items:</p>
+                  <For each={items$()}>
+                    {(item) => (
+                      <p>
+                        {item.id}: {item.data().text}
+                      </p>
+                    )}
+                  </For>
+                </>
+              );
+            })()}
+          </Suspense>
         </FirebaseServiceProvoider>
       </>
     );
@@ -56,23 +51,13 @@ export const FirestoreTest: StoryObj = {
 
 export const FirestorePublish: StoryObj = {
   render() {
-    const [configYAML$, setConfigYAML] = createSignal("");
     const [errors$, setErrors] = createSignal([] as string[]);
 
     return (
       <>
-        <input
-          type="text"
-          value={configYAML$()}
-          onInput={(e) => {
-            setErrors([]);
-            setConfigYAML(e.currentTarget.value);
-          }}
-        />
-
         <pre>{errors$().join("\n")}</pre>
 
-        <FirebaseServiceProvoider configYAML={configYAML$()} setErrors={setErrors}>
+        <FirebaseServiceProvoider useEmulator configYAML={firebaseConfig} setErrors={setErrors}>
           {(() => {
             const firebase = useFirebaseService();
             const itemCollection = getCollection(firebase, "pocFirestorePubsub");

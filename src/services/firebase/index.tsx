@@ -3,8 +3,8 @@ import type { CollectionReference, Firestore } from "firebase/firestore";
 import type { JSXElement, Setter } from "solid-js";
 
 import { deleteApp, initializeApp } from "firebase/app";
-import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup } from "firebase/auth";
-import { collection, getFirestore } from "firebase/firestore";
+import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup, connectAuthEmulator } from "firebase/auth";
+import { collection, getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import YAML from "js-yaml";
 import { createMemo, createEffect, onCleanup, createResource, Show, createContext, useContext } from "solid-js";
 import * as s from "superstruct";
@@ -33,6 +33,7 @@ const firebaseConfigSchema = s.object({
 export function FirebaseServiceProvoider(props: {
   configYAML: string | undefined;
   setErrors: Setter<string[]>;
+  useEmulator?: boolean;
   children: JSXElement;
 }) {
   const config$ = createMemo(() => {
@@ -54,6 +55,11 @@ export function FirebaseServiceProvoider(props: {
     if (!config) return;
 
     const app = initializeApp(config);
+
+    if (props.useEmulator) {
+      connectAuthEmulator(getAuth(app), "http://localhost:9099");
+      connectFirestoreEmulator(getFirestore(app), "localhost", 8080);
+    }
 
     onCleanup(async () => {
       await deleteApp(app);

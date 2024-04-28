@@ -13,7 +13,8 @@
     "test/nocheck": "vitest run",
     "prepare": "git config --local core.hooksPath .githooks",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "firebase-emulator": "podman run --rm -it --network host tomasvotava/firebase-emulators firestore,auth"
   },
   "repository": {
     "type": "git",
