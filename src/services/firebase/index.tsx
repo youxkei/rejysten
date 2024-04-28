@@ -72,6 +72,12 @@ export function FirebaseServiceProvoider(props: {
     const firebase = firebase$();
     if (!firebase) return;
 
+    if (props.useEmulator) {
+      setValue({ signedIn: true });
+
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(getAuth(firebase), (user) => {
       if (user) {
         setValue({ signedIn: true });
