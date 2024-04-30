@@ -3,7 +3,7 @@ import type { CollectionReference, Firestore } from "firebase/firestore";
 import type { JSXElement, Setter } from "solid-js";
 
 import { deleteApp, initializeApp } from "firebase/app";
-import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup, connectAuthEmulator } from "firebase/auth";
+import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup } from "firebase/auth";
 import { collection, getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import YAML from "js-yaml";
 import { createMemo, createEffect, onCleanup, createResource, Show, createContext, useContext } from "solid-js";
@@ -57,7 +57,6 @@ export function FirebaseServiceProvoider(props: {
     const app = initializeApp(config);
 
     if (props.useEmulator) {
-      connectAuthEmulator(getAuth(app), "http://localhost:9099");
       connectFirestoreEmulator(getFirestore(app), "localhost", 8080);
     }
 

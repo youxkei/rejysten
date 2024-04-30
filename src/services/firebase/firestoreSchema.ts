@@ -1,8 +1,7 @@
 export type FirestoreSchema = {
-  pocFirestoreTest: {
+  pocFirestoreBigramTest: {
     text: string;
     bigram: Record<string, boolean>;
-    updatedAt: Date;
   };
 
   pocFirestorePubsub: {

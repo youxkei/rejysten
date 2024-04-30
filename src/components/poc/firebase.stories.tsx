@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "storybook-solidjs";
 
-import { doc, getDocs, deleteDoc, runTransaction } from "firebase/firestore";
-import { For, Suspense, createSignal } from "solid-js";
+import { doc, getDocs, deleteDoc, runTransaction, query, where, setDoc, FieldPath } from "firebase/firestore";
+import { For, Suspense, createSignal, createMemo, Show, startTransition } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
 import { FirebaseServiceProvoider, getCollection, useFirebaseService } from "@/services/firebase";
@@ -14,7 +14,18 @@ export default {
 
 const firebaseConfig = `{ apiKey: "apiKey", authDomain: "authDomain", projectId: "demo", storageBucket: "", messagingSenderId: "", appId: "", measurementId: "" }`;
 
-export const FirestoreTest: StoryObj = {
+function calcBigram(chars: string[]) {
+  const bigram = {} as Record<string, boolean>;
+
+  for (let i = 0; i < chars.length - 1; i++) {
+    const bigramKey = chars[i] + chars[i + 1];
+    bigram[bigramKey] = true;
+  }
+
+  return bigram;
+}
+
+export const FirestoreBigramTest: StoryObj = {
   render() {
     const [errors$, setErrors] = createSignal([] as string[]);
 
@@ -25,21 +36,67 @@ export const FirestoreTest: StoryObj = {
         <FirebaseServiceProvoider useEmulator configYAML={firebaseConfig} setErrors={setErrors}>
           <Suspense fallback={<p>loading...</p>}>
             {(() => {
+              const [text$, setText] = createSignal("");
+              const [searchText$, setSearchText] = createSignal("");
+              const searchTextChars$ = createMemo(() => [...searchText$()], []);
+
               const firebase = useFirebaseService();
-              const itemCollection = getCollection(firebase, "pocFirestoreTest");
+              const itemCollection = getCollection(firebase, "pocFirestoreBigramTest");
 
               const items$ = createSubscribeAllSignal(() => itemCollection);
 
+              const serchedItems$ = createSubscribeAllSignal(() => {
+                const searchTextChars = searchTextChars$();
+                if (searchTextChars.length < 2) return;
+
+                const bigram = calcBigram(searchTextChars);
+
+                return Object.keys(bigram).reduce((q, bigramKey) => {
+                  return query(q, where(new FieldPath("bigram", bigramKey), "==", true));
+                }, query(itemCollection));
+              });
+
               return (
                 <>
+                  <p>
+                    <span>search:</span>
+                    <span>
+                      <input
+                        value={searchText$()}
+                        onInput={(e) => {
+                          const text = e.currentTarget.value;
+
+                          void startTransition(() => {
+                            setSearchText(text);
+                          });
+                        }}
+                      />
+                    </span>
+                  </p>
+                  <p>searched items:</p>
+                  <Show when={searchTextChars$().length >= 2}>
+                    <For each={serchedItems$()}>{(item) => <p>{item.data().text}</p>}</For>
+                  </Show>
+                  <hr />
+                  <p>
+                    <span>
+                      <input value={text$()} onInput={(e) => setText(e.currentTarget.value)} />
+                    </span>
+                    <button
+                      onClick={async () => {
+                        await setDoc(doc(itemCollection, uuidv7()), {
+                          text: text$(),
+                          bigram: calcBigram([...text$()]),
+                        });
+
+                        setText("");
+                      }}
+                    >
+                      add
+                    </button>
+                  </p>
                   <p>items:</p>
-                  <For each={items$()}>
-                    {(item) => (
-                      <p>
-                        {item.id}: {item.data().text}
-                      </p>
-                    )}
-                  </For>
+                  <For each={items$()}>{(item) => <p> {item.data().text} </p>}</For>
                 </>
               );
             })()}

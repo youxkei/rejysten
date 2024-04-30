@@ -5,7 +5,7 @@ import { createMemo, onCleanup } from "solid-js";
 
 import { createSubscribeWithResource } from "@/solid/subscribe";
 
-export function createSubscribeAllSignal<T>(query$: () => Query<T>) {
+export function createSubscribeAllSignal<T>(query$: () => Query<T> | undefined) {
   const snapshot$ = createSubscribeWithResource(
     query$,
     (query, setValue: (value: QuerySnapshot<T>) => void) => {
