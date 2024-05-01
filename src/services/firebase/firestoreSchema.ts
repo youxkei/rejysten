@@ -1,11 +1,16 @@
 export type FirestoreSchema = {
-  pocFirestoreBigramTest: {
+  pocFirestoreNgramTest: {
     text: string;
-    bigram: Record<string, boolean>;
   };
 
   pocFirestorePubsub: {
     prevId: string;
     nextId: string;
+  };
+
+  ngrams: {
+    collection: Exclude<keyof FirestoreSchema, "bigrams">;
+    text: string;
+    ngram: Record<string, boolean>;
   };
 };
