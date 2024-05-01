@@ -5,7 +5,8 @@ import { For, Suspense, createSignal, createMemo, Show, startTransition } from "
 import { uuidv7 } from "uuidv7";
 import XRegExp from "xregexp";
 
-import { FirebaseServiceProvoider, getCollection, useFirebaseService } from "@/services/firebase";
+import { FirebaseServiceProvoider, useFirebaseService } from "@/services/firebase";
+import { getCollection } from "@/services/firebase/firestore/collections";
 import { createSubscribeAllSignal } from "@/services/firebase/subscribe";
 import { dumpSignal } from "@/solid/signal";
 
@@ -22,7 +23,7 @@ function trimNonPrintableChars(text: string) {
 }
 
 function calcBigram(chars: string[]) {
-  const bigram = {} as Record<string, boolean>;
+  const bigram = {} as Record<string, true>;
 
   for (let i = 0; i < chars.length - 1; i++) {
     const bigramKey = chars[i] + chars[i + 1];
@@ -32,7 +33,7 @@ function calcBigram(chars: string[]) {
   return bigram;
 }
 
-export const FirestoreNgramTest: StoryObj = {
+export const FirestoreNgram: StoryObj = {
   render() {
     const [errors$, setErrors] = createSignal([] as string[]);
 
@@ -48,7 +49,7 @@ export const FirestoreNgramTest: StoryObj = {
               const searchTextChars$ = createMemo(() => [...trimNonPrintableChars(searchText$())], []);
 
               const firebase = useFirebaseService();
-              const itemCollection = getCollection(firebase, "pocFirestoreNgramTest");
+              const itemCollection = getCollection(firebase, "pocFirestoreNgram");
               const bigramCollection = getCollection(firebase, "ngrams");
 
               const items$ = createSubscribeAllSignal(() => itemCollection);
@@ -61,7 +62,7 @@ export const FirestoreNgramTest: StoryObj = {
 
                 return Object.keys(bigram).reduce((q, bigramKey) => {
                   return query(q, where(new FieldPath("ngram", bigramKey), "==", true));
-                }, query(bigramCollection, where("collection", "==", "pocFirestoreNgramTest")));
+                }, query(bigramCollection, where("collection", "==", "pocFirestoreNgram")));
               });
 
               return (
@@ -104,7 +105,7 @@ export const FirestoreNgramTest: StoryObj = {
                           });
 
                           batch.set(doc(bigramCollection, id), {
-                            collection: "pocFirestoreNgramTest",
+                            collection: "pocFirestoreNgram",
                             text,
                             ngram: calcBigram([...trimNonPrintableChars(text)]),
                           });
@@ -219,6 +220,74 @@ export const FirestoreSubscribe: StoryObj = {
                 <>
                   <p>items:</p>
                   <For each={items$()}>{(item) => <p>{item.id}</p>}</For>
+                </>
+              );
+            })()}
+          </Suspense>
+        </FirebaseServiceProvoider>
+      </>
+    );
+  },
+};
+
+export const FirestoreSubcollection: StoryObj = {
+  render() {
+    const [errors$, setErrors] = createSignal([] as string[]);
+
+    return (
+      <>
+        <pre>{errors$().join("\n")}</pre>
+
+        <FirebaseServiceProvoider useEmulator configYAML={firebaseConfig} setErrors={setErrors}>
+          <Suspense fallback={<p>loading...</p>}>
+            {(() => {
+              const firebase = useFirebaseService();
+              const itemCollection = getCollection(firebase, "pocFirestoreSubcollection");
+              const id = uuidv7();
+
+              return (
+                <>
+                  <button
+                    onClick={async () => {
+                      const batch = writeBatch(firebase.firestore);
+
+                      const docRef = doc(itemCollection, id);
+
+                      batch.set(docRef, {
+                        text: "text",
+                      });
+
+                      batch.set(doc(docRef, "subcollection", id), {
+                        text: "subtext",
+                      });
+
+                      await batch.commit();
+                    }}
+                  >
+                    add
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const batch = writeBatch(firebase.firestore);
+
+                      batch.delete(doc(itemCollection, id));
+
+                      await batch.commit();
+                    }}
+                  >
+                    delete doc
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const batch = writeBatch(firebase.firestore);
+
+                      batch.delete(doc(itemCollection, id, "subcollection", id));
+
+                      await batch.commit();
+                    }}
+                  >
+                    delete subcollection
+                  </button>
                 </>
               );
             })()}

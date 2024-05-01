@@ -1,10 +1,9 @@
-import type { FirestoreSchema } from "@/services/firebase/firestoreSchema";
-import type { CollectionReference, Firestore } from "firebase/firestore";
+import type { Firestore } from "firebase/firestore";
 import type { JSXElement, Setter } from "solid-js";
 
 import { deleteApp, initializeApp } from "firebase/app";
 import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup } from "firebase/auth";
-import { collection, getFirestore, connectFirestoreEmulator } from "firebase/firestore";
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import YAML from "js-yaml";
 import { createMemo, createEffect, onCleanup, createResource, Show, createContext, useContext } from "solid-js";
 import * as s from "superstruct";
@@ -127,8 +126,4 @@ export function useFirebaseService() {
   if (!service) throw new ServiceNotAvailable("Firebase");
 
   return service;
-}
-
-export function getCollection<Name extends keyof FirestoreSchema>(service: FirebaseService, name: Name) {
-  return collection(service.firestore, name) as CollectionReference<FirestoreSchema[Name]>;
 }
