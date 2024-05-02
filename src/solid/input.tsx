@@ -38,7 +38,7 @@ if (import.meta.vitest) {
   test("with lock", async (ctx) => {
     const user = userEvent.setup();
     const { unmount, lock, findByRole } = await renderWithServicesForTest(
-      ctx.meta.id,
+      ctx.task.id,
       (props) => (
         <>
           {(() => {

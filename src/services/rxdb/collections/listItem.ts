@@ -176,7 +176,7 @@ export async function getAboveItem(service: RxDBService, baseItem: RxDocument<Li
 if (import.meta.vitest) {
   describe("getAboveItem", () => {
     test("no prev and no parent", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
 
       await service.collections.listItems.bulkInsert(makeListItems("", 0, [["base"]]));
       const baseItem = (await service.collections.listItems.findOne("base").exec())!;
@@ -185,7 +185,7 @@ if (import.meta.vitest) {
     });
 
     test("no prev and has parent", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
 
       await service.collections.listItems.bulkInsert(
         // prettier-ignore
@@ -201,7 +201,7 @@ if (import.meta.vitest) {
     });
 
     test("has prev and no children of prev", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
 
       await service.collections.listItems.bulkInsert(
         // prettier-ignore
@@ -216,7 +216,7 @@ if (import.meta.vitest) {
     });
 
     test("has prev and has children of prev and no children of children of prev", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
 
       await service.collections.listItems.bulkInsert(
         // prettier-ignore
@@ -234,7 +234,7 @@ if (import.meta.vitest) {
     });
 
     test("has prev and has children of prev and has children of children of prev", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
 
       await service.collections.listItems.bulkInsert(
         // prettier-ignore
@@ -273,7 +273,7 @@ export async function getBelowItem(service: RxDBService, baseItem: RxDocument<Li
 if (import.meta.vitest) {
   describe("getBelowItem", () => {
     test("has children", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
 
       await service.collections.listItems.bulkInsert(
         // prettier-ignore
@@ -297,7 +297,7 @@ if (import.meta.vitest) {
     });
 
     test("no children and has next", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
 
       await service.collections.listItems.bulkInsert(
         // prettier-ignore
@@ -318,7 +318,7 @@ if (import.meta.vitest) {
     });
 
     test("no children and no next and has next of parent", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
 
       await service.collections.listItems.bulkInsert(
         // prettier-ignore
@@ -338,7 +338,7 @@ if (import.meta.vitest) {
     });
 
     test("no children and no next and no next of parent and has next of parent of parent", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
 
       await service.collections.listItems.bulkInsert(
         // prettier-ignore
@@ -357,7 +357,7 @@ if (import.meta.vitest) {
     });
 
     test("no children and no next and no next of parent and no next of parent of parent", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
 
       await service.collections.listItems.bulkUpsert(
         // prettier-ignore
@@ -455,7 +455,7 @@ export async function addPrevSibling(
 if (import.meta.vitest) {
   describe("addPrevSibling", () => {
     test("prepend", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
       const now = Date.now();
 
       await service.collections.listItems.bulkInsert(makeListItems("", 0, [["base"]]));
@@ -475,7 +475,7 @@ if (import.meta.vitest) {
     });
 
     test("insert", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
       const now = Date.now();
 
       await service.collections.listItems.bulkInsert(
@@ -561,7 +561,7 @@ export async function addNextSibling(
 if (import.meta.vitest) {
   describe("addNextSibling", () => {
     test("append", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
       const now = Date.now();
 
       await service.collections.listItems.bulkInsert(makeListItems("", 0, [["base"]]));
@@ -581,7 +581,7 @@ if (import.meta.vitest) {
     });
 
     test("insert", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
       const now = Date.now();
 
       await service.collections.listItems.bulkInsert(
@@ -631,7 +631,7 @@ export async function indent(service: RxDBService, updatedAt: number, item: RxDo
 if (import.meta.vitest) {
   describe("indent", () => {
     test("cannot indent due to no prev item", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
 
       await service.collections.listItems.bulkInsert(
         // prettier-ignore
@@ -653,7 +653,7 @@ if (import.meta.vitest) {
     });
 
     test("indent with prev item without children", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
       const now = Date.now();
 
       await service.collections.listItems.bulkInsert(
@@ -679,7 +679,7 @@ if (import.meta.vitest) {
     });
 
     test("indent with prev item with children", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
       const now = Date.now();
 
       await service.collections.listItems.bulkInsert(
@@ -720,7 +720,7 @@ export async function dedent(service: RxDBService, updatedAt: number, item: RxDo
 if (import.meta.vitest) {
   describe("dedent", () => {
     test("cannot dedent due to no parent item", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
 
       await service.collections.listItems.bulkInsert(
         // prettier-ignore
@@ -744,7 +744,7 @@ if (import.meta.vitest) {
     });
 
     test("dedent with parent item without next item", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
       const now = Date.now();
 
       await service.collections.listItems.bulkInsert(
@@ -773,7 +773,7 @@ if (import.meta.vitest) {
     });
 
     test("dedent with parent item with next item", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
       const now = Date.now();
 
       await service.collections.listItems.bulkInsert(
@@ -813,7 +813,7 @@ export async function remove(service: RxDBService, updatedAt: number, item: RxDo
 if (import.meta.vitest) {
   describe("remove", () => {
     test("remove item without siblings", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
 
       await service.collections.listItems.bulkInsert(makeListItems("", 0, [["target"]]));
 
@@ -823,7 +823,7 @@ if (import.meta.vitest) {
     });
 
     test("remove item with prev item without next item", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
       const now = Date.now();
 
       await service.collections.listItems.bulkInsert(
@@ -845,7 +845,7 @@ if (import.meta.vitest) {
     });
 
     test("remove item with next item without prev item", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
       const now = Date.now();
 
       await service.collections.listItems.bulkInsert(
@@ -867,7 +867,7 @@ if (import.meta.vitest) {
     });
 
     test("remove item with siblings", async (test) => {
-      const service = await createRxDBServiceForTest(test.meta.id);
+      const service = await createRxDBServiceForTest(test.task.id);
       const now = Date.now();
 
       await service.collections.listItems.bulkInsert(

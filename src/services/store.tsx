@@ -79,7 +79,7 @@ if (import.meta.vitest) {
     const {
       unmount,
       store: { state },
-    } = await renderWithServicesForTest(test.meta.id, (props) => props.children);
+    } = await renderWithServicesForTest(test.task.id, (props) => props.children);
 
     test.expect(state).toEqual(initialState);
 
@@ -90,7 +90,7 @@ if (import.meta.vitest) {
     const {
       unmount,
       store: { state, updateState },
-    } = await renderWithServicesForTest(test.meta.id, (props) => props.children);
+    } = await renderWithServicesForTest(test.task.id, (props) => props.children);
 
     const storePromise = new Promise<string>((resolve) => {
       let initial = true;
@@ -123,7 +123,7 @@ if (import.meta.vitest) {
       unmount,
       store: { state, updateState },
     } = await renderWithServicesForTest(
-      test.meta.id,
+      test.task.id,
       (props) => props.children,
       ({ store: { updateState } }) => {
         updateState((state) => {
@@ -174,7 +174,7 @@ if (import.meta.vitest) {
     const {
       unmount,
       store: { state, updateState },
-    } = await renderWithServicesForTest(test.meta.id, (props) => props.children);
+    } = await renderWithServicesForTest(test.task.id, (props) => props.children);
 
     const currentActionLogIdPromise = Promise.race([
       new Promise<string>((resolve) => {

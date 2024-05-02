@@ -401,7 +401,7 @@ if (import.meta.vitest) {
       },
     ])("$name", ({ actionLogs, currentActionLogId, wantActionLogId }) => {
       test("assert", async (test) => {
-        const service = await createRxDBServiceForTest(test.meta.id);
+        const service = await createRxDBServiceForTest(test.task.id);
 
         await service.collections.actionLogs.bulkInsert(actionLogs);
         const currentActionLog = (await service.collections.actionLogs.findOne(currentActionLogId).exec())!;
@@ -604,7 +604,7 @@ if (import.meta.vitest) {
       },
     ])("$name", ({ actionLogs, currentActionLogId, wantActionLogId }) => {
       test("assert", async (test) => {
-        const service = await createRxDBServiceForTest(test.meta.id);
+        const service = await createRxDBServiceForTest(test.task.id);
 
         await service.collections.actionLogs.bulkInsert(actionLogs);
         const currentActionLog = (await service.collections.actionLogs.findOne(currentActionLogId).exec())!;
@@ -662,7 +662,7 @@ if (import.meta.vitest) {
       },
     ])("$name", ({ actionLogs, wantActionLogIds }) => {
       test("assert", async (test) => {
-        const service = await createRxDBServiceForTest(test.meta.id);
+        const service = await createRxDBServiceForTest(test.task.id);
 
         await service.collections.actionLogs.bulkInsert(actionLogs);
         const finishedLogs = await queryFinishedLogs(service).exec();
@@ -720,7 +720,7 @@ if (import.meta.vitest) {
       },
     ])("$name", ({ actionLogs, wantActionLogIds }) => {
       test("assert", async (test) => {
-        const service = await createRxDBServiceForTest(test.meta.id);
+        const service = await createRxDBServiceForTest(test.task.id);
 
         await service.collections.actionLogs.bulkInsert(actionLogs);
         const ongoingLogs = await queryOngoingLogs(service).exec();
@@ -757,7 +757,7 @@ if (import.meta.vitest) {
       },
     ])("$name", ({ actionLogs, wantActionLogIds }) => {
       test("assert", async (test) => {
-        const service = await createRxDBServiceForTest(test.meta.id);
+        const service = await createRxDBServiceForTest(test.task.id);
 
         await service.collections.actionLogs.bulkInsert(actionLogs);
         const tentativeLogs = await queryTentativeLogs(service).exec();

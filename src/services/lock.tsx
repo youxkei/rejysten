@@ -90,7 +90,7 @@ if (import.meta.vitest) {
       const { promise, resolve } = getPromiseWithResolve();
       let count = 0;
 
-      const { unmount } = await renderWithServicesForTest(test.meta.id, (props) => {
+      const { unmount } = await renderWithServicesForTest(test.task.id, (props) => {
         onMount(async () => {
           const increment = async () => {
             const c = count;
@@ -119,7 +119,7 @@ if (import.meta.vitest) {
       const { promise, resolve } = getPromiseWithResolve();
       let count = 0;
 
-      const { unmount } = await renderWithServicesForTest(test.meta.id, (props) => {
+      const { unmount } = await renderWithServicesForTest(test.task.id, (props) => {
         const lock = useLockService();
 
         onMount(async () => {
@@ -174,7 +174,7 @@ if (import.meta.vitest) {
   describe("createSignalWithLock and runWithLock", () => {
     test("updated separately without lock", async (test) => {
       const user = userEvent.setup();
-      const { container, unmount, findByText } = await renderWithServicesForTest(test.meta.id, (props) => {
+      const { container, unmount, findByText } = await renderWithServicesForTest(test.task.id, (props) => {
         const [x$, setX] = createSignal("x");
         const [y$, setY] = createSignal("y");
 
@@ -210,7 +210,7 @@ if (import.meta.vitest) {
 
     test("updated separately with createSignalWithLock without runWithLock", async (test) => {
       const user = userEvent.setup();
-      const { container, unmount, findByText } = await renderWithServicesForTest(test.meta.id, (props) => {
+      const { container, unmount, findByText } = await renderWithServicesForTest(test.task.id, (props) => {
         const service = useLockService();
 
         const [x$, setX] = createSignal("x");
@@ -251,7 +251,7 @@ if (import.meta.vitest) {
 
     test("updated simultaneously with createSignalWithLock and runWithLock", async (test) => {
       const user = userEvent.setup();
-      const { container, unmount, findByText } = await renderWithServicesForTest(test.meta.id, (props) => {
+      const { container, unmount, findByText } = await renderWithServicesForTest(test.task.id, (props) => {
         const service = useLockService();
 
         const [x$, setX] = createSignal("x");

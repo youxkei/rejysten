@@ -37,7 +37,7 @@ if (import.meta.vitest) {
       test("in ActionLogPane, press h to move to ActionLogListPane", async (test) => {
         const user = userEvent.setup();
         const { container, unmount, lock } = await renderWithServicesForTest(
-          test.meta.id,
+          test.task.id,
           (props) => (
             <>
               <Main />
@@ -79,7 +79,7 @@ if (import.meta.vitest) {
       test("in ActionLogPane, press Backspace to remove empty item and move to ActionLogListPane", async (test) => {
         const user = userEvent.setup();
         const { container, unmount, lock, getByDisplayValue } = await renderWithServicesForTest(
-          test.meta.id,
+          test.task.id,
           (props) => (
             <>
               <Main />

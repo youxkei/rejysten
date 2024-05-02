@@ -1,5 +1,5 @@
 import type { Services } from "@/services/test";
-import type { TestContext } from "vitest";
+import type { TaskContext } from "vitest";
 
 import userEvent from "@testing-library/user-event";
 import { Ulid } from "id128";
@@ -198,9 +198,9 @@ function ActionLog() {
   );
 }
 
-function render(test: TestContext, setup: (services: Services) => Promise<unknown>) {
+function render(test: TaskContext, setup: (services: Services) => Promise<unknown>) {
   return renderWithServicesForTest(
-    test.meta.id,
+    test.task.id,
     (props) => (
       <>
         <ActionLog />

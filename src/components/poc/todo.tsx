@@ -62,7 +62,7 @@ export function Todo() {
 if (import.meta.vitest) {
   test("renders", async (ctx) => {
     const { container, unmount } = await renderWithServicesForTest(
-      ctx.meta.id,
+      ctx.task.id,
       (props) => (
         <>
           <Todo />
@@ -84,7 +84,7 @@ if (import.meta.vitest) {
   test("add todos", async (ctx) => {
     const user = userEvent.setup();
     const { container, unmount, lock, findByText, queryByText } = await renderWithServicesForTest(
-      ctx.meta.id,
+      ctx.task.id,
       (props) => (
         <>
           <Todo />

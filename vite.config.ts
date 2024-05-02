@@ -15,13 +15,13 @@ export default defineConfig({
   },
   optimizeDeps: {
     // @ts-ignore
-    allowNodeBuiltins: ["pouchdb-browser", "pouchdb-utils"],
+    // allowNodeBuiltins: ["pouchdb-browser", "pouchdb-utils"],
   },
   plugins: [
     solidPlugin({
       hot: !process.env.VITEST,
     }),
-    checker({ typescript: true, eslint: { lintCommand: "eslint './src/**/*.{ts,tsx}'" } }),
+    // checker({ typescript: true, eslint: { lintCommand: "eslint './src/**/*.{ts,tsx}'" } }),
     vanillaExtractPlugin(),
     tsconfigPaths(),
     devtools({
@@ -44,13 +44,13 @@ export default defineConfig({
     includeSource: ["src/**/*.ts{,x}"],
     globals: true,
     environment: "happy-dom",
-    transformMode: {
-      //web: [/\.[jt]sx$/],
-    },
-    deps: {
-      registerNodeLoader: false,
-    },
-    threads: true,
+    // transformMode: {
+    //   //web: [/\.[jt]sx$/],
+    // },
+    // deps: {
+    //   registerNodeLoader: false,
+    // },
+    // threads: true,
     isolate: true,
     chaiConfig: {
       truncateThreshold: 0,
