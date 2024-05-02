@@ -9,6 +9,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "jsxImportSource": "solid-js",
+    "resolveJsonModule": true,
 
     "baseUrl": ".",
     "paths": {

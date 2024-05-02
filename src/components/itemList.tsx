@@ -140,7 +140,7 @@ if (import.meta.vitest) {
         rxdb: { collections },
         findByText,
       } = await renderWithServicesForTest(
-        ctx.meta.id,
+        ctx.task.id,
         (props) => (
           <>
             <ItemListChildren parentId="" selectedId="" />
@@ -178,7 +178,7 @@ if (import.meta.vitest) {
       lock,
       findByText,
     } = await renderWithServicesForTest(
-      ctx.meta.id,
+      ctx.task.id,
       (props) => (
         <>
           <ItemListChildren parentId="" selectedId="" />
@@ -219,7 +219,7 @@ if (import.meta.vitest) {
         rxdb: { collections },
         findByText,
       } = await renderWithServicesForTest(
-        ctx.meta.id,
+        ctx.task.id,
         (props) => (
           <ErrorBoundary fallback={(error) => `${error}`}>
             <ItemListChildren parentId="" selectedId="" />
@@ -260,7 +260,7 @@ if (import.meta.vitest) {
         rxdb: { collections },
         findByText,
       } = await renderWithServicesForTest(
-        ctx.meta.id,
+        ctx.task.id,
         (props) => (
           <ErrorBoundary fallback={(error) => `${error}`}>
             <ItemListChildren parentId="" selectedId="" />
@@ -302,7 +302,7 @@ if (import.meta.vitest) {
         rxdb: { collections },
         findByText,
       } = await renderWithServicesForTest(
-        ctx.meta.id,
+        ctx.task.id,
         (props) => (
           <ErrorBoundary fallback={(error) => `${error}`}>
             <ItemListChildren parentId="" selectedId="" />
