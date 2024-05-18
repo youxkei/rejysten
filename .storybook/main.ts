@@ -6,8 +6,6 @@ const config: StorybookConfig = {
     name: "storybook-solidjs-vite",
     options: {},
   },
-  docs: {
-    autodocs: "tag",
-  },
+  docs: {},
 };
 export default config;

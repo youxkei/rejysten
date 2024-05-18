@@ -60,9 +60,12 @@ export const FirestoreNgram: StoryObj = {
 
                 const bigram = calcBigram(searchTextChars);
 
-                return Object.keys(bigram).reduce((q, bigramKey) => {
-                  return query(q, where(new FieldPath("ngram", bigramKey), "==", true));
-                }, query(bigramCollection, where("collection", "==", "pocFirestoreNgram")));
+                return Object.keys(bigram).reduce(
+                  (q, bigramKey) => {
+                    return query(q, where(new FieldPath("ngram", bigramKey), "==", true));
+                  },
+                  query(bigramCollection, where("collection", "==", "pocFirestoreNgram")),
+                );
               });
 
               return (

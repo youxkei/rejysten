@@ -39,7 +39,7 @@ export const ForTest: StoryObj = {
             setArray(
               produce((array) => {
                 array[1] = `${Number(array[1]) + 1}`;
-              })
+              }),
             )
           }
         >
@@ -52,7 +52,7 @@ export const ForTest: StoryObj = {
                 const tmp = array[1];
                 array[1] = array[2];
                 array[2] = tmp;
-              })
+              }),
             )
           }
         >
@@ -95,7 +95,7 @@ export const IndexTest: StoryObj = {
             setArray(
               produce((array) => {
                 array[1] = `${Number(array[1]) + 1}`;
-              })
+              }),
             )
           }
         >
@@ -108,7 +108,7 @@ export const IndexTest: StoryObj = {
                 const tmp = array[1];
                 array[1] = array[2];
                 array[2] = tmp;
-              })
+              }),
             )
           }
         >

@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint src/**/*.{ts,tsx}",
+    "lint": "eslint src/**/*.{ts,tsx}",
     "fix": "pnpm run lint --fix; prettier --write src/**/*.{ts,tsx}",
     "build": "vite build",
     "dev": "vite",
@@ -26,149 +26,60 @@
     "url": "https://github.com/youxkei/rejysten/issues"
   },
   "homepage": "https://github.com/youxkei/rejysten#readme",
+  "type": "module",
   "devDependencies": {
-    "@solidjs/testing-library": "^0.7.0",
-    "@storybook/addon-console": "^2.0.0",
-    "@storybook/addon-essentials": "^7.0.26",
-    "@storybook/addon-interactions": "^7.0.26",
-    "@storybook/addon-links": "^7.0.26",
-    "@storybook/blocks": "^7.0.26",
-    "@storybook/testing-library": "^0.0.14-next.2",
-    "@testing-library/user-event": "^14.4.3",
-    "@types/js-yaml": "^4.0.5",
-    "@typescript-eslint/eslint-plugin": "^7.8.0",
-    "@typescript-eslint/parser": "^7.8.0",
-    "@vanilla-extract/vite-plugin": "^3.8.0",
-    "babel-preset-solid": "^1.7.3",
-    "eslint": "^9.1.1",
+    "@eslint/js": "^9.3.0",
+    "@storybook/addon-console": "^3.0.0",
+    "@storybook/addon-essentials": "^8.1.1",
+    "@storybook/addon-interactions": "^8.1.1",
+    "@storybook/addon-links": "^8.1.1",
+    "@storybook/blocks": "^8.1.1",
+    "@storybook/test": "^8.1.1",
+    "@types/js-yaml": "^4.0.9",
+    "@typescript-eslint/eslint-plugin": "^7.9.0",
+    "@typescript-eslint/parser": "^7.9.0",
+    "@vanilla-extract/vite-plugin": "^4.0.9",
+    "@vitest/coverage-v8": "^1.6.0",
+    "babel-preset-solid": "^1.8.17",
+    "eslint": "^9.3.0",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-no-relative-import-paths": "^1.5.4",
     "eslint-plugin-storybook": "^0.8.0",
     "eslint-plugin-unused-imports": "^3.2.0",
-    "fake-indexeddb": "^4.0.1",
-    "happy-dom": "^10.5.2",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "solid-devtools": "^0.26.0",
-    "storybook": "^7.0.26",
-    "storybook-solidjs": "^1.0.0-beta.2",
-    "storybook-solidjs-vite": "^1.0.0-beta.2",
-    "type-fest": "^3.10.0",
+    "happy-dom": "^14.11.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "storybook": "^8.1.1",
+    "storybook-solidjs": "1.0.0-beta.2",
+    "storybook-solidjs-vite": "1.0.0-beta.2",
+    "type-fest": "^4.18.2",
     "typescript": "^5.4.5",
+    "typescript-eslint": "^7.9.0",
     "vite": "^5.2.11",
     "vite-plugin-checker": "^0.6.4",
-    "vite-plugin-node-stdlib-browser": "^0.2.1",
     "vite-plugin-pwa": "^0.20.0",
     "vite-plugin-solid": "^2.10.2",
     "vite-tsconfig-paths": "^4.3.2",
-    "vitest": "^1.5.3",
-    "workbox-window": "^7.0.0"
+    "vitest": "^1.6.0",
+    "workbox-window": "^7.1.0"
   },
   "dependencies": {
-    "@solid-primitives/context": "^0.2.1",
-    "@solid-primitives/keyboard": "^1.2.0",
-    "@solid-primitives/scheduled": "^1.4.1",
-    "@solid-primitives/storage": "^2.1.0",
-    "@vanilla-extract/css": "^1.11.0",
-    "dexie": "4.0.0-alpha.4",
-    "firebase": "9.21.0",
+    "@solid-primitives/context": "^0.2.3",
+    "@solid-primitives/keyboard": "^1.2.8",
+    "@solid-primitives/scheduled": "^1.4.3",
+    "@solid-primitives/storage": "^3.5.0",
+    "@testing-library/jest-dom": "^6.4.5",
+    "@vanilla-extract/css": "^1.15.1",
+    "firebase": "10.12.0",
     "id128": "^1.6.6",
-    "immer": "^10.0.1",
+    "immer": "^10.1.1",
     "js-yaml": "^4.1.0",
-    "node-stdlib-browser": "^1.2.0",
-    "rxdb": "^14.12.0",
-    "rxjs": "^7.8.1",
-    "solid-js": "^1.7.3",
-    "superstruct": "^1.0.3",
-    "uuidv7": "^0.6.3",
+    "solid-js": "^1.8.17",
+    "superstruct": "^1.0.4",
+    "uuidv7": "^1.0.0",
     "xregexp": "^5.1.1"
-  },
-  "overrides": {
-    "@vanilla-extract/vite-plugin": {
-      "vite": "^3"
-    }
   },
   "prettier": {
     "printWidth": 120
-  },
-  "eslintConfig": {
-    "root": true,
-    "extends": [
-      "eslint:recommended",
-      "plugin:@typescript-eslint/recommended",
-      "plugin:@typescript-eslint/recommended-requiring-type-checking",
-      "plugin:@typescript-eslint/strict",
-      "plugin:storybook/recommended"
-    ],
-    "parser": "@typescript-eslint/parser",
-    "parserOptions": {
-      "project": "./tsconfig.json"
-    },
-    "plugins": [
-      "@typescript-eslint",
-      "import",
-      "no-relative-import-paths",
-      "unused-imports"
-    ],
-    "rules": {
-      "@typescript-eslint/no-non-null-assertion": "off",
-      "@typescript-eslint/unbound-method": "off",
-      "@typescript-eslint/restrict-template-expressions": "off",
-      "@typescript-eslint/consistent-type-imports": "error",
-      "@typescript-eslint/consistent-type-definitions": [
-        "error",
-        "type"
-      ],
-      "@typescript-eslint/no-misused-promises": [
-        "error",
-        {
-          "checksVoidReturn": false
-        }
-      ],
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        {
-          "varsIgnorePattern": "^_",
-          "argsIgnorePattern": "^_"
-        }
-      ],
-      "@typescript-eslint/no-base-to-string": "off",
-      "prefer-const": [
-        "error",
-        {
-          "ignoreReadBeforeAssign": true
-        }
-      ],
-      "import/order": [
-        "error",
-        {
-          "groups": [
-            "type",
-            "external",
-            "internal"
-          ],
-          "newlines-between": "always",
-          "alphabetize": {
-            "order": "asc"
-          }
-        }
-      ],
-      "import/no-duplicates": "error",
-      "no-relative-import-paths/no-relative-import-paths": [
-        "error",
-        {
-          "allowSameFolder": false,
-          "rootDir": "src",
-          "prefix": "@"
-        }
-      ],
-      "unused-imports/no-unused-imports": "error"
-    }
-  },
-  "pnpm": {
-    "patchedDependencies": {
-      "dexie@4.0.0-alpha.4": "patches/dexie@4.0.0-alpha.4.patch",
-      "@solid-primitives/storage@2.1.0": "patches/@solid-primitives__storage@2.1.0.patch"
-    }
   }
 }
