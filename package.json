@@ -14,7 +14,8 @@
     "prepare": "git config --local core.hooksPath .githooks",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "firebase-emulator": "podman run --rm -it --network host tomasvotava/firebase-emulators firestore"
+    "emulator:build": "podman build -t firebase-emulator -f emulator.Containerfile",
+    "emulator:run": "podman run --rm -it --network host firebase-emulator"
   },
   "repository": {
     "type": "git",
