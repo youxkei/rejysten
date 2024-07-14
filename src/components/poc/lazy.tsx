@@ -6,7 +6,7 @@ function LazyComponent(props: { message: string }) {
     async (message) => {
       await new Promise((r) => setTimeout(r, 500));
       return message;
-    }
+    },
   );
 
   return <p>{message()}</p>;

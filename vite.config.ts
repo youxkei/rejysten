@@ -40,7 +40,7 @@ export default defineConfig({
     includeSource: ["src/**/*.ts{,x}"],
     globals: true,
     environment: "happy-dom",
-    isolate: true,
+    isolate: false,
     chaiConfig: {
       truncateThreshold: 0,
     },

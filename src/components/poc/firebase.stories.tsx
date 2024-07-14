@@ -6,7 +6,7 @@ import { uuidv7 } from "uuidv7";
 import XRegExp from "xregexp";
 
 import { FirebaseServiceProvoider, useFirebaseService } from "@/services/firebase";
-import { getCollection } from "@/services/firebase/firestore/collections";
+import { getCollection } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal } from "@/services/firebase/subscribe";
 import { dumpSignal } from "@/solid/signal";
 

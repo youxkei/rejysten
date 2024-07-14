@@ -41,6 +41,7 @@ export default tseslint.config({
         varsIgnorePattern: "^_",
       },
     ],
+    "@typescript-eslint/no-non-null-assertion": "off",
     "prefer-const": [
       "error",
       {

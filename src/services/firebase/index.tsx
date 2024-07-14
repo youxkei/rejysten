@@ -109,7 +109,7 @@ export function FirebaseServiceProvoider(props: {
         // no need to use createEffect because it is after the await
         props.setErrors((errors) => [...errors, `${error}`]);
       }
-    }
+    },
   );
 
   return (

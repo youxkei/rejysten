@@ -3,7 +3,7 @@ import { createSignal, createEffect, createResource } from "solid-js";
 export function createSubscribeWithResource<Source, Value, InitialValue>(
   source$: () => Source | undefined,
   subscriber: (source: Source, setValue: (value: Value) => void) => void,
-  initialValue: InitialValue
+  initialValue: InitialValue,
 ) {
   let setResource: ((value: Value) => void) | undefined;
   let mutateResource: ((value: Value) => void) | undefined;
@@ -38,7 +38,7 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
     },
     {
       initialValue,
-    }
+    },
   );
 
   mutateResource = mutate;
@@ -48,7 +48,7 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
 
 export function createSubscribeWithSignal<Value, InitialValue>(
   subscriber: (setValue: (value: Value) => void) => void,
-  initialValue: InitialValue
+  initialValue: InitialValue,
 ) {
   const [signal, setSignal] = createSignal<Value | InitialValue>(initialValue);
 

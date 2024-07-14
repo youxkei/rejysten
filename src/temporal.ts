@@ -22,7 +22,7 @@ if (import.meta.vitest) {
       "$timeText",
       ({ timeText }) => {
         expect(epochMsToTimeText(timeTextToEpochMs(timeText), true)).toBe(timeText);
-      }
+      },
     );
   });
 }

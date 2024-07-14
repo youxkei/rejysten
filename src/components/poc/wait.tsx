@@ -4,7 +4,7 @@ export function Wait() {
   const [reloadTrigger$, reload] = createSignal(0);
   const [value] = createResource(
     reloadTrigger$,
-    () => new Promise<number>((resolve) => setTimeout(() => resolve(42), 1000))
+    () => new Promise<number>((resolve) => setTimeout(() => resolve(42), 1000)),
   );
 
   function onClick() {

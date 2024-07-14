@@ -15,7 +15,7 @@ export function createSubscribeAllSignal<T>(query$: () => Query<T> | undefined) 
 
       onCleanup(unsubscribe);
     },
-    undefined
+    undefined,
   );
 
   return createMemo(() => {
