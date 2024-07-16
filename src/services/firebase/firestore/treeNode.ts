@@ -219,3 +219,214 @@ if (import.meta.vitest) {
     });
   });
 }
+
+export async function getNextNode<T extends TreeNode>(
+  tx: Transaction,
+  col: CollectionReference<T>,
+  baseNode: DocumentData<T>,
+): Promise<DocumentData<T> | undefined> {
+  let nextNode: DocumentData<T> | undefined;
+
+  if (baseNode.nextId !== "") {
+    nextNode = await txGet(tx, col, baseNode.nextId);
+
+    if (nextNode === undefined) {
+      throw new InconsistentError("next node of baseNode is not exist", { baseNode });
+    }
+
+    if (nextNode.prevId !== baseNode.id) {
+      throw new InconsistentError("previous node of next node of baseNode is not baseNode", {
+        baseNode,
+        nextNode,
+      });
+    }
+
+    if (nextNode.parentId !== baseNode.parentId) {
+      throw new InconsistentError("parent node of next node of baseNode is not one of baseNode", {
+        baseNode,
+        nextNode,
+      });
+    }
+  }
+
+  return nextNode;
+}
+
+if (import.meta.vitest) {
+  describe("getNextNode", () => {
+    test("no next node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "",
+        nextId: "",
+        parentId: "",
+      });
+
+      await test
+        .expect(
+          runTransaction(firestoreForTest, async (tx) => {
+            return getNextNode(tx, col, (await txGet(tx, col, "base"))!);
+          }),
+        )
+        .resolves.toBeUndefined();
+    });
+
+    test("next node exists", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "",
+        nextId: "next",
+        parentId: "",
+      });
+
+      await setDoc(doc(col, "next"), {
+        text: "next",
+        prevId: "base",
+        nextId: "",
+        parentId: "",
+      });
+
+      await test
+        .expect(
+          runTransaction(firestoreForTest, async (tx) => {
+            return getNextNode(tx, col, (await txGet(tx, col, "base"))!);
+          }),
+        )
+        .resolves.toEqual({
+          id: "next",
+          text: "next",
+          prevId: "base",
+          nextId: "",
+          parentId: "",
+        });
+    });
+
+    test("invalid baseNode.nextId", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "",
+        nextId: "invalid",
+        parentId: "",
+      });
+
+      await test.expect(() =>
+        runTransaction(firestoreForTest, async (tx) => {
+          return getNextNode(tx, col, (await txGet(tx, col, "base"))!);
+        }),
+      ).rejects.toThrowErrorMatchingInlineSnapshot(`
+        [Error: next node of baseNode is not exist: {
+          "baseNode": {
+            "text": "base",
+            "prevId": "",
+            "nextId": "invalid",
+            "parentId": "",
+            "id": "base"
+          }
+        }]
+      `);
+    });
+
+    test("invalid nextNode.prevId", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "",
+        nextId: "next",
+        parentId: "",
+      });
+
+      await setDoc(doc(col, "next"), {
+        text: "next",
+        prevId: "invalid",
+        nextId: "",
+        parentId: "",
+      });
+
+      await test.expect(() =>
+        runTransaction(firestoreForTest, async (tx) => {
+          return getNextNode(tx, col, (await txGet(tx, col, "base"))!);
+        }),
+      ).rejects.toThrowErrorMatchingInlineSnapshot(`
+        [Error: previous node of next node of baseNode is not baseNode: {
+          "baseNode": {
+            "text": "base",
+            "prevId": "",
+            "nextId": "next",
+            "parentId": "",
+            "id": "base"
+          },
+          "nextNode": {
+            "text": "next",
+            "prevId": "invalid",
+            "nextId": "",
+            "parentId": "",
+            "id": "next"
+          }
+        }]
+      `);
+    });
+
+    test("different parentId", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "",
+        nextId: "next",
+        parentId: "foo",
+      });
+
+      await setDoc(doc(col, "next"), {
+        text: "next",
+        prevId: "base",
+        nextId: "",
+        parentId: "bar",
+      });
+
+      await test.expect(() =>
+        runTransaction(firestoreForTest, async (tx) => {
+          return getNextNode(tx, col, (await txGet(tx, col, "base"))!);
+        }),
+      ).rejects.toThrowErrorMatchingInlineSnapshot(`
+        [Error: parent node of next node of baseNode is not one of baseNode: {
+          "baseNode": {
+            "text": "base",
+            "prevId": "",
+            "nextId": "next",
+            "parentId": "foo",
+            "id": "base"
+          },
+          "nextNode": {
+            "text": "next",
+            "prevId": "base",
+            "nextId": "",
+            "parentId": "bar",
+            "id": "next"
+          }
+        }]
+      `);
+    });
+  });
+}
