@@ -430,3 +430,105 @@ if (import.meta.vitest) {
     });
   });
 }
+
+export async function getParentNode<T extends TreeNode>(
+  tx: Transaction,
+  col: CollectionReference<T>,
+  baseNode: DocumentData<T>,
+): Promise<DocumentData<T> | undefined> {
+  if (baseNode.parentId === "") {
+    return undefined;
+  }
+
+  const parentNode = await txGet(tx, col, baseNode.parentId);
+
+  if (parentNode === undefined) {
+    // this is a normal situation because parentId may refer to a node of another collection
+    return undefined;
+  }
+
+  return parentNode;
+}
+
+if (import.meta.vitest) {
+  describe("getParentNode", () => {
+    test("no parent node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "",
+        nextId: "",
+        parentId: "",
+      });
+
+      await test
+        .expect(
+          runTransaction(firestoreForTest, async (tx) => {
+            return getParentNode(tx, col, (await txGet(tx, col, "base"))!);
+          }),
+        )
+        .resolves.toBeUndefined();
+    });
+
+    test("parent node exists", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "parent"), {
+        text: "parent",
+        prevId: "",
+        nextId: "",
+        parentId: "",
+      });
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "",
+        nextId: "",
+        parentId: "parent",
+      });
+
+      await test
+        .expect(
+          runTransaction(firestoreForTest, async (tx) => {
+            return getParentNode(tx, col, (await txGet(tx, col, "base"))!);
+          }),
+        )
+        .resolves.toEqual({
+          id: "parent",
+          text: "parent",
+          prevId: "",
+          nextId: "",
+          parentId: "",
+        });
+    });
+
+    test("baseNode.parentId refers to a node of another collection", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "",
+        nextId: "",
+        parentId: "another_collection_id",
+      });
+
+      await test
+        .expect(
+          runTransaction(firestoreForTest, async (tx) => {
+            return getParentNode(tx, col, (await txGet(tx, col, "base"))!);
+          }),
+        )
+        .resolves.toBeUndefined();
+    });
+  });
+}
