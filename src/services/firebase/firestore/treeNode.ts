@@ -1,9 +1,9 @@
 import type { DocumentData } from "@/services/firebase/firestore";
 import type { CollectionReference, Transaction } from "firebase/firestore";
 
-import { runTransaction, setDoc, collection, doc } from "firebase/firestore";
+import { runTransaction, setDoc, collection, doc, getDocs, query, where, getDoc } from "firebase/firestore";
 
-import { txGet } from "@/services/firebase/firestore";
+import { txGet, getDocumentData } from "@/services/firebase/firestore";
 import { InconsistentError } from "@/services/firebase/firestore/error";
 import { firestoreForTest } from "@/services/firebase/test";
 
@@ -529,6 +529,260 @@ if (import.meta.vitest) {
           }),
         )
         .resolves.toBeUndefined();
+    });
+  });
+}
+
+export async function getFirstChildNode<T extends TreeNode>(
+  col: CollectionReference<T>,
+  baseNode: DocumentData<T>,
+): Promise<DocumentData<T> | undefined> {
+  const children = await getDocs(query(col, where("parentId", "==", baseNode.id), where("prevId", "==", "")));
+
+  if (children.empty) {
+    return undefined;
+  }
+
+  const childrenDocs = children.docs.map((doc) => getDocumentData(doc));
+
+  if (childrenDocs.length !== 1) {
+    throw new InconsistentError("multiple first child nodes", { baseNode, childrenDocs });
+  }
+
+  return childrenDocs[0];
+}
+
+if (import.meta.vitest) {
+  describe("getFirstChildNode", () => {
+    test("no first child node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "",
+        nextId: "",
+        parentId: "",
+      });
+
+      await test
+        .expect(getFirstChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!))
+        .resolves.toBeUndefined();
+    });
+
+    test("first child node exists", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "",
+        nextId: "",
+        parentId: "",
+      });
+
+      await setDoc(doc(col, "first"), {
+        text: "first",
+        prevId: "",
+        nextId: "",
+        parentId: "base",
+      });
+
+      await test.expect(getFirstChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!)).resolves.toEqual({
+        id: "first",
+        text: "first",
+        prevId: "",
+        nextId: "",
+        parentId: "base",
+      });
+    });
+
+    test("multiple first child nodes", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "",
+        nextId: "",
+        parentId: "",
+      });
+
+      await setDoc(doc(col, "first1"), {
+        text: "first1",
+        prevId: "",
+        nextId: "",
+        parentId: "base",
+      });
+
+      await setDoc(doc(col, "first2"), {
+        text: "first2",
+        prevId: "",
+        nextId: "",
+        parentId: "base",
+      });
+
+      await test.expect(async () => getFirstChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!)).rejects
+        .toThrowErrorMatchingInlineSnapshot(`
+          [Error: multiple first child nodes: {
+            "baseNode": {
+              "text": "base",
+              "prevId": "",
+              "nextId": "",
+              "parentId": "",
+              "id": "base"
+            },
+            "childrenDocs": [
+              {
+                "text": "first1",
+                "prevId": "",
+                "nextId": "",
+                "parentId": "base",
+                "id": "first1"
+              },
+              {
+                "text": "first2",
+                "prevId": "",
+                "nextId": "",
+                "parentId": "base",
+                "id": "first2"
+              }
+            ]
+          }]
+        `);
+    });
+  });
+}
+
+export async function getLastChildNode<T extends TreeNode>(
+  col: CollectionReference<T>,
+  baseNode: DocumentData<T>,
+): Promise<DocumentData<T> | undefined> {
+  const children = await getDocs(query(col, where("parentId", "==", baseNode.id), where("nextId", "==", "")));
+
+  if (children.empty) {
+    return undefined;
+  }
+
+  const childrenDocs = children.docs.map((doc) => getDocumentData(doc));
+
+  if (childrenDocs.length !== 1) {
+    throw new InconsistentError("multiple last child nodes", { baseNode, childrenDocs });
+  }
+
+  return childrenDocs[0];
+}
+
+if (import.meta.vitest) {
+  describe("getLastChildNode", () => {
+    test("no last child node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "",
+        nextId: "",
+        parentId: "",
+      });
+
+      await test
+        .expect(getLastChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!))
+        .resolves.toBeUndefined();
+    });
+
+    test("last child node exists", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "",
+        nextId: "",
+        parentId: "",
+      });
+
+      await setDoc(doc(col, "last"), {
+        text: "last",
+        prevId: "",
+        nextId: "",
+        parentId: "base",
+      });
+
+      await test.expect(getLastChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!)).resolves.toEqual({
+        id: "last",
+        text: "last",
+        prevId: "",
+        nextId: "",
+        parentId: "base",
+      });
+    });
+
+    test("multiple last child nodes", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "",
+        nextId: "",
+        parentId: "",
+      });
+
+      await setDoc(doc(col, "last1"), {
+        text: "last1",
+        prevId: "",
+        nextId: "",
+        parentId: "base",
+      });
+
+      await setDoc(doc(col, "last2"), {
+        text: "last2",
+        prevId: "",
+        nextId: "",
+        parentId: "base",
+      });
+
+      await test.expect(async () => getLastChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!)).rejects
+        .toThrowErrorMatchingInlineSnapshot(`
+          [Error: multiple last child nodes: {
+            "baseNode": {
+              "text": "base",
+              "prevId": "",
+              "nextId": "",
+              "parentId": "",
+              "id": "base"
+            },
+            "childrenDocs": [
+              {
+                "text": "last1",
+                "prevId": "",
+                "nextId": "",
+                "parentId": "base",
+                "id": "last1"
+              },
+              {
+                "text": "last2",
+                "prevId": "",
+                "nextId": "",
+                "parentId": "base",
+                "id": "last2"
+              }
+            ]
+          }]
+        `);
     });
   });
 }
