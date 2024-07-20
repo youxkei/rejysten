@@ -142,3 +142,25 @@ export async function unlinkFromSiblings<T extends TreeNode>(
     tx.update(doc(col, nextNode.id), { prevId: baseNode.prevId });
   }
 }
+
+export async function getAboveNode<T extends TreeNode>(
+  tx: Transaction,
+  col: CollectionReference<T>,
+  baseNode: DocumentData<T>,
+): Promise<DocumentData<T> | undefined> {
+  const prevNode = await getPrevNode(tx, col, baseNode);
+
+  if (prevNode) {
+    let currentNode = prevNode;
+
+    for (;;) {
+      const lastChildNode = await getLastChildNode(col, currentNode);
+
+      if (!lastChildNode) return currentNode;
+
+      currentNode = lastChildNode;
+    }
+  }
+
+  return getParentNode(tx, col, baseNode);
+}

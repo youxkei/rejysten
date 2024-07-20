@@ -7,6 +7,7 @@ import { describe, test } from "vitest";
 import { txGet, getDocumentData } from "@/services/firebase/firestore";
 import { setDocs } from "@/services/firebase/firestore/test";
 import {
+  getAboveNode,
   getFirstChildNode,
   getLastChildNode,
   getNextNode,
@@ -739,6 +740,120 @@ describe.concurrent("treeNode", () => {
           id: "prev",
         },
       ]);
+    });
+  });
+
+  describe("getAboveNode", () => {
+    test("no prev node, no parent node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNode("", ["base"]));
+
+      await test
+        .expect(runTransaction(firestoreForTest, async (tx) => getAboveNode(tx, col, (await txGet(tx, col, "base"))!)))
+        .resolves.toBeUndefined();
+    });
+
+    test("no prev node, has parent node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNode("", ["parent", [["base"]]]));
+
+      await test
+        .expect(runTransaction(firestoreForTest, async (tx) => getAboveNode(tx, col, (await txGet(tx, col, "base"))!)))
+        .resolves.toEqual({
+          id: "parent",
+          text: "parent",
+          prevId: "",
+          nextId: "",
+          parentId: "",
+        });
+    });
+
+    test("has prev node, no children nodes of prev node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("", [["prev"], ["base"]]));
+
+      await test
+        .expect(runTransaction(firestoreForTest, async (tx) => getAboveNode(tx, col, (await txGet(tx, col, "base"))!)))
+        .resolves.toEqual({
+          id: "prev",
+          text: "prev",
+          prevId: "",
+          nextId: "base",
+          parentId: "",
+        });
+    });
+
+    test("has prev node, has children nodes of prev node, no children nodes of children nodes of prev node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      // prettier-ignore
+      await setDocs(col, makeTreeNodes("", [
+        ["prev", [
+          ["first of prev"],
+          ["middle of prev"],
+          ["last of prev"]
+        ]],
+        ["base"],
+      ]));
+
+      await test
+        .expect(runTransaction(firestoreForTest, async (tx) => getAboveNode(tx, col, (await txGet(tx, col, "base"))!)))
+        .resolves.toEqual({
+          id: "last of prev",
+          text: "last of prev",
+          prevId: "middle of prev",
+          nextId: "",
+          parentId: "prev",
+        });
+    });
+
+    test("has prev node, has children nodes of prev node, has children nodes of children nodes of prev node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      // prettier-ignore
+      await setDocs(col, makeTreeNodes("", [
+        ["prev", [
+          ["first of prev", [
+            ["first of first of prev"],
+            ["middle of first of prev"],
+            ["last of first of prev"],
+          ]],
+          ["middle of prev", [
+            ["first of middle of prev"],
+            ["middle of middle of prev"],
+            ["last of middle of prev"],
+          ]],
+          ["last of prev", [
+            ["first of last of prev"],
+            ["middle of last of prev"],
+            ["last of last of prev"],
+          ]],
+        ]],
+        ["base"],
+      ]));
+
+      await test
+        .expect(runTransaction(firestoreForTest, async (tx) => getAboveNode(tx, col, (await txGet(tx, col, "base"))!)))
+        .resolves.toEqual({
+          id: "last of last of prev",
+          text: "last of last of prev",
+          prevId: "middle of last of prev",
+          nextId: "",
+          parentId: "last of prev",
+        });
     });
   });
 });
