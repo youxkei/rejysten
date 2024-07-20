@@ -1,7 +1,7 @@
 import type { DocumentData } from "@/services/firebase/firestore";
 import type { CollectionReference, Transaction } from "firebase/firestore";
 
-import { getDocs, query, where } from "firebase/firestore";
+import { doc, getDocs, query, where } from "firebase/firestore";
 
 import { txGet, getDocumentData } from "@/services/firebase/firestore";
 import { InconsistentError } from "@/services/firebase/firestore/error";
@@ -127,4 +127,18 @@ export async function getLastChildNode<T extends TreeNode>(
   }
 
   return childrenDocs[0];
+}
+
+export async function unlinkFromSiblings<T extends TreeNode>(
+  tx: Transaction,
+  col: CollectionReference<TreeNode>,
+  baseNode: DocumentData<T>,
+): Promise<void> {
+  const [prevNode, nextNode] = await Promise.all([getPrevNode(tx, col, baseNode), getNextNode(tx, col, baseNode)]);
+  if (prevNode) {
+    tx.update(doc(col, prevNode.id), { nextId: baseNode.nextId });
+  }
+  if (nextNode) {
+    tx.update(doc(col, nextNode.id), { prevId: baseNode.prevId });
+  }
 }

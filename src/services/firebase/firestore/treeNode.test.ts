@@ -1,7 +1,7 @@
 import type { TreeNode } from "@/services/firebase/firestore/treeNode";
 import type { CollectionReference } from "firebase/firestore";
 
-import { runTransaction, setDoc, collection, doc, getDoc } from "firebase/firestore";
+import { runTransaction, setDoc, collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { describe, test } from "vitest";
 
 import { txGet, getDocumentData } from "@/services/firebase/firestore";
@@ -11,6 +11,7 @@ import {
   getNextNode,
   getParentNode,
   getPrevNode,
+  unlinkFromSiblings,
 } from "@/services/firebase/firestore/treeNode";
 import { firestoreForTest } from "@/services/firebase/test";
 
@@ -659,6 +660,176 @@ describe.concurrent("treeNode", () => {
             ]
           }]
         `);
+    });
+  });
+
+  describe("unlinkFromSiblings", () => {
+    test("no prev node, no next node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "",
+        nextId: "",
+        parentId: "",
+      });
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        return unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          text: "base",
+          prevId: "",
+          nextId: "",
+          parentId: "",
+          id: "base",
+        },
+      ]);
+    });
+
+    test("no prev node, next node exists", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "",
+        nextId: "next",
+        parentId: "",
+      });
+
+      await setDoc(doc(col, "next"), {
+        text: "next",
+        prevId: "base",
+        nextId: "",
+        parentId: "",
+      });
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        return unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          text: "base",
+          prevId: "",
+          nextId: "next",
+          parentId: "",
+          id: "base",
+        },
+        {
+          text: "next",
+          prevId: "",
+          nextId: "",
+          parentId: "",
+          id: "next",
+        },
+      ]);
+    });
+
+    test("prev node exists, no next node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "prev"), {
+        text: "prev",
+        prevId: "",
+        nextId: "base",
+        parentId: "",
+      });
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "prev",
+        nextId: "",
+        parentId: "",
+      });
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        return unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          text: "base",
+          prevId: "prev",
+          nextId: "",
+          parentId: "",
+          id: "base",
+        },
+        {
+          text: "prev",
+          prevId: "",
+          nextId: "",
+          parentId: "",
+          id: "prev",
+        },
+      ]);
+    });
+
+    test("prev node exists, next node exists", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+
+      await setDoc(doc(col, "prev"), {
+        text: "prev",
+        prevId: "",
+        nextId: "base",
+        parentId: "",
+      });
+
+      await setDoc(doc(col, "base"), {
+        text: "base",
+        prevId: "prev",
+        nextId: "next",
+        parentId: "",
+      });
+
+      await setDoc(doc(col, "next"), {
+        text: "next",
+        prevId: "base",
+        nextId: "",
+        parentId: "",
+      });
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        return unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          text: "base",
+          prevId: "prev",
+          nextId: "next",
+          parentId: "",
+          id: "base",
+        },
+        {
+          text: "next",
+          prevId: "prev",
+          nextId: "",
+          parentId: "",
+          id: "next",
+        },
+        {
+          text: "prev",
+          prevId: "",
+          nextId: "next",
+          parentId: "",
+          id: "prev",
+        },
+      ]);
     });
   });
 });
