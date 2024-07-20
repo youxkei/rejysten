@@ -26,12 +26,10 @@ export const ForTest: StoryObj = {
     return (
       <>
         <For each={array$()}>{(value) => <Element value={value} />}</For>
-        <button onClick={() => setArray((array) => [`${Number(array[0]) - 1}`, ...array].map((x) => `${x}`))}>
+        <button onClick={() => setArray((array) => [`${Number(array[0]) - 1}`, ...array].map((x) => x))}>
           prepend
         </button>
-        <button
-          onClick={() => setArray((array) => [...array, `${Number(array[array.length - 1]) + 1}`].map((x) => `${x}`))}
-        >
+        <button onClick={() => setArray((array) => [...array, `${Number(array[array.length - 1]) + 1}`].map((x) => x))}>
           append
         </button>
         <button
@@ -82,12 +80,10 @@ export const IndexTest: StoryObj = {
     return (
       <>
         <Index each={array$()}>{(value) => <Element value={value()} />}</Index>
-        <button onClick={() => setArray((array) => [`${Number(array[0]) - 1}`, ...array].map((x) => `${x}`))}>
+        <button onClick={() => setArray((array) => [`${Number(array[0]) - 1}`, ...array].map((x) => x))}>
           prepend
         </button>
-        <button
-          onClick={() => setArray((array) => [...array, `${Number(array[array.length - 1]) + 1}`].map((x) => `${x}`))}
-        >
+        <button onClick={() => setArray((array) => [...array, `${Number(array[array.length - 1]) + 1}`].map((x) => x))}>
           append
         </button>
         <button

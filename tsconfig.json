@@ -14,6 +14,6 @@
     "paths": {
       "@/*": ["src/*"]
     },
-    "types": ["vitest/globals", "vitest/importMeta", "vite-plugin-pwa/client"]
+    "types": ["vite-plugin-pwa/client"]
   }
 }

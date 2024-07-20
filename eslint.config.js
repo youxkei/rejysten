@@ -6,8 +6,7 @@ import importlint from "eslint-plugin-import";
 import noRelativeImportPaths from "eslint-plugin-no-relative-import-paths";
 import unusedImports from "eslint-plugin-unused-imports";
 
-export default tseslint.config({
-  ignores: ["**/poc/**/*.{ts,tsx}"],
+const config = {
   plugins: {
     "@typescript-eslint": tseslint.plugin,
     import: importlint,
@@ -41,7 +40,6 @@ export default tseslint.config({
         varsIgnorePattern: "^_",
       },
     ],
-    "@typescript-eslint/no-non-null-assertion": "off",
     "prefer-const": [
       "error",
       {
@@ -69,4 +67,19 @@ export default tseslint.config({
     ],
     "unused-imports/no-unused-imports": "error",
   },
-});
+};
+
+export default tseslint.config(
+  {
+    ...config,
+    ignores: ["**/poc/**/*.{ts,tsx}", "**/*.test.{ts,tsx}"],
+  },
+  {
+    ...config,
+    files: ["**/poc/**/*.{ts,tsx}", "**/*.test.{ts,tsx}"],
+    rules: {
+      ...config.rules,
+      "@typescript-eslint/no-non-null-assertion": "off",
+    },
+  },
+);

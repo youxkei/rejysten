@@ -16,17 +16,6 @@ export function epochMsToTimeText(epochMs: number, withoutSeparator?: boolean) {
   }
 }
 
-if (import.meta.vitest) {
-  describe("epochMsToTimeText", () => {
-    test.each([{ timeText: "20230528 225512" }, { timeText: "19700101 000000" }, { timeText: "20240229 235959" }])(
-      "$timeText",
-      ({ timeText }) => {
-        expect(epochMsToTimeText(timeTextToEpochMs(timeText), true)).toBe(timeText);
-      },
-    );
-  });
-}
-
 // 20230528 123456
 export function timeTextToEpochMs(text: string) {
   if (text === "") return 0;
@@ -85,14 +74,6 @@ export function timeTextToEpochMs(text: string) {
   }
 
   return Number.NaN;
-}
-
-if (import.meta.vitest) {
-  describe("timeTextToEpochMs", () => {
-    test.each([{ epochMs: 1685282112000 }, { epochMs: 1709218799000 }])("$epochMs", ({ epochMs }) => {
-      expect(timeTextToEpochMs(epochMsToTimeText(epochMs, true))).toBe(epochMs);
-    });
-  });
 }
 
 export function durationTextBetweenEpochMs(start: number, end: number) {

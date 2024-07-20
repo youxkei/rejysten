@@ -38,7 +38,3 @@ export function useStoreService() {
 
   return service;
 }
-
-if (import.meta.vitest) {
-  test.todo("unimplemented");
-}

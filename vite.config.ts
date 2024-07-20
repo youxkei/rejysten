@@ -37,8 +37,7 @@ export default defineConfig({
   },
   test: {
     reporters: "verbose",
-    includeSource: ["src/**/*.ts{,x}"],
-    globals: true,
+    include: ["src/**/*.test.ts{,x}"],
     environment: "happy-dom",
     isolate: false,
     chaiConfig: {
