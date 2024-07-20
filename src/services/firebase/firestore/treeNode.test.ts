@@ -1,10 +1,11 @@
 import type { TreeNode } from "@/services/firebase/firestore/treeNode";
 import type { CollectionReference } from "firebase/firestore";
 
-import { runTransaction, setDoc, collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { runTransaction, collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { describe, test } from "vitest";
 
 import { txGet, getDocumentData } from "@/services/firebase/firestore";
+import { setDocs } from "@/services/firebase/firestore/test";
 import {
   getFirstChildNode,
   getLastChildNode,
@@ -15,20 +16,46 @@ import {
 } from "@/services/firebase/firestore/treeNode";
 import { firestoreForTest } from "@/services/firebase/test";
 
+type TreeNodeWithText = TreeNode & { text: string };
+type TreeNodeFixture = [string, TreeNodeFixture[]?];
+
+function makeTreeNodes(parentId: string, fixtures: TreeNodeFixture[]): TreeNodeWithText[] {
+  const treeNodes = fixtures.map((fixture) => makeTreeNode(parentId, fixture));
+
+  for (let i = 0; i < treeNodes.length; i++) {
+    if (i - 1 >= 0) {
+      treeNodes[i][0].prevId = treeNodes[i - 1][0].text;
+    }
+
+    if (i + 1 < treeNodes.length) {
+      treeNodes[i][0].nextId = treeNodes[i + 1][0].text;
+    }
+  }
+
+  return treeNodes.flat().sort((a, b) => a.text.localeCompare(b.text));
+}
+
+function makeTreeNode(parentId: string, [text, children]: TreeNodeFixture): TreeNodeWithText[] {
+  return [
+    {
+      text,
+      parentId,
+      prevId: "",
+      nextId: "",
+    },
+    ...makeTreeNodes(text, children ?? []),
+  ];
+}
+
 describe.concurrent("treeNode", () => {
   describe("getPrevNode", () => {
     test("no prev node", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "",
-        parentId: "",
-      });
+      await setDocs(col, makeTreeNode("", ["base"]));
 
       await test
         .expect(
@@ -43,21 +70,9 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "prev"), {
-        text: "prev",
-        prevId: "",
-        nextId: "base",
-        parentId: "",
-      });
-
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "prev",
-        nextId: "",
-        parentId: "",
-      });
+      await setDocs(col, makeTreeNodes("", [["prev"], ["base"]]));
 
       await test
         .expect(
@@ -78,14 +93,16 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "invalid",
-        nextId: "",
-        parentId: "",
-      });
+      await setDocs(col, [
+        {
+          text: "base",
+          prevId: "invalid",
+          nextId: "",
+          parentId: "",
+        },
+      ]);
 
       await test.expect(() =>
         runTransaction(firestoreForTest, async (tx) => {
@@ -108,21 +125,22 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "prev"), {
-        text: "prev",
-        prevId: "",
-        nextId: "invalid",
-        parentId: "",
-      });
-
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "prev",
-        nextId: "",
-        parentId: "",
-      });
+      await setDocs(col, [
+        {
+          text: "prev",
+          prevId: "",
+          nextId: "invalid",
+          parentId: "",
+        },
+        {
+          text: "base",
+          prevId: "prev",
+          nextId: "",
+          parentId: "",
+        },
+      ]);
 
       await test.expect(() =>
         runTransaction(firestoreForTest, async (tx) => {
@@ -152,21 +170,22 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "prev"), {
-        text: "prev",
-        prevId: "",
-        nextId: "base",
-        parentId: "foo",
-      });
-
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "prev",
-        nextId: "",
-        parentId: "bar",
-      });
+      await setDocs(col, [
+        {
+          text: "prev",
+          prevId: "",
+          nextId: "base",
+          parentId: "foo",
+        },
+        {
+          text: "base",
+          prevId: "prev",
+          nextId: "",
+          parentId: "bar",
+        },
+      ]);
 
       await test.expect(() =>
         runTransaction(firestoreForTest, async (tx) => {
@@ -198,14 +217,9 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "",
-        parentId: "",
-      });
+      await setDocs(col, makeTreeNode("", ["base"]));
 
       await test
         .expect(
@@ -220,21 +234,9 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "next",
-        parentId: "",
-      });
-
-      await setDoc(doc(col, "next"), {
-        text: "next",
-        prevId: "base",
-        nextId: "",
-        parentId: "",
-      });
+      await setDocs(col, makeTreeNodes("", [["base"], ["next"]]));
 
       await test
         .expect(
@@ -255,14 +257,16 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "invalid",
-        parentId: "",
-      });
+      await setDocs(col, [
+        {
+          text: "base",
+          prevId: "",
+          nextId: "invalid",
+          parentId: "",
+        },
+      ]);
 
       await test.expect(() =>
         runTransaction(firestoreForTest, async (tx) => {
@@ -285,21 +289,22 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "next",
-        parentId: "",
-      });
-
-      await setDoc(doc(col, "next"), {
-        text: "next",
-        prevId: "invalid",
-        nextId: "",
-        parentId: "",
-      });
+      await setDocs(col, [
+        {
+          text: "base",
+          prevId: "",
+          nextId: "next",
+          parentId: "",
+        },
+        {
+          text: "next",
+          prevId: "invalid",
+          nextId: "",
+          parentId: "",
+        },
+      ]);
 
       await test.expect(() =>
         runTransaction(firestoreForTest, async (tx) => {
@@ -329,21 +334,22 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "next",
-        parentId: "foo",
-      });
-
-      await setDoc(doc(col, "next"), {
-        text: "next",
-        prevId: "base",
-        nextId: "",
-        parentId: "bar",
-      });
+      await setDocs(col, [
+        {
+          text: "base",
+          prevId: "",
+          nextId: "next",
+          parentId: "foo",
+        },
+        {
+          text: "next",
+          prevId: "base",
+          nextId: "",
+          parentId: "bar",
+        },
+      ]);
 
       await test.expect(() =>
         runTransaction(firestoreForTest, async (tx) => {
@@ -375,14 +381,9 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "",
-        parentId: "",
-      });
+      await setDocs(col, makeTreeNode("", ["base"]));
 
       await test
         .expect(
@@ -397,21 +398,9 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "parent"), {
-        text: "parent",
-        prevId: "",
-        nextId: "",
-        parentId: "",
-      });
-
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "",
-        parentId: "parent",
-      });
+      await setDocs(col, makeTreeNode("", ["parent", [["base"]]]));
 
       await test
         .expect(
@@ -432,14 +421,16 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "",
-        parentId: "another_collection_id",
-      });
+      await setDocs(col, [
+        {
+          text: "base",
+          prevId: "",
+          nextId: "",
+          parentId: "another_collection_id",
+        },
+      ]);
 
       await test
         .expect(
@@ -456,14 +447,9 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "",
-        parentId: "",
-      });
+      await setDocs(col, makeTreeNode("", ["base"]));
 
       await test
         .expect(getFirstChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!))
@@ -474,27 +460,15 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "",
-        parentId: "",
-      });
-
-      await setDoc(doc(col, "first"), {
-        text: "first",
-        prevId: "",
-        nextId: "",
-        parentId: "base",
-      });
+      await setDocs(col, makeTreeNode("", ["base", [["first"], ["middle"], ["last"]]]));
 
       await test.expect(getFirstChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!)).resolves.toEqual({
         id: "first",
         text: "first",
         prevId: "",
-        nextId: "",
+        nextId: "middle",
         parentId: "base",
       });
     });
@@ -503,28 +477,28 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "",
-        parentId: "",
-      });
-
-      await setDoc(doc(col, "first1"), {
-        text: "first1",
-        prevId: "",
-        nextId: "",
-        parentId: "base",
-      });
-
-      await setDoc(doc(col, "first2"), {
-        text: "first2",
-        prevId: "",
-        nextId: "",
-        parentId: "base",
-      });
+      await setDocs(col, [
+        {
+          text: "base",
+          prevId: "",
+          nextId: "",
+          parentId: "",
+        },
+        {
+          text: "first1",
+          prevId: "",
+          nextId: "",
+          parentId: "base",
+        },
+        {
+          text: "first2",
+          prevId: "",
+          nextId: "",
+          parentId: "base",
+        },
+      ]);
 
       await test.expect(async () => getFirstChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!)).rejects
         .toThrowErrorMatchingInlineSnapshot(`
@@ -562,14 +536,9 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "",
-        parentId: "",
-      });
+      await setDocs(col, makeTreeNode("", ["base"]));
 
       await test
         .expect(getLastChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!))
@@ -580,26 +549,14 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "",
-        parentId: "",
-      });
-
-      await setDoc(doc(col, "last"), {
-        text: "last",
-        prevId: "",
-        nextId: "",
-        parentId: "base",
-      });
+      await setDocs(col, makeTreeNode("", ["base", [["first"], ["middle"], ["last"]]]));
 
       await test.expect(getLastChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!)).resolves.toEqual({
         id: "last",
         text: "last",
-        prevId: "",
+        prevId: "middle",
         nextId: "",
         parentId: "base",
       });
@@ -609,28 +566,28 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "",
-        parentId: "",
-      });
-
-      await setDoc(doc(col, "last1"), {
-        text: "last1",
-        prevId: "",
-        nextId: "",
-        parentId: "base",
-      });
-
-      await setDoc(doc(col, "last2"), {
-        text: "last2",
-        prevId: "",
-        nextId: "",
-        parentId: "base",
-      });
+      await setDocs(col, [
+        {
+          text: "base",
+          prevId: "",
+          nextId: "",
+          parentId: "",
+        },
+        {
+          text: "last1",
+          prevId: "",
+          nextId: "",
+          parentId: "base",
+        },
+        {
+          text: "last2",
+          prevId: "",
+          nextId: "",
+          parentId: "base",
+        },
+      ]);
 
       await test.expect(async () => getLastChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!)).rejects
         .toThrowErrorMatchingInlineSnapshot(`
@@ -668,14 +625,9 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "",
-        parentId: "",
-      });
+      await setDocs(col, makeTreeNode("", ["base"]));
 
       await runTransaction(firestoreForTest, async (tx) => {
         return unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
@@ -696,21 +648,9 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "",
-        nextId: "next",
-        parentId: "",
-      });
-
-      await setDoc(doc(col, "next"), {
-        text: "next",
-        prevId: "base",
-        nextId: "",
-        parentId: "",
-      });
+      await setDocs(col, makeTreeNodes("", [["base"], ["next"]]));
 
       await runTransaction(firestoreForTest, async (tx) => {
         return unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
@@ -738,21 +678,9 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "prev"), {
-        text: "prev",
-        prevId: "",
-        nextId: "base",
-        parentId: "",
-      });
-
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "prev",
-        nextId: "",
-        parentId: "",
-      });
+      await setDocs(col, makeTreeNodes("", [["prev"], ["base"]]));
 
       await runTransaction(firestoreForTest, async (tx) => {
         return unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
@@ -780,28 +708,9 @@ describe.concurrent("treeNode", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNode & { text: string }>;
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDoc(doc(col, "prev"), {
-        text: "prev",
-        prevId: "",
-        nextId: "base",
-        parentId: "",
-      });
-
-      await setDoc(doc(col, "base"), {
-        text: "base",
-        prevId: "prev",
-        nextId: "next",
-        parentId: "",
-      });
-
-      await setDoc(doc(col, "next"), {
-        text: "next",
-        prevId: "base",
-        nextId: "",
-        parentId: "",
-      });
+      await setDocs(col, makeTreeNodes("", [["prev"], ["base"], ["next"]]));
 
       await runTransaction(firestoreForTest, async (tx) => {
         return unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
