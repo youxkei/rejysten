@@ -9,13 +9,14 @@
     "build": "vite build",
     "dev": "vite",
     "tsc": "tsc --noEmit",
-    "test": "tsc --noEmit && vitest run",
-    "test/nocheck": "vitest run",
+    "test": "pnpm run tsc && pnpm run test/nocheck",
+    "test/nocheck": "pnpm run emulator:clear && vitest run",
     "prepare": "git config --local core.hooksPath .githooks",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "emulator:build": "podman build -t firebase-emulator -f emulator.Containerfile",
-    "emulator:run": "podman run --rm -it --network host firebase-emulator"
+    "emulator:run": "podman run --rm -it --network host firebase-emulator",
+    "emulator:clear": "curl -X DELETE 'http://localhost:8080/emulator/v1/projects/demo/databases/(default)/documents'"
   },
   "repository": {
     "type": "git",
