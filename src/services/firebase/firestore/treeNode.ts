@@ -164,3 +164,20 @@ export async function getAboveNode<T extends TreeNode>(
 
   return getParentNode(tx, col, baseNode);
 }
+
+export async function getBelowNode<T extends TreeNode>(
+  tx: Transaction,
+  col: CollectionReference<T>,
+  baseNode: DocumentData<T>,
+): Promise<DocumentData<T> | undefined> {
+  const firstChildNode = await getFirstChildNode(col, baseNode);
+  if (firstChildNode) return firstChildNode;
+
+  let currentNode: DocumentData<T> | undefined = baseNode;
+  while (currentNode) {
+    const nextNode = await getNextNode(tx, col, currentNode);
+    if (nextNode) return nextNode;
+
+    currentNode = await getParentNode(tx, col, currentNode);
+  }
+}
