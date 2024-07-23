@@ -181,3 +181,17 @@ export async function getBelowNode<T extends TreeNode>(
     currentNode = await getParentNode(tx, col, currentNode);
   }
 }
+
+export async function getBottomNode<T extends TreeNode>(
+  col: CollectionReference<T>,
+  baseNode: DocumentData<T>,
+): Promise<DocumentData<T> | undefined> {
+  let currentNode = baseNode;
+
+  for (;;) {
+    const lastChildNode = await getLastChildNode(col, currentNode);
+    if (!lastChildNode) return currentNode;
+
+    currentNode = lastChildNode;
+  }
+}
