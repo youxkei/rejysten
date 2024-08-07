@@ -60,11 +60,7 @@ describe.concurrent("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["base"]));
 
       await test
-        .expect(
-          runTransaction(firestoreForTest, async (tx) => {
-            return getPrevNode(tx, col, (await txGet(tx, col, "base"))!);
-          }),
-        )
+        .expect(runTransaction(firestoreForTest, async (tx) => getPrevNode(tx, col, (await txGet(tx, col, "base"))!)))
         .resolves.toBeUndefined();
     });
 
@@ -77,11 +73,7 @@ describe.concurrent("treeNode", () => {
       await setDocs(col, makeTreeNodes("", [["prev"], ["base"]]));
 
       await test
-        .expect(
-          runTransaction(firestoreForTest, async (tx) => {
-            return getPrevNode(tx, col, (await txGet(tx, col, "base"))!);
-          }),
-        )
+        .expect(runTransaction(firestoreForTest, async (tx) => getPrevNode(tx, col, (await txGet(tx, col, "base"))!)))
         .resolves.toEqual({
           id: "prev",
           text: "prev",
@@ -107,9 +99,7 @@ describe.concurrent("treeNode", () => {
       ]);
 
       await test.expect(() =>
-        runTransaction(firestoreForTest, async (tx) => {
-          return getPrevNode(tx, col, (await txGet(tx, col, "base"))!);
-        }),
+        runTransaction(firestoreForTest, async (tx) => getPrevNode(tx, col, (await txGet(tx, col, "base"))!)),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`
         [Error: previous node of baseNode is not exist: {
           "baseNode": {
@@ -145,9 +135,7 @@ describe.concurrent("treeNode", () => {
       ]);
 
       await test.expect(() =>
-        runTransaction(firestoreForTest, async (tx) => {
-          return getPrevNode(tx, col, (await txGet(tx, col, "base"))!);
-        }),
+        runTransaction(firestoreForTest, async (tx) => getPrevNode(tx, col, (await txGet(tx, col, "base"))!)),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`
         [Error: next node of previous node of baseNode is not baseNode: {
           "baseNode": {
@@ -190,9 +178,7 @@ describe.concurrent("treeNode", () => {
       ]);
 
       await test.expect(() =>
-        runTransaction(firestoreForTest, async (tx) => {
-          return getPrevNode(tx, col, (await txGet(tx, col, "base"))!);
-        }),
+        runTransaction(firestoreForTest, async (tx) => getPrevNode(tx, col, (await txGet(tx, col, "base"))!)),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`
         [Error: parent node of previous node of baseNode is not one of baseNode: {
           "baseNode": {
@@ -224,11 +210,7 @@ describe.concurrent("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["base"]));
 
       await test
-        .expect(
-          runTransaction(firestoreForTest, async (tx) => {
-            return getNextNode(tx, col, (await txGet(tx, col, "base"))!);
-          }),
-        )
+        .expect(runTransaction(firestoreForTest, async (tx) => getNextNode(tx, col, (await txGet(tx, col, "base"))!)))
         .resolves.toBeUndefined();
     });
 
@@ -241,11 +223,7 @@ describe.concurrent("treeNode", () => {
       await setDocs(col, makeTreeNodes("", [["base"], ["next"]]));
 
       await test
-        .expect(
-          runTransaction(firestoreForTest, async (tx) => {
-            return getNextNode(tx, col, (await txGet(tx, col, "base"))!);
-          }),
-        )
+        .expect(runTransaction(firestoreForTest, async (tx) => getNextNode(tx, col, (await txGet(tx, col, "base"))!)))
         .resolves.toEqual({
           id: "next",
           text: "next",
@@ -271,9 +249,7 @@ describe.concurrent("treeNode", () => {
       ]);
 
       await test.expect(() =>
-        runTransaction(firestoreForTest, async (tx) => {
-          return getNextNode(tx, col, (await txGet(tx, col, "base"))!);
-        }),
+        runTransaction(firestoreForTest, async (tx) => getNextNode(tx, col, (await txGet(tx, col, "base"))!)),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`
         [Error: next node of baseNode is not exist: {
           "baseNode": {
@@ -309,9 +285,7 @@ describe.concurrent("treeNode", () => {
       ]);
 
       await test.expect(() =>
-        runTransaction(firestoreForTest, async (tx) => {
-          return getNextNode(tx, col, (await txGet(tx, col, "base"))!);
-        }),
+        runTransaction(firestoreForTest, async (tx) => getNextNode(tx, col, (await txGet(tx, col, "base"))!)),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`
         [Error: previous node of next node of baseNode is not baseNode: {
           "baseNode": {
@@ -354,9 +328,7 @@ describe.concurrent("treeNode", () => {
       ]);
 
       await test.expect(() =>
-        runTransaction(firestoreForTest, async (tx) => {
-          return getNextNode(tx, col, (await txGet(tx, col, "base"))!);
-        }),
+        runTransaction(firestoreForTest, async (tx) => getNextNode(tx, col, (await txGet(tx, col, "base"))!)),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`
         [Error: parent node of next node of baseNode is not one of baseNode: {
           "baseNode": {
@@ -388,11 +360,7 @@ describe.concurrent("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["base"]));
 
       await test
-        .expect(
-          runTransaction(firestoreForTest, async (tx) => {
-            return getParentNode(tx, col, (await txGet(tx, col, "base"))!);
-          }),
-        )
+        .expect(runTransaction(firestoreForTest, async (tx) => getParentNode(tx, col, (await txGet(tx, col, "base"))!)))
         .resolves.toBeUndefined();
     });
 
@@ -405,11 +373,7 @@ describe.concurrent("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["parent", [["base"]]]));
 
       await test
-        .expect(
-          runTransaction(firestoreForTest, async (tx) => {
-            return getParentNode(tx, col, (await txGet(tx, col, "base"))!);
-          }),
-        )
+        .expect(runTransaction(firestoreForTest, async (tx) => getParentNode(tx, col, (await txGet(tx, col, "base"))!)))
         .resolves.toEqual({
           id: "parent",
           text: "parent",
@@ -435,11 +399,7 @@ describe.concurrent("treeNode", () => {
       ]);
 
       await test
-        .expect(
-          runTransaction(firestoreForTest, async (tx) => {
-            return getParentNode(tx, col, (await txGet(tx, col, "base"))!);
-          }),
-        )
+        .expect(runTransaction(firestoreForTest, async (tx) => getParentNode(tx, col, (await txGet(tx, col, "base"))!)))
         .resolves.toBeUndefined();
     });
   });
@@ -454,7 +414,11 @@ describe.concurrent("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["base"]));
 
       await test
-        .expect(getFirstChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!))
+        .expect(
+          runTransaction(firestoreForTest, async (tx) =>
+            getFirstChildNode(tx, col, getDocumentData(await getDoc(doc(col, "base")))!),
+          ),
+        )
         .resolves.toBeUndefined();
     });
 
@@ -466,13 +430,19 @@ describe.concurrent("treeNode", () => {
 
       await setDocs(col, makeTreeNode("", ["base", [["first"], ["middle"], ["last"]]]));
 
-      await test.expect(getFirstChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!)).resolves.toEqual({
-        id: "first",
-        text: "first",
-        prevId: "",
-        nextId: "middle",
-        parentId: "base",
-      });
+      await test
+        .expect(
+          runTransaction(firestoreForTest, async (tx) =>
+            getFirstChildNode(tx, col, getDocumentData(await getDoc(doc(col, "base")))!),
+          ),
+        )
+        .resolves.toEqual({
+          id: "first",
+          text: "first",
+          prevId: "",
+          nextId: "middle",
+          parentId: "base",
+        });
     });
 
     test("multiple first child nodes", async (test) => {
@@ -502,34 +472,37 @@ describe.concurrent("treeNode", () => {
         },
       ]);
 
-      await test.expect(async () => getFirstChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!)).rejects
-        .toThrowErrorMatchingInlineSnapshot(`
-          [Error: multiple first child nodes: {
-            "baseNode": {
-              "text": "base",
+      await test.expect(
+        runTransaction(firestoreForTest, async (tx) =>
+          getFirstChildNode(tx, col, getDocumentData(await getDoc(doc(col, "base")))!),
+        ),
+      ).rejects.toThrowErrorMatchingInlineSnapshot(`
+        [Error: multiple first child nodes: {
+          "baseNode": {
+            "text": "base",
+            "prevId": "",
+            "nextId": "",
+            "parentId": "",
+            "id": "base"
+          },
+          "childrenDocs": [
+            {
+              "text": "first1",
               "prevId": "",
               "nextId": "",
-              "parentId": "",
-              "id": "base"
+              "parentId": "base",
+              "id": "first1"
             },
-            "childrenDocs": [
-              {
-                "text": "first1",
-                "prevId": "",
-                "nextId": "",
-                "parentId": "base",
-                "id": "first1"
-              },
-              {
-                "text": "first2",
-                "prevId": "",
-                "nextId": "",
-                "parentId": "base",
-                "id": "first2"
-              }
-            ]
-          }]
-        `);
+            {
+              "text": "first2",
+              "prevId": "",
+              "nextId": "",
+              "parentId": "base",
+              "id": "first2"
+            }
+          ]
+        }]
+      `);
     });
   });
 
@@ -543,7 +516,11 @@ describe.concurrent("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["base"]));
 
       await test
-        .expect(getLastChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!))
+        .expect(
+          runTransaction(firestoreForTest, async (tx) =>
+            getLastChildNode(tx, col, getDocumentData(await getDoc(doc(col, "base")))!),
+          ),
+        )
         .resolves.toBeUndefined();
     });
 
@@ -555,13 +532,19 @@ describe.concurrent("treeNode", () => {
 
       await setDocs(col, makeTreeNode("", ["base", [["first"], ["middle"], ["last"]]]));
 
-      await test.expect(getLastChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!)).resolves.toEqual({
-        id: "last",
-        text: "last",
-        prevId: "middle",
-        nextId: "",
-        parentId: "base",
-      });
+      await test
+        .expect(
+          runTransaction(firestoreForTest, async (tx) =>
+            getLastChildNode(tx, col, getDocumentData(await getDoc(doc(col, "base")))!),
+          ),
+        )
+        .resolves.toEqual({
+          id: "last",
+          text: "last",
+          prevId: "middle",
+          nextId: "",
+          parentId: "base",
+        });
     });
 
     test("multiple last child nodes", async (test) => {
@@ -591,34 +574,37 @@ describe.concurrent("treeNode", () => {
         },
       ]);
 
-      await test.expect(async () => getLastChildNode(col, getDocumentData(await getDoc(doc(col, "base")))!)).rejects
-        .toThrowErrorMatchingInlineSnapshot(`
-          [Error: multiple last child nodes: {
-            "baseNode": {
-              "text": "base",
+      await test.expect(
+        runTransaction(firestoreForTest, async (tx) =>
+          getLastChildNode(tx, col, getDocumentData(await getDoc(doc(col, "base")))!),
+        ),
+      ).rejects.toThrowErrorMatchingInlineSnapshot(`
+        [Error: multiple last child nodes: {
+          "baseNode": {
+            "text": "base",
+            "prevId": "",
+            "nextId": "",
+            "parentId": "",
+            "id": "base"
+          },
+          "childrenDocs": [
+            {
+              "text": "last1",
               "prevId": "",
               "nextId": "",
-              "parentId": "",
-              "id": "base"
+              "parentId": "base",
+              "id": "last1"
             },
-            "childrenDocs": [
-              {
-                "text": "last1",
-                "prevId": "",
-                "nextId": "",
-                "parentId": "base",
-                "id": "last1"
-              },
-              {
-                "text": "last2",
-                "prevId": "",
-                "nextId": "",
-                "parentId": "base",
-                "id": "last2"
-              }
-            ]
-          }]
-        `);
+            {
+              "text": "last2",
+              "prevId": "",
+              "nextId": "",
+              "parentId": "base",
+              "id": "last2"
+            }
+          ]
+        }]
+      `);
     });
   });
 
@@ -632,7 +618,7 @@ describe.concurrent("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["base"]));
 
       await runTransaction(firestoreForTest, async (tx) => {
-        return unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
+        await unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
       });
 
       await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
@@ -655,7 +641,7 @@ describe.concurrent("treeNode", () => {
       await setDocs(col, makeTreeNodes("", [["base"], ["next"]]));
 
       await runTransaction(firestoreForTest, async (tx) => {
-        return unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
+        await unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
       });
 
       await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
@@ -685,7 +671,7 @@ describe.concurrent("treeNode", () => {
       await setDocs(col, makeTreeNodes("", [["prev"], ["base"]]));
 
       await runTransaction(firestoreForTest, async (tx) => {
-        return unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
+        await unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
       });
 
       await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
@@ -715,7 +701,7 @@ describe.concurrent("treeNode", () => {
       await setDocs(col, makeTreeNodes("", [["prev"], ["base"], ["next"]]));
 
       await runTransaction(firestoreForTest, async (tx) => {
-        return unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
+        await unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
       });
 
       await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([

@@ -4,7 +4,7 @@ import type { CollectionReference, Transaction } from "firebase/firestore";
 import { doc, getDocs, query, where } from "firebase/firestore";
 
 import { txGet, getDocumentData } from "@/services/firebase/firestore";
-import { InconsistentError } from "@/services/firebase/firestore/error";
+import { InconsistentError, TransactionAborted } from "@/services/firebase/firestore/error";
 
 export type TreeNode = { parentId: string; prevId: string; nextId: string };
 
@@ -92,6 +92,7 @@ export async function getParentNode<T extends TreeNode>(
 }
 
 export async function getFirstChildNode<T extends TreeNode>(
+  tx: Transaction,
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
 ): Promise<DocumentData<T> | undefined> {
@@ -101,16 +102,24 @@ export async function getFirstChildNode<T extends TreeNode>(
     return undefined;
   }
 
-  const childrenDocs = children.docs.map((doc) => getDocumentData(doc));
-
-  if (childrenDocs.length !== 1) {
-    throw new InconsistentError("multiple first child nodes", { baseNode, childrenDocs });
+  if (children.docs.length !== 1) {
+    throw new InconsistentError("multiple first child nodes", {
+      baseNode,
+      childrenDocs: children.docs.map((doc) => getDocumentData(doc)),
+    });
   }
 
-  return childrenDocs[0];
+  const firstChildNode = getDocumentData(await tx.get(children.docs[0].ref));
+
+  if (!firstChildNode || firstChildNode.parentId !== baseNode.id || firstChildNode.prevId !== "") {
+    throw new TransactionAborted();
+  }
+
+  return firstChildNode;
 }
 
 export async function getLastChildNode<T extends TreeNode>(
+  tx: Transaction,
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
 ): Promise<DocumentData<T> | undefined> {
@@ -120,13 +129,20 @@ export async function getLastChildNode<T extends TreeNode>(
     return undefined;
   }
 
-  const childrenDocs = children.docs.map((doc) => getDocumentData(doc));
-
-  if (childrenDocs.length !== 1) {
-    throw new InconsistentError("multiple last child nodes", { baseNode, childrenDocs });
+  if (children.docs.length !== 1) {
+    throw new InconsistentError("multiple last child nodes", {
+      baseNode,
+      childrenDocs: children.docs.map((doc) => getDocumentData(doc)),
+    });
   }
 
-  return childrenDocs[0];
+  const lastChildNode = getDocumentData(await tx.get(children.docs[0].ref));
+
+  if (!lastChildNode || lastChildNode.parentId !== baseNode.id || lastChildNode.nextId !== "") {
+    throw new TransactionAborted();
+  }
+
+  return lastChildNode;
 }
 
 export async function unlinkFromSiblings<T extends TreeNode>(
@@ -154,7 +170,7 @@ export async function getAboveNode<T extends TreeNode>(
     let currentNode = prevNode;
 
     for (;;) {
-      const lastChildNode = await getLastChildNode(col, currentNode);
+      const lastChildNode = await getLastChildNode(tx, col, currentNode);
 
       if (!lastChildNode) return currentNode;
 
@@ -170,7 +186,7 @@ export async function getBelowNode<T extends TreeNode>(
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
 ): Promise<DocumentData<T> | undefined> {
-  const firstChildNode = await getFirstChildNode(col, baseNode);
+  const firstChildNode = await getFirstChildNode(tx, col, baseNode);
   if (firstChildNode) return firstChildNode;
 
   let currentNode: DocumentData<T> | undefined = baseNode;
@@ -183,13 +199,14 @@ export async function getBelowNode<T extends TreeNode>(
 }
 
 export async function getBottomNode<T extends TreeNode>(
+  tx: Transaction,
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
 ): Promise<DocumentData<T> | undefined> {
   let currentNode = baseNode;
 
   for (;;) {
-    const lastChildNode = await getLastChildNode(col, currentNode);
+    const lastChildNode = await getLastChildNode(tx, col, currentNode);
     if (!lastChildNode) return currentNode;
 
     currentNode = lastChildNode;

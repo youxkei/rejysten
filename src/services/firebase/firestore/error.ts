@@ -6,3 +6,5 @@ export class InconsistentError extends Error {
     this.fields = fields;
   }
 }
+
+export class TransactionAborted extends Error {}
