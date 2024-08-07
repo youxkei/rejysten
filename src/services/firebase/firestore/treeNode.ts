@@ -91,10 +91,10 @@ export async function getParentNode<T extends TreeNode>(
   return parentNode;
 }
 
-export async function getFirstChildNode<T extends TreeNode>(
+export async function getFirstChildNode<T extends TreeNode, U>(
   tx: Transaction,
   col: CollectionReference<T>,
-  baseNode: DocumentData<T>,
+  baseNode: DocumentData<U>,
 ): Promise<DocumentData<T> | undefined> {
   const children = await getDocs(query(col, where("parentId", "==", baseNode.id), where("prevId", "==", "")));
 
@@ -118,10 +118,10 @@ export async function getFirstChildNode<T extends TreeNode>(
   return firstChildNode;
 }
 
-export async function getLastChildNode<T extends TreeNode>(
+export async function getLastChildNode<T extends TreeNode, U>(
   tx: Transaction,
   col: CollectionReference<T>,
-  baseNode: DocumentData<T>,
+  baseNode: DocumentData<U>,
 ): Promise<DocumentData<T> | undefined> {
   const children = await getDocs(query(col, where("parentId", "==", baseNode.id), where("nextId", "==", "")));
 
@@ -198,13 +198,15 @@ export async function getBelowNode<T extends TreeNode>(
   }
 }
 
-export async function getBottomNode<T extends TreeNode>(
+export async function getBottomNode<T extends TreeNode, U>(
   tx: Transaction,
   col: CollectionReference<T>,
-  baseNode: DocumentData<T>,
+  baseNode: DocumentData<U>,
 ): Promise<DocumentData<T> | undefined> {
-  let currentNode = baseNode;
+  const lastChildNode = await getLastChildNode(tx, col, baseNode);
+  if (!lastChildNode) return;
 
+  let currentNode = lastChildNode;
   for (;;) {
     const lastChildNode = await getLastChildNode(tx, col, currentNode);
     if (!lastChildNode) return currentNode;
