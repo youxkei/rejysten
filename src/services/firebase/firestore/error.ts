@@ -1,10 +1,5 @@
-export class InconsistentError extends Error {
-  fields: object;
+import { ErrorWithFields } from "@/error";
 
-  constructor(message: string, fields: object) {
-    super(`${message}: ${JSON.stringify(fields, null, 2)}`);
-    this.fields = fields;
-  }
-}
+export class InconsistentError extends ErrorWithFields {}
 
 export class TransactionAborted extends Error {}

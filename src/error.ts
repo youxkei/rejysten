@@ -2,7 +2,7 @@ export class ErrorWithFields extends Error {
   fields: object;
 
   constructor(message: string, fields: object) {
-    super(message);
+    super(`${message}: ${JSON.stringify(fields, null, 2)}`);
     this.fields = fields;
   }
 }
