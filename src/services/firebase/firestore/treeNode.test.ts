@@ -14,6 +14,7 @@ import {
   getNextNode,
   getParentNode,
   getPrevNode,
+  getBottomNode,
   unlinkFromSiblings,
 } from "@/services/firebase/firestore/treeNode";
 import { firestoreForTest } from "@/services/firebase/test";
@@ -983,5 +984,134 @@ describe.concurrent("treeNode", () => {
     });
   });
 
-  describe.todo("getBottomNode");
+  describe("getBottomNode", () => {
+    test("no child node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNode("", ["base"]));
+
+      await test
+        .expect(runTransaction(firestoreForTest, async (tx) => getBottomNode(tx, col, (await txGet(tx, col, "base"))!)))
+        .resolves.toBeUndefined();
+    });
+
+    test("has children nodes, no grandchild node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      // prettier-ignore
+      await setDocs(col, makeTreeNodes("", [
+        ["base", [
+          ["first child"],
+          ["middle child"],
+          ["last child"],
+        ]],
+      ]));
+
+      await test
+        .expect(runTransaction(firestoreForTest, async (tx) => getBottomNode(tx, col, (await txGet(tx, col, "base"))!)))
+        .resolves.toEqual({
+          id: "last child",
+          text: "last child",
+          prevId: "middle child",
+          nextId: "",
+          parentId: "base",
+        });
+    });
+
+    test("has children nodes, has grandchildren nodes, no great-grandchild node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      // prettier-ignore
+      await setDocs(col, makeTreeNodes("", [
+        ["base", [
+          ["first child"],
+          ["middle child"],
+          ["last child", [
+            ["first grandchild"],
+            ["middle grandchild"],
+            ["last grandchild"],
+          ]],
+        ]],
+      ]));
+
+      await test
+        .expect(runTransaction(firestoreForTest, async (tx) => getBottomNode(tx, col, (await txGet(tx, col, "base"))!)))
+        .resolves.toEqual({
+          id: "last grandchild",
+          text: "last grandchild",
+          prevId: "middle grandchild",
+          nextId: "",
+          parentId: "last child",
+        });
+    });
+
+    test("has children nodes, has grandchildren nodes, has great-grandchildren nodes", async (test) => {
+      const now = new Date();
+
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      // prettier-ignore
+      await setDocs(col, makeTreeNodes("", [
+        ["base", [
+          ["first child"],
+          ["middle child"],
+          ["last child", [
+            ["first grandchild"],
+            ["middle grandchild"],
+            ["last grandchild", [
+              ["first great-grandchild"],
+              ["middle great-grandchild"],
+              ["last great-grandchild"],
+            ]],
+          ]],
+        ]],
+      ]));
+
+      await test
+        .expect(runTransaction(firestoreForTest, async (tx) => getBottomNode(tx, col, (await txGet(tx, col, "base"))!)))
+        .resolves.toEqual({
+          id: "last great-grandchild",
+          text: "last great-grandchild",
+          prevId: "middle great-grandchild",
+          nextId: "",
+          parentId: "last grandchild",
+        });
+    });
+
+    test("base node is from another collection, has children nodes", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const baseCol = collection(firestoreForTest, `${tid}_col1`) as CollectionReference<{ text: string }>;
+      const childrenCol = collection(firestoreForTest, `${tid}_col2`) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(baseCol, [{ text: "base" }]);
+      await setDocs(childrenCol, makeTreeNodes("base", [["first child"], ["middle child"], ["last child"]]));
+
+      await test
+        .expect(
+          runTransaction(firestoreForTest, async (tx) =>
+            getBottomNode(tx, childrenCol, (await txGet(tx, baseCol, "base"))!),
+          ),
+        )
+        .resolves.toEqual({
+          id: "last child",
+          text: "last child",
+          prevId: "middle child",
+          nextId: "",
+          parentId: "base",
+        });
+    });
+  });
 });
