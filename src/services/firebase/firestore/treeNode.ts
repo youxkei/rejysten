@@ -1,12 +1,12 @@
 import type { DocumentData } from "@/services/firebase/firestore";
-import type { CollectionReference, Transaction } from "firebase/firestore";
+import type { CollectionReference, Timestamp, Transaction } from "firebase/firestore";
 
 import { doc, getDocs, query, where } from "firebase/firestore";
 
 import { txGet, getDocumentData } from "@/services/firebase/firestore";
 import { InconsistentError, TransactionAborted } from "@/services/firebase/firestore/error";
 
-export type TreeNode = { parentId: string; prevId: string; nextId: string };
+export type TreeNode = { parentId: string; prevId: string; nextId: string; createdAt: Timestamp; updatedAt: Timestamp };
 
 export async function getPrevNode<T extends TreeNode>(
   tx: Transaction,
