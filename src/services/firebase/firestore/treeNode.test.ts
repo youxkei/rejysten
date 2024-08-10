@@ -17,6 +17,7 @@ import {
   getBottomNode,
   unlinkFromSiblings,
   addPrevSibling,
+  addNextSibling,
 } from "@/services/firebase/firestore/treeNode";
 import { firestoreForTest } from "@/services/firebase/test";
 
@@ -1511,6 +1512,186 @@ describe.concurrent("treeNode", () => {
           text: "prev",
           prevId: "",
           nextId: "addingNode",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+  });
+
+  describe("addNextSibling", () => {
+    test("new node, no next node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNode("parent", ["base"]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const baseNode = await txGet(tx, col, "base");
+        await addNextSibling(tx, col, baseNode!, {
+          id: "newNode",
+          text: "newNode",
+          parentId: "",
+          prevId: "",
+          nextId: "",
+          createdAt: Timestamp.fromMillis(0),
+          updatedAt: Timestamp.fromMillis(0),
+        });
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "base",
+          text: "base",
+          prevId: "",
+          nextId: "newNode",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "newNode",
+          text: "newNode",
+          prevId: "base",
+          nextId: "",
+          parentId: "parent",
+          createdAt: timestampForServerTimestamp,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+
+    test("new node, has next node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNodes("parent", [["base"], ["next"]]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const baseNode = await txGet(tx, col, "base");
+        await addNextSibling(tx, col, baseNode!, {
+          id: "newNode",
+          text: "newNode",
+          parentId: "",
+          prevId: "",
+          nextId: "",
+          createdAt: Timestamp.fromMillis(0),
+          updatedAt: Timestamp.fromMillis(0),
+        });
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "base",
+          text: "base",
+          prevId: "",
+          nextId: "newNode",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "newNode",
+          text: "newNode",
+          prevId: "base",
+          nextId: "next",
+          parentId: "parent",
+          createdAt: timestampForServerTimestamp,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "next",
+          text: "next",
+          prevId: "newNode",
+          nextId: "",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+
+    test("existing node, no next node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNode("parent", ["base"]));
+      await setDocs(col, makeTreeNode("", ["addingNode"]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const baseNode = await txGet(tx, col, "base");
+        const addingNode = await txGet(tx, col, "addingNode");
+        await addNextSibling(tx, col, baseNode!, addingNode!);
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "addingNode",
+          text: "addingNode",
+          prevId: "base",
+          nextId: "",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "base",
+          text: "base",
+          prevId: "",
+          nextId: "addingNode",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+
+    test("existing node, has next node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNodes("parent", [["base"], ["next"]]));
+      await setDocs(col, makeTreeNodes("", [["addingNode"]]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const baseNode = await txGet(tx, col, "base");
+        const addingNode = await txGet(tx, col, "addingNode");
+        await addNextSibling(tx, col, baseNode!, addingNode!);
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "addingNode",
+          text: "addingNode",
+          prevId: "base",
+          nextId: "next",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "base",
+          text: "base",
+          prevId: "",
+          nextId: "addingNode",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "next",
+          text: "next",
+          prevId: "addingNode",
+          nextId: "",
           parentId: "parent",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForServerTimestamp,

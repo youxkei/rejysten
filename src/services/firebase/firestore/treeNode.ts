@@ -279,3 +279,66 @@ export async function addPrevSibling<T extends TreeNode>(
     tx.update(doc(col, baseNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
   }
 }
+
+export async function addNextSibling<T extends TreeNode>(
+  tx: Transaction,
+  col: CollectionReference<T>,
+  baseNode: DocumentData<T>,
+  newNode: DocumentData<T>,
+): Promise<void> {
+  if (newNode.id === "") {
+    throw new ErrorWithFields("new node must have a valid id", { newNode });
+  }
+
+  const fetchedNewNode = await txGet(tx, col, newNode.id);
+  if (fetchedNewNode && !equal(newNode, fetchedNewNode)) {
+    throw new TransactionAborted();
+  }
+
+  const { id: _, ...newNodeData } = newNode;
+
+  const nextNode = await getNextNode(tx, col, baseNode);
+
+  if (nextNode) {
+    if (fetchedNewNode) {
+      tx.update(doc(col, newNode.id), {
+        parentId: baseNode.parentId,
+        prevId: baseNode.id,
+        nextId: nextNode.id,
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      tx.set(doc(col, newNode.id), {
+        ...(newNodeData as unknown as T),
+        parentId: baseNode.parentId,
+        prevId: baseNode.id,
+        nextId: nextNode.id,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    tx.update(doc(col, nextNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
+    tx.update(doc(col, baseNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
+  } else {
+    if (fetchedNewNode) {
+      tx.update(doc(col, newNode.id), {
+        parentId: baseNode.parentId,
+        prevId: baseNode.id,
+        nextId: "",
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      tx.set(doc(col, newNode.id), {
+        ...(newNodeData as unknown as T),
+        parentId: baseNode.parentId,
+        prevId: baseNode.id,
+        nextId: "",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    tx.update(doc(col, baseNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
+  }
+}
