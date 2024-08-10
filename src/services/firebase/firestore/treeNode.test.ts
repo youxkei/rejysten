@@ -18,6 +18,7 @@ import {
   unlinkFromSiblings,
   addPrevSibling,
   addNextSibling,
+  indent,
 } from "@/services/firebase/firestore/treeNode";
 import { firestoreForTest } from "@/services/firebase/test";
 
@@ -54,7 +55,7 @@ function makeTreeNode(parentId: string, [text, children]: TreeNodeFixture): Tree
   ];
 }
 
-describe.concurrent("treeNode", () => {
+describe("treeNode", () => {
   vi.mock(import("firebase/firestore"), async (importOriginal) => {
     const mod = await importOriginal();
 
@@ -804,7 +805,7 @@ describe.concurrent("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["base"]));
 
       await runTransaction(firestoreForTest, async (tx) => {
-        await unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
+        (await unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!))();
       });
 
       await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
@@ -829,7 +830,7 @@ describe.concurrent("treeNode", () => {
       await setDocs(col, makeTreeNodes("", [["base"], ["next"]]));
 
       await runTransaction(firestoreForTest, async (tx) => {
-        await unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
+        (await unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!))();
       });
 
       await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
@@ -849,7 +850,7 @@ describe.concurrent("treeNode", () => {
           nextId: "",
           parentId: "",
           createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
         },
       ]);
     });
@@ -863,7 +864,7 @@ describe.concurrent("treeNode", () => {
       await setDocs(col, makeTreeNodes("", [["prev"], ["base"]]));
 
       await runTransaction(firestoreForTest, async (tx) => {
-        await unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
+        (await unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!))();
       });
 
       await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
@@ -883,7 +884,7 @@ describe.concurrent("treeNode", () => {
           nextId: "",
           parentId: "",
           createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
         },
       ]);
     });
@@ -897,7 +898,7 @@ describe.concurrent("treeNode", () => {
       await setDocs(col, makeTreeNodes("", [["prev"], ["base"], ["next"]]));
 
       await runTransaction(firestoreForTest, async (tx) => {
-        await unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!);
+        (await unlinkFromSiblings(tx, col, (await txGet(tx, col, "base"))!))();
       });
 
       await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
@@ -917,7 +918,7 @@ describe.concurrent("treeNode", () => {
           nextId: "",
           parentId: "",
           createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
         },
         {
           id: "prev",
@@ -926,7 +927,7 @@ describe.concurrent("treeNode", () => {
           nextId: "next",
           parentId: "",
           createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
         },
       ]);
     });
@@ -1351,15 +1352,17 @@ describe.concurrent("treeNode", () => {
 
       await runTransaction(firestoreForTest, async (tx) => {
         const baseNode = await txGet(tx, col, "base");
-        await addPrevSibling(tx, col, baseNode!, {
-          id: "newNode",
-          text: "newNode",
-          parentId: "",
-          prevId: "",
-          nextId: "",
-          createdAt: Timestamp.fromMillis(0),
-          updatedAt: Timestamp.fromMillis(0),
-        });
+        (
+          await addPrevSibling(tx, col, baseNode!, {
+            id: "newNode",
+            text: "newNode",
+            parentId: "",
+            prevId: "",
+            nextId: "",
+            createdAt: Timestamp.fromMillis(0),
+            updatedAt: Timestamp.fromMillis(0),
+          })
+        )();
       });
 
       await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
@@ -1394,15 +1397,17 @@ describe.concurrent("treeNode", () => {
 
       await runTransaction(firestoreForTest, async (tx) => {
         const baseNode = await txGet(tx, col, "base");
-        await addPrevSibling(tx, col, baseNode!, {
-          id: "newNode",
-          text: "newNode",
-          parentId: "",
-          prevId: "",
-          nextId: "",
-          createdAt: Timestamp.fromMillis(0),
-          updatedAt: Timestamp.fromMillis(0),
-        });
+        (
+          await addPrevSibling(tx, col, baseNode!, {
+            id: "newNode",
+            text: "newNode",
+            parentId: "",
+            prevId: "",
+            nextId: "",
+            createdAt: Timestamp.fromMillis(0),
+            updatedAt: Timestamp.fromMillis(0),
+          })
+        )();
       });
 
       await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
@@ -1448,7 +1453,7 @@ describe.concurrent("treeNode", () => {
       await runTransaction(firestoreForTest, async (tx) => {
         const baseNode = await txGet(tx, col, "base");
         const addingNode = await txGet(tx, col, "addingNode");
-        await addPrevSibling(tx, col, baseNode!, addingNode!);
+        (await addPrevSibling(tx, col, baseNode!, addingNode!))();
       });
 
       await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
@@ -1485,7 +1490,7 @@ describe.concurrent("treeNode", () => {
       await runTransaction(firestoreForTest, async (tx) => {
         const baseNode = await txGet(tx, col, "base");
         const addingNode = await txGet(tx, col, "addingNode");
-        await addPrevSibling(tx, col, baseNode!, addingNode!);
+        (await addPrevSibling(tx, col, baseNode!, addingNode!))();
       });
 
       await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
@@ -1531,15 +1536,17 @@ describe.concurrent("treeNode", () => {
 
       await runTransaction(firestoreForTest, async (tx) => {
         const baseNode = await txGet(tx, col, "base");
-        await addNextSibling(tx, col, baseNode!, {
-          id: "newNode",
-          text: "newNode",
-          parentId: "",
-          prevId: "",
-          nextId: "",
-          createdAt: Timestamp.fromMillis(0),
-          updatedAt: Timestamp.fromMillis(0),
-        });
+        (
+          await addNextSibling(tx, col, baseNode!, {
+            id: "newNode",
+            text: "newNode",
+            parentId: "",
+            prevId: "",
+            nextId: "",
+            createdAt: Timestamp.fromMillis(0),
+            updatedAt: Timestamp.fromMillis(0),
+          })
+        )();
       });
 
       await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
@@ -1574,15 +1581,17 @@ describe.concurrent("treeNode", () => {
 
       await runTransaction(firestoreForTest, async (tx) => {
         const baseNode = await txGet(tx, col, "base");
-        await addNextSibling(tx, col, baseNode!, {
-          id: "newNode",
-          text: "newNode",
-          parentId: "",
-          prevId: "",
-          nextId: "",
-          createdAt: Timestamp.fromMillis(0),
-          updatedAt: Timestamp.fromMillis(0),
-        });
+        (
+          await addNextSibling(tx, col, baseNode!, {
+            id: "newNode",
+            text: "newNode",
+            parentId: "",
+            prevId: "",
+            nextId: "",
+            createdAt: Timestamp.fromMillis(0),
+            updatedAt: Timestamp.fromMillis(0),
+          })
+        )();
       });
 
       await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
@@ -1628,7 +1637,7 @@ describe.concurrent("treeNode", () => {
       await runTransaction(firestoreForTest, async (tx) => {
         const baseNode = await txGet(tx, col, "base");
         const addingNode = await txGet(tx, col, "addingNode");
-        await addNextSibling(tx, col, baseNode!, addingNode!);
+        (await addNextSibling(tx, col, baseNode!, addingNode!))();
       });
 
       await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
@@ -1665,7 +1674,7 @@ describe.concurrent("treeNode", () => {
       await runTransaction(firestoreForTest, async (tx) => {
         const baseNode = await txGet(tx, col, "base");
         const addingNode = await txGet(tx, col, "addingNode");
-        await addNextSibling(tx, col, baseNode!, addingNode!);
+        (await addNextSibling(tx, col, baseNode!, addingNode!))();
       });
 
       await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
@@ -1691,6 +1700,138 @@ describe.concurrent("treeNode", () => {
           id: "next",
           text: "next",
           prevId: "addingNode",
+          nextId: "",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+  });
+
+  describe("indent", () => {
+    test("no prev node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNode("parent", ["node"]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await indent(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "node",
+          text: "node",
+          prevId: "",
+          nextId: "",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
+        },
+      ]);
+    });
+
+    test("has prev node, no children nodes of prev node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNodes("parent", [["prev"], ["node"]]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await indent(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "node",
+          text: "node",
+          prevId: "",
+          nextId: "",
+          parentId: "prev",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "prev",
+          text: "prev",
+          prevId: "",
+          nextId: "",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+
+    test("has prev node, has children nodes of prev node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      // prettier-ignore
+      await setDocs( col, makeTreeNodes("parent", [
+        ["prev", [
+          ["first of prev"],
+          ["middle of prev"],
+          ["last of prev"],
+        ]],
+        ["node"],
+      ]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await indent(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "first of prev",
+          text: "first of prev",
+          prevId: "",
+          nextId: "middle of prev",
+          parentId: "prev",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
+        },
+        {
+          id: "last of prev",
+          text: "last of prev",
+          prevId: "middle of prev",
+          nextId: "node",
+          parentId: "prev",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "middle of prev",
+          text: "middle of prev",
+          prevId: "first of prev",
+          nextId: "last of prev",
+          parentId: "prev",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
+        },
+        {
+          id: "node",
+          text: "node",
+          prevId: "last of prev",
+          nextId: "",
+          parentId: "prev",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "prev",
+          text: "prev",
+          prevId: "",
           nextId: "",
           parentId: "parent",
           createdAt: timestampForCreatedAt,

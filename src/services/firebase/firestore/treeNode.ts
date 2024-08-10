@@ -151,14 +151,17 @@ export async function unlinkFromSiblings<T extends TreeNode>(
   tx: Transaction,
   col: CollectionReference<TreeNode>,
   baseNode: DocumentData<T>,
-): Promise<void> {
+): Promise<() => void> {
   const [prevNode, nextNode] = await Promise.all([getPrevNode(tx, col, baseNode), getNextNode(tx, col, baseNode)]);
-  if (prevNode) {
-    tx.update(doc(col, prevNode.id), { nextId: baseNode.nextId });
-  }
-  if (nextNode) {
-    tx.update(doc(col, nextNode.id), { prevId: baseNode.prevId });
-  }
+
+  return () => {
+    if (prevNode) {
+      tx.update(doc(col, prevNode.id), { nextId: baseNode.nextId, updatedAt: serverTimestamp() });
+    }
+    if (nextNode) {
+      tx.update(doc(col, nextNode.id), { prevId: baseNode.prevId, updatedAt: serverTimestamp() });
+    }
+  };
 }
 
 export async function getAboveNode<T extends TreeNode>(
@@ -222,7 +225,7 @@ export async function addPrevSibling<T extends TreeNode>(
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
   newNode: DocumentData<T>,
-): Promise<void> {
+): Promise<() => void> {
   if (newNode.id === "") {
     throw new ErrorWithFields("new node must have a valid id", { newNode });
   }
@@ -236,48 +239,50 @@ export async function addPrevSibling<T extends TreeNode>(
 
   const prevNode = await getPrevNode(tx, col, baseNode);
 
-  if (prevNode) {
-    if (fetchedNewNode) {
-      tx.update(doc(col, newNode.id), {
-        parentId: baseNode.parentId,
-        prevId: prevNode.id,
-        nextId: baseNode.id,
-        updatedAt: serverTimestamp(),
-      });
-    } else {
-      tx.set(doc(col, newNode.id), {
-        ...(newNodeData as unknown as T),
-        parentId: baseNode.parentId,
-        prevId: prevNode.id,
-        nextId: baseNode.id,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }
+  return () => {
+    if (prevNode) {
+      if (fetchedNewNode) {
+        tx.update(doc(col, newNode.id), {
+          parentId: baseNode.parentId,
+          prevId: prevNode.id,
+          nextId: baseNode.id,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        tx.set(doc(col, newNode.id), {
+          ...(newNodeData as unknown as T),
+          parentId: baseNode.parentId,
+          prevId: prevNode.id,
+          nextId: baseNode.id,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
 
-    tx.update(doc(col, prevNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
-    tx.update(doc(col, baseNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
-  } else {
-    if (fetchedNewNode) {
-      tx.update(doc(col, newNode.id), {
-        parentId: baseNode.parentId,
-        prevId: "",
-        nextId: baseNode.id,
-        updatedAt: serverTimestamp(),
-      });
+      tx.update(doc(col, prevNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
+      tx.update(doc(col, baseNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
     } else {
-      tx.set(doc(col, newNode.id), {
-        ...(newNodeData as unknown as T),
-        parentId: baseNode.parentId,
-        prevId: "",
-        nextId: baseNode.id,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }
+      if (fetchedNewNode) {
+        tx.update(doc(col, newNode.id), {
+          parentId: baseNode.parentId,
+          prevId: "",
+          nextId: baseNode.id,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        tx.set(doc(col, newNode.id), {
+          ...(newNodeData as unknown as T),
+          parentId: baseNode.parentId,
+          prevId: "",
+          nextId: baseNode.id,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
 
-    tx.update(doc(col, baseNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
-  }
+      tx.update(doc(col, baseNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
+    }
+  };
 }
 
 export async function addNextSibling<T extends TreeNode>(
@@ -285,7 +290,7 @@ export async function addNextSibling<T extends TreeNode>(
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
   newNode: DocumentData<T>,
-): Promise<void> {
+): Promise<() => void> {
   if (newNode.id === "") {
     throw new ErrorWithFields("new node must have a valid id", { newNode });
   }
@@ -299,46 +304,83 @@ export async function addNextSibling<T extends TreeNode>(
 
   const nextNode = await getNextNode(tx, col, baseNode);
 
-  if (nextNode) {
-    if (fetchedNewNode) {
-      tx.update(doc(col, newNode.id), {
-        parentId: baseNode.parentId,
-        prevId: baseNode.id,
-        nextId: nextNode.id,
-        updatedAt: serverTimestamp(),
-      });
-    } else {
-      tx.set(doc(col, newNode.id), {
-        ...(newNodeData as unknown as T),
-        parentId: baseNode.parentId,
-        prevId: baseNode.id,
-        nextId: nextNode.id,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }
+  return () => {
+    if (nextNode) {
+      if (fetchedNewNode) {
+        tx.update(doc(col, newNode.id), {
+          parentId: baseNode.parentId,
+          prevId: baseNode.id,
+          nextId: nextNode.id,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        tx.set(doc(col, newNode.id), {
+          ...(newNodeData as unknown as T),
+          parentId: baseNode.parentId,
+          prevId: baseNode.id,
+          nextId: nextNode.id,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
 
-    tx.update(doc(col, nextNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
-    tx.update(doc(col, baseNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
-  } else {
-    if (fetchedNewNode) {
-      tx.update(doc(col, newNode.id), {
-        parentId: baseNode.parentId,
-        prevId: baseNode.id,
-        nextId: "",
-        updatedAt: serverTimestamp(),
-      });
+      tx.update(doc(col, nextNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
+      tx.update(doc(col, baseNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
     } else {
-      tx.set(doc(col, newNode.id), {
-        ...(newNodeData as unknown as T),
-        parentId: baseNode.parentId,
-        prevId: baseNode.id,
-        nextId: "",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }
+      if (fetchedNewNode) {
+        tx.update(doc(col, newNode.id), {
+          parentId: baseNode.parentId,
+          prevId: baseNode.id,
+          nextId: "",
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        tx.set(doc(col, newNode.id), {
+          ...(newNodeData as unknown as T),
+          parentId: baseNode.parentId,
+          prevId: baseNode.id,
+          nextId: "",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
 
-    tx.update(doc(col, baseNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
+      tx.update(doc(col, baseNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
+    }
+  };
+}
+
+export async function indent<T extends TreeNode>(
+  tx: Transaction,
+  col: CollectionReference<T>,
+  node: DocumentData<T>,
+): Promise<() => void> {
+  const prevNode = await getPrevNode(tx, col, node);
+  if (!prevNode) {
+    return () => {
+      // no write
+    };
   }
+
+  const lastChildNodeOfPrevNode = await getLastChildNode(tx, col, prevNode);
+  const unlinkFromSiblingsWrite = await unlinkFromSiblings(tx, col, node);
+
+  if (lastChildNodeOfPrevNode) {
+    const addNextSiblingWrite = await addNextSibling(tx, col, lastChildNodeOfPrevNode, node);
+
+    return () => {
+      unlinkFromSiblingsWrite();
+      addNextSiblingWrite();
+    };
+  }
+
+  return () => {
+    unlinkFromSiblingsWrite();
+    tx.update(doc(col, node.id), {
+      parentId: prevNode.id,
+      prevId: "",
+      nextId: "",
+      updatedAt: serverTimestamp(),
+    });
+  };
 }
