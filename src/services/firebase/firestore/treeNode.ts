@@ -1,8 +1,10 @@
 import type { DocumentData } from "@/services/firebase/firestore";
 import type { CollectionReference, Timestamp, Transaction } from "firebase/firestore";
 
-import { doc, getDocs, query, where } from "firebase/firestore";
+import equal from "fast-deep-equal";
+import { doc, getDocs, query, serverTimestamp, where } from "firebase/firestore";
 
+import { ErrorWithFields } from "@/error";
 import { txGet, getDocumentData } from "@/services/firebase/firestore";
 import { InconsistentError, TransactionAborted } from "@/services/firebase/firestore/error";
 
@@ -212,5 +214,68 @@ export async function getBottomNode<T extends TreeNode, U>(
     if (!lastChildNode) return currentNode;
 
     currentNode = lastChildNode;
+  }
+}
+
+export async function addPrevSibling<T extends TreeNode>(
+  tx: Transaction,
+  col: CollectionReference<T>,
+  baseNode: DocumentData<T>,
+  newNode: DocumentData<T>,
+): Promise<void> {
+  if (newNode.id === "") {
+    throw new ErrorWithFields("new node must have a valid id", { newNode });
+  }
+
+  const fetchedNewNode = await txGet(tx, col, newNode.id);
+  if (fetchedNewNode && !equal(newNode, fetchedNewNode)) {
+    throw new TransactionAborted();
+  }
+
+  const { id: _, ...newNodeData } = newNode;
+
+  const prevNode = await getPrevNode(tx, col, baseNode);
+
+  if (prevNode) {
+    if (fetchedNewNode) {
+      tx.update(doc(col, newNode.id), {
+        parentId: baseNode.parentId,
+        prevId: prevNode.id,
+        nextId: baseNode.id,
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      tx.set(doc(col, newNode.id), {
+        ...(newNodeData as unknown as T),
+        parentId: baseNode.parentId,
+        prevId: prevNode.id,
+        nextId: baseNode.id,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    tx.update(doc(col, prevNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
+    tx.update(doc(col, baseNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
+  } else {
+    if (fetchedNewNode) {
+      tx.update(doc(col, newNode.id), {
+        parentId: baseNode.parentId,
+        prevId: "",
+        nextId: baseNode.id,
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      tx.set(doc(col, newNode.id), {
+        ...(newNodeData as unknown as T),
+        parentId: baseNode.parentId,
+        prevId: "",
+        nextId: baseNode.id,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    tx.update(doc(col, baseNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
   }
 }

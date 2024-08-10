@@ -2,10 +2,10 @@ import type { TreeNode } from "@/services/firebase/firestore/treeNode";
 import type { CollectionReference } from "firebase/firestore";
 
 import { runTransaction, collection, doc, getDoc, getDocs, Timestamp } from "firebase/firestore";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 
 import { txGet, getDocumentData } from "@/services/firebase/firestore";
-import { setDocs } from "@/services/firebase/firestore/test";
+import { setDocs, timestampForCreatedAt, timestampForServerTimestamp } from "@/services/firebase/firestore/test";
 import {
   getAboveNode,
   getBelowNode,
@@ -16,13 +16,12 @@ import {
   getPrevNode,
   getBottomNode,
   unlinkFromSiblings,
+  addPrevSibling,
 } from "@/services/firebase/firestore/treeNode";
 import { firestoreForTest } from "@/services/firebase/test";
 
 type TreeNodeWithText = TreeNode & { text: string };
 type TreeNodeFixture = [string, TreeNodeFixture[]?];
-
-const timestampForTest = Timestamp.fromDate(new Date("2123-04-05T06:07:08+09:00"));
 
 function makeTreeNodes(parentId: string, fixtures: TreeNodeFixture[]): TreeNodeWithText[] {
   const treeNodes = fixtures.map((fixture) => makeTreeNode(parentId, fixture));
@@ -47,14 +46,23 @@ function makeTreeNode(parentId: string, [text, children]: TreeNodeFixture): Tree
       parentId,
       prevId: "",
       nextId: "",
-      createdAt: timestampForTest,
-      updatedAt: timestampForTest,
+      createdAt: timestampForCreatedAt,
+      updatedAt: timestampForCreatedAt,
     },
     ...makeTreeNodes(text, children ?? []),
   ];
 }
 
 describe.concurrent("treeNode", () => {
+  vi.mock(import("firebase/firestore"), async (importOriginal) => {
+    const mod = await importOriginal();
+
+    return {
+      ...mod,
+      serverTimestamp: () => timestampForServerTimestamp,
+    };
+  });
+
   describe("getPrevNode", () => {
     test("no prev node", async (test) => {
       const now = new Date();
@@ -85,8 +93,8 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "base",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
     });
 
@@ -102,8 +110,8 @@ describe.concurrent("treeNode", () => {
           prevId: "invalid",
           nextId: "",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
       ]);
 
@@ -142,16 +150,16 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "invalid",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
         {
           text: "base",
           prevId: "prev",
           nextId: "",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
       ]);
 
@@ -205,16 +213,16 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "base",
           parentId: "foo",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
         {
           text: "base",
           prevId: "prev",
           nextId: "",
           parentId: "bar",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
       ]);
 
@@ -287,8 +295,8 @@ describe.concurrent("treeNode", () => {
           prevId: "base",
           nextId: "",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
     });
 
@@ -304,8 +312,8 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "invalid",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
       ]);
 
@@ -344,16 +352,16 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "next",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
         {
           text: "next",
           prevId: "invalid",
           nextId: "",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
       ]);
 
@@ -407,16 +415,16 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "next",
           parentId: "foo",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
         {
           text: "next",
           prevId: "base",
           nextId: "",
           parentId: "bar",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
       ]);
 
@@ -489,8 +497,8 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
     });
 
@@ -506,8 +514,8 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "",
           parentId: "another_collection_id",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
       ]);
 
@@ -555,8 +563,8 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "middle",
           parentId: "base",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
     });
 
@@ -572,24 +580,24 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
         {
           text: "first1",
           prevId: "",
           nextId: "",
           parentId: "base",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
         {
           text: "first2",
           prevId: "",
           nextId: "",
           parentId: "base",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
       ]);
 
@@ -689,8 +697,8 @@ describe.concurrent("treeNode", () => {
           prevId: "middle",
           nextId: "",
           parentId: "base",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
     });
 
@@ -706,24 +714,24 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
         {
           text: "last1",
           prevId: "",
           nextId: "",
           parentId: "base",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
         {
           text: "last2",
           prevId: "",
           nextId: "",
           parentId: "base",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
       ]);
 
@@ -805,8 +813,8 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
       ]);
     });
@@ -830,8 +838,8 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "next",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
         {
           id: "next",
@@ -839,8 +847,8 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
       ]);
     });
@@ -864,8 +872,8 @@ describe.concurrent("treeNode", () => {
           prevId: "prev",
           nextId: "",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
         {
           id: "prev",
@@ -873,8 +881,8 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
       ]);
     });
@@ -898,8 +906,8 @@ describe.concurrent("treeNode", () => {
           prevId: "prev",
           nextId: "next",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
         {
           id: "next",
@@ -907,8 +915,8 @@ describe.concurrent("treeNode", () => {
           prevId: "prev",
           nextId: "",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
         {
           id: "prev",
@@ -916,8 +924,8 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "next",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         },
       ]);
     });
@@ -951,8 +959,8 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
     });
 
@@ -971,8 +979,8 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "base",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
     });
 
@@ -999,8 +1007,8 @@ describe.concurrent("treeNode", () => {
           prevId: "middle of prev",
           nextId: "",
           parentId: "prev",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
     });
 
@@ -1039,8 +1047,8 @@ describe.concurrent("treeNode", () => {
           prevId: "middle of last of prev",
           nextId: "",
           parentId: "last of prev",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
     });
   });
@@ -1099,8 +1107,8 @@ describe.concurrent("treeNode", () => {
           prevId: "",
           nextId: "middle child of base",
           parentId: "base",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
     });
 
@@ -1129,8 +1137,8 @@ describe.concurrent("treeNode", () => {
           prevId: "base",
           nextId: "",
           parentId: "parent",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
     });
 
@@ -1158,8 +1166,8 @@ describe.concurrent("treeNode", () => {
           prevId: "parent",
           nextId: "",
           parentId: "parent of parent",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
     });
 
@@ -1186,8 +1194,8 @@ describe.concurrent("treeNode", () => {
           prevId: "parent of parent",
           nextId: "",
           parentId: "",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
     });
   });
@@ -1229,8 +1237,8 @@ describe.concurrent("treeNode", () => {
           prevId: "middle child",
           nextId: "",
           parentId: "base",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
     });
 
@@ -1261,8 +1269,8 @@ describe.concurrent("treeNode", () => {
           prevId: "middle grandchild",
           nextId: "",
           parentId: "last child",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
     });
 
@@ -1298,8 +1306,8 @@ describe.concurrent("treeNode", () => {
           prevId: "middle great-grandchild",
           nextId: "",
           parentId: "last grandchild",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
     });
 
@@ -1325,9 +1333,189 @@ describe.concurrent("treeNode", () => {
           prevId: "middle child",
           nextId: "",
           parentId: "base",
-          createdAt: timestampForTest,
-          updatedAt: timestampForTest,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
         });
+    });
+  });
+
+  describe("addPrevSibling", () => {
+    test("new node, no prev node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNode("parent", ["base"]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const baseNode = await txGet(tx, col, "base");
+        await addPrevSibling(tx, col, baseNode!, {
+          id: "newNode",
+          text: "newNode",
+          parentId: "",
+          prevId: "",
+          nextId: "",
+          createdAt: Timestamp.fromMillis(0),
+          updatedAt: Timestamp.fromMillis(0),
+        });
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "base",
+          text: "base",
+          prevId: "newNode",
+          nextId: "",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "newNode",
+          text: "newNode",
+          prevId: "",
+          nextId: "base",
+          parentId: "parent",
+          createdAt: timestampForServerTimestamp,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+
+    test("new node, has prev node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNodes("parent", [["prev"], ["base"]]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const baseNode = await txGet(tx, col, "base");
+        await addPrevSibling(tx, col, baseNode!, {
+          id: "newNode",
+          text: "newNode",
+          parentId: "",
+          prevId: "",
+          nextId: "",
+          createdAt: Timestamp.fromMillis(0),
+          updatedAt: Timestamp.fromMillis(0),
+        });
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "base",
+          text: "base",
+          prevId: "newNode",
+          nextId: "",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "newNode",
+          text: "newNode",
+          prevId: "prev",
+          nextId: "base",
+          parentId: "parent",
+          createdAt: timestampForServerTimestamp,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "prev",
+          text: "prev",
+          prevId: "",
+          nextId: "newNode",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+
+    test("existing node, no prev node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNode("parent", ["base"]));
+      await setDocs(col, makeTreeNode("", ["addingNode"]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const baseNode = await txGet(tx, col, "base");
+        const addingNode = await txGet(tx, col, "addingNode");
+        await addPrevSibling(tx, col, baseNode!, addingNode!);
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "addingNode",
+          text: "addingNode",
+          prevId: "",
+          nextId: "base",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "base",
+          text: "base",
+          prevId: "addingNode",
+          nextId: "",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+
+    test("existing node, has prev node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNodes("parent", [["prev"], ["base"]]));
+      await setDocs(col, makeTreeNode("", ["addingNode"]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const baseNode = await txGet(tx, col, "base");
+        const addingNode = await txGet(tx, col, "addingNode");
+        await addPrevSibling(tx, col, baseNode!, addingNode!);
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "addingNode",
+          text: "addingNode",
+          prevId: "prev",
+          nextId: "base",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "base",
+          text: "base",
+          prevId: "addingNode",
+          nextId: "",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "prev",
+          text: "prev",
+          prevId: "",
+          nextId: "addingNode",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
     });
   });
 });
