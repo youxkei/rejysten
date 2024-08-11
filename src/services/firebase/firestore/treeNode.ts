@@ -406,6 +406,48 @@ export async function dedent<T extends TreeNode>(
   };
 }
 
+export async function movePrev<T extends TreeNode>(
+  tx: Transaction,
+  col: CollectionReference<T>,
+  node: DocumentData<T>,
+): Promise<() => void> {
+  const prevNode = await getPrevNode(tx, col, node);
+  if (!prevNode) {
+    return () => {
+      // no write
+    };
+  }
+
+  const unlinkFromSiblingsWrite = await unlinkFromSiblings(tx, col, node);
+  const addPrevSiblingWrite = await addPrevSibling(tx, col, prevNode, node);
+
+  return () => {
+    unlinkFromSiblingsWrite();
+    addPrevSiblingWrite();
+  };
+}
+
+export async function moveNext<T extends TreeNode>(
+  tx: Transaction,
+  col: CollectionReference<T>,
+  node: DocumentData<T>,
+): Promise<() => void> {
+  const nextNode = await getNextNode(tx, col, node);
+  if (!nextNode) {
+    return () => {
+      // no write
+    };
+  }
+
+  const unlinkFromSiblingsWrite = await unlinkFromSiblings(tx, col, node);
+  const addNextSiblingWrite = await addNextSibling(tx, col, nextNode, node);
+
+  return () => {
+    unlinkFromSiblingsWrite();
+    addNextSiblingWrite();
+  };
+}
+
 export async function remove<T extends TreeNode>(
   tx: Transaction,
   col: CollectionReference<T>,

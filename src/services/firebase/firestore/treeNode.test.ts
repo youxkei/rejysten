@@ -21,6 +21,8 @@ import {
   indent,
   dedent,
   remove,
+  movePrev,
+  moveNext,
 } from "@/services/firebase/firestore/treeNode";
 import { firestoreForTest } from "@/services/firebase/test";
 
@@ -1943,6 +1945,150 @@ describe("treeNode", () => {
           prevId: "",
           nextId: "node",
           parentId: "grandparent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+  });
+
+  describe("movePrev", () => {
+    test("no prev node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNode("parent", ["node"]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await movePrev(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "node",
+          text: "node",
+          prevId: "",
+          nextId: "",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
+        },
+      ]);
+    });
+
+    test("has prev node, has prev node of prev node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNodes("parent", [["prev of prev"], ["prev"], ["node"]]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await movePrev(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "node",
+          text: "node",
+          prevId: "prev of prev",
+          nextId: "prev",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "prev",
+          text: "prev",
+          prevId: "node",
+          nextId: "",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "prev of prev",
+          text: "prev of prev",
+          prevId: "",
+          nextId: "node",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+  });
+
+  describe("moveNext", () => {
+    test("no next node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNode("parent", ["node"]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await moveNext(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "node",
+          text: "node",
+          prevId: "",
+          nextId: "",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
+        },
+      ]);
+    });
+
+    test("has next node, has next node of next node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNodes("parent", [["node"], ["next"], ["next of next"]]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await moveNext(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "next",
+          text: "next",
+          prevId: "",
+          nextId: "node",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "next of next",
+          text: "next of next",
+          prevId: "node",
+          nextId: "",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "node",
+          text: "node",
+          prevId: "next",
+          nextId: "next of next",
+          parentId: "parent",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForServerTimestamp,
         },
