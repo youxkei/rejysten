@@ -405,3 +405,16 @@ export async function dedent<T extends TreeNode>(
     addNextSiblingWrite();
   };
 }
+
+export async function remove<T extends TreeNode>(
+  tx: Transaction,
+  col: CollectionReference<T>,
+  node: DocumentData<T>,
+): Promise<() => void> {
+  const unlinkFromSiblingsWrite = await unlinkFromSiblings(tx, col, node);
+
+  return () => {
+    unlinkFromSiblingsWrite();
+    tx.delete(doc(col, node.id));
+  };
+}
