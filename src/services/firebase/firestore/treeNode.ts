@@ -384,3 +384,24 @@ export async function indent<T extends TreeNode>(
     });
   };
 }
+
+export async function dedent<T extends TreeNode>(
+  tx: Transaction,
+  col: CollectionReference<T>,
+  node: DocumentData<T>,
+): Promise<() => void> {
+  const parentNode = await getParentNode(tx, col, node);
+  if (!parentNode) {
+    return () => {
+      // no write
+    };
+  }
+
+  const unlinkFromSiblingsWrite = await unlinkFromSiblings(tx, col, node);
+  const addNextSiblingWrite = await addNextSibling(tx, col, parentNode, node);
+
+  return () => {
+    unlinkFromSiblingsWrite();
+    addNextSiblingWrite();
+  };
+}

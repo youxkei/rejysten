@@ -19,6 +19,7 @@ import {
   addPrevSibling,
   addNextSibling,
   indent,
+  dedent,
 } from "@/services/firebase/firestore/treeNode";
 import { firestoreForTest } from "@/services/firebase/test";
 
@@ -1834,6 +1835,113 @@ describe("treeNode", () => {
           prevId: "",
           nextId: "",
           parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+  });
+
+  describe("dedent", () => {
+    test("no parent node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNode("parent", ["node"]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await dedent(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "node",
+          text: "node",
+          prevId: "",
+          nextId: "",
+          parentId: "parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
+        },
+      ]);
+    });
+
+    test("has parent node, no next node of parent node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNode("grandparent", ["parent", [["node"]]]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await dedent(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "node",
+          text: "node",
+          prevId: "parent",
+          nextId: "",
+          parentId: "grandparent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "parent",
+          text: "parent",
+          prevId: "",
+          nextId: "node",
+          parentId: "grandparent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+
+    test("has parent node, has next node of parent node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNodes("grandparent", [["parent", [["node"]]], ["next of parent"]]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await dedent(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "next of parent",
+          text: "next of parent",
+          prevId: "node",
+          nextId: "",
+          parentId: "grandparent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "node",
+          text: "node",
+          prevId: "parent",
+          nextId: "next of parent",
+          parentId: "grandparent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "parent",
+          text: "parent",
+          prevId: "",
+          nextId: "node",
+          parentId: "grandparent",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForServerTimestamp,
         },
