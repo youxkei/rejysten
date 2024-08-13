@@ -41,7 +41,7 @@ export const FirestoreNgram: StoryObj = {
       <>
         <pre>{errors$().join("\n")}</pre>
 
-        <FirebaseServiceProvoider useEmulator configYAML={firebaseConfig} setErrors={setErrors}>
+        <FirebaseServiceProvoider configYAML={firebaseConfig} setErrors={setErrors}>
           <Suspense fallback={<p>loading...</p>}>
             {(() => {
               const [text$, setText] = createSignal("");
@@ -140,7 +140,7 @@ export const FirestorePublish: StoryObj = {
       <>
         <pre>{errors$().join("\n")}</pre>
 
-        <FirebaseServiceProvoider useEmulator configYAML={firebaseConfig} setErrors={setErrors}>
+        <FirebaseServiceProvoider configYAML={firebaseConfig} setErrors={setErrors}>
           {(() => {
             const firebase = useFirebaseService();
             const itemCollection = getCollection(firebase, "pocFirestorePubsub");
@@ -213,7 +213,7 @@ export const FirestoreSubscribe: StoryObj = {
       <>
         <pre>{errors$().join("\n")}</pre>
 
-        <FirebaseServiceProvoider useEmulator configYAML={firebaseConfig} setErrors={setErrors}>
+        <FirebaseServiceProvoider configYAML={firebaseConfig} setErrors={setErrors}>
           <Suspense fallback={<p>loading...</p>}>
             {(() => {
               const firebase = useFirebaseService();
@@ -241,7 +241,7 @@ export const FirestoreSubcollection: StoryObj = {
       <>
         <pre>{errors$().join("\n")}</pre>
 
-        <FirebaseServiceProvoider useEmulator configYAML={firebaseConfig} setErrors={setErrors}>
+        <FirebaseServiceProvoider configYAML={firebaseConfig} setErrors={setErrors}>
           <Suspense fallback={<p>loading...</p>}>
             {(() => {
               const firebase = useFirebaseService();

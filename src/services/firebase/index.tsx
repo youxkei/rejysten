@@ -32,7 +32,6 @@ const firebaseConfigSchema = s.object({
 export function FirebaseServiceProvoider(props: {
   configYAML: string | undefined;
   setErrors: Setter<string[]>;
-  useEmulator?: boolean;
   children: JSXElement;
 }) {
   const config$ = createMemo(() => {
@@ -55,7 +54,7 @@ export function FirebaseServiceProvoider(props: {
 
     const app = initializeApp(config);
 
-    if (props.useEmulator) {
+    if (import.meta.env.DEV) {
       connectFirestoreEmulator(getFirestore(app), "localhost", 8080);
     }
 
@@ -70,7 +69,7 @@ export function FirebaseServiceProvoider(props: {
     const firebase = firebase$();
     if (!firebase) return;
 
-    if (props.useEmulator) {
+    if (import.meta.env.DEV) {
       setValue({ signedIn: true });
 
       return;
