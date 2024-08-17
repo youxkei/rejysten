@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "storybook-solidjs";
 
-import { doc, getDocs, runTransaction, query, where, FieldPath, writeBatch } from "firebase/firestore";
+import { doc, getDocs, runTransaction, query, where, FieldPath, writeBatch, Timestamp } from "firebase/firestore";
 import { For, Suspense, createSignal, createMemo, Show, startTransition } from "solid-js";
 import { uuidv7 } from "uuidv7";
 import XRegExp from "xregexp";
@@ -111,6 +111,8 @@ export const FirestoreNgram: StoryObj = {
                             collection: "pocFirestoreNgram",
                             text,
                             ngram: calcBigram([...trimNonPrintableChars(text)]),
+                            createdAt: Timestamp.fromDate(new Date()),
+                            updatedAt: Timestamp.fromDate(new Date()),
                           });
 
                           await batch.commit();

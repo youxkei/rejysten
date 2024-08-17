@@ -1,3 +1,5 @@
+import type { Timestamp } from "firebase/firestore";
+
 export type Schema = {
   pocFirestoreNgram: {
     text: string;
@@ -15,11 +17,11 @@ export type Schema = {
   lifeLogs: {
     text: string;
 
-    startAt: Date;
-    endAt: Date;
+    startAt: Timestamp;
+    endAt: Timestamp;
 
-    createdAt: Date;
-    updatedAt: Date;
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
   };
 
   lifeLogTreeNodes: {
@@ -29,14 +31,17 @@ export type Schema = {
     prevId: string;
     nextId: string;
 
-    createdAt: Date;
-    updatedAt: Date;
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
   };
 
   ngrams: {
     collection: Exclude<keyof Schema, "ngrams">;
     text: string;
     ngram: Record<string, true>;
+
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
   };
 };
 
