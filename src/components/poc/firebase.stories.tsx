@@ -7,7 +7,7 @@ import XRegExp from "xregexp";
 
 import { FirebaseServiceProvoider, useFirebaseService } from "@/services/firebase";
 import { getCollection } from "@/services/firebase/firestore";
-import { createSubscribeAllSignal } from "@/services/firebase/subscribe";
+import { createSubscribeAllSignal } from "@/services/firebase/firestore/subscribe";
 import { dumpSignal } from "@/solid/signal";
 
 export default {
