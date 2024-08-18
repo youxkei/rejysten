@@ -1,5 +1,5 @@
 import type { DocumentData } from "@/services/firebase/firestore";
-import type { Query, QuerySnapshot } from "firebase/firestore";
+import type { DocumentReference, DocumentSnapshot, Query, QuerySnapshot } from "firebase/firestore";
 import type { Accessor } from "solid-js";
 
 import { onSnapshot } from "firebase/firestore";
@@ -8,10 +8,12 @@ import { createMemo, onCleanup } from "solid-js";
 import { getDocumentData } from "@/services/firebase/firestore";
 import { createSubscribeWithResource } from "@/solid/subscribe";
 
-export function createSubscribeSignal<T>(query$: () => Query<T> | undefined): Accessor<DocumentData<T> | undefined> {
+export function createSubscribeSignal<T>(
+  query$: () => DocumentReference<T> | undefined,
+): Accessor<DocumentData<T> | undefined> {
   const snapshot$ = createSubscribeWithResource(
     query$,
-    (query, setValue: (value: QuerySnapshot<T>) => void) => {
+    (query, setValue: (value: DocumentSnapshot<T>) => void) => {
       const unsubscribe = onSnapshot(query, (snapshot) => {
         setValue(snapshot);
       });
@@ -22,9 +24,9 @@ export function createSubscribeSignal<T>(query$: () => Query<T> | undefined): Ac
 
   return createMemo(() => {
     const snapshot = snapshot$();
-    if (!snapshot || snapshot.docs.length === 0) return undefined;
+    if (!snapshot) return;
 
-    return getDocumentData(snapshot.docs[0]);
+    return getDocumentData(snapshot);
   });
 }
 
