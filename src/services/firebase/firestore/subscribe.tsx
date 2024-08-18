@@ -1,14 +1,14 @@
-import type { Query, QueryDocumentSnapshot, QuerySnapshot } from "firebase/firestore";
+import type { DocumentData } from "@/services/firebase/firestore";
+import type { Query, QuerySnapshot } from "firebase/firestore";
 import type { Accessor } from "solid-js";
 
 import { onSnapshot } from "firebase/firestore";
 import { createMemo, onCleanup } from "solid-js";
 
+import { getDocumentData } from "@/services/firebase/firestore";
 import { createSubscribeWithResource } from "@/solid/subscribe";
 
-export function createSubscribeSignal<T>(
-  query$: () => Query<T> | undefined,
-): Accessor<QueryDocumentSnapshot<T> | undefined> {
+export function createSubscribeSignal<T>(query$: () => Query<T> | undefined): Accessor<DocumentData<T> | undefined> {
   const snapshot$ = createSubscribeWithResource(
     query$,
     (query, setValue: (value: QuerySnapshot<T>) => void) => {
@@ -24,11 +24,11 @@ export function createSubscribeSignal<T>(
     const snapshot = snapshot$();
     if (!snapshot || snapshot.docs.length === 0) return undefined;
 
-    return snapshot.docs[0];
+    return getDocumentData(snapshot.docs[0]);
   });
 }
 
-export function createSubscribeAllSignal<T>(query$: () => Query<T> | undefined): Accessor<QueryDocumentSnapshot<T>[]> {
+export function createSubscribeAllSignal<T>(query$: () => Query<T> | undefined): Accessor<DocumentData<T>[]> {
   const snapshot$ = createSubscribeWithResource(
     query$,
     (query, setValue: (value: QuerySnapshot<T>) => void) => {
@@ -45,6 +45,7 @@ export function createSubscribeAllSignal<T>(query$: () => Query<T> | undefined):
     const snapshot = snapshot$();
     if (!snapshot) return [];
 
-    return snapshot.docs;
+    // snapshot.docs must not have non-existing values
+    return snapshot.docs.map(getDocumentData) as DocumentData<T>[];
   });
 }

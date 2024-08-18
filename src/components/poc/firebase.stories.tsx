@@ -87,7 +87,7 @@ export const FirestoreNgram: StoryObj = {
                   </p>
                   <p>searched items:</p>
                   <Show when={searchTextChars$().length >= 2}>
-                    <For each={serchedItems$()}>{(item) => <p>{item.data().text}</p>}</For>
+                    <For each={serchedItems$()}>{(item) => <p>{item.text}</p>}</For>
                   </Show>
                   <hr />
                   <p>
@@ -123,7 +123,7 @@ export const FirestoreNgram: StoryObj = {
                     </button>
                   </p>
                   <p>items:</p>
-                  <For each={items$()}>{(item) => <p> {item.data().text} </p>}</For>
+                  <For each={items$()}>{(item) => <p> {item.text} </p>}</For>
                 </>
               );
             })()}
