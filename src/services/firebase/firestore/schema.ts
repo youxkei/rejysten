@@ -51,4 +51,4 @@ type EnsureNoPreservedFields<T, PreservedFields extends string> = T extends {
   ? true
   : false;
 
-const _check: EnsureNoPreservedFields<Schema, "id" | "meta"> = true;
+true satisfies EnsureNoPreservedFields<Schema, "id" | "meta">;

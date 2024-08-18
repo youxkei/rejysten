@@ -1,5 +1,8 @@
 #!/bin/sh
 set -e
 
+git stash -uk
+trap 'git stash pop' EXIT
+
 npm run lint
 npm run test
