@@ -1,5 +1,5 @@
 import { doc, query, where } from "firebase/firestore";
-import { Show } from "solid-js";
+import { For, Show } from "solid-js";
 
 import { useFirebaseService } from "@/services/firebase";
 import { getCollection } from "@/services/firebase/firestore";
@@ -16,7 +16,7 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
       {(lifeLog) => {
         return (
           <div>
-            <p>{lifeLog().text}</p>
+            <span>{lifeLog().text}</span>
             <ChildrenNodes parentId={props.id} />
           </div>
         );
@@ -32,14 +32,17 @@ export function ChildrenNodes(props: { parentId: string }) {
   const childrenNodes = createSubscribeAllSignal(() =>
     query(lifeLogTreeNodesCol, where("parentId", "==", props.parentId)),
   );
+  const childrenIds = () => childrenNodes().map((childNode) => childNode.id);
 
   return (
     <ul>
-      {childrenNodes().map((childNode) => (
-        <li>
-          <Node id={childNode.id} />
-        </li>
-      ))}
+      <For each={childrenIds()}>
+        {(childId) => (
+          <li>
+            <Node id={childId} />
+          </li>
+        )}
+      </For>
     </ul>
   );
 }
