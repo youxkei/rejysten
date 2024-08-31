@@ -1,7 +1,5 @@
-import type { JSXElement } from "solid-js";
-import type { Meta, StoryObj } from "storybook-solidjs";
-
 import {
+  type JSXElement,
   Show,
   Suspense,
   createComputed,
@@ -12,6 +10,7 @@ import {
   createSignal,
   useTransition,
 } from "solid-js";
+import { type Meta, type StoryObj } from "storybook-solidjs";
 
 export default {
   title: "poc/suspense",

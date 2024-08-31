@@ -1,11 +1,11 @@
-import type { Meta, StoryObj } from "storybook-solidjs";
-
 import { doc, Timestamp, writeBatch } from "firebase/firestore";
 import { createSignal, onMount, Suspense } from "solid-js";
+import { type Meta, type StoryObj } from "storybook-solidjs";
 
 import { LifeLogTree } from "@/components/lifeLogTree";
 import { FirebaseServiceProvoider, useFirebaseService } from "@/services/firebase";
 import { getCollection } from "@/services/firebase/firestore";
+import { StoreServiceProvider, useStoreService } from "@/services/store";
 
 export default {
   title: "lifeLogTree",
@@ -23,63 +23,71 @@ export const LifeLogTreeStory: StoryObj = {
           <code>{errors$().join("\n")}</code>
         </pre>
         <FirebaseServiceProvoider configYAML={firebaseConfig} setErrors={setErrors}>
-          <Suspense>
-            {(() => {
-              const firebase = useFirebaseService();
+          <StoreServiceProvider>
+            <Suspense>
+              {(() => {
+                const firebase = useFirebaseService();
 
-              const lifeLogs = getCollection(firebase, "lifeLogs");
-              const lifeLogTreeNodes = getCollection(firebase, "lifeLogTreeNodes");
+                const lifeLogs = getCollection(firebase, "lifeLogs");
+                const lifeLogTreeNodes = getCollection(firebase, "lifeLogTreeNodes");
 
-              onMount(() => {
-                const batch = writeBatch(firebase.firestore);
+                const { updateState } = useStoreService();
 
-                batch.set(doc(lifeLogs, "log1"), {
-                  text: "lifelog",
-                  startAt: new Timestamp(0, 0),
-                  endAt: new Timestamp(0, 0),
-                  createdAt: Timestamp.fromDate(new Date()),
-                  updatedAt: Timestamp.fromDate(new Date()),
+                onMount(() => {
+                  const batch = writeBatch(firebase.firestore);
+
+                  batch.set(doc(lifeLogs, "log1"), {
+                    text: "lifelog",
+                    startAt: new Timestamp(0, 0),
+                    endAt: new Timestamp(0, 0),
+                    createdAt: Timestamp.fromDate(new Date()),
+                    updatedAt: Timestamp.fromDate(new Date()),
+                  });
+
+                  batch.set(doc(lifeLogTreeNodes, "child1"), {
+                    text: "child1",
+
+                    parentId: "log1",
+                    prevId: "",
+                    nextId: "child2",
+
+                    createdAt: Timestamp.fromDate(new Date()),
+                    updatedAt: Timestamp.fromDate(new Date()),
+                  });
+
+                  batch.set(doc(lifeLogTreeNodes, "child2"), {
+                    text: "child2",
+
+                    parentId: "log1",
+                    prevId: "child1",
+                    nextId: "",
+
+                    createdAt: Timestamp.fromDate(new Date()),
+                    updatedAt: Timestamp.fromDate(new Date()),
+                  });
+
+                  batch.set(doc(lifeLogTreeNodes, "child1 of child1"), {
+                    text: "child1 of child1",
+
+                    parentId: "child1",
+                    prevId: "",
+                    nextId: "",
+
+                    createdAt: Timestamp.fromDate(new Date()),
+                    updatedAt: Timestamp.fromDate(new Date()),
+                  });
+
+                  void batch.commit();
+
+                  updateState((state) => {
+                    state.lifeLogs.selectedId = "log1";
+                  });
                 });
 
-                batch.set(doc(lifeLogTreeNodes, "child1"), {
-                  text: "child1",
-
-                  parentId: "log1",
-                  prevId: "",
-                  nextId: "child2",
-
-                  createdAt: Timestamp.fromDate(new Date()),
-                  updatedAt: Timestamp.fromDate(new Date()),
-                });
-
-                batch.set(doc(lifeLogTreeNodes, "child2"), {
-                  text: "child2",
-
-                  parentId: "log1",
-                  prevId: "child1",
-                  nextId: "",
-
-                  createdAt: Timestamp.fromDate(new Date()),
-                  updatedAt: Timestamp.fromDate(new Date()),
-                });
-
-                batch.set(doc(lifeLogTreeNodes, "child1 of child1"), {
-                  text: "child1 of child1",
-
-                  parentId: "child1",
-                  prevId: "",
-                  nextId: "",
-
-                  createdAt: Timestamp.fromDate(new Date()),
-                  updatedAt: Timestamp.fromDate(new Date()),
-                });
-
-                void batch.commit();
-              });
-
-              return <LifeLogTree id="log1" prevId="" nextId="" />;
-            })()}
-          </Suspense>
+                return <LifeLogTree id="log1" prevId="" nextId="" />;
+              })()}
+            </Suspense>
+          </StoreServiceProvider>
         </FirebaseServiceProvoider>
       </>
     );

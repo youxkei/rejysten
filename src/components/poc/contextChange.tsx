@@ -1,6 +1,4 @@
-import type { JSXElement } from "solid-js";
-
-import { createEffect, createContext, createSignal, useContext } from "solid-js";
+import { type JSXElement, createEffect, createContext, createSignal, useContext } from "solid-js";
 
 const context = createContext<number>();
 

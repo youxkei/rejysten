@@ -1,6 +1,4 @@
-import type { CollectionReference } from "firebase/firestore";
-
-import { setDoc, doc, Timestamp } from "firebase/firestore";
+import { type CollectionReference, setDoc, doc, Timestamp } from "firebase/firestore";
 
 export async function setDocs<T extends { text: string }>(col: CollectionReference<T>, treeNodes: T[]) {
   for (const treeNode of treeNodes) {

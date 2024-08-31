@@ -1,8 +1,7 @@
-import type { Schema } from "@/services/firebase/firestore/schema";
-import type { CollectionReference } from "firebase/firestore";
-
 import { initializeApp } from "firebase/app";
-import { collection, connectFirestoreEmulator, getFirestore } from "firebase/firestore";
+import { type CollectionReference, collection, connectFirestoreEmulator, getFirestore } from "firebase/firestore";
+
+import { type Schema } from "@/services/firebase/firestore/schema";
 
 export function createFirebaseServiceForTest() {
   const app = initializeApp({

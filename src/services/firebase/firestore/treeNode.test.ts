@@ -1,12 +1,18 @@
-import type { TreeNode } from "@/services/firebase/firestore/treeNode";
-import type { CollectionReference } from "firebase/firestore";
-
-import { runTransaction, collection, doc, getDoc, getDocs, Timestamp } from "firebase/firestore";
+import {
+  type CollectionReference,
+  runTransaction,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  Timestamp,
+} from "firebase/firestore";
 import { describe, test, vi } from "vitest";
 
 import { txGet, getDocumentData } from "@/services/firebase/firestore";
 import { setDocs, timestampForCreatedAt, timestampForServerTimestamp } from "@/services/firebase/firestore/test";
 import {
+  type TreeNode,
   getAboveNode,
   getBelowNode,
   getFirstChildNode,

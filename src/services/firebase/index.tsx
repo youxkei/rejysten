@@ -1,11 +1,18 @@
-import type { Firestore } from "firebase/firestore";
-import type { JSXElement, Setter } from "solid-js";
-
 import { deleteApp, initializeApp } from "firebase/app";
 import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup } from "firebase/auth";
-import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
+import { type Firestore, getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import YAML from "js-yaml";
-import { createMemo, createEffect, onCleanup, createResource, Show, createContext, useContext } from "solid-js";
+import {
+  type JSXElement,
+  type Setter,
+  createMemo,
+  createEffect,
+  onCleanup,
+  createResource,
+  Show,
+  createContext,
+  useContext,
+} from "solid-js";
 import * as s from "superstruct";
 
 import { ServiceNotAvailable } from "@/services/error";

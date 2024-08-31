@@ -1,6 +1,4 @@
-import type { JSX } from "solid-js";
-
-import { Suspense, Show, createSignal, createResource, onCleanup, createContext, useContext } from "solid-js";
+import { type JSX, Suspense, Show, createSignal, createResource, onCleanup, createContext, useContext } from "solid-js";
 
 const context = createContext<() => string | undefined>();
 

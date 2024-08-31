@@ -22,7 +22,7 @@ const config = {
   extends: [eslint.configs.recommended, ...tseslint.configs.strictTypeChecked, ...tseslint.configs.stylistic],
   rules: {
     "@typescript-eslint/restrict-template-expressions": "off",
-    "@typescript-eslint/consistent-type-imports": "error",
+    "@typescript-eslint/consistent-type-imports": ["error", { fixStyle: "inline-type-imports" }],
     "@typescript-eslint/consistent-type-exports": "error",
     "@typescript-eslint/consistent-type-definitions": ["error", "type"],
     "@typescript-eslint/no-misused-promises": [

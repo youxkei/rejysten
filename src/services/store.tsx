@@ -1,16 +1,18 @@
-import type { JSXElement } from "solid-js";
-
 import { makePersisted } from "@solid-primitives/storage";
-import { useContext, createContext } from "solid-js";
+import { type JSXElement, useContext, createContext } from "solid-js";
 import { createStore, produce } from "solid-js/store";
 
 import { ServiceNotAvailable } from "@/services/error";
 
-export type State = Record<string, never>;
-
 const localStorageName = "rejysten.service.store.state";
 
-const initialState: State = {};
+const initialState = {
+  lifeLogs: {
+    selectedId: "",
+  },
+};
+
+export type State = typeof initialState;
 
 export type StoreService = {
   state: State;

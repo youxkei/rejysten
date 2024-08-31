@@ -1,11 +1,13 @@
-import type { DocumentData } from "@/services/firebase/firestore";
-import type { DocumentReference, DocumentSnapshot, Query, QuerySnapshot } from "firebase/firestore";
-import type { Accessor } from "solid-js";
+import {
+  type DocumentReference,
+  type DocumentSnapshot,
+  type Query,
+  type QuerySnapshot,
+  onSnapshot,
+} from "firebase/firestore";
+import { type Accessor, createMemo, onCleanup } from "solid-js";
 
-import { onSnapshot } from "firebase/firestore";
-import { createMemo, onCleanup } from "solid-js";
-
-import { getDocumentData } from "@/services/firebase/firestore";
+import { type DocumentData, getDocumentData } from "@/services/firebase/firestore";
 import { createSubscribeWithResource } from "@/solid/subscribe";
 
 export function createSubscribeSignal<T>(

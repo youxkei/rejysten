@@ -1,11 +1,17 @@
-import type { DocumentData } from "@/services/firebase/firestore";
-import type { CollectionReference, Timestamp, Transaction } from "firebase/firestore";
-
 import equal from "fast-deep-equal";
-import { doc, getDocs, query, serverTimestamp, where } from "firebase/firestore";
+import {
+  type CollectionReference,
+  type Timestamp,
+  type Transaction,
+  doc,
+  getDocs,
+  query,
+  serverTimestamp,
+  where,
+} from "firebase/firestore";
 
 import { ErrorWithFields } from "@/error";
-import { txGet, getDocumentData } from "@/services/firebase/firestore";
+import { type DocumentData, txGet, getDocumentData } from "@/services/firebase/firestore";
 import { InconsistentError, TransactionAborted } from "@/services/firebase/firestore/error";
 
 export type TreeNode = { parentId: string; prevId: string; nextId: string; createdAt: Timestamp; updatedAt: Timestamp };
