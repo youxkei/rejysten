@@ -60,6 +60,50 @@ export const LifeLogTreeStory: StoryObj = {
 
                     parentId: "log1",
                     prevId: "child1",
+                    nextId: "child3",
+
+                    createdAt: Timestamp.fromDate(new Date()),
+                    updatedAt: Timestamp.fromDate(new Date()),
+                  });
+
+                  batch.set(doc(lifeLogTreeNodes, "child3"), {
+                    text: "child3",
+
+                    parentId: "log1",
+                    prevId: "child2",
+                    nextId: "child4",
+
+                    createdAt: Timestamp.fromDate(new Date()),
+                    updatedAt: Timestamp.fromDate(new Date()),
+                  });
+
+                  batch.set(doc(lifeLogTreeNodes, "child4"), {
+                    text: "child4",
+
+                    parentId: "log1",
+                    prevId: "child3",
+                    nextId: "child5",
+
+                    createdAt: Timestamp.fromDate(new Date()),
+                    updatedAt: Timestamp.fromDate(new Date()),
+                  });
+
+                  batch.set(doc(lifeLogTreeNodes, "child5"), {
+                    text: "child5",
+
+                    parentId: "log1",
+                    prevId: "child4",
+                    nextId: "child6",
+
+                    createdAt: Timestamp.fromDate(new Date()),
+                    updatedAt: Timestamp.fromDate(new Date()),
+                  });
+
+                  batch.set(doc(lifeLogTreeNodes, "child6"), {
+                    text: "child6",
+
+                    parentId: "log1",
+                    prevId: "child5",
                     nextId: "",
 
                     createdAt: Timestamp.fromDate(new Date()),

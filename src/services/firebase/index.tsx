@@ -61,7 +61,7 @@ export function FirebaseServiceProvoider(props: {
 
     const app = initializeApp(config);
 
-    if (import.meta.env.DEV) {
+    if (config.projectId === "demo") {
       connectFirestoreEmulator(getFirestore(app), "localhost", 8080);
     }
 
@@ -73,14 +73,17 @@ export function FirebaseServiceProvoider(props: {
   });
 
   const authStatus$ = createSubscribeWithSignal((setValue: (value: { signedIn: boolean }) => void) => {
-    const firebase = firebase$();
-    if (!firebase) return;
+    const config = config$();
+    if (!config) return;
 
-    if (import.meta.env.DEV) {
+    if (config.projectId === "demo") {
       setValue({ signedIn: true });
 
       return;
     }
+
+    const firebase = firebase$();
+    if (!firebase) return;
 
     const unsubscribe = onAuthStateChanged(getAuth(firebase), (user) => {
       if (user) {

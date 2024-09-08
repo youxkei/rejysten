@@ -53,10 +53,10 @@ export async function txMustUpdated<T>(
 export function runTransaction<T>(
   service: FirebaseService,
   updateFunction: (tx: Transaction) => Promise<T>,
-): Promise<void> {
+): Promise<T | undefined> {
   return runTransactionOriginal(service.firestore, async (tx) => {
     try {
-      await updateFunction(tx);
+      return await updateFunction(tx);
     } catch (e) {
       if (e instanceof TransactionAborted) {
         return;

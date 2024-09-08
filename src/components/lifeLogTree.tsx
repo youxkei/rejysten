@@ -1,10 +1,9 @@
-import { useKeyDownEvent } from "@solid-primitives/keyboard";
 import equals from "fast-deep-equal";
 import { doc, query, where } from "firebase/firestore";
-import { createEffect, createMemo, For, Show, untrack } from "solid-js";
+import { createMemo, createResource, For, Show } from "solid-js";
 
 import { useFirebaseService } from "@/services/firebase";
-import { getCollection, runTransaction, txGet, txMustUpdated } from "@/services/firebase/firestore";
+import { getCollection, runTransaction } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { getAboveNode, getBelowNode, getFirstChildNode } from "@/services/firebase/firestore/treeNode";
 import { useStoreService } from "@/services/store";
@@ -13,44 +12,39 @@ import { styles } from "@/styles.css";
 export function LifeLogTree(props: { id: string; prevId: string; nextId: string }) {
   const firebase = useFirebaseService();
   const { state, updateState } = useStoreService();
-  const keyDownEvent$ = useKeyDownEvent();
 
   const lifeLogsCol = getCollection(firebase, "lifeLogs");
   const lifeLogTreeNodesCol = getCollection(firebase, "lifeLogTreeNodes");
   const lifeLog$ = createSubscribeSignal(() => doc(lifeLogsCol, props.id));
   const isSelected$ = () => props.id === state.lifeLogs.selectedId;
+  const [firstChildNode$] = createResource(lifeLog$, (lifeLog) =>
+    runTransaction(firebase, (tx) => getFirstChildNode(tx, lifeLogTreeNodesCol, lifeLog)),
+  );
 
-  createEffect(() => {
-    const event = keyDownEvent$();
-    if (!event) return;
+  window.addEventListener("keydown", (event) => {
+    if (!isSelected$()) return;
 
-    untrack(() => {
-      if (!isSelected$()) return;
+    const lifeLog = lifeLog$();
+    if (!lifeLog) return;
 
-      const lifeLog = lifeLog$();
-      if (!lifeLog) return;
+    const { shiftKey, ctrlKey } = event;
 
-      const { shiftKey, ctrlKey } = event;
+    switch (event.code) {
+      case "KeyL": {
+        if (ctrlKey || shiftKey) return;
 
-      void runTransaction(firebase, async (tx) => {
-        await txMustUpdated(tx, lifeLogsCol, lifeLog);
+        const firstChildNode = firstChildNode$();
+        if (!firstChildNode) return;
 
-        switch (event.code) {
-          case "KeyL": {
-            if (ctrlKey || shiftKey) return;
+        updateState((state) => {
+          state.lifeLogs.selectedId = firstChildNode.id;
+        });
 
-            const firstChild = await getFirstChildNode(tx, lifeLogTreeNodesCol, lifeLog);
-            if (!firstChild) return;
+        event.stopImmediatePropagation();
 
-            updateState((state) => {
-              state.lifeLogs.selectedId = firstChild.id;
-            });
-
-            break;
-          }
-        }
-      });
-    });
+        break;
+      }
+    }
   });
 
   return (
@@ -94,70 +88,68 @@ export function ChildrenNodes(props: { parentId: string; logId: string }) {
 export function Node(props: { id: string; logId: string }) {
   const firebase = useFirebaseService();
   const { state, updateState } = useStoreService();
-  const keyDownEvent$ = useKeyDownEvent();
 
-  const lifeLogsCol = getCollection(firebase, "lifeLogs");
   const lifeLogTreeNodesCol = getCollection(firebase, "lifeLogTreeNodes");
   const node$ = createSubscribeSignal(() => doc(lifeLogTreeNodesCol, props.id));
+  const [aboveNode$] = createResource(node$, (node) =>
+    runTransaction(firebase, (tx) => getAboveNode(tx, lifeLogTreeNodesCol, node)),
+  );
+  const [belowNode$] = createResource(node$, (node) =>
+    runTransaction(firebase, (tx) => getBelowNode(tx, lifeLogTreeNodesCol, node)),
+  );
   const isSelected$ = () => props.id === state.lifeLogs.selectedId;
 
-  createEffect(() => {
-    const event = keyDownEvent$();
-    if (!event) return;
+  window.addEventListener("keydown", (event) => {
+    if (!isSelected$()) return;
 
-    untrack(() => {
-      if (!isSelected$()) return;
+    const node = node$();
+    if (!node) return;
 
-      const node = node$();
-      if (!node) return;
+    const { shiftKey, ctrlKey } = event;
 
-      const { shiftKey, ctrlKey } = event;
+    switch (event.code) {
+      case "KeyJ": {
+        if (ctrlKey || shiftKey) return;
 
-      void runTransaction(firebase, async (tx) => {
-        await txMustUpdated(tx, lifeLogTreeNodesCol, node);
+        const belowNode = belowNode$();
+        if (!belowNode) return;
 
-        switch (event.code) {
-          case "KeyJ": {
-            if (ctrlKey || shiftKey) return;
+        updateState((state) => {
+          state.lifeLogs.selectedId = belowNode.id;
+        });
 
-            const belowNode = await getBelowNode(tx, lifeLogTreeNodesCol, node);
-            if (!belowNode) return;
+        event.stopImmediatePropagation();
 
-            updateState((state) => {
-              state.lifeLogs.selectedId = belowNode.id;
-            });
+        break;
+      }
 
-            break;
-          }
+      case "KeyK": {
+        if (ctrlKey || shiftKey) return;
 
-          case "KeyK": {
-            if (ctrlKey || shiftKey) return;
+        const aboveNode = aboveNode$();
+        if (!aboveNode) return;
 
-            const aboveNode = await getAboveNode(tx, lifeLogTreeNodesCol, node);
-            if (!aboveNode) return;
+        updateState((state) => {
+          state.lifeLogs.selectedId = aboveNode.id;
+        });
 
-            updateState((state) => {
-              state.lifeLogs.selectedId = aboveNode.id;
-            });
+        event.stopImmediatePropagation();
 
-            break;
-          }
+        break;
+      }
 
-          case "KeyH": {
-            if (ctrlKey || shiftKey) return;
+      case "KeyH": {
+        if (ctrlKey || shiftKey) return;
 
-            const log = await txGet(tx, lifeLogsCol, props.logId);
-            if (!log) return;
+        updateState((state) => {
+          state.lifeLogs.selectedId = props.logId;
+        });
 
-            updateState((state) => {
-              state.lifeLogs.selectedId = log.id;
-            });
+        event.stopImmediatePropagation();
 
-            break;
-          }
-        }
-      });
-    });
+        break;
+      }
+    }
   });
 
   return (
