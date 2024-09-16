@@ -10,7 +10,7 @@ import { type Accessor, createMemo, onCleanup } from "solid-js";
 import { type DocumentData, getDocumentData } from "@/services/firebase/firestore";
 import { createSubscribeWithResource } from "@/solid/subscribe";
 
-export function createSubscribeSignal<T>(
+export function createSubscribeSignal<T extends object>(
   query$: () => DocumentReference<T> | undefined,
 ): Accessor<DocumentData<T> | undefined> {
   const snapshot$ = createSubscribeWithResource(
@@ -32,7 +32,9 @@ export function createSubscribeSignal<T>(
   });
 }
 
-export function createSubscribeAllSignal<T>(query$: () => Query<T> | undefined): Accessor<DocumentData<T>[]> {
+export function createSubscribeAllSignal<T extends object>(
+  query$: () => Query<T> | undefined,
+): Accessor<DocumentData<T>[]> {
   const snapshot$ = createSubscribeWithResource(
     query$,
     (query, setValue: (value: QuerySnapshot<T>) => void) => {

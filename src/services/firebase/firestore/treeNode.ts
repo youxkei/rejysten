@@ -14,7 +14,15 @@ import { ErrorWithFields } from "@/error";
 import { type DocumentData, txGet, getDocumentData } from "@/services/firebase/firestore";
 import { InconsistentError, TransactionAborted } from "@/services/firebase/firestore/error";
 
-export type TreeNode = { parentId: string; prevId: string; nextId: string; createdAt: Timestamp; updatedAt: Timestamp };
+export type TreeNode = {
+  parentId: string;
+  prevId: string;
+  nextId: string;
+  aboveId: string;
+  belowId: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+};
 
 export async function getPrevNode<T extends TreeNode>(
   tx: Transaction,
@@ -80,6 +88,56 @@ export async function getNextNode<T extends TreeNode>(
   return nextNode;
 }
 
+export async function getAboveNode<T extends TreeNode>(
+  tx: Transaction,
+  col: CollectionReference<T>,
+  baseNode: DocumentData<T>,
+): Promise<DocumentData<T> | undefined> {
+  let aboveNode: DocumentData<T> | undefined;
+
+  if (baseNode.aboveId !== "") {
+    aboveNode = await txGet(tx, col, baseNode.aboveId);
+
+    if (aboveNode === undefined) {
+      throw new InconsistentError("above node of baseNode does not exist", { baseNode });
+    }
+
+    if (aboveNode.belowId !== baseNode.id) {
+      throw new InconsistentError("below node of above node of baseNode is not baseNode", {
+        baseNode,
+        aboveNode,
+      });
+    }
+  }
+
+  return aboveNode;
+}
+
+export async function getBelowNode<T extends TreeNode>(
+  tx: Transaction,
+  col: CollectionReference<T>,
+  baseNode: DocumentData<T>,
+): Promise<DocumentData<T> | undefined> {
+  let belowNode: DocumentData<T> | undefined;
+
+  if (baseNode.belowId !== "") {
+    belowNode = await txGet(tx, col, baseNode.belowId);
+
+    if (belowNode === undefined) {
+      throw new InconsistentError("below node of baseNode does not exist", { baseNode });
+    }
+
+    if (belowNode.aboveId !== baseNode.id) {
+      throw new InconsistentError("above node of below node of baseNode is not baseNode", {
+        baseNode,
+        belowNode,
+      });
+    }
+  }
+
+  return belowNode;
+}
+
 export async function getParentNode<T extends TreeNode>(
   tx: Transaction,
   col: CollectionReference<T>,
@@ -99,7 +157,7 @@ export async function getParentNode<T extends TreeNode>(
   return parentNode;
 }
 
-export async function getFirstChildNode<T extends TreeNode, U>(
+export async function getFirstChildNode<T extends TreeNode, U extends object>(
   tx: Transaction,
   col: CollectionReference<T>,
   baseNode: DocumentData<U>,
@@ -126,7 +184,7 @@ export async function getFirstChildNode<T extends TreeNode, U>(
   return firstChildNode;
 }
 
-export async function getLastChildNode<T extends TreeNode, U>(
+export async function getLastChildNode<T extends TreeNode, U extends object>(
   tx: Transaction,
   col: CollectionReference<T>,
   baseNode: DocumentData<U>,
@@ -153,63 +211,62 @@ export async function getLastChildNode<T extends TreeNode, U>(
   return lastChildNode;
 }
 
-export async function unlinkFromSiblings<T extends TreeNode>(
+export async function unlinkFromTree<T extends TreeNode>(
   tx: Transaction,
   col: CollectionReference<TreeNode>,
   baseNode: DocumentData<T>,
 ): Promise<() => void> {
-  const [prevNode, nextNode] = await Promise.all([getPrevNode(tx, col, baseNode), getNextNode(tx, col, baseNode)]);
+  const [prevNode, nextNode, aboveNode, bottomNode] = await Promise.all([
+    getPrevNode(tx, col, baseNode),
+    getNextNode(tx, col, baseNode),
+    getAboveNode(tx, col, baseNode),
+    getBottomNodeInclusive(tx, col, baseNode),
+  ]);
+
+  const belowNodeOfBottomNode = await getBelowNode(tx, col, bottomNode);
 
   return () => {
+    tx.update(doc(col, baseNode.id), {
+      parentId: "",
+      nextId: "",
+      prevId: "",
+      aboveId: "",
+      updatedAt: serverTimestamp(),
+    });
+    tx.update(doc(col, bottomNode.id), { belowId: "", updatedAt: serverTimestamp() });
+
     if (prevNode) {
       tx.update(doc(col, prevNode.id), { nextId: baseNode.nextId, updatedAt: serverTimestamp() });
     }
     if (nextNode) {
       tx.update(doc(col, nextNode.id), { prevId: baseNode.prevId, updatedAt: serverTimestamp() });
     }
+
+    if (aboveNode) {
+      tx.update(doc(col, aboveNode.id), { belowId: bottomNode.belowId, updatedAt: serverTimestamp() });
+    }
+
+    if (belowNodeOfBottomNode) {
+      tx.update(doc(col, belowNodeOfBottomNode.id), { aboveId: baseNode.aboveId, updatedAt: serverTimestamp() });
+    }
   };
 }
 
-export async function getAboveNode<T extends TreeNode>(
+export async function getBottomNodeInclusive<T extends TreeNode>(
   tx: Transaction,
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
-): Promise<DocumentData<T> | undefined> {
-  const prevNode = await getPrevNode(tx, col, baseNode);
+): Promise<DocumentData<T>> {
+  let currentNode = baseNode;
+  for (;;) {
+    const lastChildNode = await getLastChildNode(tx, col, currentNode);
+    if (!lastChildNode) return currentNode;
 
-  if (prevNode) {
-    let currentNode = prevNode;
-
-    for (;;) {
-      const lastChildNode = await getLastChildNode(tx, col, currentNode);
-
-      if (!lastChildNode) return currentNode;
-
-      currentNode = lastChildNode;
-    }
-  }
-
-  return getParentNode(tx, col, baseNode);
-}
-
-export async function getBelowNode<T extends TreeNode>(
-  tx: Transaction,
-  col: CollectionReference<T>,
-  baseNode: DocumentData<T>,
-): Promise<DocumentData<T> | undefined> {
-  const firstChildNode = await getFirstChildNode(tx, col, baseNode);
-  if (firstChildNode) return firstChildNode;
-
-  let currentNode: DocumentData<T> | undefined = baseNode;
-  while (currentNode) {
-    const nextNode = await getNextNode(tx, col, currentNode);
-    if (nextNode) return nextNode;
-
-    currentNode = await getParentNode(tx, col, currentNode);
+    currentNode = lastChildNode;
   }
 }
 
-export async function getBottomNode<T extends TreeNode, U>(
+export async function getBottomNodeExclusive<T extends TreeNode, U extends object>(
   tx: Transaction,
   col: CollectionReference<T>,
   baseNode: DocumentData<U>,
@@ -241,52 +298,52 @@ export async function addPrevSibling<T extends TreeNode>(
     throw new TransactionAborted();
   }
 
+  const [bottomNodeOfNewNode, prevNode, aboveNode] = await Promise.all([
+    getBottomNodeInclusive(tx, col, newNode),
+    getPrevNode(tx, col, baseNode),
+    getAboveNode(tx, col, baseNode),
+  ]);
+
   const { id: _, ...newNodeData } = newNode;
 
-  const prevNode = await getPrevNode(tx, col, baseNode);
-
   return () => {
-    if (prevNode) {
-      if (fetchedNewNode) {
-        tx.update(doc(col, newNode.id), {
-          parentId: baseNode.parentId,
-          prevId: prevNode.id,
-          nextId: baseNode.id,
-          updatedAt: serverTimestamp(),
-        });
-      } else {
-        tx.set(doc(col, newNode.id), {
-          ...(newNodeData as unknown as T),
-          parentId: baseNode.parentId,
-          prevId: prevNode.id,
-          nextId: baseNode.id,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      }
-
-      tx.update(doc(col, prevNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
-      tx.update(doc(col, baseNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
+    if (fetchedNewNode) {
+      tx.update(doc(col, newNode.id), {
+        parentId: baseNode.parentId,
+        prevId: baseNode.prevId,
+        nextId: baseNode.id,
+        aboveId: baseNode.aboveId,
+        updatedAt: serverTimestamp(),
+      });
+      tx.update(doc(col, bottomNodeOfNewNode.id), {
+        belowId: baseNode.id,
+        updatedAt: serverTimestamp(),
+      });
     } else {
-      if (fetchedNewNode) {
-        tx.update(doc(col, newNode.id), {
-          parentId: baseNode.parentId,
-          prevId: "",
-          nextId: baseNode.id,
-          updatedAt: serverTimestamp(),
-        });
-      } else {
-        tx.set(doc(col, newNode.id), {
-          ...(newNodeData as unknown as T),
-          parentId: baseNode.parentId,
-          prevId: "",
-          nextId: baseNode.id,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      }
+      tx.set(doc(col, newNode.id), {
+        ...(newNodeData as unknown as T),
+        parentId: baseNode.parentId,
+        prevId: baseNode.prevId,
+        nextId: baseNode.id,
+        aboveId: baseNode.aboveId,
+        belowId: baseNode.id,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
 
-      tx.update(doc(col, baseNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
+    tx.update(doc(col, baseNode.id), {
+      prevId: newNode.id,
+      aboveId: bottomNodeOfNewNode.id,
+      updatedAt: serverTimestamp(),
+    });
+
+    if (prevNode) {
+      tx.update(doc(col, prevNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
+    }
+
+    if (aboveNode) {
+      tx.update(doc(col, aboveNode.id), { belowId: newNode.id, updatedAt: serverTimestamp() });
     }
   };
 }
@@ -296,6 +353,7 @@ export async function addNextSibling<T extends TreeNode>(
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
   newNode: DocumentData<T>,
+  ignoreJustBelowNode?: boolean,
 ): Promise<() => void> {
   if (newNode.id === "") {
     throw new ErrorWithFields("new node must have a valid id", { newNode });
@@ -306,52 +364,65 @@ export async function addNextSibling<T extends TreeNode>(
     throw new TransactionAborted();
   }
 
+  const [bottomNodeOfBaseNode, bottomNodeOfNewNode, nextNode] = await Promise.all([
+    getBottomNodeInclusive(tx, col, baseNode),
+    getBottomNodeInclusive(tx, col, newNode),
+    getNextNode(tx, col, baseNode),
+  ]);
+
+  let belowId = bottomNodeOfBaseNode.belowId;
+  let belowNodeOfBottomNodeOfBaseNode = await getBelowNode(tx, col, bottomNodeOfBaseNode);
+  if (ignoreJustBelowNode && belowNodeOfBottomNodeOfBaseNode) {
+    const bottom = await getBottomNodeInclusive(tx, col, belowNodeOfBottomNodeOfBaseNode);
+
+    belowId = bottom.belowId;
+    belowNodeOfBottomNodeOfBaseNode = await getBelowNode(tx, col, bottom);
+  }
+
   const { id: _, ...newNodeData } = newNode;
 
-  const nextNode = await getNextNode(tx, col, baseNode);
-
   return () => {
-    if (nextNode) {
-      if (fetchedNewNode) {
-        tx.update(doc(col, newNode.id), {
-          parentId: baseNode.parentId,
-          prevId: baseNode.id,
-          nextId: nextNode.id,
-          updatedAt: serverTimestamp(),
-        });
-      } else {
-        tx.set(doc(col, newNode.id), {
-          ...(newNodeData as unknown as T),
-          parentId: baseNode.parentId,
-          prevId: baseNode.id,
-          nextId: nextNode.id,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      }
-
-      tx.update(doc(col, nextNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
-      tx.update(doc(col, baseNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
+    if (fetchedNewNode) {
+      tx.update(doc(col, newNode.id), {
+        parentId: baseNode.parentId,
+        prevId: baseNode.id,
+        nextId: baseNode.nextId,
+        aboveId: bottomNodeOfBaseNode.id,
+        updatedAt: serverTimestamp(),
+      });
+      tx.update(doc(col, bottomNodeOfNewNode.id), {
+        belowId,
+        updatedAt: serverTimestamp(),
+      });
     } else {
-      if (fetchedNewNode) {
-        tx.update(doc(col, newNode.id), {
-          parentId: baseNode.parentId,
-          prevId: baseNode.id,
-          nextId: "",
-          updatedAt: serverTimestamp(),
-        });
-      } else {
-        tx.set(doc(col, newNode.id), {
-          ...(newNodeData as unknown as T),
-          parentId: baseNode.parentId,
-          prevId: baseNode.id,
-          nextId: "",
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      }
+      tx.set(doc(col, newNode.id), {
+        ...(newNodeData as unknown as T),
+        parentId: baseNode.parentId,
+        prevId: baseNode.id,
+        nextId: baseNode.nextId,
+        aboveId: bottomNodeOfBaseNode.id,
+        belowId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
 
-      tx.update(doc(col, baseNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
+    tx.update(doc(col, baseNode.id), {
+      nextId: newNode.id,
+      updatedAt: serverTimestamp(),
+    });
+
+    tx.update(doc(col, bottomNodeOfBaseNode.id), {
+      belowId: newNode.id,
+      updatedAt: serverTimestamp(),
+    });
+
+    if (nextNode) {
+      tx.update(doc(col, nextNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
+    }
+
+    if (belowNodeOfBottomNodeOfBaseNode) {
+      tx.update(doc(col, belowNodeOfBottomNodeOfBaseNode.id), { aboveId: newNode.id, updatedAt: serverTimestamp() });
     }
   };
 }
@@ -369,25 +440,35 @@ export async function indent<T extends TreeNode>(
   }
 
   const lastChildNodeOfPrevNode = await getLastChildNode(tx, col, prevNode);
-  const unlinkFromSiblingsWrite = await unlinkFromSiblings(tx, col, node);
+  const unlinkFromTreeWrite = await unlinkFromTree(tx, col, node);
 
   if (lastChildNodeOfPrevNode) {
-    const addNextSiblingWrite = await addNextSibling(tx, col, lastChildNodeOfPrevNode, node);
+    const addNextSiblingWrite = await addNextSibling(tx, col, lastChildNodeOfPrevNode, node, true);
 
     return () => {
-      unlinkFromSiblingsWrite();
+      unlinkFromTreeWrite();
       addNextSiblingWrite();
     };
   }
 
+  const bottomNodeOfNode = await getBottomNodeInclusive(tx, col, node);
+  const belowNodeOfBottomNodeOfNode = await getBelowNode(tx, col, bottomNodeOfNode);
+
   return () => {
-    unlinkFromSiblingsWrite();
+    unlinkFromTreeWrite();
     tx.update(doc(col, node.id), {
       parentId: prevNode.id,
       prevId: "",
       nextId: "",
+      aboveId: prevNode.id,
+      belowId: node.belowId,
       updatedAt: serverTimestamp(),
     });
+    tx.update(doc(col, prevNode.id), { belowId: node.id, updatedAt: serverTimestamp() });
+
+    if (belowNodeOfBottomNodeOfNode) {
+      tx.update(doc(col, belowNodeOfBottomNodeOfNode.id), { aboveId: node.id, updatedAt: serverTimestamp() });
+    }
   };
 }
 
@@ -403,11 +484,11 @@ export async function dedent<T extends TreeNode>(
     };
   }
 
-  const unlinkFromSiblingsWrite = await unlinkFromSiblings(tx, col, node);
+  const unlinkFromTreeWrite = await unlinkFromTree(tx, col, node);
   const addNextSiblingWrite = await addNextSibling(tx, col, parentNode, node);
 
   return () => {
-    unlinkFromSiblingsWrite();
+    unlinkFromTreeWrite();
     addNextSiblingWrite();
   };
 }
@@ -424,11 +505,11 @@ export async function movePrev<T extends TreeNode>(
     };
   }
 
-  const unlinkFromSiblingsWrite = await unlinkFromSiblings(tx, col, node);
+  const unlinkFromTreeWrite = await unlinkFromTree(tx, col, node);
   const addPrevSiblingWrite = await addPrevSibling(tx, col, prevNode, node);
 
   return () => {
-    unlinkFromSiblingsWrite();
+    unlinkFromTreeWrite();
     addPrevSiblingWrite();
   };
 }
@@ -445,11 +526,11 @@ export async function moveNext<T extends TreeNode>(
     };
   }
 
-  const unlinkFromSiblingsWrite = await unlinkFromSiblings(tx, col, node);
+  const unlinkFromTreeWrite = await unlinkFromTree(tx, col, node);
   const addNextSiblingWrite = await addNextSibling(tx, col, nextNode, node);
 
   return () => {
-    unlinkFromSiblingsWrite();
+    unlinkFromTreeWrite();
     addNextSiblingWrite();
   };
 }
@@ -459,10 +540,10 @@ export async function remove<T extends TreeNode>(
   col: CollectionReference<T>,
   node: DocumentData<T>,
 ): Promise<() => void> {
-  const unlinkFromSiblingsWrite = await unlinkFromSiblings(tx, col, node);
+  const unlinkFromTreeWrite = await unlinkFromTree(tx, col, node);
 
   return () => {
-    unlinkFromSiblingsWrite();
+    unlinkFromTreeWrite();
     tx.delete(doc(col, node.id));
   };
 }

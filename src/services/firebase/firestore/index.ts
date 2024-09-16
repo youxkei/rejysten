@@ -16,9 +16,9 @@ export function getCollection<Name extends keyof Schema>(service: FirebaseServic
   return collection(service.firestore, name) as CollectionReference<Schema[Name]>;
 }
 
-export type DocumentData<T> = T & { id: string };
+export type DocumentData<T extends object> = T & { id: string };
 
-export function getDocumentData<T>(documentSnapshot: DocumentSnapshot<T>): DocumentData<T> | undefined {
+export function getDocumentData<T extends object>(documentSnapshot: DocumentSnapshot<T>): DocumentData<T> | undefined {
   const data = documentSnapshot.data();
 
   if (data === undefined) {
@@ -31,7 +31,7 @@ export function getDocumentData<T>(documentSnapshot: DocumentSnapshot<T>): Docum
   };
 }
 
-export async function txGet<T>(
+export async function txGet<T extends object>(
   tx: Transaction,
   col: CollectionReference<T>,
   id: string,
@@ -39,7 +39,7 @@ export async function txGet<T>(
   return getDocumentData(await tx.get(doc(col, id)));
 }
 
-export async function txMustUpdated<T>(
+export async function txMustUpdated<T extends object>(
   tx: Transaction,
   col: CollectionReference<T>,
   data: DocumentData<T>,

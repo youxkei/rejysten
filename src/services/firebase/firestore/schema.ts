@@ -30,6 +30,8 @@ export type Schema = {
     parentId: string;
     prevId: string;
     nextId: string;
+    aboveId: string;
+    belowId: string;
 
     createdAt: Timestamp;
     updatedAt: Timestamp;
