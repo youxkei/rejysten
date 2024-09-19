@@ -5,7 +5,7 @@ import { createMemo, createResource, For, Show } from "solid-js";
 import { useFirebaseService } from "@/services/firebase";
 import { getCollection, runTransaction } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
-import { getAboveNode, getBelowNode, getFirstChildNode } from "@/services/firebase/firestore/treeNode";
+import { getFirstChildNode } from "@/services/firebase/firestore/treeNode";
 import { useStoreService } from "@/services/store";
 import { styles } from "@/styles.css";
 
@@ -91,12 +91,6 @@ export function Node(props: { id: string; logId: string }) {
 
   const lifeLogTreeNodesCol = getCollection(firebase, "lifeLogTreeNodes");
   const node$ = createSubscribeSignal(() => doc(lifeLogTreeNodesCol, props.id));
-  const [aboveNode$] = createResource(node$, (node) =>
-    runTransaction(firebase, (tx) => getAboveNode(tx, lifeLogTreeNodesCol, node)),
-  );
-  const [belowNode$] = createResource(node$, (node) =>
-    runTransaction(firebase, (tx) => getBelowNode(tx, lifeLogTreeNodesCol, node)),
-  );
   const isSelected$ = () => props.id === state.lifeLogs.selectedId;
 
   window.addEventListener("keydown", (event) => {
@@ -111,11 +105,10 @@ export function Node(props: { id: string; logId: string }) {
       case "KeyJ": {
         if (ctrlKey || shiftKey) return;
 
-        const belowNode = belowNode$();
-        if (!belowNode) return;
+        if (node.belowId === "") return;
 
         updateState((state) => {
-          state.lifeLogs.selectedId = belowNode.id;
+          state.lifeLogs.selectedId = node.belowId;
         });
 
         event.stopImmediatePropagation();
@@ -126,11 +119,10 @@ export function Node(props: { id: string; logId: string }) {
       case "KeyK": {
         if (ctrlKey || shiftKey) return;
 
-        const aboveNode = aboveNode$();
-        if (!aboveNode) return;
+        if (node.aboveId === "") return;
 
         updateState((state) => {
-          state.lifeLogs.selectedId = aboveNode.id;
+          state.lifeLogs.selectedId = node.aboveId;
         });
 
         event.stopImmediatePropagation();

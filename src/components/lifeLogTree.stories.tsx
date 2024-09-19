@@ -51,7 +51,7 @@ export const LifeLogTreeStory: StoryObj = {
                     prevId: "",
                     nextId: "child2",
                     aboveId: "",
-                    belowId: "child2",
+                    belowId: "child1 of child1",
 
                     createdAt: Timestamp.fromDate(new Date()),
                     updatedAt: Timestamp.fromDate(new Date()),
