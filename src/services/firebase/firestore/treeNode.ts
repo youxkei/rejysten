@@ -353,7 +353,6 @@ export async function addNextSibling<T extends TreeNode>(
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
   newNode: DocumentData<T>,
-  ignoreJustBelowNode?: boolean,
 ): Promise<() => void> {
   if (newNode.id === "") {
     throw new ErrorWithFields("new node must have a valid id", { newNode });
@@ -370,13 +369,25 @@ export async function addNextSibling<T extends TreeNode>(
     getNextNode(tx, col, baseNode),
   ]);
 
-  let belowId = bottomNodeOfBaseNode.belowId;
-  let belowNodeOfBottomNodeOfBaseNode = await getBelowNode(tx, col, bottomNodeOfBaseNode);
-  if (ignoreJustBelowNode && belowNodeOfBottomNodeOfBaseNode) {
-    const bottom = await getBottomNodeInclusive(tx, col, belowNodeOfBottomNodeOfBaseNode);
+  let newNextNodeOfNewNode: DocumentData<T> | undefined = nextNode;
+  if (newNextNodeOfNewNode?.id == newNode.id) {
+    newNextNodeOfNewNode = await getNextNode(tx, col, newNextNodeOfNewNode);
+  }
 
-    belowId = bottom.belowId;
-    belowNodeOfBottomNodeOfBaseNode = await getBelowNode(tx, col, bottom);
+  let newAboveIdOfNewNode = bottomNodeOfBaseNode.id;
+  let newAboveNodeOfNewNode: DocumentData<T> | undefined = bottomNodeOfBaseNode;
+  if (newAboveIdOfNewNode == bottomNodeOfNewNode.id) {
+    newAboveIdOfNewNode = newNode.aboveId;
+    newAboveNodeOfNewNode = await getAboveNode(tx, col, newNode);
+  }
+
+  let newBelowIdOfNewNode = bottomNodeOfBaseNode.belowId;
+  let newBelowNodeOfNewNode = await getBelowNode(tx, col, bottomNodeOfBaseNode);
+  if (newBelowNodeOfNewNode?.id === newNode.id) {
+    const bottom = await getBottomNodeInclusive(tx, col, newBelowNodeOfNewNode);
+
+    newBelowIdOfNewNode = bottom.belowId;
+    newBelowNodeOfNewNode = await getBelowNode(tx, col, bottom);
   }
 
   const { id: _, ...newNodeData } = newNode;
@@ -387,11 +398,11 @@ export async function addNextSibling<T extends TreeNode>(
         parentId: baseNode.parentId,
         prevId: baseNode.id,
         nextId: baseNode.nextId,
-        aboveId: bottomNodeOfBaseNode.id,
+        aboveId: newAboveIdOfNewNode,
         updatedAt: serverTimestamp(),
       });
       tx.update(doc(col, bottomNodeOfNewNode.id), {
-        belowId,
+        belowId: newBelowIdOfNewNode,
         updatedAt: serverTimestamp(),
       });
     } else {
@@ -400,8 +411,8 @@ export async function addNextSibling<T extends TreeNode>(
         parentId: baseNode.parentId,
         prevId: baseNode.id,
         nextId: baseNode.nextId,
-        aboveId: bottomNodeOfBaseNode.id,
-        belowId,
+        aboveId: newAboveIdOfNewNode,
+        belowId: newBelowIdOfNewNode,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -412,17 +423,16 @@ export async function addNextSibling<T extends TreeNode>(
       updatedAt: serverTimestamp(),
     });
 
-    tx.update(doc(col, bottomNodeOfBaseNode.id), {
-      belowId: newNode.id,
-      updatedAt: serverTimestamp(),
-    });
-
-    if (nextNode) {
-      tx.update(doc(col, nextNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
+    if (newAboveNodeOfNewNode) {
+      tx.update(doc(col, newAboveNodeOfNewNode.id), { belowId: newNode.id, updatedAt: serverTimestamp() });
     }
 
-    if (belowNodeOfBottomNodeOfBaseNode) {
-      tx.update(doc(col, belowNodeOfBottomNodeOfBaseNode.id), { aboveId: newNode.id, updatedAt: serverTimestamp() });
+    if (newNextNodeOfNewNode) {
+      tx.update(doc(col, newNextNodeOfNewNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
+    }
+
+    if (newBelowNodeOfNewNode) {
+      tx.update(doc(col, newBelowNodeOfNewNode.id), { aboveId: bottomNodeOfNewNode.id, updatedAt: serverTimestamp() });
     }
   };
 }
@@ -443,7 +453,7 @@ export async function indent<T extends TreeNode>(
   const unlinkFromTreeWrite = await unlinkFromTree(tx, col, node);
 
   if (lastChildNodeOfPrevNode) {
-    const addNextSiblingWrite = await addNextSibling(tx, col, lastChildNodeOfPrevNode, node, true);
+    const addNextSiblingWrite = await addNextSibling(tx, col, lastChildNodeOfPrevNode, node);
 
     return () => {
       unlinkFromTreeWrite();
@@ -456,18 +466,26 @@ export async function indent<T extends TreeNode>(
 
   return () => {
     unlinkFromTreeWrite();
+
     tx.update(doc(col, node.id), {
       parentId: prevNode.id,
       prevId: "",
       nextId: "",
       aboveId: prevNode.id,
-      belowId: node.belowId,
       updatedAt: serverTimestamp(),
     });
+
+    tx.update(doc(col, bottomNodeOfNode.id), {
+      belowId: node.nextId,
+    });
+
     tx.update(doc(col, prevNode.id), { belowId: node.id, updatedAt: serverTimestamp() });
 
     if (belowNodeOfBottomNodeOfNode) {
-      tx.update(doc(col, belowNodeOfBottomNodeOfNode.id), { aboveId: node.id, updatedAt: serverTimestamp() });
+      tx.update(doc(col, belowNodeOfBottomNodeOfNode.id), {
+        aboveId: bottomNodeOfNode.id,
+        updatedAt: serverTimestamp(),
+      });
     }
   };
 }

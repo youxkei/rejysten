@@ -2240,6 +2240,74 @@ describe("treeNode", () => {
       ]);
     });
 
+    test("has prev node, has next node, has child node, no children nodes of prev node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      // prettier-ignore
+      await setDocs(col, makeTreeNodes("parent", [
+        ["prev"],
+        ["node", [
+          ["child"]
+        ]],
+        ["next"]
+      ]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await indent(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "child",
+          text: "child",
+          parentId: "node",
+          prevId: "",
+          nextId: "",
+          aboveId: "node",
+          belowId: "next",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "next",
+          text: "next",
+          parentId: "parent",
+          prevId: "prev",
+          nextId: "",
+          aboveId: "child",
+          belowId: "",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "node",
+          text: "node",
+          parentId: "prev",
+          prevId: "",
+          nextId: "",
+          aboveId: "prev",
+          belowId: "child",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "prev",
+          text: "prev",
+          parentId: "parent",
+          prevId: "",
+          nextId: "next",
+          aboveId: "parent",
+          belowId: "node",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+
     test("has prev node, has next node, has children nodes of prev node", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
@@ -2331,13 +2399,117 @@ describe("treeNode", () => {
       ]);
     });
 
-    test("has prev node, has next node, has children nodes of prev node, has grandchild node of prev node ", async (test) => {
+    test("has prev node, has next node, has child node, has children nodes of prev node", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
       const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
       // prettier-ignore
       await setDocs( col, makeTreeNodes("parent", [
+        ["prev", [
+          ["first child of prev"],
+          ["middle child of prev"],
+          ["last child of prev"],
+        ]],
+        ["node", [
+          ["child"]
+        ]],
+        ["next"],
+      ]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await indent(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "child",
+          text: "child",
+          parentId: "node",
+          prevId: "",
+          nextId: "",
+          aboveId: "node",
+          belowId: "next",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "first child of prev",
+          text: "first child of prev",
+          parentId: "prev",
+          prevId: "",
+          nextId: "middle child of prev",
+          aboveId: "prev",
+          belowId: "middle child of prev",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
+        },
+        {
+          id: "last child of prev",
+          text: "last child of prev",
+          parentId: "prev",
+          prevId: "middle child of prev",
+          nextId: "node",
+          aboveId: "middle child of prev",
+          belowId: "node",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "middle child of prev",
+          text: "middle child of prev",
+          parentId: "prev",
+          prevId: "first child of prev",
+          nextId: "last child of prev",
+          aboveId: "first child of prev",
+          belowId: "last child of prev",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
+        },
+        {
+          id: "next",
+          text: "next",
+          parentId: "parent",
+          prevId: "prev",
+          nextId: "",
+          aboveId: "child",
+          belowId: "",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "node",
+          text: "node",
+          parentId: "prev",
+          prevId: "last child of prev",
+          nextId: "",
+          aboveId: "last child of prev",
+          belowId: "child",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "prev",
+          text: "prev",
+          parentId: "parent",
+          prevId: "",
+          nextId: "next",
+          aboveId: "parent",
+          belowId: "first child of prev",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+
+    test("has prev node, has next node, has children nodes of prev node, has grandchild node of prev node ", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      // prettier-ignore
+      await setDocs(col, makeTreeNodes("parent", [
         ["prev", [
           ["first child of prev"],
           ["middle child of prev"],
@@ -2436,7 +2608,7 @@ describe("treeNode", () => {
     });
   });
 
-  describe.skip("dedent", () => {
+  describe("dedent", () => {
     test("no parent node", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
@@ -2454,9 +2626,11 @@ describe("treeNode", () => {
         {
           id: "node",
           text: "node",
+          parentId: "parent",
           prevId: "",
           nextId: "",
-          parentId: "parent",
+          aboveId: "parent",
+          belowId: "",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForCreatedAt,
         },
@@ -2480,18 +2654,22 @@ describe("treeNode", () => {
         {
           id: "node",
           text: "node",
+          parentId: "grandparent",
           prevId: "parent",
           nextId: "",
-          parentId: "grandparent",
+          aboveId: "parent",
+          belowId: "",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForServerTimestamp,
         },
         {
           id: "parent",
           text: "parent",
+          parentId: "grandparent",
           prevId: "",
           nextId: "node",
-          parentId: "grandparent",
+          aboveId: "grandparent",
+          belowId: "node",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForServerTimestamp,
         },
@@ -2504,7 +2682,13 @@ describe("treeNode", () => {
 
       const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDocs(col, makeTreeNodes("grandparent", [["parent", [["node"]]], ["next of parent"]]));
+      // prettier-ignore
+      await setDocs(col, makeTreeNodes("grandparent", [
+        ["parent", [
+          ["node"],
+        ]],
+        ["next of parent"],
+      ]));
 
       await runTransaction(firestoreForTest, async (tx) => {
         const node = await txGet(tx, col, "node");
@@ -2515,27 +2699,207 @@ describe("treeNode", () => {
         {
           id: "next of parent",
           text: "next of parent",
+          parentId: "grandparent",
           prevId: "node",
           nextId: "",
-          parentId: "grandparent",
+          aboveId: "node",
+          belowId: "",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForServerTimestamp,
         },
         {
           id: "node",
           text: "node",
+          parentId: "grandparent",
           prevId: "parent",
           nextId: "next of parent",
-          parentId: "grandparent",
+          aboveId: "parent",
+          belowId: "next of parent",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForServerTimestamp,
         },
         {
           id: "parent",
           text: "parent",
+          parentId: "grandparent",
           prevId: "",
           nextId: "node",
+          aboveId: "grandparent",
+          belowId: "node",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+
+    test("has parent node, has child node, has prev node, has next node of parent node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      // prettier-ignore
+      await setDocs(col, makeTreeNodes("grandparent", [
+        ["parent", [
+          ["prev"],
+          ["node", [
+            ["child"],
+          ]],
+        ]],
+        ["next of parent"],
+      ]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await dedent(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "child",
+          text: "child",
+          parentId: "node",
+          prevId: "",
+          nextId: "",
+          aboveId: "node",
+          belowId: "next of parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "next of parent",
+          text: "next of parent",
           parentId: "grandparent",
+          prevId: "node",
+          nextId: "",
+          aboveId: "child",
+          belowId: "",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "node",
+          text: "node",
+          parentId: "grandparent",
+          prevId: "parent",
+          nextId: "next of parent",
+          aboveId: "prev",
+          belowId: "child",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "parent",
+          text: "parent",
+          parentId: "grandparent",
+          prevId: "",
+          nextId: "node",
+          aboveId: "grandparent",
+          belowId: "prev",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "prev",
+          text: "prev",
+          parentId: "parent",
+          prevId: "",
+          nextId: "",
+          aboveId: "parent",
+          belowId: "node",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+
+    test("has parent node, has child node, has prev node, has next node, has next node of parent node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      // prettier-ignore
+      await setDocs(col, makeTreeNodes("grandparent", [
+        ["parent", [
+          ["prev"],
+          ["node", [
+            ["child"],
+          ]],
+          ["next"],
+        ]],
+        ["next of parent"],
+      ]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await dedent(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "child",
+          text: "child",
+          parentId: "node",
+          prevId: "",
+          nextId: "",
+          aboveId: "node",
+          belowId: "next of parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "next",
+          text: "next",
+          parentId: "parent",
+          prevId: "prev",
+          nextId: "",
+          aboveId: "prev",
+          belowId: "node",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "next of parent",
+          text: "next of parent",
+          parentId: "grandparent",
+          prevId: "node",
+          nextId: "",
+          aboveId: "child",
+          belowId: "",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "node",
+          text: "node",
+          parentId: "grandparent",
+          prevId: "parent",
+          nextId: "next of parent",
+          aboveId: "next",
+          belowId: "child",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "parent",
+          text: "parent",
+          parentId: "grandparent",
+          prevId: "",
+          nextId: "node",
+          aboveId: "grandparent",
+          belowId: "prev",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "prev",
+          text: "prev",
+          parentId: "parent",
+          prevId: "",
+          nextId: "next",
+          aboveId: "parent",
+          belowId: "next",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForServerTimestamp,
         },
