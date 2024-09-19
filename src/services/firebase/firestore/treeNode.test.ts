@@ -2907,7 +2907,7 @@ describe("treeNode", () => {
     });
   });
 
-  describe.skip("movePrev", () => {
+  describe("movePrev", () => {
     test("no prev node", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
@@ -2925,9 +2925,11 @@ describe("treeNode", () => {
         {
           id: "node",
           text: "node",
+          parentId: "parent",
           prevId: "",
           nextId: "",
-          parentId: "parent",
+          aboveId: "parent",
+          belowId: "",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForCreatedAt,
         },
@@ -2951,27 +2953,94 @@ describe("treeNode", () => {
         {
           id: "node",
           text: "node",
+          parentId: "parent",
           prevId: "prev of prev",
           nextId: "prev",
-          parentId: "parent",
+          aboveId: "prev of prev",
+          belowId: "prev",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForServerTimestamp,
         },
         {
           id: "prev",
           text: "prev",
+          parentId: "parent",
           prevId: "node",
           nextId: "",
-          parentId: "parent",
+          aboveId: "node",
+          belowId: "",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForServerTimestamp,
         },
         {
           id: "prev of prev",
           text: "prev of prev",
+          parentId: "parent",
           prevId: "",
           nextId: "node",
+          aboveId: "parent",
+          belowId: "node",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+
+    test("has prev node, has prev node of prev node, has child", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNodes("parent", [["prev of prev"], ["prev"], ["node", [["child"]]]]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await movePrev(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "child",
+          text: "child",
+          parentId: "node",
+          prevId: "",
+          nextId: "",
+          aboveId: "node",
+          belowId: "prev",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "node",
+          text: "node",
           parentId: "parent",
+          prevId: "prev of prev",
+          nextId: "prev",
+          aboveId: "prev of prev",
+          belowId: "child",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "prev",
+          text: "prev",
+          parentId: "parent",
+          prevId: "node",
+          nextId: "",
+          aboveId: "child",
+          belowId: "",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "prev of prev",
+          text: "prev of prev",
+          parentId: "parent",
+          prevId: "",
+          nextId: "node",
+          aboveId: "parent",
+          belowId: "node",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForServerTimestamp,
         },
@@ -2979,7 +3048,7 @@ describe("treeNode", () => {
     });
   });
 
-  describe.skip("moveNext", () => {
+  describe("moveNext", () => {
     test("no next node", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
@@ -2997,9 +3066,11 @@ describe("treeNode", () => {
         {
           id: "node",
           text: "node",
+          parentId: "parent",
           prevId: "",
           nextId: "",
-          parentId: "parent",
+          aboveId: "parent",
+          belowId: "",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForCreatedAt,
         },
@@ -3012,7 +3083,7 @@ describe("treeNode", () => {
 
       const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDocs(col, makeTreeNodes("parent", [["node"], ["next"], ["next of next"]]));
+      await setDocs(col, makeTreeNode("", ["parent", [["node"], ["next"], ["next of next"]]]));
 
       await runTransaction(firestoreForTest, async (tx) => {
         const node = await txGet(tx, col, "node");
@@ -3023,27 +3094,116 @@ describe("treeNode", () => {
         {
           id: "next",
           text: "next",
+          parentId: "parent",
           prevId: "",
           nextId: "node",
-          parentId: "parent",
+          aboveId: "parent",
+          belowId: "node",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForServerTimestamp,
         },
         {
           id: "next of next",
           text: "next of next",
+          parentId: "parent",
           prevId: "node",
           nextId: "",
-          parentId: "parent",
+          aboveId: "node",
+          belowId: "",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForServerTimestamp,
         },
         {
           id: "node",
           text: "node",
+          parentId: "parent",
           prevId: "next",
           nextId: "next of next",
+          aboveId: "next",
+          belowId: "next of next",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "parent",
+          text: "parent",
+          parentId: "",
+          prevId: "",
+          nextId: "",
+          aboveId: "",
+          belowId: "next",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+
+    test("has next node, has next node of next node, has child node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNode("", ["parent", [["node", [["child"]]], ["next"], ["next of next"]]]));
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await moveNext(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "child",
+          text: "child",
+          parentId: "node",
+          prevId: "",
+          nextId: "",
+          aboveId: "node",
+          belowId: "next of next",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "next",
+          text: "next",
           parentId: "parent",
+          prevId: "",
+          nextId: "node",
+          aboveId: "parent",
+          belowId: "node",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "next of next",
+          text: "next of next",
+          parentId: "parent",
+          prevId: "node",
+          nextId: "",
+          aboveId: "child",
+          belowId: "",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "node",
+          text: "node",
+          parentId: "parent",
+          prevId: "next",
+          nextId: "next of next",
+          aboveId: "next",
+          belowId: "child",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "parent",
+          text: "parent",
+          parentId: "",
+          prevId: "",
+          nextId: "",
+          aboveId: "",
+          belowId: "next",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForServerTimestamp,
         },
@@ -3051,14 +3211,67 @@ describe("treeNode", () => {
     });
   });
 
-  describe.skip("remove", () => {
+  describe("remove", () => {
+    test("has child node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNode("", ["node", [["child"]]]));
+
+      await test.expect(() =>
+        runTransaction(firestoreForTest, async (tx) => {
+          const node = await txGet(tx, col, "node");
+          (await remove(tx, col, node!))();
+        }),
+      ).rejects.toThrowErrorMatchingInlineSnapshot(`
+          [Error: cannot delete node with children: {
+            "node": {
+              "text": "node",
+              "parentId": "",
+              "prevId": "",
+              "nextId": "",
+              "aboveId": "",
+              "belowId": "child",
+              "createdAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "updatedAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "id": "node"
+            },
+            "firstChildNode": {
+              "text": "child",
+              "parentId": "node",
+              "prevId": "",
+              "nextId": "",
+              "aboveId": "node",
+              "belowId": "",
+              "createdAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "updatedAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "id": "child"
+            }
+          }]
+        `);
+    });
+
     test("no prev node, no next node", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
       const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
 
-      await setDocs(col, makeTreeNode("parent", ["node"]));
+      await setDocs(col, makeTreeNode("", ["node"]));
 
       await runTransaction(firestoreForTest, async (tx) => {
         const node = await txGet(tx, col, "node");
@@ -3085,18 +3298,86 @@ describe("treeNode", () => {
         {
           id: "next",
           text: "next",
+          parentId: "parent",
           prevId: "prev",
           nextId: "",
-          parentId: "parent",
+          aboveId: "prev",
+          belowId: "",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForServerTimestamp,
         },
         {
           id: "prev",
           text: "prev",
+          parentId: "parent",
           prevId: "",
           nextId: "next",
+          aboveId: "parent",
+          belowId: "next",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
+
+    test("has prev node, has next node, has child node of prev node, has child node of next node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(
+        col,
+        makeTreeNodes("parent", [["prev", [["child of prev"]]], ["node"], ["next", [["child of next"]]]]),
+      );
+
+      await runTransaction(firestoreForTest, async (tx) => {
+        const node = await txGet(tx, col, "node");
+        (await remove(tx, col, node!))();
+      });
+
+      await test.expect(getDocs(col).then((qs) => qs.docs.map((d) => getDocumentData(d)))).resolves.toEqual([
+        {
+          id: "child of next",
+          text: "child of next",
+          parentId: "next",
+          prevId: "",
+          nextId: "",
+          aboveId: "next",
+          belowId: "",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
+        },
+        {
+          id: "child of prev",
+          text: "child of prev",
+          parentId: "prev",
+          prevId: "",
+          nextId: "",
+          aboveId: "prev",
+          belowId: "next",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "next",
+          text: "next",
           parentId: "parent",
+          prevId: "prev",
+          nextId: "",
+          aboveId: "child of prev",
+          belowId: "child of next",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "prev",
+          text: "prev",
+          parentId: "parent",
+          prevId: "",
+          nextId: "next",
+          aboveId: "parent",
+          belowId: "child of prev",
           createdAt: timestampForCreatedAt,
           updatedAt: timestampForServerTimestamp,
         },

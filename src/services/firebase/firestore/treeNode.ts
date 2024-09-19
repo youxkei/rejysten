@@ -558,6 +558,11 @@ export async function remove<T extends TreeNode>(
   col: CollectionReference<T>,
   node: DocumentData<T>,
 ): Promise<() => void> {
+  const firstChildNode = await getFirstChildNode(tx, col, node);
+  if (firstChildNode) {
+    throw new ErrorWithFields("cannot delete node with children", { node, firstChildNode });
+  }
+
   const unlinkFromTreeWrite = await unlinkFromTree(tx, col, node);
 
   return () => {
