@@ -1,12 +1,12 @@
 import equals from "fast-deep-equal";
 import { doc, query, where } from "firebase/firestore";
-import { createMemo, createResource, For, Show } from "solid-js";
+import { createMemo, For, Show } from "solid-js";
 
 import { useFirebaseService } from "@/services/firebase";
-import { getCollection, runTransaction } from "@/services/firebase/firestore";
+import { getCollection, runKeyDownTransaction, txMustUpdated } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
-import { getFirstChildNode } from "@/services/firebase/firestore/treeNode";
-import { useStoreService } from "@/services/store";
+import { dedent, getFirstChildNode, indent } from "@/services/firebase/firestore/treeNode";
+import { addKeyDownEventListenerWithLock, useStoreService } from "@/services/store";
 import { styles } from "@/styles.css";
 
 export function LifeLogTree(props: { id: string; prevId: string; nextId: string }) {
@@ -17,11 +17,8 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
   const lifeLogTreeNodesCol = getCollection(firebase, "lifeLogTreeNodes");
   const lifeLog$ = createSubscribeSignal(() => doc(lifeLogsCol, props.id));
   const isSelected$ = () => props.id === state.lifeLogs.selectedId;
-  const [firstChildNode$] = createResource(lifeLog$, (lifeLog) =>
-    runTransaction(firebase, (tx) => getFirstChildNode(tx, lifeLogTreeNodesCol, lifeLog)),
-  );
 
-  window.addEventListener("keydown", (event) => {
+  addKeyDownEventListenerWithLock((event) => {
     if (!isSelected$()) return;
 
     const lifeLog = lifeLog$();
@@ -33,14 +30,16 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
       case "KeyL": {
         if (ctrlKey || shiftKey) return;
 
-        const firstChildNode = firstChildNode$();
-        if (!firstChildNode) return;
-
-        updateState((state) => {
-          state.lifeLogs.selectedId = firstChildNode.id;
-        });
-
         event.stopImmediatePropagation();
+
+        void runKeyDownTransaction(async (tx) => {
+          const firstChildNode = await getFirstChildNode(tx, lifeLogTreeNodesCol, lifeLog);
+          if (!firstChildNode) return;
+
+          updateState((state) => {
+            state.lifeLogs.selectedId = firstChildNode.id;
+          });
+        });
 
         break;
       }
@@ -52,7 +51,7 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
       {(lifeLog$) => {
         return (
           <>
-            <div classList={{ [styles.lifeLogTree.selected]: props.id === state.lifeLogs.selectedId }}>
+            <div classList={{ [styles.lifeLogTree.selected]: isSelected$() }}>
               <span>{lifeLog$().text}</span>
             </div>
             <ChildrenNodes parentId={props.id} logId={props.id} />
@@ -93,7 +92,7 @@ export function Node(props: { id: string; logId: string }) {
   const node$ = createSubscribeSignal(() => doc(lifeLogTreeNodesCol, props.id));
   const isSelected$ = () => props.id === state.lifeLogs.selectedId;
 
-  window.addEventListener("keydown", (event) => {
+  addKeyDownEventListenerWithLock((event) => {
     if (!isSelected$()) return;
 
     const node = node$();
@@ -107,11 +106,11 @@ export function Node(props: { id: string; logId: string }) {
 
         if (node.belowId === "") return;
 
+        event.stopImmediatePropagation();
+
         updateState((state) => {
           state.lifeLogs.selectedId = node.belowId;
         });
-
-        event.stopImmediatePropagation();
 
         break;
       }
@@ -133,13 +132,40 @@ export function Node(props: { id: string; logId: string }) {
       case "KeyH": {
         if (ctrlKey || shiftKey) return;
 
+        event.stopImmediatePropagation();
+
         updateState((state) => {
           state.lifeLogs.selectedId = props.logId;
         });
 
+        break;
+      }
+
+      case "Tab": {
+        if (ctrlKey) return;
+
+        event.preventDefault();
+        event.stopPropagation();
         event.stopImmediatePropagation();
 
-        break;
+        void runKeyDownTransaction(async (tx) => {
+          console.timeStamp("Tab start");
+          await txMustUpdated(tx, lifeLogTreeNodesCol, node);
+          console.timeStamp("txMustUpdated OK");
+
+          if (shiftKey) {
+            console.log("dedent");
+            (await dedent(tx, lifeLogTreeNodesCol, node))();
+          } else {
+            console.log("indent");
+
+            const indentWrite = await indent(tx, lifeLogTreeNodesCol, node);
+            console.timeStamp("indent read OK");
+            indentWrite();
+            console.timeStamp("indent write OK");
+          }
+          console.timeStamp("Tab end");
+        });
       }
     }
   });

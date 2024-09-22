@@ -1,5 +1,5 @@
 import { makePersisted } from "@solid-primitives/storage";
-import { type JSXElement, useContext, createContext } from "solid-js";
+import { type JSXElement, useContext, createContext, getOwner, runWithOwner } from "solid-js";
 import { createStore, produce } from "solid-js/store";
 
 import { ServiceNotAvailable } from "@/services/error";
@@ -9,6 +9,9 @@ const localStorageName = "rejysten.service.store.state";
 const initialState = {
   lifeLogs: {
     selectedId: "",
+  },
+  lock: {
+    keyDown: false,
   },
 };
 
@@ -39,4 +42,21 @@ export function useStoreService() {
   if (!service) throw new ServiceNotAvailable("Store");
 
   return service;
+}
+
+export function addKeyDownEventListenerWithLock(callback: (event: KeyboardEvent) => void) {
+  const owner = getOwner();
+  const { state } = useStoreService();
+
+  window.addEventListener("keydown", (event) => {
+    if (state.lock.keyDown) {
+      event.stopImmediatePropagation();
+
+      return;
+    }
+
+    runWithOwner(owner, () => {
+      callback(event);
+    });
+  });
 }
