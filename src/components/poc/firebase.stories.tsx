@@ -1,4 +1,15 @@
-import { doc, getDocs, runTransaction, query, where, FieldPath, writeBatch, Timestamp } from "firebase/firestore";
+import {
+  doc,
+  getDocs,
+  runTransaction,
+  query,
+  where,
+  FieldPath,
+  writeBatch,
+  Timestamp,
+  disableNetwork,
+  enableNetwork,
+} from "firebase/firestore";
 import { For, Suspense, createSignal, createMemo, Show, startTransition } from "solid-js";
 import { type Meta, type StoryObj } from "storybook-solidjs";
 import { uuidv7 } from "uuidv7";
@@ -6,7 +17,7 @@ import XRegExp from "xregexp";
 
 import { FirebaseServiceProvoider, useFirebaseService } from "@/services/firebase";
 import { getCollection } from "@/services/firebase/firestore";
-import { createSubscribeAllSignal } from "@/services/firebase/firestore/subscribe";
+import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { dumpSignal } from "@/solid/signal";
 
 export default {
@@ -292,6 +303,93 @@ export const FirestoreSubcollection: StoryObj = {
                   >
                     delete subcollection
                   </button>
+                </>
+              );
+            })()}
+          </Suspense>
+        </FirebaseServiceProvoider>
+      </>
+    );
+  },
+};
+
+export const FirestoreRules: StoryObj = {
+  render() {
+    const [errors$, setErrors] = createSignal([] as string[]);
+
+    return (
+      <>
+        <pre>{errors$().join("\n")}</pre>
+
+        <FirebaseServiceProvoider configYAML={firebaseConfig} setErrors={setErrors}>
+          <Suspense fallback={<p>loading...</p>}>
+            {(() => {
+              const firebase = useFirebaseService();
+
+              const [label$, setLabel] = createSignal("");
+
+              const versionCollection = getCollection(firebase, "pocVersion");
+              const itemCollection = getCollection(firebase, "pocItems");
+
+              const version$ = createSubscribeSignal(() => doc(versionCollection, "version"));
+              const items$ = createSubscribeAllSignal(() => itemCollection);
+
+              return (
+                <>
+                  <input
+                    value={label$()}
+                    onInput={(e) => {
+                      setLabel(e.currentTarget.value);
+                    }}
+                  />
+                  <button
+                    onClick={async () => {
+                      const label = label$();
+                      const version = version$();
+                      const items = items$();
+
+                      if (!label) return;
+
+                      const newVersion = uuidv7();
+                      const id = uuidv7();
+
+                      const batch = writeBatch(firebase.firestore);
+
+                      for (const item of items) {
+                        batch.update(doc(itemCollection, item.id), {
+                          [label]: (item[label] ?? 0) + 1,
+                        });
+                      }
+
+                      batch.set(doc(itemCollection, id), {
+                        [label]: 0,
+                      });
+
+                      batch.set(doc(versionCollection, "version"), {
+                        prevVersion: version?.version ?? "",
+                        version: newVersion,
+                      });
+
+                      await batch.commit();
+                    }}
+                  >
+                    add
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await disableNetwork(firebase.firestore);
+                    }}
+                  >
+                    offline
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await enableNetwork(firebase.firestore);
+                    }}
+                  >
+                    online
+                  </button>
+                  <For each={items$()}>{(item) => <p>{JSON.stringify(item)}</p>}</For>
                 </>
               );
             })()}

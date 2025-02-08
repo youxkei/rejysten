@@ -14,6 +14,13 @@ export type Schema = {
     text: string;
   };
 
+  pocVersion: {
+    version: string;
+    prevVersion: string;
+  };
+
+  pocItems: Record<string, number>;
+
   lifeLogs: {
     text: string;
 

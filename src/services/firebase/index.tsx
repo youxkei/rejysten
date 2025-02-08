@@ -1,6 +1,12 @@
 import { deleteApp, initializeApp } from "firebase/app";
 import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup } from "firebase/auth";
-import { type Firestore, getFirestore, connectFirestoreEmulator } from "firebase/firestore";
+import {
+  type Firestore,
+  getFirestore,
+  connectFirestoreEmulator,
+  initializeFirestore,
+  persistentLocalCache,
+} from "firebase/firestore";
 import YAML from "js-yaml";
 import {
   type JSXElement,
@@ -62,7 +68,8 @@ export function FirebaseServiceProvoider(props: {
     const app = initializeApp(config);
 
     if (config.projectId === "demo") {
-      connectFirestoreEmulator(getFirestore(app), "localhost", 8080);
+      const firestore = initializeFirestore(app, { localCache: persistentLocalCache() });
+      connectFirestoreEmulator(firestore, "localhost", 8080);
     }
 
     onCleanup(async () => {

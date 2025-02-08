@@ -11,6 +11,8 @@ RUN apk add --no-cache openjdk11-jre gettext && npm install -g firebase-tools
 RUN firebase setup:emulators:ui && firebase setup:emulators:firestore
 
 RUN echo '{"projects": {"default": "demo"}}' > /firebase/.firebaserc
-RUN echo '{"firestore": {}}' > /firebase/firebase.json
+
+ADD ./firestore.local.rules /firebase/firebase.local.rules
+RUN echo '{"firestore": {"rules": "firebase.local.rules"}}' > /firebase/firebase.json
 
 CMD firebase emulators:start --only firestore

@@ -1,0 +1,16 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{col}/{doc} {
+      allow read: if true
+      allow create: if true
+      allow delete: if true
+
+      allow update: if
+        col == "pocVersion"
+          ? request.resource.data.prevVersion == resource.data.version
+          : true
+    }
+  }
+}
