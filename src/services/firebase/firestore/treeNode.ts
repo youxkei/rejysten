@@ -2,16 +2,15 @@ import equal from "fast-deep-equal";
 import {
   type CollectionReference,
   type Timestamp,
-  type Transaction,
+  type WriteBatch,
   doc,
-  getDocs,
   query,
   serverTimestamp,
   where,
 } from "firebase/firestore";
 
 import { ErrorWithFields } from "@/error";
-import { type DocumentData, txGet, getDocumentData } from "@/services/firebase/firestore";
+import { type DocumentData, getDoc, getDocs } from "@/services/firebase/firestore";
 import { InconsistentError, TransactionAborted } from "@/services/firebase/firestore/error";
 
 export type TreeNode = {
@@ -25,14 +24,13 @@ export type TreeNode = {
 };
 
 export async function getPrevNode<T extends TreeNode>(
-  tx: Transaction,
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
 ): Promise<DocumentData<T> | undefined> {
   let prevNode: DocumentData<T> | undefined;
 
   if (baseNode.prevId !== "") {
-    prevNode = await txGet(tx, col, baseNode.prevId);
+    prevNode = await getDoc(col, baseNode.prevId);
 
     if (prevNode === undefined) {
       throw new InconsistentError("previous node of baseNode is not exist", { baseNode });
@@ -57,14 +55,13 @@ export async function getPrevNode<T extends TreeNode>(
 }
 
 export async function getNextNode<T extends TreeNode>(
-  tx: Transaction,
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
 ): Promise<DocumentData<T> | undefined> {
   let nextNode: DocumentData<T> | undefined;
 
   if (baseNode.nextId !== "") {
-    nextNode = await txGet(tx, col, baseNode.nextId);
+    nextNode = await getDoc(col, baseNode.nextId);
 
     if (nextNode === undefined) {
       throw new InconsistentError("next node of baseNode is not exist", { baseNode });
@@ -89,14 +86,13 @@ export async function getNextNode<T extends TreeNode>(
 }
 
 export async function getAboveNode<T extends TreeNode>(
-  tx: Transaction,
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
 ): Promise<DocumentData<T> | undefined> {
   let aboveNode: DocumentData<T> | undefined;
 
   if (baseNode.aboveId !== "") {
-    aboveNode = await txGet(tx, col, baseNode.aboveId);
+    aboveNode = await getDoc(col, baseNode.aboveId);
 
     if (aboveNode === undefined) {
       throw new InconsistentError("above node of baseNode does not exist", { baseNode });
@@ -114,14 +110,13 @@ export async function getAboveNode<T extends TreeNode>(
 }
 
 export async function getBelowNode<T extends TreeNode>(
-  tx: Transaction,
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
 ): Promise<DocumentData<T> | undefined> {
   let belowNode: DocumentData<T> | undefined;
 
   if (baseNode.belowId !== "") {
-    belowNode = await txGet(tx, col, baseNode.belowId);
+    belowNode = await getDoc(col, baseNode.belowId);
 
     if (belowNode === undefined) {
       throw new InconsistentError("below node of baseNode does not exist", { baseNode });
@@ -139,7 +134,6 @@ export async function getBelowNode<T extends TreeNode>(
 }
 
 export async function getParentNode<T extends TreeNode>(
-  tx: Transaction,
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
 ): Promise<DocumentData<T> | undefined> {
@@ -147,7 +141,7 @@ export async function getParentNode<T extends TreeNode>(
     return undefined;
   }
 
-  const parentNode = await txGet(tx, col, baseNode.parentId);
+  const parentNode = await getDoc(col, baseNode.parentId);
 
   if (parentNode === undefined) {
     // this is a normal situation because parentId may refer to a node of another collection
@@ -158,26 +152,22 @@ export async function getParentNode<T extends TreeNode>(
 }
 
 export async function getFirstChildNode<T extends TreeNode, U extends object>(
-  tx: Transaction,
   col: CollectionReference<T>,
   baseNode: DocumentData<U>,
 ): Promise<DocumentData<T> | undefined> {
   const children = await getDocs(query(col, where("parentId", "==", baseNode.id), where("prevId", "==", "")));
-
-  if (children.empty) {
+  if (children.length == 0) {
     return undefined;
   }
-
-  if (children.docs.length !== 1) {
+  if (children.length !== 1) {
     throw new InconsistentError("multiple first child nodes", {
       baseNode,
-      childrenDocs: children.docs.map((doc) => getDocumentData(doc)),
+      childrenDocs: children,
     });
   }
 
-  const firstChildNode = getDocumentData(await tx.get(children.docs[0].ref));
-
-  if (!firstChildNode || firstChildNode.parentId !== baseNode.id || firstChildNode.prevId !== "") {
+  const firstChildNode = children[0];
+  if (firstChildNode.parentId !== baseNode.id || firstChildNode.prevId !== "") {
     throw new TransactionAborted();
   }
 
@@ -185,26 +175,24 @@ export async function getFirstChildNode<T extends TreeNode, U extends object>(
 }
 
 export async function getLastChildNode<T extends TreeNode, U extends object>(
-  tx: Transaction,
   col: CollectionReference<T>,
   baseNode: DocumentData<U>,
 ): Promise<DocumentData<T> | undefined> {
   const children = await getDocs(query(col, where("parentId", "==", baseNode.id), where("nextId", "==", "")));
-
-  if (children.empty) {
+  if (children.length == 0) {
     return undefined;
   }
 
-  if (children.docs.length !== 1) {
+  if (children.length !== 1) {
     throw new InconsistentError("multiple last child nodes", {
       baseNode,
-      childrenDocs: children.docs.map((doc) => getDocumentData(doc)),
+      childrenDocs: children,
     });
   }
 
-  const lastChildNode = getDocumentData(await tx.get(children.docs[0].ref));
+  const lastChildNode = children[0];
 
-  if (!lastChildNode || lastChildNode.parentId !== baseNode.id || lastChildNode.nextId !== "") {
+  if (lastChildNode.parentId !== baseNode.id || lastChildNode.nextId !== "") {
     throw new TransactionAborted();
   }
 
@@ -212,54 +200,52 @@ export async function getLastChildNode<T extends TreeNode, U extends object>(
 }
 
 export async function unlinkFromTree<T extends TreeNode>(
-  tx: Transaction,
-  col: CollectionReference<TreeNode>,
+  batch: WriteBatch,
+  col: CollectionReference<T>,
   baseNode: DocumentData<T>,
-): Promise<() => void> {
+): Promise<void> {
   const [prevNode, nextNode, aboveNode, bottomNode] = await Promise.all([
-    getPrevNode(tx, col, baseNode),
-    getNextNode(tx, col, baseNode),
-    getAboveNode(tx, col, baseNode),
-    getBottomNodeInclusive(tx, col, baseNode),
+    getPrevNode(col, baseNode),
+    getNextNode(col, baseNode),
+    getAboveNode(col, baseNode),
+    getBottomNodeInclusive(col, baseNode),
   ]);
 
-  const belowNodeOfBottomNode = await getBelowNode(tx, col, bottomNode);
+  const belowNodeOfBottomNode = await getBelowNode(col, bottomNode);
 
-  return () => {
-    tx.update(doc(col, baseNode.id), {
-      parentId: "",
-      nextId: "",
-      prevId: "",
-      aboveId: "",
-      updatedAt: serverTimestamp(),
-    });
-    tx.update(doc(col, bottomNode.id), { belowId: "", updatedAt: serverTimestamp() });
+  batch.update(doc(col, baseNode.id), {
+    parentId: "",
+    nextId: "",
+    prevId: "",
+    aboveId: "",
+    updatedAt: serverTimestamp(),
+  });
 
-    if (prevNode) {
-      tx.update(doc(col, prevNode.id), { nextId: baseNode.nextId, updatedAt: serverTimestamp() });
-    }
-    if (nextNode) {
-      tx.update(doc(col, nextNode.id), { prevId: baseNode.prevId, updatedAt: serverTimestamp() });
-    }
+  batch.update(doc(col, bottomNode.id), { belowId: "", updatedAt: serverTimestamp() });
 
-    if (aboveNode) {
-      tx.update(doc(col, aboveNode.id), { belowId: bottomNode.belowId, updatedAt: serverTimestamp() });
-    }
+  if (prevNode) {
+    batch.update(doc(col, prevNode.id), { nextId: baseNode.nextId, updatedAt: serverTimestamp() });
+  }
+  if (nextNode) {
+    batch.update(doc(col, nextNode.id), { prevId: baseNode.prevId, updatedAt: serverTimestamp() });
+  }
 
-    if (belowNodeOfBottomNode) {
-      tx.update(doc(col, belowNodeOfBottomNode.id), { aboveId: baseNode.aboveId, updatedAt: serverTimestamp() });
-    }
-  };
+  if (aboveNode) {
+    batch.update(doc(col, aboveNode.id), { belowId: bottomNode.belowId, updatedAt: serverTimestamp() });
+  }
+
+  if (belowNodeOfBottomNode) {
+    batch.update(doc(col, belowNodeOfBottomNode.id), { aboveId: baseNode.aboveId, updatedAt: serverTimestamp() });
+  }
 }
 
 export async function getBottomNodeInclusive<T extends TreeNode>(
-  tx: Transaction,
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
 ): Promise<DocumentData<T>> {
   let currentNode = baseNode;
   for (;;) {
-    const lastChildNode = await getLastChildNode(tx, col, currentNode);
+    const lastChildNode = await getLastChildNode(col, currentNode);
     if (!lastChildNode) return currentNode;
 
     currentNode = lastChildNode;
@@ -267,16 +253,15 @@ export async function getBottomNodeInclusive<T extends TreeNode>(
 }
 
 export async function getBottomNodeExclusive<T extends TreeNode, U extends object>(
-  tx: Transaction,
   col: CollectionReference<T>,
   baseNode: DocumentData<U>,
 ): Promise<DocumentData<T> | undefined> {
-  const lastChildNode = await getLastChildNode(tx, col, baseNode);
+  const lastChildNode = await getLastChildNode(col, baseNode);
   if (!lastChildNode) return;
 
   let currentNode = lastChildNode;
   for (;;) {
-    const lastChildNode = await getLastChildNode(tx, col, currentNode);
+    const lastChildNode = await getLastChildNode(col, currentNode);
     if (!lastChildNode) return currentNode;
 
     currentNode = lastChildNode;
@@ -284,190 +269,164 @@ export async function getBottomNodeExclusive<T extends TreeNode, U extends objec
 }
 
 export async function addPrevSibling<T extends TreeNode>(
-  tx: Transaction,
+  batch: WriteBatch,
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
   newNode: DocumentData<T>,
-): Promise<() => void> {
+): Promise<void> {
   if (newNode.id === "") {
     throw new ErrorWithFields("new node must have a valid id", { newNode });
   }
 
-  const fetchedNewNode = await txGet(tx, col, newNode.id);
+  const fetchedNewNode = await getDoc(col, newNode.id);
   if (fetchedNewNode && !equal(newNode, fetchedNewNode)) {
-    throw new TransactionAborted();
+    throw new ErrorWithFields("new node already exists", { newNode });
   }
 
   const [bottomNodeOfNewNode, prevNode, aboveNode] = await Promise.all([
-    getBottomNodeInclusive(tx, col, newNode),
-    getPrevNode(tx, col, baseNode),
-    getAboveNode(tx, col, baseNode),
+    getBottomNodeInclusive(col, newNode),
+    getPrevNode(col, baseNode),
+    getAboveNode(col, baseNode),
   ]);
 
   const { id: _, ...newNodeData } = newNode;
 
-  return () => {
-    if (fetchedNewNode) {
-      tx.update(doc(col, newNode.id), {
-        parentId: baseNode.parentId,
-        prevId: baseNode.prevId,
-        nextId: baseNode.id,
-        aboveId: baseNode.aboveId,
-        updatedAt: serverTimestamp(),
-      });
-      tx.update(doc(col, bottomNodeOfNewNode.id), {
-        belowId: baseNode.id,
-        updatedAt: serverTimestamp(),
-      });
-    } else {
-      tx.set(doc(col, newNode.id), {
-        ...(newNodeData as unknown as T),
-        parentId: baseNode.parentId,
-        prevId: baseNode.prevId,
-        nextId: baseNode.id,
-        aboveId: baseNode.aboveId,
-        belowId: baseNode.id,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }
-
-    tx.update(doc(col, baseNode.id), {
-      prevId: newNode.id,
-      aboveId: bottomNodeOfNewNode.id,
+  if (fetchedNewNode) {
+    batch.update(doc(col, newNode.id), {
+      parentId: baseNode.parentId,
+      prevId: baseNode.prevId,
+      nextId: baseNode.id,
+      aboveId: baseNode.aboveId,
       updatedAt: serverTimestamp(),
     });
+    batch.update(doc(col, bottomNodeOfNewNode.id), { belowId: baseNode.id, updatedAt: serverTimestamp() });
+  } else {
+    batch.set(doc(col, newNode.id), {
+      ...(newNodeData as unknown as T),
+      parentId: baseNode.parentId,
+      prevId: baseNode.prevId,
+      nextId: baseNode.id,
+      aboveId: baseNode.aboveId,
+      belowId: baseNode.id,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
 
-    if (prevNode) {
-      tx.update(doc(col, prevNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
-    }
+  batch.update(doc(col, baseNode.id), {
+    prevId: newNode.id,
+    aboveId: bottomNodeOfNewNode.id,
+    updatedAt: serverTimestamp(),
+  });
 
-    if (aboveNode) {
-      tx.update(doc(col, aboveNode.id), { belowId: newNode.id, updatedAt: serverTimestamp() });
-    }
-  };
+  if (prevNode) {
+    batch.update(doc(col, prevNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
+  }
+
+  if (aboveNode) {
+    batch.update(doc(col, aboveNode.id), { belowId: newNode.id, updatedAt: serverTimestamp() });
+  }
 }
 
 export async function addNextSibling<T extends TreeNode>(
-  tx: Transaction,
+  batch: WriteBatch,
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
   newNode: DocumentData<T>,
-): Promise<() => void> {
+): Promise<void> {
   if (newNode.id === "") {
     throw new ErrorWithFields("new node must have a valid id", { newNode });
   }
 
-  const fetchedNewNode = await txGet(tx, col, newNode.id);
+  const fetchedNewNode = await getDoc(col, newNode.id);
   if (fetchedNewNode && !equal(newNode, fetchedNewNode)) {
-    throw new TransactionAborted();
+    throw new ErrorWithFields("new node already exists", { newNode });
   }
 
   const [bottomNodeOfBaseNode, bottomNodeOfNewNode, nextNode] = await Promise.all([
-    getBottomNodeInclusive(tx, col, baseNode),
-    getBottomNodeInclusive(tx, col, newNode),
-    getNextNode(tx, col, baseNode),
+    getBottomNodeInclusive(col, baseNode),
+    getBottomNodeInclusive(col, newNode),
+    getNextNode(col, baseNode),
   ]);
 
   let newNextNodeOfNewNode: DocumentData<T> | undefined = nextNode;
   if (newNextNodeOfNewNode?.id == newNode.id) {
-    newNextNodeOfNewNode = await getNextNode(tx, col, newNextNodeOfNewNode);
+    newNextNodeOfNewNode = await getNextNode(col, newNextNodeOfNewNode);
   }
 
   let newAboveIdOfNewNode = bottomNodeOfBaseNode.id;
   let newAboveNodeOfNewNode: DocumentData<T> | undefined = bottomNodeOfBaseNode;
   if (newAboveIdOfNewNode == bottomNodeOfNewNode.id) {
     newAboveIdOfNewNode = newNode.aboveId;
-    newAboveNodeOfNewNode = await getAboveNode(tx, col, newNode);
+    newAboveNodeOfNewNode = await getAboveNode(col, newNode);
   }
-
   let newBelowIdOfNewNode = bottomNodeOfBaseNode.belowId;
-  let newBelowNodeOfNewNode = await getBelowNode(tx, col, bottomNodeOfBaseNode);
+  let newBelowNodeOfNewNode = await getBelowNode(col, bottomNodeOfBaseNode);
   if (newBelowNodeOfNewNode?.id === newNode.id) {
-    const bottom = await getBottomNodeInclusive(tx, col, newBelowNodeOfNewNode);
+    const bottom = await getBottomNodeInclusive(col, newBelowNodeOfNewNode);
 
     newBelowIdOfNewNode = bottom.belowId;
-    newBelowNodeOfNewNode = await getBelowNode(tx, col, bottom);
+    newBelowNodeOfNewNode = await getBelowNode(col, bottom);
   }
 
-  const { id: _, ...newNodeData } = newNode;
-
-  return () => {
-    if (fetchedNewNode) {
-      tx.update(doc(col, newNode.id), {
-        parentId: baseNode.parentId,
-        prevId: baseNode.id,
-        nextId: baseNode.nextId,
-        aboveId: newAboveIdOfNewNode,
-        updatedAt: serverTimestamp(),
-      });
-      tx.update(doc(col, bottomNodeOfNewNode.id), {
-        belowId: newBelowIdOfNewNode,
-        updatedAt: serverTimestamp(),
-      });
-    } else {
-      tx.set(doc(col, newNode.id), {
-        ...(newNodeData as unknown as T),
-        parentId: baseNode.parentId,
-        prevId: baseNode.id,
-        nextId: baseNode.nextId,
-        aboveId: newAboveIdOfNewNode,
-        belowId: newBelowIdOfNewNode,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }
-
-    tx.update(doc(col, baseNode.id), {
-      nextId: newNode.id,
+  if (fetchedNewNode) {
+    batch.update(doc(col, newNode.id), {
+      parentId: baseNode.parentId,
+      prevId: baseNode.id,
+      nextId: baseNode.nextId,
+      aboveId: newAboveIdOfNewNode,
       updatedAt: serverTimestamp(),
     });
+    batch.update(doc(col, bottomNodeOfNewNode.id), { belowId: newBelowIdOfNewNode, updatedAt: serverTimestamp() });
+  } else {
+    batch.set(doc(col, newNode.id), {
+      ...(newNode as unknown as T),
+      parentId: baseNode.parentId,
+      prevId: baseNode.id,
+      nextId: baseNode.nextId,
+      aboveId: newAboveIdOfNewNode,
+      belowId: newBelowIdOfNewNode,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
 
-    if (newAboveNodeOfNewNode) {
-      tx.update(doc(col, newAboveNodeOfNewNode.id), { belowId: newNode.id, updatedAt: serverTimestamp() });
-    }
+  batch.update(doc(col, baseNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
 
-    if (newNextNodeOfNewNode) {
-      tx.update(doc(col, newNextNodeOfNewNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
-    }
+  if (newAboveNodeOfNewNode) {
+    batch.update(doc(col, newAboveNodeOfNewNode.id), { belowId: newNode.id, updatedAt: serverTimestamp() });
+  }
 
-    if (newBelowNodeOfNewNode) {
-      tx.update(doc(col, newBelowNodeOfNewNode.id), { aboveId: bottomNodeOfNewNode.id, updatedAt: serverTimestamp() });
-    }
-  };
+  if (newNextNodeOfNewNode) {
+    batch.update(doc(col, newNextNodeOfNewNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
+  }
+
+  if (newBelowNodeOfNewNode) {
+    batch.update(doc(col, newBelowNodeOfNewNode.id), { aboveId: bottomNodeOfNewNode.id, updatedAt: serverTimestamp() });
+  }
 }
 
+// BUG(youxkei): two indentation cause invalid belowId
 export async function indent<T extends TreeNode>(
-  tx: Transaction,
+  batch: WriteBatch,
   col: CollectionReference<T>,
   node: DocumentData<T>,
-): Promise<() => void> {
-  const prevNode = await getPrevNode(tx, col, node);
+): Promise<void> {
+  const prevNode = await getPrevNode(col, node);
   if (!prevNode) {
-    return () => {
-      // no write
-    };
+    return;
   }
 
-  const lastChildNodeOfPrevNode = await getLastChildNode(tx, col, prevNode);
-  const unlinkFromTreeWrite = await unlinkFromTree(tx, col, node);
+  const lastChildNodeOfPrevNode = await getLastChildNode(col, prevNode);
+  await unlinkFromTree(batch, col, node);
 
   if (lastChildNodeOfPrevNode) {
-    const addNextSiblingWrite = await addNextSibling(tx, col, lastChildNodeOfPrevNode, node);
+    await addNextSibling(batch, col, lastChildNodeOfPrevNode, node);
+  } else {
+    const bottomNodeOfNode = await getBottomNodeInclusive(col, node);
+    const belowNodeOfBottomNodeOfNode = await getBelowNode(col, bottomNodeOfNode);
 
-    return () => {
-      unlinkFromTreeWrite();
-      addNextSiblingWrite();
-    };
-  }
-
-  const bottomNodeOfNode = await getBottomNodeInclusive(tx, col, node);
-  const belowNodeOfBottomNodeOfNode = await getBelowNode(tx, col, bottomNodeOfNode);
-
-  return () => {
-    unlinkFromTreeWrite();
-
-    tx.update(doc(col, node.id), {
+    batch.update(doc(col, node.id), {
       parentId: prevNode.id,
       prevId: "",
       nextId: "",
@@ -475,98 +434,77 @@ export async function indent<T extends TreeNode>(
       updatedAt: serverTimestamp(),
     });
 
-    tx.update(doc(col, bottomNodeOfNode.id), {
+    batch.update(doc(col, bottomNodeOfNode.id), {
       belowId: node.nextId,
+      updatedAt: serverTimestamp(),
     });
 
-    tx.update(doc(col, prevNode.id), { belowId: node.id, updatedAt: serverTimestamp() });
+    batch.update(doc(col, prevNode.id), {
+      belowId: node.id,
+      updatedAt: serverTimestamp(),
+    });
 
     if (belowNodeOfBottomNodeOfNode) {
-      tx.update(doc(col, belowNodeOfBottomNodeOfNode.id), {
+      batch.update(doc(col, belowNodeOfBottomNodeOfNode.id), {
         aboveId: bottomNodeOfNode.id,
         updatedAt: serverTimestamp(),
       });
     }
-  };
+  }
 }
 
 export async function dedent<T extends TreeNode>(
-  tx: Transaction,
+  batch: WriteBatch,
   col: CollectionReference<T>,
   node: DocumentData<T>,
-): Promise<() => void> {
-  const parentNode = await getParentNode(tx, col, node);
+): Promise<void> {
+  const parentNode = await getParentNode(col, node);
   if (!parentNode) {
-    return () => {
-      // no write
-    };
+    return;
   }
 
-  const unlinkFromTreeWrite = await unlinkFromTree(tx, col, node);
-  const addNextSiblingWrite = await addNextSibling(tx, col, parentNode, node);
-
-  return () => {
-    unlinkFromTreeWrite();
-    addNextSiblingWrite();
-  };
+  await unlinkFromTree(batch, col, node);
+  await addNextSibling(batch, col, parentNode, node);
 }
 
 export async function movePrev<T extends TreeNode>(
-  tx: Transaction,
+  batch: WriteBatch,
   col: CollectionReference<T>,
   node: DocumentData<T>,
-): Promise<() => void> {
-  const prevNode = await getPrevNode(tx, col, node);
+): Promise<void> {
+  const prevNode = await getPrevNode(col, node);
   if (!prevNode) {
-    return () => {
-      // no write
-    };
+    return;
   }
 
-  const unlinkFromTreeWrite = await unlinkFromTree(tx, col, node);
-  const addPrevSiblingWrite = await addPrevSibling(tx, col, prevNode, node);
-
-  return () => {
-    unlinkFromTreeWrite();
-    addPrevSiblingWrite();
-  };
+  await unlinkFromTree(batch, col, node);
+  await addPrevSibling(batch, col, prevNode, node);
 }
 
 export async function moveNext<T extends TreeNode>(
-  tx: Transaction,
+  batch: WriteBatch,
   col: CollectionReference<T>,
   node: DocumentData<T>,
-): Promise<() => void> {
-  const nextNode = await getNextNode(tx, col, node);
+): Promise<void> {
+  const nextNode = await getNextNode(col, node);
   if (!nextNode) {
-    return () => {
-      // no write
-    };
+    return;
   }
 
-  const unlinkFromTreeWrite = await unlinkFromTree(tx, col, node);
-  const addNextSiblingWrite = await addNextSibling(tx, col, nextNode, node);
-
-  return () => {
-    unlinkFromTreeWrite();
-    addNextSiblingWrite();
-  };
+  await unlinkFromTree(batch, col, node);
+  await addNextSibling(batch, col, nextNode, node);
 }
 
 export async function remove<T extends TreeNode>(
-  tx: Transaction,
+  batch: WriteBatch,
   col: CollectionReference<T>,
   node: DocumentData<T>,
-): Promise<() => void> {
-  const firstChildNode = await getFirstChildNode(tx, col, node);
+): Promise<void> {
+  const firstChildNode = await getFirstChildNode(col, node);
   if (firstChildNode) {
     throw new ErrorWithFields("cannot delete node with children", { node, firstChildNode });
   }
 
-  const unlinkFromTreeWrite = await unlinkFromTree(tx, col, node);
-
-  return () => {
-    unlinkFromTreeWrite();
-    tx.delete(doc(col, node.id));
-  };
+  await unlinkFromTree(batch, col, node);
+  batch.delete(doc(col, node.id));
 }

@@ -3,10 +3,10 @@ import { doc, query, where } from "firebase/firestore";
 import { createMemo, For, Show } from "solid-js";
 
 import { useFirebaseService } from "@/services/firebase";
-import { getCollection, runKeyDownTransaction, txMustUpdated } from "@/services/firebase/firestore";
+import { getCollection, runKeyDownBatch } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { dedent, getFirstChildNode, indent } from "@/services/firebase/firestore/treeNode";
-import { addKeyDownEventListenerWithLock, useStoreService } from "@/services/store";
+import { addKeyDownEventListener, useStoreService } from "@/services/store";
 import { styles } from "@/styles.css";
 
 export function LifeLogTree(props: { id: string; prevId: string; nextId: string }) {
@@ -18,7 +18,7 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
   const lifeLog$ = createSubscribeSignal(() => doc(lifeLogsCol, props.id));
   const isSelected$ = () => props.id === state.lifeLogs.selectedId;
 
-  addKeyDownEventListenerWithLock((event) => {
+  addKeyDownEventListener((event) => {
     if (!isSelected$()) return;
 
     const lifeLog = lifeLog$();
@@ -32,8 +32,8 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
 
         event.stopImmediatePropagation();
 
-        void runKeyDownTransaction(async (tx) => {
-          const firstChildNode = await getFirstChildNode(tx, lifeLogTreeNodesCol, lifeLog);
+        void runKeyDownBatch(async (_) => {
+          const firstChildNode = await getFirstChildNode(lifeLogTreeNodesCol, lifeLog);
           if (!firstChildNode) return;
 
           updateState((state) => {
@@ -92,7 +92,7 @@ export function Node(props: { id: string; logId: string }) {
   const node$ = createSubscribeSignal(() => doc(lifeLogTreeNodesCol, props.id));
   const isSelected$ = () => props.id === state.lifeLogs.selectedId;
 
-  addKeyDownEventListenerWithLock((event) => {
+  addKeyDownEventListener((event) => {
     if (!isSelected$()) return;
 
     const node = node$();
@@ -144,27 +144,21 @@ export function Node(props: { id: string; logId: string }) {
       case "Tab": {
         if (ctrlKey) return;
 
+        console.log("preventDefault");
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
 
-        void runKeyDownTransaction(async (tx) => {
-          console.timeStamp("Tab start");
-          await txMustUpdated(tx, lifeLogTreeNodesCol, node);
-          console.timeStamp("txMustUpdated OK");
-
+        runKeyDownBatch(async (batch) => {
           if (shiftKey) {
             console.log("dedent");
-            (await dedent(tx, lifeLogTreeNodesCol, node))();
+            await dedent(batch, lifeLogTreeNodesCol, node);
           } else {
             console.log("indent");
-
-            const indentWrite = await indent(tx, lifeLogTreeNodesCol, node);
-            console.timeStamp("indent read OK");
-            indentWrite();
-            console.timeStamp("indent write OK");
+            await indent(batch, lifeLogTreeNodesCol, node);
           }
-          console.timeStamp("Tab end");
+        }).catch((e: unknown) => {
+          throw e;
         });
       }
     }

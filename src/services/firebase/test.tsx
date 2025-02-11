@@ -1,5 +1,11 @@
 import { initializeApp } from "firebase/app";
-import { type CollectionReference, collection, connectFirestoreEmulator, getFirestore } from "firebase/firestore";
+import {
+  type CollectionReference,
+  collection,
+  connectFirestoreEmulator,
+  initializeFirestore,
+  persistentLocalCache,
+} from "firebase/firestore";
 
 import { type Schema } from "@/services/firebase/firestore/schema";
 
@@ -14,7 +20,7 @@ export function createFirebaseServiceForTest() {
     measurementId: "",
   });
 
-  const firestore = getFirestore(app);
+  const firestore = initializeFirestore(app, { localCache: persistentLocalCache() });
 
   connectFirestoreEmulator(firestore, "localhost", 8080);
 

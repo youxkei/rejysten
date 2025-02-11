@@ -39,6 +39,7 @@ export default defineConfig({
     reporters: "verbose",
     include: ["src/**/*.test.ts{,x}"],
     environment: "happy-dom",
+    setupFiles: ["fake-indexeddb/auto"],
     isolate: false,
     chaiConfig: {
       truncateThreshold: 0,

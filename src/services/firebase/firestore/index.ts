@@ -1,11 +1,18 @@
 import equals from "fast-deep-equal";
+import { FirebaseError } from "firebase/app";
 import {
   type CollectionReference,
   type DocumentSnapshot,
+  type Query,
   type Transaction,
+  type WriteBatch,
   collection,
   doc,
-  runTransaction as runTransactionOriginal,
+  getDocFromCache,
+  getDocsFromCache,
+  writeBatch,
+  getDocsFromServer,
+  getDocFromServer,
 } from "firebase/firestore";
 
 import { useFirebaseService, type FirebaseService } from "@/services/firebase";
@@ -32,17 +39,41 @@ export function getDocumentData<T extends object>(documentSnapshot: DocumentSnap
   };
 }
 
+export async function getDoc<T extends object>(
+  col: CollectionReference<T>,
+  id: string,
+): Promise<DocumentData<T> | undefined> {
+  try {
+    return getDocumentData(await getDocFromCache(doc(col, id)));
+  } catch (e) {
+    if (e instanceof FirebaseError && e.code == "unavailable") {
+      return getDocumentData(await getDocFromServer(doc(col, id)));
+    }
+
+    throw e;
+  }
+}
+
+export async function getDocs<T extends object>(query: Query<T>): Promise<DocumentData<T>[]> {
+  try {
+    // snapshot.docs must not have non-existing values
+    return (await getDocsFromCache(query)).docs.map(getDocumentData) as DocumentData<T>[];
+  } catch (e) {
+    if (e instanceof FirebaseError && e.code == "unavailable") {
+      // snapshot.docs must not have non-existing values
+      return (await getDocsFromServer(query)).docs.map(getDocumentData) as DocumentData<T>[];
+    }
+
+    throw e;
+  }
+}
+
 export async function txGet<T extends object>(
   tx: Transaction,
   col: CollectionReference<T>,
   id: string,
 ): Promise<DocumentData<T> | undefined> {
-  try {
-    console.time(`txGet ${col.path}/${id}`);
-    return getDocumentData(await tx.get(doc(col, id)));
-  } finally {
-    console.timeEnd(`txGet ${col.path}/${id}`);
-  }
+  return getDocumentData(await tx.get(doc(col, id)));
 }
 
 export async function txMustUpdated<T extends object>(
@@ -57,46 +88,41 @@ export async function txMustUpdated<T extends object>(
   }
 }
 
-export function runTransaction<T>(
-  service: FirebaseService,
-  updateFunction: (tx: Transaction) => Promise<T>,
-): Promise<T | undefined> {
-  return runTransactionOriginal(service.firestore, async (tx) => {
-    try {
-      return await updateFunction(tx);
-    } catch (e) {
-      if (e instanceof TransactionAborted) {
-        return;
-      } else {
-        throw e;
-      }
+export async function runBatch(updateFunction: (batch: WriteBatch) => Promise<void>): Promise<void> {
+  const { firestore } = useFirebaseService();
+  const batch = writeBatch(firestore);
+
+  try {
+    console.log("batch start");
+    await updateFunction(batch);
+    await batch.commit();
+  } catch (e) {
+    if (e instanceof TransactionAborted) {
+      return;
+    } else {
+      throw e;
     }
-  });
+  } finally {
+    console.log("batch end");
+  }
 }
 
-export function runKeyDownTransaction<T>(updateFunction: (tx: Transaction) => Promise<T>) {
-  const { firestore } = useFirebaseService();
-  const { updateState } = useStoreService();
+export async function runKeyDownBatch(updateFunction: (batch: WriteBatch) => Promise<void>) {
+  const { state, updateState } = useStoreService();
 
-  return runTransactionOriginal(firestore, async (tx) => {
-    try {
-      updateState((state) => {
-        state.lock.keyDown = true;
-      });
+  if (state.lock.keyDown) {
+    return;
+  }
 
-      console.time("transaction");
-      return await updateFunction(tx);
-    } catch (e) {
-      if (e instanceof TransactionAborted) {
-        return;
-      } else {
-        throw e;
-      }
-    } finally {
-      console.timeEnd("transaction");
-      updateState((state) => {
-        state.lock.keyDown = false;
-      });
-    }
-  });
+  try {
+    updateState((state) => {
+      state.lock.keyDown = true;
+    });
+
+    await runBatch(updateFunction);
+  } finally {
+    updateState((state) => {
+      state.lock.keyDown = false;
+    });
+  }
 }

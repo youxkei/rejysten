@@ -66,10 +66,10 @@ export function FirebaseServiceProvoider(props: {
     if (!config) return;
 
     const app = initializeApp(config);
+    initializeFirestore(app, { localCache: persistentLocalCache() });
 
     if (config.projectId === "demo") {
-      const firestore = initializeFirestore(app, { localCache: persistentLocalCache() });
-      connectFirestoreEmulator(firestore, "localhost", 8080);
+      connectFirestoreEmulator(getFirestore(app), "localhost", 8080);
     }
 
     onCleanup(async () => {

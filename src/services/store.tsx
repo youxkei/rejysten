@@ -1,5 +1,5 @@
 import { makePersisted } from "@solid-primitives/storage";
-import { type JSXElement, useContext, createContext, getOwner, runWithOwner } from "solid-js";
+import { type JSXElement, useContext, createContext, getOwner, runWithOwner, onCleanup } from "solid-js";
 import { createStore, produce } from "solid-js/store";
 
 import { ServiceNotAvailable } from "@/services/error";
@@ -44,19 +44,18 @@ export function useStoreService() {
   return service;
 }
 
-export function addKeyDownEventListenerWithLock(callback: (event: KeyboardEvent) => void) {
+export function addKeyDownEventListener(callback: (event: KeyboardEvent) => void) {
   const owner = getOwner();
-  const { state } = useStoreService();
 
-  window.addEventListener("keydown", (event) => {
-    if (state.lock.keyDown) {
-      event.stopImmediatePropagation();
-
-      return;
-    }
-
+  const listener = (event: KeyboardEvent) => {
     runWithOwner(owner, () => {
       callback(event);
     });
+  };
+
+  window.addEventListener("keydown", listener);
+
+  onCleanup(() => {
+    window.removeEventListener("keydown", listener);
   });
 }
