@@ -24,7 +24,8 @@ const config = {
     "@typescript-eslint/restrict-template-expressions": "off",
     "@typescript-eslint/consistent-type-imports": ["error", { fixStyle: "inline-type-imports" }],
     "@typescript-eslint/consistent-type-exports": "error",
-    "@typescript-eslint/consistent-type-definitions": ["error", "type"],
+    "@typescript-eslint/consistent-type-definitions": "off",
+    "@typescript-eslint/no-empty-interface": "off",
     "@typescript-eslint/no-misused-promises": [
       "error",
       {

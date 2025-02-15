@@ -6,16 +6,9 @@ import { ServiceNotAvailable } from "@/services/error";
 
 const localStorageName = "rejysten.service.store.state";
 
-const initialState = {
-  lifeLogs: {
-    selectedId: "",
-  },
-  lock: {
-    keyDown: false,
-  },
-};
+export interface State {}
 
-export type State = typeof initialState;
+export const initialState = {} as State;
 
 export type StoreService = {
   state: State;

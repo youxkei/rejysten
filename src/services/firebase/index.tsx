@@ -6,6 +6,7 @@ import {
   connectFirestoreEmulator,
   initializeFirestore,
   persistentLocalCache,
+  persistentMultipleTabManager,
 } from "firebase/firestore";
 import YAML from "js-yaml";
 import {
@@ -66,7 +67,7 @@ export function FirebaseServiceProvoider(props: {
     if (!config) return;
 
     const app = initializeApp(config);
-    initializeFirestore(app, { localCache: persistentLocalCache() });
+    initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
 
     if (config.projectId === "demo") {
       connectFirestoreEmulator(getFirestore(app), "localhost", 8080);

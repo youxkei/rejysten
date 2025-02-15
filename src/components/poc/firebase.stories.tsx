@@ -9,8 +9,9 @@ import {
   Timestamp,
   disableNetwork,
   enableNetwork,
+  onSnapshotsInSync,
 } from "firebase/firestore";
-import { For, Suspense, createSignal, createMemo, Show, startTransition } from "solid-js";
+import { For, Suspense, createSignal, createMemo, Show, startTransition, createComputed } from "solid-js";
 import { type Meta, type StoryObj } from "storybook-solidjs";
 import { uuidv7 } from "uuidv7";
 import XRegExp from "xregexp";
@@ -43,6 +44,23 @@ function calcBigram(chars: string[]) {
   return bigram;
 }
 
+declare module "@/services/firebase/firestore/schema" {
+  interface Schema {
+    pocFirestoreNgramItems: {
+      text: string;
+    };
+
+    pocFirestoreNgrams: {
+      collection: Exclude<keyof Schema, "pocFirestoreNgrams">;
+      text: string;
+      ngram: Record<string, true>;
+
+      createdAt: Timestamp;
+      updatedAt: Timestamp;
+    };
+  }
+}
+
 export const FirestoreNgram: StoryObj = {
   render() {
     const [errors$, setErrors] = createSignal([] as string[]);
@@ -59,8 +77,8 @@ export const FirestoreNgram: StoryObj = {
               const searchTextChars$ = createMemo(() => [...trimNonPrintableChars(searchText$())], []);
 
               const firebase = useFirebaseService();
-              const itemCollection = getCollection(firebase, "pocFirestoreNgram");
-              const bigramCollection = getCollection(firebase, "ngrams");
+              const itemCollection = getCollection(firebase, "pocFirestoreNgramItems");
+              const bigramCollection = getCollection(firebase, "pocFirestoreNgrams");
 
               const items$ = createSubscribeAllSignal(() => itemCollection);
 
@@ -74,7 +92,7 @@ export const FirestoreNgram: StoryObj = {
                   (q, bigramKey) => {
                     return query(q, where(new FieldPath("ngram", bigramKey), "==", true));
                   },
-                  query(bigramCollection, where("collection", "==", "pocFirestoreNgram")),
+                  query(bigramCollection, where("collection", "==", "pocFirestoreNgramItems")),
                 );
               });
 
@@ -118,7 +136,7 @@ export const FirestoreNgram: StoryObj = {
                           });
 
                           batch.set(doc(bigramCollection, id), {
-                            collection: "pocFirestoreNgram",
+                            collection: "pocFirestoreNgramItems",
                             text,
                             ngram: calcBigram([...trimNonPrintableChars(text)]),
                             createdAt: Timestamp.fromDate(new Date()),
@@ -143,6 +161,15 @@ export const FirestoreNgram: StoryObj = {
     );
   },
 };
+
+declare module "@/services/firebase/firestore/schema" {
+  interface Schema {
+    pocFirestorePubsub: {
+      prevId: string;
+      nextId: string;
+    };
+  }
+}
 
 export const FirestorePublish: StoryObj = {
   render() {
@@ -245,6 +272,14 @@ export const FirestoreSubscribe: StoryObj = {
   },
 };
 
+declare module "@/services/firebase/firestore/schema" {
+  interface Schema {
+    pocFirestoreSubcollection: {
+      text: string;
+    };
+  }
+}
+
 export const FirestoreSubcollection: StoryObj = {
   render() {
     const [errors$, setErrors] = createSignal([] as string[]);
@@ -313,6 +348,17 @@ export const FirestoreSubcollection: StoryObj = {
   },
 };
 
+declare module "@/services/firebase/firestore/schema" {
+  interface Schema {
+    pocFirestoreRulesVersion: {
+      version: string;
+      prevVersion: string;
+    };
+
+    pocFirestoreRulesItems: Record<string, number>;
+  }
+}
+
 export const FirestoreRules: StoryObj = {
   render() {
     const [errors$, setErrors] = createSignal([] as string[]);
@@ -328,8 +374,8 @@ export const FirestoreRules: StoryObj = {
 
               const [label$, setLabel] = createSignal("");
 
-              const versionCollection = getCollection(firebase, "pocVersion");
-              const itemCollection = getCollection(firebase, "pocItems");
+              const versionCollection = getCollection(firebase, "pocFirestoreRulesVersion");
+              const itemCollection = getCollection(firebase, "pocFirestoreRulesItems");
 
               const version$ = createSubscribeSignal(() => doc(versionCollection, "version"));
               const items$ = createSubscribeAllSignal(() => itemCollection);
@@ -390,6 +436,109 @@ export const FirestoreRules: StoryObj = {
                     online
                   </button>
                   <For each={items$()}>{(item) => <p>{JSON.stringify(item)}</p>}</For>
+                </>
+              );
+            })()}
+          </Suspense>
+        </FirebaseServiceProvoider>
+      </>
+    );
+  },
+};
+
+declare module "@/services/firebase/firestore/schema" {
+  interface Schema {
+    pocFirestoreSnapshotTimingA: {
+      text: string;
+    };
+
+    pocFirestoreSnapshotTimingB: {
+      text: string;
+    };
+  }
+}
+
+export const FirestoreSnapshotTiming: StoryObj = {
+  render() {
+    const [errors$, setErrors] = createSignal([] as string[]);
+    return (
+      <>
+        <pre>{errors$().join("\n")}</pre>
+
+        <FirebaseServiceProvoider configYAML={firebaseConfig} setErrors={setErrors}>
+          <Suspense fallback={<p>loading...</p>}>
+            {(() => {
+              const firebase = useFirebaseService();
+
+              const colA = getCollection(firebase, "pocFirestoreSnapshotTimingA");
+              const colB = getCollection(firebase, "pocFirestoreSnapshotTimingB");
+
+              const a$ = createSubscribeSignal(() => doc(colA, "A"));
+              const b$ = createSubscribeSignal(() => doc(colB, "B"));
+
+              createComputed(() => {
+                a$();
+                console.timeStamp("computed A");
+              });
+
+              createComputed(() => {
+                b$();
+                console.timeStamp("computed B");
+              });
+
+              return (
+                <>
+                  <button
+                    onClick={async () => {
+                      const now = new Date().toISOString();
+
+                      const batch = writeBatch(firebase.firestore);
+                      batch.set(doc(colA, "A"), {
+                        text: now,
+                      });
+                      batch.set(doc(colB, "B"), {
+                        text: now,
+                      });
+
+                      console.timeStamp("before set A and B commit");
+
+                      await Promise.race([
+                        new Promise<void>((resolve) => {
+                          const unsubscribe = onSnapshotsInSync(firebase.firestore, () => {
+                            unsubscribe();
+                            resolve();
+                          });
+                        }),
+                        batch.commit().then(() => {
+                          console.timeStamp("after set A and B commit");
+                        }),
+                      ]);
+
+                      console.timeStamp("after set A and B process");
+                    }}
+                  >
+                    modify A and B
+                  </button>
+                  <button
+                    onClick={async () => {
+                      console.timeStamp("before disable network");
+                      await enableNetwork(firebase.firestore);
+                      console.timeStamp("after disable network");
+                    }}
+                  >
+                    online
+                  </button>
+                  <button
+                    onClick={async () => {
+                      console.timeStamp("before enable network");
+                      await disableNetwork(firebase.firestore);
+                      console.timeStamp("after enable network");
+                    }}
+                  >
+                    offline
+                  </button>
+                  <p>{`A: ${a$()?.text}`}</p>
+                  <p>{`B: ${b$()?.text}`}</p>
                 </>
               );
             })()}

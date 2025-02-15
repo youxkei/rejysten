@@ -1,10 +1,8 @@
-import equals from "fast-deep-equal";
 import { FirebaseError } from "firebase/app";
 import {
   type CollectionReference,
   type DocumentSnapshot,
   type Query,
-  type Transaction,
   type WriteBatch,
   collection,
   doc,
@@ -13,12 +11,25 @@ import {
   writeBatch,
   getDocsFromServer,
   getDocFromServer,
+  onSnapshotsInSync,
 } from "firebase/firestore";
 
 import { useFirebaseService, type FirebaseService } from "@/services/firebase";
 import { TransactionAborted } from "@/services/firebase/firestore/error";
 import { type Schema } from "@/services/firebase/firestore/schema";
-import { useStoreService } from "@/services/store";
+import { initialState, useStoreService } from "@/services/store";
+
+declare module "@/services/store" {
+  interface State {
+    servicesFirebaseFirestore: {
+      lock: boolean;
+    };
+  }
+}
+
+initialState.servicesFirebaseFirestore = {
+  lock: false,
+};
 
 export function getCollection<Name extends keyof Schema>(service: FirebaseService, name: Name) {
   return collection(service.firestore, name) as CollectionReference<Schema[Name]>;
@@ -68,34 +79,23 @@ export async function getDocs<T extends object>(query: Query<T>): Promise<Docume
   }
 }
 
-export async function txGet<T extends object>(
-  tx: Transaction,
-  col: CollectionReference<T>,
-  id: string,
-): Promise<DocumentData<T> | undefined> {
-  return getDocumentData(await tx.get(doc(col, id)));
-}
-
-export async function txMustUpdated<T extends object>(
-  tx: Transaction,
-  col: CollectionReference<T>,
-  data: DocumentData<T>,
-): Promise<void> {
-  const txData = await txGet(tx, col, data.id);
-  if (!equals(data, txData)) {
-    console.log("txMustUpdated", data, txData);
-    throw new TransactionAborted();
-  }
-}
-
 export async function runBatch(updateFunction: (batch: WriteBatch) => Promise<void>): Promise<void> {
   const { firestore } = useFirebaseService();
-  const batch = writeBatch(firestore);
 
   try {
     console.log("batch start");
+    const batch = writeBatch(firestore);
     await updateFunction(batch);
-    await batch.commit();
+
+    await Promise.race([
+      new Promise<void>((resolve) => {
+        const unsubscribe = onSnapshotsInSync(firestore, () => {
+          unsubscribe();
+          resolve();
+        });
+      }),
+      batch.commit(),
+    ]);
   } catch (e) {
     if (e instanceof TransactionAborted) {
       return;
@@ -107,22 +107,22 @@ export async function runBatch(updateFunction: (batch: WriteBatch) => Promise<vo
   }
 }
 
-export async function runKeyDownBatch(updateFunction: (batch: WriteBatch) => Promise<void>) {
+export async function runBatchWithLock(updateFunction: (batch: WriteBatch) => Promise<void>) {
   const { state, updateState } = useStoreService();
 
-  if (state.lock.keyDown) {
+  if (state.servicesFirebaseFirestore.lock) {
     return;
   }
 
   try {
     updateState((state) => {
-      state.lock.keyDown = true;
+      state.servicesFirebaseFirestore.lock = true;
     });
 
     await runBatch(updateFunction);
   } finally {
     updateState((state) => {
-      state.lock.keyDown = false;
+      state.servicesFirebaseFirestore.lock = false;
     });
   }
 }

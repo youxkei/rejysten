@@ -3,11 +3,23 @@ import { doc, query, where } from "firebase/firestore";
 import { createMemo, For, Show } from "solid-js";
 
 import { useFirebaseService } from "@/services/firebase";
-import { getCollection, runKeyDownBatch } from "@/services/firebase/firestore";
+import { getCollection, runBatchWithLock } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { dedent, getFirstChildNode, indent } from "@/services/firebase/firestore/treeNode";
-import { addKeyDownEventListener, useStoreService } from "@/services/store";
+import { initialState, addKeyDownEventListener, useStoreService } from "@/services/store";
 import { styles } from "@/styles.css";
+
+declare module "@/services/store" {
+  interface State {
+    lifeLogs: {
+      selectedId: string;
+    };
+  }
+}
+
+initialState.lifeLogs = {
+  selectedId: "",
+};
 
 export function LifeLogTree(props: { id: string; prevId: string; nextId: string }) {
   const firebase = useFirebaseService();
@@ -32,13 +44,15 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
 
         event.stopImmediatePropagation();
 
-        void runKeyDownBatch(async (_) => {
+        (async () => {
           const firstChildNode = await getFirstChildNode(lifeLogTreeNodesCol, lifeLog);
           if (!firstChildNode) return;
 
           updateState((state) => {
             state.lifeLogs.selectedId = firstChildNode.id;
           });
+        })().catch((e: unknown) => {
+          throw e;
         });
 
         break;
@@ -144,12 +158,11 @@ export function Node(props: { id: string; logId: string }) {
       case "Tab": {
         if (ctrlKey) return;
 
-        console.log("preventDefault");
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
 
-        runKeyDownBatch(async (batch) => {
+        runBatchWithLock(async (batch) => {
           if (shiftKey) {
             console.log("dedent");
             await dedent(batch, lifeLogTreeNodesCol, node);

@@ -1,26 +1,6 @@
 import { type Timestamp } from "firebase/firestore";
 
-export type Schema = {
-  pocFirestoreNgram: {
-    text: string;
-  };
-
-  pocFirestorePubsub: {
-    prevId: string;
-    nextId: string;
-  };
-
-  pocFirestoreSubcollection: {
-    text: string;
-  };
-
-  pocVersion: {
-    version: string;
-    prevVersion: string;
-  };
-
-  pocItems: Record<string, number>;
-
+export interface Schema {
   lifeLogs: {
     text: string;
 
@@ -43,16 +23,7 @@ export type Schema = {
     createdAt: Timestamp;
     updatedAt: Timestamp;
   };
-
-  ngrams: {
-    collection: Exclude<keyof Schema, "ngrams">;
-    text: string;
-    ngram: Record<string, true>;
-
-    createdAt: Timestamp;
-    updatedAt: Timestamp;
-  };
-};
+}
 
 type EnsureNoPreservedFields<T, PreservedFields extends string> = T extends {
   [K in keyof T]: Omit<T[K], PreservedFields> extends T[K] ? T[K] : never;
