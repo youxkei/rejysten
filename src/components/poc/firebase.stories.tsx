@@ -80,9 +80,9 @@ export const FirestoreNgram: StoryObj = {
               const itemCollection = getCollection(firebase, "pocFirestoreNgramItems");
               const bigramCollection = getCollection(firebase, "pocFirestoreNgrams");
 
-              const items$ = createSubscribeAllSignal(() => itemCollection);
+              const items$ = createSubscribeAllSignal(firebase, () => itemCollection);
 
-              const serchedItems$ = createSubscribeAllSignal(() => {
+              const serchedItems$ = createSubscribeAllSignal(firebase, () => {
                 const searchTextChars = searchTextChars$();
                 if (searchTextChars.length < 2) return;
 
@@ -257,7 +257,7 @@ export const FirestoreSubscribe: StoryObj = {
             {(() => {
               const firebase = useFirebaseService();
               const itemCollection = getCollection(firebase, "pocFirestorePubsub");
-              const items$ = dumpSignal(createSubscribeAllSignal(() => itemCollection));
+              const items$ = dumpSignal(createSubscribeAllSignal(firebase, () => itemCollection));
               return (
                 <>
                   <p>items:</p>
@@ -377,8 +377,8 @@ export const FirestoreRules: StoryObj = {
               const versionCollection = getCollection(firebase, "pocFirestoreRulesVersion");
               const itemCollection = getCollection(firebase, "pocFirestoreRulesItems");
 
-              const version$ = createSubscribeSignal(() => doc(versionCollection, "version"));
-              const items$ = createSubscribeAllSignal(() => itemCollection);
+              const version$ = createSubscribeSignal(firebase, () => doc(versionCollection, "version"));
+              const items$ = createSubscribeAllSignal(firebase, () => itemCollection);
 
               return (
                 <>
@@ -473,8 +473,8 @@ export const FirestoreSnapshotTiming: StoryObj = {
               const colA = getCollection(firebase, "pocFirestoreSnapshotTimingA");
               const colB = getCollection(firebase, "pocFirestoreSnapshotTimingB");
 
-              const a$ = createSubscribeSignal(() => doc(colA, "A"));
-              const b$ = createSubscribeSignal(() => doc(colB, "B"));
+              const a$ = createSubscribeSignal(firebase, () => doc(colA, "A"));
+              const b$ = createSubscribeSignal(firebase, () => doc(colB, "B"));
 
               createComputed(() => {
                 a$();

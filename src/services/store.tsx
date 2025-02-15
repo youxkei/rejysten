@@ -1,5 +1,5 @@
 import { makePersisted } from "@solid-primitives/storage";
-import { type JSXElement, useContext, createContext, getOwner, runWithOwner, onCleanup } from "solid-js";
+import { type JSXElement, useContext, createContext } from "solid-js";
 import { createStore, produce } from "solid-js/store";
 
 import { ServiceNotAvailable } from "@/services/error";
@@ -35,20 +35,4 @@ export function useStoreService() {
   if (!service) throw new ServiceNotAvailable("Store");
 
   return service;
-}
-
-export function addKeyDownEventListener(callback: (event: KeyboardEvent) => void) {
-  const owner = getOwner();
-
-  const listener = (event: KeyboardEvent) => {
-    runWithOwner(owner, () => {
-      callback(event);
-    });
-  };
-
-  window.addEventListener("keydown", listener);
-
-  onCleanup(() => {
-    window.removeEventListener("keydown", listener);
-  });
 }

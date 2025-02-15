@@ -19,6 +19,8 @@ import {
   Show,
   createContext,
   useContext,
+  type Accessor,
+  createSignal,
 } from "solid-js";
 import * as s from "superstruct";
 
@@ -27,6 +29,8 @@ import { createSubscribeWithSignal } from "@/solid/subscribe";
 
 export type FirebaseService = {
   firestore: Firestore;
+  clock$: Accessor<boolean>;
+  setClock: Setter<boolean>;
 };
 
 export type FirebaseConfig = s.Infer<typeof firebaseConfigSchema>;
@@ -129,10 +133,14 @@ export function FirebaseServiceProvoider(props: {
     },
   );
 
+  const [clock$, setClock] = createSignal(false);
+
   return (
     <Show when={authed$() && firebase$()} keyed>
       {(firebase) => (
-        <context.Provider value={{ firestore: getFirestore(firebase) }}>{props.children}</context.Provider>
+        <context.Provider value={{ firestore: getFirestore(firebase), clock$, setClock }}>
+          {props.children}
+        </context.Provider>
       )}
     </Show>
   );

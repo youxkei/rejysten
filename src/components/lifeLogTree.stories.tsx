@@ -24,7 +24,7 @@ export const LifeLogTreeStory: StoryObj = {
         </pre>
         <FirebaseServiceProvoider configYAML={firebaseConfig} setErrors={setErrors}>
           <StoreServiceProvider>
-            <Suspense>
+            <Suspense fallback={<p>loading</p>}>
               {(() => {
                 const firebase = useFirebaseService();
 

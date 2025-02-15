@@ -5,12 +5,15 @@ import {
   type QuerySnapshot,
   onSnapshot,
 } from "firebase/firestore";
-import { type Accessor, createMemo, onCleanup } from "solid-js";
+import { type Accessor, onCleanup } from "solid-js";
 
+import { type FirebaseService } from "..";
 import { type DocumentData, getDocumentData } from "@/services/firebase/firestore";
+import { createLatchSignal } from "@/solid/signal";
 import { createSubscribeWithResource } from "@/solid/subscribe";
 
 export function createSubscribeSignal<T extends object>(
+  service: FirebaseService,
   query$: () => DocumentReference<T> | undefined,
 ): Accessor<DocumentData<T> | undefined> {
   const snapshot$ = createSubscribeWithResource(
@@ -24,15 +27,20 @@ export function createSubscribeSignal<T extends object>(
     undefined,
   );
 
-  return createMemo(() => {
-    const snapshot = snapshot$();
-    if (!snapshot) return;
+  return createLatchSignal(
+    () => {
+      const snapshot = snapshot$();
+      if (!snapshot) return undefined;
 
-    return getDocumentData(snapshot);
-  });
+      return getDocumentData(snapshot);
+    },
+    service.clock$,
+    undefined,
+  );
 }
 
 export function createSubscribeAllSignal<T extends object>(
+  service: FirebaseService,
   query$: () => Query<T> | undefined,
 ): Accessor<DocumentData<T>[]> {
   const snapshot$ = createSubscribeWithResource(
@@ -47,11 +55,15 @@ export function createSubscribeAllSignal<T extends object>(
     undefined,
   );
 
-  return createMemo(() => {
-    const snapshot = snapshot$();
-    if (!snapshot) return [];
+  return createLatchSignal(
+    () => {
+      const snapshot = snapshot$();
+      if (!snapshot) return [];
 
-    // snapshot.docs must not have non-existing values
-    return snapshot.docs.map(getDocumentData) as DocumentData<T>[];
-  });
+      // snapshot.docs must not have non-existing values
+      return snapshot.docs.map(getDocumentData) as DocumentData<T>[];
+    },
+    service.clock$,
+    [],
+  );
 }
