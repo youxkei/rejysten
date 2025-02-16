@@ -20,6 +20,7 @@ export function createSubscribeSignal<T extends object>(
     query$,
     (query, setValue: (value: DocumentSnapshot<T>) => void) => {
       const unsubscribe = onSnapshot(query, (snapshot) => {
+        console.timeStamp("createSubscribeSignal onSnapshot");
         setValue(snapshot);
       });
       onCleanup(unsubscribe);
@@ -47,6 +48,7 @@ export function createSubscribeAllSignal<T extends object>(
     query$,
     (query, setValue: (value: QuerySnapshot<T>) => void) => {
       const unsubscribe = onSnapshot(query, (snapshot) => {
+        console.timeStamp("createSubscribeAllSignal onSnapshot");
         setValue(snapshot);
       });
 

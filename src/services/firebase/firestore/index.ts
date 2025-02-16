@@ -11,7 +11,6 @@ import {
   writeBatch,
   getDocsFromServer,
   getDocFromServer,
-  onSnapshotsInSync,
 } from "firebase/firestore";
 
 import { useFirebaseService, type FirebaseService } from "@/services/firebase";
@@ -80,19 +79,26 @@ export async function getDocs<T extends object>(query: Query<T>): Promise<Docume
 }
 
 export async function runBatch(updateFunction: (batch: WriteBatch) => Promise<void>): Promise<void> {
-  const { firestore } = useFirebaseService();
+  const { state, updateState } = useStoreService();
+  const firebase = useFirebaseService();
+
+  if (state.servicesFirebaseFirestore.lock) {
+    return;
+  }
 
   try {
-    console.log("batch start");
-    const batch = writeBatch(firestore);
+    console.timeStamp("batch start");
+
+    updateState((state) => {
+      state.servicesFirebaseFirestore.lock = true;
+    });
+
+    const batch = writeBatch(firebase.firestore);
     await updateFunction(batch);
 
     await Promise.race([
       new Promise<void>((resolve) => {
-        const unsubscribe = onSnapshotsInSync(firestore, () => {
-          unsubscribe();
-          resolve();
-        });
+        firebase.resolve = resolve;
       }),
       batch.commit(),
     ]);
@@ -103,26 +109,14 @@ export async function runBatch(updateFunction: (batch: WriteBatch) => Promise<vo
       throw e;
     }
   } finally {
-    console.log("batch end");
+    updateState((state) => {
+      state.servicesFirebaseFirestore.lock = false;
+    });
+
+    console.timeStamp("batch end");
   }
 }
 
 export async function runBatchWithLock(updateFunction: (batch: WriteBatch) => Promise<void>) {
-  const { state, updateState } = useStoreService();
-
-  if (state.servicesFirebaseFirestore.lock) {
-    return;
-  }
-
-  try {
-    updateState((state) => {
-      state.servicesFirebaseFirestore.lock = true;
-    });
-
-    await runBatch(updateFunction);
-  } finally {
-    updateState((state) => {
-      state.servicesFirebaseFirestore.lock = false;
-    });
-  }
+  await runBatch(updateFunction);
 }

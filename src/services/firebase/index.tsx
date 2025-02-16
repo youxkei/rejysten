@@ -7,6 +7,7 @@ import {
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
+  onSnapshotsInSync,
 } from "firebase/firestore";
 import YAML from "js-yaml";
 import {
@@ -21,6 +22,7 @@ import {
   useContext,
   type Accessor,
   createSignal,
+  createComputed,
 } from "solid-js";
 import * as s from "superstruct";
 
@@ -31,6 +33,7 @@ export type FirebaseService = {
   firestore: Firestore;
   clock$: Accessor<boolean>;
   setClock: Setter<boolean>;
+  resolve: (() => void) | undefined;
 };
 
 export type FirebaseConfig = s.Infer<typeof firebaseConfigSchema>;
@@ -133,15 +136,30 @@ export function FirebaseServiceProvoider(props: {
     },
   );
 
-  const [clock$, setClock] = createSignal(false);
-
   return (
     <Show when={authed$() && firebase$()} keyed>
-      {(firebase) => (
-        <context.Provider value={{ firestore: getFirestore(firebase), clock$, setClock }}>
-          {props.children}
-        </context.Provider>
-      )}
+      {(firebase) => {
+        const firestore = getFirestore(firebase);
+
+        const [clock$, setClock] = createSignal(false);
+        createComputed(() => {
+          if (clock$()) {
+            console.timeStamp("clock high");
+          } else {
+            console.timeStamp("clock low");
+          }
+        });
+
+        const service: FirebaseService = { firestore, clock$, setClock, resolve: undefined };
+
+        const unsubscribe = onSnapshotsInSync(firestore, () => {
+          service.resolve?.();
+          service.resolve = undefined;
+        });
+        onCleanup(unsubscribe);
+
+        return <context.Provider value={service}>{props.children}</context.Provider>;
+      }}
     </Show>
   );
 }

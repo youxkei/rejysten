@@ -9,7 +9,6 @@ import {
   Timestamp,
   disableNetwork,
   enableNetwork,
-  onSnapshotsInSync,
 } from "firebase/firestore";
 import { For, Suspense, createSignal, createMemo, Show, startTransition, createComputed } from "solid-js";
 import { type Meta, type StoryObj } from "storybook-solidjs";
@@ -504,13 +503,12 @@ export const FirestoreSnapshotTiming: StoryObj = {
 
                       await Promise.race([
                         new Promise<void>((resolve) => {
-                          const unsubscribe = onSnapshotsInSync(firebase.firestore, () => {
-                            unsubscribe();
-                            resolve();
-                          });
+                          firebase.resolve = resolve;
+                        }).then(() => {
+                          console.timeStamp("global onSnapshotsInSync fired");
                         }),
                         batch.commit().then(() => {
-                          console.timeStamp("after set A and B commit");
+                          console.timeStamp("write batch promise resolved");
                         }),
                       ]);
 

@@ -92,8 +92,7 @@ export function ChildrenNodes(props: { parentId: string; logId: string }) {
   });
 
   createComputed(() => {
-    childrenIds$();
-    console.timeStamp("childrenIds updated");
+    console.timeStamp(`childrenIds updated ${JSON.stringify(childrenIds$())}`);
   });
 
   return (
@@ -179,10 +178,10 @@ export function Node(props: { id: string; logId: string }) {
           try {
             await runBatchWithLock(async (batch) => {
               if (shiftKey) {
-                console.log("dedent");
+                console.timeStamp("dedent");
                 await dedent(batch, lifeLogTreeNodesCol, node);
               } else {
-                console.log("indent");
+                console.timeStamp("indent");
                 await indent(batch, lifeLogTreeNodesCol, node);
               }
             });
