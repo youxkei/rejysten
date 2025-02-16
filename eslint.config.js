@@ -73,7 +73,7 @@ const config = {
 export default tseslint.config(
   {
     ...config,
-    ignores: ["**/poc/**/*.{ts,tsx}", "**/*.test.{ts,tsx}"],
+    ignores: ["**/poc/**/*.{ts,tsx}", "**/*.test.{ts,tsx}", "**/test.{ts,tsx}"],
   },
   {
     ...config,

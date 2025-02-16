@@ -7,13 +7,12 @@ import {
 } from "firebase/firestore";
 import { type Accessor, onCleanup } from "solid-js";
 
-import { type FirebaseService } from "..";
-import { type DocumentData, getDocumentData } from "@/services/firebase/firestore";
+import { type DocumentData, type FirestoreService, getDocumentData } from "@/services/firebase/firestore";
 import { createLatchSignal } from "@/solid/signal";
 import { createSubscribeWithResource } from "@/solid/subscribe";
 
 export function createSubscribeSignal<T extends object>(
-  service: FirebaseService,
+  service: FirestoreService,
   query$: () => DocumentReference<T> | undefined,
 ): Accessor<DocumentData<T> | undefined> {
   const snapshot$ = createSubscribeWithResource(
@@ -41,7 +40,7 @@ export function createSubscribeSignal<T extends object>(
 }
 
 export function createSubscribeAllSignal<T extends object>(
-  service: FirebaseService,
+  service: FirestoreService,
   query$: () => Query<T> | undefined,
 ): Accessor<DocumentData<T>[]> {
   const snapshot$ = createSubscribeWithResource(

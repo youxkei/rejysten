@@ -2,8 +2,7 @@ import equals from "fast-deep-equal";
 import { doc, query, where } from "firebase/firestore";
 import { createComputed, createMemo, For, Show, startTransition } from "solid-js";
 
-import { useFirebaseService } from "@/services/firebase";
-import { getCollection, runBatchWithLock } from "@/services/firebase/firestore";
+import { getCollection, getDoc, runBatch, useFirestoreService } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { dedent, getFirstChildNode, indent } from "@/services/firebase/firestore/treeNode";
 import { initialState, useStoreService } from "@/services/store";
@@ -23,19 +22,16 @@ initialState.lifeLogs = {
 };
 
 export function LifeLogTree(props: { id: string; prevId: string; nextId: string }) {
-  const firebase = useFirebaseService();
+  const firestore = useFirestoreService();
   const { state, updateState } = useStoreService();
 
-  const lifeLogsCol = getCollection(firebase, "lifeLogs");
-  const lifeLogTreeNodesCol = getCollection(firebase, "lifeLogTreeNodes");
-  const lifeLog$ = createSubscribeSignal(firebase, () => doc(lifeLogsCol, props.id));
+  const lifeLogsCol = getCollection(firestore, "lifeLogs");
+  const lifeLogTreeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+  const lifeLog$ = createSubscribeSignal(firestore, () => doc(lifeLogsCol, props.id));
   const isSelected$ = () => props.id === state.lifeLogs.selectedId;
 
-  addKeyDownEventListener((event) => {
+  addKeyDownEventListener(async (event) => {
     if (!isSelected$()) return;
-
-    const lifeLog = lifeLog$();
-    if (!lifeLog) return;
 
     const { shiftKey, ctrlKey } = event;
 
@@ -45,15 +41,14 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
 
         event.stopImmediatePropagation();
 
-        (async () => {
-          const firstChildNode = await getFirstChildNode(lifeLogTreeNodesCol, lifeLog);
-          if (!firstChildNode) return;
+        const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
+        if (!lifeLog) return;
 
-          updateState((state) => {
-            state.lifeLogs.selectedId = firstChildNode.id;
-          });
-        })().catch((e: unknown) => {
-          throw e;
+        const firstChildNode = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
+        if (!firstChildNode) return;
+
+        updateState((state) => {
+          state.lifeLogs.selectedId = firstChildNode.id;
         });
 
         break;
@@ -78,21 +73,21 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
 }
 
 export function ChildrenNodes(props: { parentId: string; logId: string }) {
-  const firebase = useFirebaseService();
+  const firestore = useFirestoreService();
 
-  const lifeLogTreeNodesCol = getCollection(firebase, "lifeLogTreeNodes");
-  const childrenNodes$ = createSubscribeAllSignal(firebase, () =>
+  const lifeLogTreeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+  const childrenNodes$ = createSubscribeAllSignal(firestore, () =>
     query(lifeLogTreeNodesCol, where("parentId", "==", props.parentId)),
   );
   const childrenIds$ = createMemo(() => childrenNodes$().map((childNode) => childNode.id), [], { equals });
 
   createComputed(() => {
     childrenNodes$();
-    console.timeStamp("childrenNodes updated");
+    console.timeStamp("childrenNodes of ${props.parentId} updated");
   });
 
   createComputed(() => {
-    console.timeStamp(`childrenIds updated ${JSON.stringify(childrenIds$())}`);
+    console.timeStamp(`childrenIds of ${props.parentId} updated`);
   });
 
   return (
@@ -109,18 +104,15 @@ export function ChildrenNodes(props: { parentId: string; logId: string }) {
 }
 
 export function Node(props: { id: string; logId: string }) {
-  const firebase = useFirebaseService();
+  const firestore = useFirestoreService();
   const { state, updateState } = useStoreService();
 
-  const lifeLogTreeNodesCol = getCollection(firebase, "lifeLogTreeNodes");
-  const node$ = createSubscribeSignal(firebase, () => doc(lifeLogTreeNodesCol, props.id));
+  const lifeLogTreeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+  const node$ = createSubscribeSignal(firestore, () => doc(lifeLogTreeNodesCol, props.id));
   const isSelected$ = () => props.id === state.lifeLogs.selectedId;
 
-  addKeyDownEventListener((event) => {
+  addKeyDownEventListener(async (event) => {
     if (!isSelected$()) return;
-
-    const node = node$();
-    if (!node) return;
 
     const { shiftKey, ctrlKey } = event;
 
@@ -128,9 +120,12 @@ export function Node(props: { id: string; logId: string }) {
       case "KeyJ": {
         if (ctrlKey || shiftKey) return;
 
-        if (node.belowId === "") return;
-
         event.stopImmediatePropagation();
+
+        const node = await getDoc(firestore, lifeLogTreeNodesCol, props.id);
+        if (!node) return;
+
+        if (node.belowId === "") return;
 
         updateState((state) => {
           state.lifeLogs.selectedId = node.belowId;
@@ -142,13 +137,16 @@ export function Node(props: { id: string; logId: string }) {
       case "KeyK": {
         if (ctrlKey || shiftKey) return;
 
+        event.stopImmediatePropagation();
+
+        const node = await getDoc(firestore, lifeLogTreeNodesCol, props.id);
+        if (!node) return;
+
         if (node.aboveId === "") return;
 
         updateState((state) => {
           state.lifeLogs.selectedId = node.aboveId;
         });
-
-        event.stopImmediatePropagation();
 
         break;
       }
@@ -172,29 +170,29 @@ export function Node(props: { id: string; logId: string }) {
         event.stopPropagation();
         event.stopImmediatePropagation();
 
-        (async () => {
-          firebase.setClock(true);
+        const node = await getDoc(firestore, lifeLogTreeNodesCol, props.id);
+        if (!node) return;
 
-          try {
-            await runBatchWithLock(async (batch) => {
-              if (shiftKey) {
-                console.timeStamp("dedent");
-                await dedent(batch, lifeLogTreeNodesCol, node);
-              } else {
-                console.timeStamp("indent");
-                await indent(batch, lifeLogTreeNodesCol, node);
-              }
-            });
-          } finally {
-            console.timeStamp("transition begin");
-            await startTransition(() => {
-              firebase.setClock(false);
-            });
-            console.timeStamp("transition end");
-          }
-        })().catch((e: unknown) => {
-          throw e;
-        });
+        try {
+          firestore.setClock(true);
+          await runBatch(firestore, async (batch) => {
+            if (shiftKey) {
+              console.timeStamp("dedent");
+              await dedent(firestore, batch, lifeLogTreeNodesCol, node);
+            } else {
+              console.timeStamp("indent");
+              await indent(firestore, batch, lifeLogTreeNodesCol, node);
+            }
+          });
+        } finally {
+          console.timeStamp("transition begin");
+
+          await startTransition(() => {
+            firestore.setClock(false);
+          });
+
+          console.timeStamp("transition end");
+        }
       }
     }
   });

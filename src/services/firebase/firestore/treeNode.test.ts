@@ -1,8 +1,15 @@
 import { type CollectionReference, collection, Timestamp, writeBatch } from "firebase/firestore";
 import { describe, test, vi } from "vitest";
 
-import { getDoc, getDocs } from "@/services/firebase/firestore";
-import { setDocs, timestampForCreatedAt, timestampForServerTimestamp } from "@/services/firebase/firestore/test";
+import {
+  getDoc,
+  getDocs,
+  serviceForTest,
+  setDocs,
+  timestampForCreatedAt,
+  timestampForServerTimestamp,
+  firestoreForTest,
+} from "@/services/firebase/firestore/test";
 import {
   type TreeNode,
   getFirstChildNode,
@@ -22,7 +29,6 @@ import {
   getParentNode,
   getBottomNodeExclusive,
 } from "@/services/firebase/firestore/treeNode";
-import { firestoreForTest } from "@/services/firebase/test";
 
 type TreeNodeWithText = TreeNode & { text: string };
 type TreeNodeFixture = [string, TreeNodeFixture[]?];
@@ -103,7 +109,7 @@ describe("treeNode", () => {
 
       await setDocs(col, makeTreeNode("", ["base"]));
 
-      await test.expect(getPrevNode(col, (await getDoc(col, "base"))!)).resolves.toBeUndefined();
+      await test.expect(getPrevNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
     });
 
     test("prev node exists", async (test) => {
@@ -114,7 +120,7 @@ describe("treeNode", () => {
 
       await setDocs(col, makeTreeNodes("", [["prev"], ["base"]]));
 
-      await test.expect(getPrevNode(col, (await getDoc(col, "base"))!)).resolves.toEqual({
+      await test.expect(getPrevNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
         id: "prev",
         text: "prev",
         parentId: "",
@@ -140,7 +146,8 @@ describe("treeNode", () => {
         ),
       );
 
-      await test.expect(getPrevNode(col, (await getDoc(col, "base"))!)).rejects.toThrowErrorMatchingInlineSnapshot(`
+      await test.expect(getPrevNode(serviceForTest, col, await getDoc(col, "base"))).rejects
+        .toThrowErrorMatchingInlineSnapshot(`
         [Error: previous node of baseNode is not exist: {
           "baseNode": {
             "text": "base",
@@ -176,7 +183,8 @@ describe("treeNode", () => {
         ),
       );
 
-      await test.expect(getPrevNode(col, (await getDoc(col, "base"))!)).rejects.toThrowErrorMatchingInlineSnapshot(`
+      await test.expect(getPrevNode(serviceForTest, col, await getDoc(col, "base"))).rejects
+        .toThrowErrorMatchingInlineSnapshot(`
         [Error: next node of previous node of baseNode is not baseNode: {
           "baseNode": {
             "text": "base",
@@ -229,7 +237,8 @@ describe("treeNode", () => {
         ),
       );
 
-      await test.expect(getPrevNode(col, (await getDoc(col, "base"))!)).rejects.toThrowErrorMatchingInlineSnapshot(`
+      await test.expect(getPrevNode(serviceForTest, col, await getDoc(col, "base"))).rejects
+        .toThrowErrorMatchingInlineSnapshot(`
         [Error: parent node of previous node of baseNode is not one of baseNode: {
           "baseNode": {
             "text": "base",
@@ -279,7 +288,7 @@ describe("treeNode", () => {
 
       await setDocs(col, makeTreeNode("", ["base"]));
 
-      await test.expect(getNextNode(col, (await getDoc(col, "base"))!)).resolves.toBeUndefined();
+      await test.expect(getNextNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
     });
 
     test("next node exists", async (test) => {
@@ -290,7 +299,7 @@ describe("treeNode", () => {
 
       await setDocs(col, makeTreeNodes("", [["base"], ["next"]]));
 
-      await test.expect(getNextNode(col, (await getDoc(col, "base"))!)).resolves.toEqual({
+      await test.expect(getNextNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
         id: "next",
         text: "next",
         prevId: "base",
@@ -316,7 +325,8 @@ describe("treeNode", () => {
         ),
       );
 
-      await test.expect(getNextNode(col, (await getDoc(col, "base"))!)).rejects.toThrowErrorMatchingInlineSnapshot(`
+      await test.expect(getNextNode(serviceForTest, col, await getDoc(col, "base"))).rejects
+        .toThrowErrorMatchingInlineSnapshot(`
         [Error: next node of baseNode is not exist: {
           "baseNode": {
             "text": "base",
@@ -352,7 +362,8 @@ describe("treeNode", () => {
         ),
       );
 
-      await test.expect(getNextNode(col, (await getDoc(col, "base"))!)).rejects.toThrowErrorMatchingInlineSnapshot(`
+      await test.expect(getNextNode(serviceForTest, col, await getDoc(col, "base"))).rejects
+        .toThrowErrorMatchingInlineSnapshot(`
         [Error: previous node of next node of baseNode is not baseNode: {
           "baseNode": {
             "text": "base",
@@ -405,7 +416,8 @@ describe("treeNode", () => {
         ),
       );
 
-      await test.expect(getNextNode(col, (await getDoc(col, "base"))!)).rejects.toThrowErrorMatchingInlineSnapshot(`
+      await test.expect(getNextNode(serviceForTest, col, await getDoc(col, "base"))).rejects
+        .toThrowErrorMatchingInlineSnapshot(`
         [Error: parent node of next node of baseNode is not one of baseNode: {
           "baseNode": {
             "text": "base",
@@ -455,7 +467,7 @@ describe("treeNode", () => {
 
       await setDocs(col, makeTreeNode("", ["base"]));
 
-      await test.expect(getParentNode(col, (await getDoc(col, "base"))!)).resolves.toBeUndefined();
+      await test.expect(getParentNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
     });
 
     test("parent node exists", async (test) => {
@@ -466,7 +478,7 @@ describe("treeNode", () => {
 
       await setDocs(col, makeTreeNode("", ["parent", [["base"]]]));
 
-      await test.expect(getParentNode(col, (await getDoc(col, "base"))!)).resolves.toEqual({
+      await test.expect(getParentNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
         id: "parent",
         text: "parent",
         parentId: "",
@@ -487,7 +499,7 @@ describe("treeNode", () => {
 
       await setDocs(col, makeTreeNode("another_collection_id", ["base"]));
 
-      await test.expect(getParentNode(col, (await getDoc(col, "base"))!)).resolves.toBeUndefined();
+      await test.expect(getParentNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
     });
   });
 
@@ -500,7 +512,7 @@ describe("treeNode", () => {
 
       await setDocs(col, makeTreeNode("", ["base"]));
 
-      await test.expect(getFirstChildNode(col, (await getDoc(col, "base"))!)).resolves.toBeUndefined();
+      await test.expect(getFirstChildNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
     });
 
     test("first child node exists", async (test) => {
@@ -511,7 +523,7 @@ describe("treeNode", () => {
 
       await setDocs(col, makeTreeNode("", ["base", [["first"], ["middle"], ["last"]]]));
 
-      await test.expect(getFirstChildNode(col, (await getDoc(col, "base"))!)).resolves.toEqual({
+      await test.expect(getFirstChildNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
         id: "first",
         text: "first",
         parentId: "base",
@@ -537,7 +549,7 @@ describe("treeNode", () => {
         ),
       );
 
-      await test.expect(getFirstChildNode(col, (await getDoc(col, "base"))!)).rejects
+      await test.expect(getFirstChildNode(serviceForTest, col, await getDoc(col, "base"))).rejects
         .toThrowErrorMatchingInlineSnapshot(`
         [Error: multiple first child nodes: {
           "baseNode": {
@@ -607,7 +619,7 @@ describe("treeNode", () => {
 
       await setDocs(col, makeTreeNode("", ["base"]));
 
-      await test.expect(getLastChildNode(col, (await getDoc(col, "base"))!)).resolves.toBeUndefined();
+      await test.expect(getLastChildNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
     });
 
     test("last child node exists", async (test) => {
@@ -618,7 +630,7 @@ describe("treeNode", () => {
 
       await setDocs(col, makeTreeNode("", ["base", [["first"], ["middle"], ["last"]]]));
 
-      await test.expect(getLastChildNode(col, (await getDoc(col, "base"))!)).resolves.toEqual({
+      await test.expect(getLastChildNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
         id: "last",
         text: "last",
         parentId: "base",
@@ -644,7 +656,7 @@ describe("treeNode", () => {
         ),
       );
 
-      await test.expect(getLastChildNode(col, (await getDoc(col, "base"))!)).rejects
+      await test.expect(getLastChildNode(serviceForTest, col, await getDoc(col, "base"))).rejects
         .toThrowErrorMatchingInlineSnapshot(`
         [Error: multiple last child nodes: {
           "baseNode": {
@@ -715,7 +727,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["base"]));
 
       const batch = writeBatch(firestoreForTest);
-      await unlinkFromTree(batch, col, (await getDoc(col, "base"))!);
+      await unlinkFromTree(serviceForTest, batch, col, await getDoc(col, "base"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -742,7 +754,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNodes("", [["base"], ["next"]]));
 
       const batch = writeBatch(firestoreForTest);
-      await unlinkFromTree(batch, col, (await getDoc(col, "base"))!);
+      await unlinkFromTree(serviceForTest, batch, col, await getDoc(col, "base"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -780,7 +792,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNodes("", [["prev"], ["base"]]));
 
       const batch = writeBatch(firestoreForTest);
-      await unlinkFromTree(batch, col, (await getDoc(col, "base"))!);
+      await unlinkFromTree(serviceForTest, batch, col, await getDoc(col, "base"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -818,7 +830,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNodes("", [["prev"], ["base"], ["next"]]));
 
       const batch = writeBatch(firestoreForTest);
-      await unlinkFromTree(batch, col, (await getDoc(col, "base"))!);
+      await unlinkFromTree(serviceForTest, batch, col, await getDoc(col, "base"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -876,7 +888,7 @@ describe("treeNode", () => {
       ]));
 
       const batch = writeBatch(firestoreForTest);
-      await unlinkFromTree(batch, col, (await getDoc(col, "base"))!);
+      await unlinkFromTree(serviceForTest, batch, col, await getDoc(col, "base"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -947,7 +959,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNodes("", [["prev"], ["base", [["child"]]], ["next"]]));
 
       const batch = writeBatch(firestoreForTest);
-      await unlinkFromTree(batch, col, (await getDoc(col, "base"))!);
+      await unlinkFromTree(serviceForTest, batch, col, await getDoc(col, "base"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -1007,7 +1019,7 @@ describe("treeNode", () => {
       const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
       await setDocs(col, makeTreeNode("", ["base"]));
 
-      await test.expect(getAboveNode(col, (await getDoc(col, "base"))!)).resolves.toBeUndefined();
+      await test.expect(getAboveNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
     });
 
     test("no prev node, has parent node", async (test) => {
@@ -1017,7 +1029,7 @@ describe("treeNode", () => {
       const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
       await setDocs(col, makeTreeNode("", ["parent", [["base"]]]));
 
-      await test.expect(getAboveNode(col, (await getDoc(col, "base"))!)).resolves.toEqual({
+      await test.expect(getAboveNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
         id: "parent",
         text: "parent",
         parentId: "",
@@ -1037,7 +1049,7 @@ describe("treeNode", () => {
       const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
       await setDocs(col, makeTreeNodes("", [["prev"], ["base"]]));
 
-      await test.expect(getAboveNode(col, (await getDoc(col, "base"))!)).resolves.toEqual({
+      await test.expect(getAboveNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
         id: "prev",
         text: "prev",
         prevId: "",
@@ -1065,7 +1077,7 @@ describe("treeNode", () => {
         ["base"],
       ]));
 
-      await test.expect(getAboveNode(col, (await getDoc(col, "base"))!)).resolves.toEqual({
+      await test.expect(getAboveNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
         id: "last of prev",
         text: "last of prev",
         parentId: "prev",
@@ -1105,7 +1117,7 @@ describe("treeNode", () => {
         ["base"],
       ]));
 
-      await test.expect(getAboveNode(col, (await getDoc(col, "base"))!)).resolves.toEqual({
+      await test.expect(getAboveNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
         id: "last of last of prev",
         text: "last of last of prev",
         parentId: "last of prev",
@@ -1127,7 +1139,7 @@ describe("treeNode", () => {
       const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
       await setDocs(col, makeTreeNode("", ["base"]));
 
-      await test.expect(getBelowNode(col, (await getDoc(col, "base"))!)).resolves.toBeUndefined();
+      await test.expect(getBelowNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
     });
 
     test("no child node, no next node, has parent node, no next of parent node", async (test) => {
@@ -1137,7 +1149,7 @@ describe("treeNode", () => {
       const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
       await setDocs(col, makeTreeNode("", ["parent", [["base"]]]));
 
-      await test.expect(getBelowNode(col, (await getDoc(col, "base"))!)).resolves.toBeUndefined();
+      await test.expect(getBelowNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
     });
 
     test("has child node, has next node, has next of parent node, has next of parent of parent node", async (test) => {
@@ -1161,7 +1173,7 @@ describe("treeNode", () => {
         ["next of parent of parent"],
       ]));
 
-      await test.expect(getBelowNode(col, (await getDoc(col, "base"))!)).resolves.toEqual({
+      await test.expect(getBelowNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
         id: "first child of base",
         text: "first child of base",
         parentId: "base",
@@ -1191,7 +1203,7 @@ describe("treeNode", () => {
         ["next of parent of parent"],
       ]));
 
-      await test.expect(getBelowNode(col, (await getDoc(col, "base"))!)).resolves.toEqual({
+      await test.expect(getBelowNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
         id: "next",
         text: "next",
         parentId: "parent",
@@ -1220,7 +1232,7 @@ describe("treeNode", () => {
         ["next of parent of parent"],
       ]));
 
-      await test.expect(getBelowNode(col, (await getDoc(col, "base"))!)).resolves.toEqual({
+      await test.expect(getBelowNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
         id: "next of parent",
         text: "next of parent",
         parentId: "parent of parent",
@@ -1248,7 +1260,7 @@ describe("treeNode", () => {
         ["next of parent of parent"],
       ]));
 
-      await test.expect(getBelowNode(col, (await getDoc(col, "base"))!)).resolves.toEqual({
+      await test.expect(getBelowNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
         id: "next of parent of parent",
         text: "next of parent of parent",
         parentId: "",
@@ -1271,7 +1283,9 @@ describe("treeNode", () => {
 
       await setDocs(col, makeTreeNode("", ["base"]));
 
-      await test.expect(getBottomNodeExclusive(col, (await getDoc(col, "base"))!)).resolves.toBeUndefined();
+      await test
+        .expect(getBottomNodeExclusive(serviceForTest, col, await getDoc(col, "base")))
+        .resolves.toBeUndefined();
     });
 
     test("has children nodes, no grandchild node", async (test) => {
@@ -1289,7 +1303,7 @@ describe("treeNode", () => {
         ]],
       ]));
 
-      await test.expect(getBottomNodeExclusive(col, (await getDoc(col, "base"))!)).resolves.toEqual({
+      await test.expect(getBottomNodeExclusive(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
         id: "last child",
         text: "last child",
         parentId: "base",
@@ -1321,7 +1335,7 @@ describe("treeNode", () => {
         ]],
       ]));
 
-      await test.expect(getBottomNodeExclusive(col, (await getDoc(col, "base"))!)).resolves.toEqual({
+      await test.expect(getBottomNodeExclusive(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
         id: "last grandchild",
         text: "last grandchild",
         parentId: "last child",
@@ -1358,7 +1372,7 @@ describe("treeNode", () => {
         ]],
       ]));
 
-      await test.expect(getBottomNodeExclusive(col, (await getDoc(col, "base"))!)).resolves.toEqual({
+      await test.expect(getBottomNodeExclusive(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
         id: "last great-grandchild",
         text: "last great-grandchild",
         parentId: "last grandchild",
@@ -1381,17 +1395,19 @@ describe("treeNode", () => {
       await setDocs(baseCol, [{ text: "base" }]);
       await setDocs(childrenCol, makeTreeNodes("base", [["first child"], ["middle child"], ["last child"]]));
 
-      await test.expect(getBottomNodeExclusive(childrenCol, (await getDoc(baseCol, "base"))!)).resolves.toEqual({
-        id: "last child",
-        text: "last child",
-        parentId: "base",
-        prevId: "middle child",
-        nextId: "",
-        aboveId: "middle child",
-        belowId: "",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
-      });
+      await test
+        .expect(getBottomNodeExclusive(serviceForTest, childrenCol, await getDoc(baseCol, "base")))
+        .resolves.toEqual({
+          id: "last child",
+          text: "last child",
+          parentId: "base",
+          prevId: "middle child",
+          nextId: "",
+          aboveId: "middle child",
+          belowId: "",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
+        });
     });
   });
 
@@ -1405,7 +1421,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["parent", [["base"]]]));
 
       const batch = writeBatch(firestoreForTest);
-      await addPrevSibling(batch, col, (await getDoc(col, "base"))!, {
+      await addPrevSibling(serviceForTest, batch, col, await getDoc(col, "base"), {
         id: "newNode",
         text: "newNode",
         parentId: "",
@@ -1464,7 +1480,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNodes("parent", [["prev"], ["base"]]));
 
       const batch = writeBatch(firestoreForTest);
-      await addPrevSibling(batch, col, (await getDoc(col, "base"))!, {
+      await addPrevSibling(serviceForTest, batch, col, await getDoc(col, "base"), {
         id: "newNode",
         text: "newNode",
         parentId: "",
@@ -1523,7 +1539,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNodes("parent", [["prev", [["child of prev"]]], ["base"]]));
 
       const batch = writeBatch(firestoreForTest);
-      await addPrevSibling(batch, col, (await getDoc(col, "base"))!, {
+      await addPrevSibling(serviceForTest, batch, col, await getDoc(col, "base"), {
         id: "newNode",
         text: "newNode",
         parentId: "",
@@ -1594,7 +1610,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["addingNode"]));
 
       const batch = writeBatch(firestoreForTest);
-      await addPrevSibling(batch, col, (await getDoc(col, "base"))!, (await getDoc(col, "addingNode"))!);
+      await addPrevSibling(serviceForTest, batch, col, await getDoc(col, "base"), await getDoc(col, "addingNode"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -1644,7 +1660,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["addingNode"]));
 
       const batch = writeBatch(firestoreForTest);
-      await addPrevSibling(batch, col, (await getDoc(col, "base"))!, (await getDoc(col, "addingNode"))!);
+      await addPrevSibling(serviceForTest, batch, col, await getDoc(col, "base"), await getDoc(col, "addingNode"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -1694,7 +1710,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["addingNode"]));
 
       const batch = writeBatch(firestoreForTest);
-      await addPrevSibling(batch, col, (await getDoc(col, "base"))!, (await getDoc(col, "addingNode"))!);
+      await addPrevSibling(serviceForTest, batch, col, await getDoc(col, "base"), await getDoc(col, "addingNode"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -1756,7 +1772,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNode("parent", ["base"]));
 
       const batch = writeBatch(firestoreForTest);
-      await addNextSibling(batch, col, (await getDoc(col, "base"))!, {
+      await addNextSibling(serviceForTest, batch, col, await getDoc(col, "base"), {
         id: "newNode",
         text: "newNode",
         parentId: "",
@@ -1804,7 +1820,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNodes("parent", [["base"], ["next"]]));
 
       const batch = writeBatch(firestoreForTest);
-      await addNextSibling(batch, col, (await getDoc(col, "base"))!, {
+      await addNextSibling(serviceForTest, batch, col, await getDoc(col, "base"), {
         id: "newNode",
         text: "newNode",
         parentId: "",
@@ -1863,7 +1879,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNodes("parent", [["base", [["child of base"]]], ["next"]]));
 
       const batch = writeBatch(firestoreForTest);
-      await addNextSibling(batch, col, (await getDoc(col, "base"))!, {
+      await addNextSibling(serviceForTest, batch, col, await getDoc(col, "base"), {
         id: "newNode",
         text: "newNode",
         parentId: "",
@@ -1934,7 +1950,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["addingNode"]));
 
       const batch = writeBatch(firestoreForTest);
-      await addNextSibling(batch, col, (await getDoc(col, "base"))!, (await getDoc(col, "addingNode"))!);
+      await addNextSibling(serviceForTest, batch, col, await getDoc(col, "base"), await getDoc(col, "addingNode"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -1973,7 +1989,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNodes("", [["addingNode"]]));
 
       const batch = writeBatch(firestoreForTest);
-      await addNextSibling(batch, col, (await getDoc(col, "base"))!, (await getDoc(col, "addingNode"))!);
+      await addNextSibling(serviceForTest, batch, col, await getDoc(col, "base"), await getDoc(col, "addingNode"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2023,7 +2039,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNodes("", [["addingNode"]]));
 
       const batch = writeBatch(firestoreForTest);
-      await addNextSibling(batch, col, (await getDoc(col, "base"))!, (await getDoc(col, "addingNode"))!);
+      await addNextSibling(serviceForTest, batch, col, await getDoc(col, "base"), await getDoc(col, "addingNode"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2085,7 +2101,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNode("parent", ["node"]));
 
       const batch = writeBatch(firestoreForTest);
-      await indent(batch, col, (await getDoc(col, "node"))!);
+      await indent(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2112,7 +2128,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNodes("parent", [["prev"], ["node"], ["next"]]));
 
       const batch = writeBatch(firestoreForTest);
-      await indent(batch, col, (await getDoc(col, "node"))!);
+      await indent(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2168,7 +2184,7 @@ describe("treeNode", () => {
       ]));
 
       const batch = writeBatch(firestoreForTest);
-      await indent(batch, col, (await getDoc(col, "node"))!);
+      await indent(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2225,7 +2241,7 @@ describe("treeNode", () => {
 
       const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
       // prettier-ignore
-      await setDocs( col, makeTreeNodes("parent", [
+      await setDocs(col, makeTreeNodes("parent", [
         ["prev", [
           ["first child of prev"],
           ["middle child of prev"],
@@ -2236,7 +2252,7 @@ describe("treeNode", () => {
       ]));
 
       const batch = writeBatch(firestoreForTest);
-      await indent(batch, col, (await getDoc(col, "node"))!);
+      await indent(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2315,7 +2331,7 @@ describe("treeNode", () => {
 
       const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
       // prettier-ignore
-      await setDocs( col, makeTreeNodes("parent", [
+      await setDocs(col, makeTreeNodes("parent", [
         ["prev", [
           ["first child of prev"],
           ["middle child of prev"],
@@ -2328,7 +2344,7 @@ describe("treeNode", () => {
       ]));
 
       const batch = writeBatch(firestoreForTest);
-      await indent(batch, col, (await getDoc(col, "node"))!);
+      await indent(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2431,7 +2447,7 @@ describe("treeNode", () => {
       ]));
 
       const batch = writeBatch(firestoreForTest);
-      await indent(batch, col, (await getDoc(col, "node"))!);
+      await indent(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2526,7 +2542,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNode("parent", ["node"]));
 
       const batch = writeBatch(firestoreForTest);
-      await dedent(batch, col, (await getDoc(col, "node"))!);
+      await dedent(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2553,7 +2569,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNode("grandparent", ["parent", [["node"]]]));
 
       const batch = writeBatch(firestoreForTest);
-      await dedent(batch, col, (await getDoc(col, "node"))!);
+      await dedent(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2597,7 +2613,7 @@ describe("treeNode", () => {
       ]));
 
       const batch = writeBatch(firestoreForTest);
-      await dedent(batch, col, (await getDoc(col, "node"))!);
+      await dedent(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2655,7 +2671,7 @@ describe("treeNode", () => {
       ]));
 
       const batch = writeBatch(firestoreForTest);
-      await dedent(batch, col, (await getDoc(col, "node"))!);
+      await dedent(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2736,7 +2752,7 @@ describe("treeNode", () => {
       ]));
 
       const batch = writeBatch(firestoreForTest);
-      await dedent(batch, col, (await getDoc(col, "node"))!);
+      await dedent(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2820,7 +2836,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNode("parent", ["node"]));
 
       const batch = writeBatch(firestoreForTest);
-      await movePrev(batch, col, (await getDoc(col, "node"))!);
+      await movePrev(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2847,7 +2863,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNodes("parent", [["prev of prev"], ["prev"], ["node"]]));
 
       const batch = writeBatch(firestoreForTest);
-      await movePrev(batch, col, (await getDoc(col, "node"))!);
+      await movePrev(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2896,7 +2912,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNodes("parent", [["prev of prev"], ["prev"], ["node", [["child"]]]]));
 
       const batch = writeBatch(firestoreForTest);
-      await movePrev(batch, col, (await getDoc(col, "node"))!);
+      await movePrev(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2958,7 +2974,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNode("parent", ["node"]));
 
       const batch = writeBatch(firestoreForTest);
-      await movePrev(batch, col, (await getDoc(col, "node"))!);
+      await movePrev(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -2985,7 +3001,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["parent", [["node"], ["next"], ["next of next"]]]));
 
       const batch = writeBatch(firestoreForTest);
-      await moveNext(batch, col, (await getDoc(col, "node"))!);
+      await moveNext(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -3045,7 +3061,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["parent", [["node", [["child"]]], ["next"], ["next of next"]]]));
 
       const batch = writeBatch(firestoreForTest);
-      await moveNext(batch, col, (await getDoc(col, "node"))!);
+      await moveNext(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -3119,7 +3135,7 @@ describe("treeNode", () => {
 
       await test.expect(async () => {
         const batch = writeBatch(firestoreForTest);
-        await remove(batch, col, (await getDoc(col, "node"))!);
+        await remove(serviceForTest, batch, col, await getDoc(col, "node"));
         await batch.commit();
       }).rejects.toThrowErrorMatchingInlineSnapshot(`
         [Error: cannot delete node with children: {
@@ -3170,7 +3186,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNode("", ["node"]));
 
       const batch = writeBatch(firestoreForTest);
-      await remove(batch, col, (await getDoc(col, "node"))!);
+      await remove(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([]);
@@ -3185,7 +3201,7 @@ describe("treeNode", () => {
       await setDocs(col, makeTreeNodes("parent", [["prev"], ["node"], ["next"]]));
 
       const batch = writeBatch(firestoreForTest);
-      await remove(batch, col, (await getDoc(col, "node"))!);
+      await remove(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([
@@ -3226,7 +3242,7 @@ describe("treeNode", () => {
       );
 
       const batch = writeBatch(firestoreForTest);
-      await remove(batch, col, (await getDoc(col, "node"))!);
+      await remove(serviceForTest, batch, col, await getDoc(col, "node"));
       await batch.commit();
 
       await test.expect(getDocs(col)).resolves.toEqual([

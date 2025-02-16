@@ -1,13 +1,11 @@
-import { deleteApp, initializeApp } from "firebase/app";
+import { deleteApp, type FirebaseApp, initializeApp } from "firebase/app";
 import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup } from "firebase/auth";
 import {
-  type Firestore,
   getFirestore,
   connectFirestoreEmulator,
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
-  onSnapshotsInSync,
 } from "firebase/firestore";
 import YAML from "js-yaml";
 import {
@@ -20,9 +18,6 @@ import {
   Show,
   createContext,
   useContext,
-  type Accessor,
-  createSignal,
-  createComputed,
 } from "solid-js";
 import * as s from "superstruct";
 
@@ -30,10 +25,7 @@ import { ServiceNotAvailable } from "@/services/error";
 import { createSubscribeWithSignal } from "@/solid/subscribe";
 
 export type FirebaseService = {
-  firestore: Firestore;
-  clock$: Accessor<boolean>;
-  setClock: Setter<boolean>;
-  resolve: (() => void) | undefined;
+  firebaseApp: FirebaseApp;
 };
 
 export type FirebaseConfig = s.Infer<typeof firebaseConfigSchema>;
@@ -69,7 +61,7 @@ export function FirebaseServiceProvoider(props: {
     }
   });
 
-  const firebase$ = createMemo(() => {
+  const firebaseApp$ = createMemo(() => {
     const config = config$();
     if (!config) return;
 
@@ -97,7 +89,7 @@ export function FirebaseServiceProvoider(props: {
       return;
     }
 
-    const firebase = firebase$();
+    const firebase = firebaseApp$();
     if (!firebase) return;
 
     const unsubscribe = onAuthStateChanged(getAuth(firebase), (user) => {
@@ -113,7 +105,7 @@ export function FirebaseServiceProvoider(props: {
 
   const [authed$] = createResource(
     () => {
-      const firebase = firebase$();
+      const firebase = firebaseApp$();
       if (!firebase) return;
 
       const authStatus = authStatus$();
@@ -137,28 +129,9 @@ export function FirebaseServiceProvoider(props: {
   );
 
   return (
-    <Show when={authed$() && firebase$()} keyed>
-      {(firebase) => {
-        const firestore = getFirestore(firebase);
-
-        const [clock$, setClock] = createSignal(false);
-        createComputed(() => {
-          if (clock$()) {
-            console.timeStamp("clock high");
-          } else {
-            console.timeStamp("clock low");
-          }
-        });
-
-        const service: FirebaseService = { firestore, clock$, setClock, resolve: undefined };
-
-        const unsubscribe = onSnapshotsInSync(firestore, () => {
-          service.resolve?.();
-          service.resolve = undefined;
-        });
-        onCleanup(unsubscribe);
-
-        return <context.Provider value={service}>{props.children}</context.Provider>;
+    <Show when={authed$() && firebaseApp$()} keyed>
+      {(firebaseApp) => {
+        return <context.Provider value={{ firebaseApp }}>{props.children}</context.Provider>;
       }}
     </Show>
   );

@@ -1,11 +1,9 @@
-import { getOwner, onCleanup, runWithOwner } from "solid-js";
+import { onCleanup } from "solid-js";
 
-export function addKeyDownEventListener(callback: (event: KeyboardEvent) => void) {
-  const owner = getOwner();
-
+export function addKeyDownEventListener(callback: (event: KeyboardEvent) => Promise<void>) {
   const listener = (event: KeyboardEvent) => {
-    runWithOwner(owner, () => {
-      callback(event);
+    callback(event).catch((e: unknown) => {
+      throw e;
     });
   };
 
