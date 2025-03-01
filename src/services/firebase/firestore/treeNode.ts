@@ -448,7 +448,7 @@ export async function indent<T extends TreeNode>(
     });
 
     batch.update(doc(col, bottomNodeOfNode.id), {
-      belowId: node.nextId,
+      belowId: bottomNodeOfNode.belowId,
       updatedAt: serverTimestamp(),
     });
 

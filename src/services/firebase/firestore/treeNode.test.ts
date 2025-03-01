@@ -2530,6 +2530,73 @@ describe("treeNode", () => {
         },
       ]);
     });
+
+    test("has parent node, has next node, has child node, no children nodes of prev node", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+
+      // prettier-ignore
+      await setDocs(col, makeTreeNodes("grandparent", [
+        ["parent", [
+          ["prev"],
+          ["node"],
+        ]],
+        ["next of parent"]
+      ]));
+
+      const batch = writeBatch(firestoreForTest);
+      await indent(serviceForTest, batch, col, await getDoc(col, "node"));
+      await batch.commit();
+
+      await test.expect(getDocs(col)).resolves.toEqual([
+        {
+          id: "next of parent",
+          text: "next of parent",
+          parentId: "grandparent",
+          prevId: "parent",
+          nextId: "",
+          aboveId: "node",
+          belowId: "",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "node",
+          text: "node",
+          parentId: "prev",
+          prevId: "",
+          nextId: "",
+          aboveId: "prev",
+          belowId: "next of parent",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+        {
+          id: "parent",
+          text: "parent",
+          parentId: "grandparent",
+          prevId: "",
+          nextId: "next of parent",
+          aboveId: "grandparent",
+          belowId: "prev",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
+        },
+        {
+          id: "prev",
+          text: "prev",
+          parentId: "parent",
+          prevId: "",
+          nextId: "",
+          aboveId: "parent",
+          belowId: "node",
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForServerTimestamp,
+        },
+      ]);
+    });
   });
 
   describe("dedent", () => {

@@ -10,19 +10,6 @@ export interface Schema {
     createdAt: Timestamp;
     updatedAt: Timestamp;
   };
-
-  lifeLogTreeNodes: {
-    text: string;
-
-    parentId: string;
-    prevId: string;
-    nextId: string;
-    aboveId: string;
-    belowId: string;
-
-    createdAt: Timestamp;
-    updatedAt: Timestamp;
-  };
 }
 
 type EnsureNoPreservedFields<T, PreservedFields extends string> = T extends {

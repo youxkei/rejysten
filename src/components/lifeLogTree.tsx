@@ -1,8 +1,10 @@
 import equals from "fast-deep-equal";
 import { doc, query, where } from "firebase/firestore";
+import { type Timestamp } from "firebase/firestore";
 import { createComputed, createMemo, For, Show, startTransition } from "solid-js";
 
-import { getCollection, getDoc, runBatch, useFirestoreService } from "@/services/firebase/firestore";
+import { type DocumentData, getCollection, getDoc, runBatch, useFirestoreService } from "@/services/firebase/firestore";
+import { type Schema } from "@/services/firebase/firestore/schema";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { dedent, getFirstChildNode, indent } from "@/services/firebase/firestore/treeNode";
 import { initialState, useStoreService } from "@/services/store";
@@ -13,6 +15,23 @@ declare module "@/services/store" {
   interface State {
     lifeLogs: {
       selectedId: string;
+    };
+  }
+}
+
+declare module "@/services/firebase/firestore/schema" {
+  interface Schema {
+    lifeLogTreeNodes: {
+      text: string;
+
+      parentId: string;
+      prevId: string;
+      nextId: string;
+      aboveId: string;
+      belowId: string;
+
+      createdAt: Timestamp;
+      updatedAt: Timestamp;
     };
   }
 }
@@ -79,11 +98,31 @@ export function ChildrenNodes(props: { parentId: string; logId: string }) {
   const childrenNodes$ = createSubscribeAllSignal(firestore, () =>
     query(lifeLogTreeNodesCol, where("parentId", "==", props.parentId)),
   );
-  const childrenIds$ = createMemo(() => childrenNodes$().map((childNode) => childNode.id), [], { equals });
+  const sortedChildrenNodes$ = () => {
+    const childrenNodes = childrenNodes$();
+
+    const nodeMap = new Map<string, DocumentData<Schema["lifeLogTreeNodes"]>>();
+    let firstNode: DocumentData<Schema["lifeLogTreeNodes"]> | undefined;
+
+    for (const node of childrenNodes) {
+      nodeMap.set(node.id, node);
+      if (node.prevId === "") firstNode = node;
+    }
+
+    const sortedChildren = [];
+    let currentNode = firstNode;
+    while (currentNode) {
+      sortedChildren.push(currentNode);
+      currentNode = nodeMap.get(currentNode.nextId);
+    }
+
+    return sortedChildren;
+  };
+  const childrenIds$ = createMemo(() => sortedChildrenNodes$().map((childNode) => childNode.id), [], { equals });
 
   createComputed(() => {
     childrenNodes$();
-    console.timeStamp("childrenNodes of ${props.parentId} updated");
+    console.timeStamp(`childrenNodes of ${props.parentId} updated`);
   });
 
   createComputed(() => {
