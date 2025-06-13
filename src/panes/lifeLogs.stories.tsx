@@ -2,13 +2,13 @@ import { doc, Timestamp, writeBatch } from "firebase/firestore";
 import { createSignal, onMount, Suspense } from "solid-js";
 import { type Meta, type StoryObj } from "storybook-solidjs";
 
-import { LifeLogTree } from "@/components/lifeLogTree";
+import { LifeLogTree } from "@/panes/lifeLogs";
 import { FirebaseServiceProvoider } from "@/services/firebase";
 import { FirestoreServiceProvider, getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
 
 export default {
-  title: "components/lifeLogTree",
+  title: "panes/lifeLogs",
 } satisfies Meta;
 
 const firebaseConfig = `{ apiKey: "apiKey", authDomain: "authDomain", projectId: "demo", storageBucket: "", messagingSenderId: "", appId: "", measurementId: "" }`;
@@ -25,7 +25,7 @@ export const LifeLogTreeStory: StoryObj = {
         <StoreServiceProvider>
           <FirebaseServiceProvoider configYAML={firebaseConfig} setErrors={setErrors}>
             <FirestoreServiceProvider>
-              <Suspense fallback={<p>loading</p>}>
+              <Suspense>
                 {(() => {
                   const firestore = useFirestoreService();
 
@@ -139,7 +139,7 @@ export const LifeLogTreeStory: StoryObj = {
                     void batch.commit();
 
                     updateState((state) => {
-                      state.lifeLogs.selectedId = "log1";
+                      state.panesLifeLogs.selectedLifeLogId = "log1";
                     });
                   });
 
