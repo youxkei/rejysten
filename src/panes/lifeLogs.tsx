@@ -1,12 +1,15 @@
-import { doc, type Timestamp } from "firebase/firestore";
-import { Show, startTransition } from "solid-js";
+import { Key } from "@solid-primitives/keyed";
+import equal from "fast-deep-equal";
+import { doc, orderBy, query, Timestamp, where } from "firebase/firestore";
+import { createMemo, Show, startTransition } from "solid-js";
 
 import { ChildrenNodes } from "@/components/lifeLogTree";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
-import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
+import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { getFirstChildNode } from "@/services/firebase/firestore/treeNode";
 import { initialState, useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
+import { createTickSignal } from "@/solid/signal";
 import { styles } from "@/styles.css";
 
 declare module "@/services/store" {
@@ -45,13 +48,77 @@ declare module "@/services/firebase/firestore/schema" {
   }
 }
 
+const dayMs = 24 * 60 * 60 * 1000;
+export const noneTimestamp = Timestamp.fromDate(new Date("3000-12-31T23:59:59Z"));
+
 initialState.panesLifeLogs = {
   selectedLifeLogId: "",
   selectedLifeLogNodeId: "",
 };
 
 export function LifeLogs() {
-  return null;
+  const tickDay$ = createTickSignal(dayMs);
+
+  return <LifeLogList start={Timestamp.fromMillis(tickDay$() - 7 * dayMs)} end={noneTimestamp} />;
+}
+
+export function LifeLogList(props: { start: Timestamp; end: Timestamp }) {
+  const firestore = useFirestoreService();
+  const lifeLogsCol = getCollection(firestore, "lifeLogs");
+
+  const lifeLogs$ = createSubscribeAllSignal(firestore, () =>
+    query(
+      lifeLogsCol,
+      where("startAt", ">=", props.start),
+      where("endAt", "<=", props.end),
+      orderBy("startAt"),
+      orderBy("endAt"),
+    ),
+  );
+
+  const lifeLogIdWithNeighborIds$ = createMemo(
+    () => {
+      const lifeLogs = lifeLogs$();
+      const lifeLogWithNeighborIds = lifeLogs.map((lifeLog) => ({ id: lifeLog.id, prevId: "", nextId: "" }));
+
+      for (let i = 0; i < lifeLogs.length; i++) {
+        if (i > 0) {
+          lifeLogWithNeighborIds[i].prevId = lifeLogs[i - 1].id;
+        }
+        if (i < lifeLogs.length - 1) {
+          lifeLogWithNeighborIds[i].nextId = lifeLogs[i + 1].id;
+        }
+      }
+
+      return lifeLogWithNeighborIds;
+    },
+    { equal },
+  );
+
+  return (
+    <ul>
+      <Key
+        each={(() => {
+          const ids = lifeLogIdWithNeighborIds$();
+          console.log("lifeLogIdWithNeighborIds$", ids);
+
+          return ids;
+        })()}
+        by={(item) => item.id}
+        fallback={<span>lifeLogs empty</span>}
+      >
+        {(lifeLogWithNeighborIds) => (
+          <li id={lifeLogWithNeighborIds().id}>
+            <LifeLogTree
+              id={lifeLogWithNeighborIds().id}
+              prevId={lifeLogWithNeighborIds().prevId}
+              nextId={lifeLogWithNeighborIds().nextId}
+            />
+          </li>
+        )}
+      </Key>
+    </ul>
+  );
 }
 
 export function LifeLogTree(props: { id: string; prevId: string; nextId: string }) {
@@ -78,7 +145,7 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
 
     switch (event.code) {
       case "KeyL": {
-        if (ctrlKey || shiftKey || isLifeLogNodeSelected$()) return;
+        if (ctrlKey || shiftKey || !isSelected$() || isLifeLogNodeSelected$()) return;
 
         event.stopImmediatePropagation();
 
@@ -101,10 +168,32 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
       }
 
       case "KeyH": {
-        if (ctrlKey || shiftKey || isLifeLogSelected$()) return;
+        if (ctrlKey || shiftKey || !isSelected$() || isLifeLogSelected$()) return;
         event.stopImmediatePropagation();
 
         setSelectedLifeLogNodeId("");
+
+        break;
+      }
+
+      case "KeyJ": {
+        if (ctrlKey || shiftKey || !isSelected$() || isLifeLogNodeSelected$() || props.nextId === "") return;
+        event.stopImmediatePropagation();
+
+        updateState((state) => {
+          state.panesLifeLogs.selectedLifeLogId = props.nextId;
+        });
+
+        break;
+      }
+
+      case "KeyK": {
+        if (ctrlKey || shiftKey || !isSelected$() || isLifeLogNodeSelected$() || props.prevId === "") return;
+        event.stopImmediatePropagation();
+
+        updateState((state) => {
+          state.panesLifeLogs.selectedLifeLogId = props.prevId;
+        });
 
         break;
       }
@@ -113,26 +202,24 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
 
   return (
     <Show when={lifeLog$()}>
-      {(lifeLog$) => {
-        return (
-          <>
-            <div classList={{ [styles.lifeLogTree.selected]: isLifeLogSelected$() }}>
-              <span>{lifeLog$().text}</span>
-            </div>
-            <Show when={selectedLifeLogNodeId$()}>
-              {(selectedLifeLogNodeId$) => (
-                <ChildrenNodes
-                  col={getCollection(firestore, "lifeLogTreeNodes")}
-                  parentId={props.id}
-                  selectedId={selectedLifeLogNodeId$()}
-                  setSelectedId={setSelectedLifeLogNodeId}
-                  showNode={(node) => <span>{node.text}</span>}
-                />
-              )}
-            </Show>
-          </>
-        );
-      }}
+      {(lifeLog$) => (
+        <>
+          <div classList={{ [styles.lifeLogTree.selected]: isLifeLogSelected$() }}>
+            <span>{lifeLog$().text}</span>
+          </div>
+          <Show when={selectedLifeLogNodeId$()}>
+            {(selectedLifeLogNodeId$) => (
+              <ChildrenNodes
+                col={getCollection(firestore, "lifeLogTreeNodes")}
+                parentId={props.id}
+                selectedId={selectedLifeLogNodeId$()}
+                setSelectedId={setSelectedLifeLogNodeId}
+                showNode={(node) => <span>{node.text}</span>}
+              />
+            )}
+          </Show>
+        </>
+      )}
     </Show>
   );
 }

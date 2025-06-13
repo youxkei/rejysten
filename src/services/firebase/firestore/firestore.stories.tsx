@@ -28,6 +28,7 @@ export default {
 const firebaseConfig = `{ apiKey: "apiKey", authDomain: "authDomain", projectId: "demo", storageBucket: "", messagingSenderId: "", appId: "", measurementId: "" }`;
 
 const nonPrintableUnicodeRegex = XRegExp("[\\p{C}\\p{Z}]", "g");
+const segmenter = new Intl.Segmenter();
 
 function trimNonPrintableChars(text: string) {
   return XRegExp.replace(text, nonPrintableUnicodeRegex, "");
@@ -78,7 +79,11 @@ export const FirestoreNgram: StoryObj = {
 
                   const [text$, setText] = createSignal("");
                   const [searchText$, setSearchText] = createSignal("");
-                  const searchTextChars$ = createMemo(() => [...trimNonPrintableChars(searchText$())], []);
+                  const searchTextChars$ = createMemo(
+                    () =>
+                      [...segmenter.segment(trimNonPrintableChars(searchText$()))].map((segment) => segment.segment),
+                    [],
+                  );
 
                   const itemCollection = getCollection(firestore, "pocFirestoreNgramItems");
                   const bigramCollection = getCollection(firestore, "pocFirestoreNgrams");
@@ -141,7 +146,9 @@ export const FirestoreNgram: StoryObj = {
                               batch.set(doc(bigramCollection, id), {
                                 collection: "pocFirestoreNgramItems",
                                 text,
-                                ngram: calcBigram([...trimNonPrintableChars(text)]),
+                                ngram: calcBigram(
+                                  [...segmenter.segment(trimNonPrintableChars(text))].map((segment) => segment.segment),
+                                ),
                                 createdAt: Timestamp.fromDate(new Date()),
                                 updatedAt: Timestamp.fromDate(new Date()),
                               });

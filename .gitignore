@@ -1,3 +1,6 @@
 /node_modules
 /dist
 /.firebaserc
+
+*storybook.log
+storybook-static

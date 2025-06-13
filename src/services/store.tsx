@@ -6,6 +6,7 @@ import { ServiceNotAvailable } from "@/services/error";
 
 const localStorageName = "rejysten.service.store.state";
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface State {}
 
 export const initialState = {} as State;

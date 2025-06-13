@@ -1,14 +1,11 @@
-import type { Preview } from "storybook-solidjs";
-
-import "@storybook/addon-console";
+import type { Preview } from 'storybook-solidjs-vite'
 
 const preview: Preview = {
   parameters: {
-    actions: { argTypesRegex: "^on[A-Z].*" },
     controls: {
       matchers: {
-        color: /(background|color)$/i,
-        date: /Date$/,
+       color: /(background|color)$/i,
+       date: /Date$/i,
       },
     },
   },

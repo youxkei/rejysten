@@ -1,4 +1,4 @@
-import { type Accessor, createComputed, createMemo } from "solid-js";
+import { type Accessor, createComputed, createMemo, createSignal, onCleanup } from "solid-js";
 
 export function mapSignal<T, U>(signal$: Accessor<T>, callback: (element: T) => U) {
   return () => callback(signal$());
@@ -33,4 +33,29 @@ export function createLatchSignal<T>(signal$: Accessor<T>, clock$: Accessor<bool
   );
 
   return () => memoized().data;
+}
+
+export function createTickSignal(unitMs: number): Accessor<number> {
+  const [now$, setNow] = createSignal(Date.now());
+
+  let timeoutId: number | undefined;
+
+  function setTimer(): number {
+    return window.setTimeout(
+      () => {
+        setNow(Date.now());
+
+        timeoutId = setTimer();
+      },
+      unitMs - (Date.now() % unitMs),
+    );
+  }
+
+  timeoutId = setTimer();
+
+  onCleanup(() => {
+    clearTimeout(timeoutId);
+  });
+
+  return now$;
 }
