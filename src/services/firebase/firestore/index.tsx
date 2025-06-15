@@ -16,6 +16,7 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager,
   onSnapshotsInSync,
+  connectFirestoreEmulator,
 } from "firebase/firestore";
 import {
   type Accessor,
@@ -67,6 +68,10 @@ export function FirestoreServiceProvider(props: { children: JSXElement }) {
   const firestore = initializeFirestore(firebase.firebaseApp, {
     localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
   });
+
+  if (firebase.firebaseApp.options.projectId == "demo") {
+    connectFirestoreEmulator(firestore, "localhost", 8080);
+  }
 
   const [clock$, setClock] = createSignal(false);
   createComputed(() => {

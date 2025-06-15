@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
     "strict": true,
-    "target": "es2023",
+    "target": "esnext",
     "module": "esnext",
-    "lib": ["es2023", "dom"],
+    "lib": ["esnext", "dom"],
     "jsx": "preserve",
     "moduleResolution": "node",
     "esModuleInterop": true,

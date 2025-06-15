@@ -1,12 +1,5 @@
 import { deleteApp, type FirebaseApp, initializeApp } from "firebase/app";
 import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup } from "firebase/auth";
-import {
-  getFirestore,
-  connectFirestoreEmulator,
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
-} from "firebase/firestore";
 import YAML from "js-yaml";
 import {
   type JSXElement,
@@ -66,11 +59,6 @@ export function FirebaseServiceProvoider(props: {
     if (!config) return;
 
     const app = initializeApp(config);
-    initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
-
-    if (config.projectId === "demo") {
-      connectFirestoreEmulator(getFirestore(app), "localhost", 8080);
-    }
 
     onCleanup(async () => {
       await deleteApp(app);

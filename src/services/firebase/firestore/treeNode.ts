@@ -278,6 +278,31 @@ export async function getBottomNodeExclusive<T extends TreeNode, U extends objec
   }
 }
 
+export function addSingle<T extends TreeNode>(
+  _service: FirestoreService,
+  batch: WriteBatch,
+  col: CollectionReference<T>,
+  parentId: string,
+  newNode: DocumentData<Omit<T, keyof TreeNode>>,
+) {
+  if (newNode.id === "") {
+    throw new ErrorWithFields("new node must have a valid id", { newNode });
+  }
+
+  const { id: _, ...newNodeData } = newNode;
+
+  batch.set(doc(col, newNode.id), {
+    ...(newNodeData as unknown as T),
+    parentId,
+    prevId: "",
+    nextId: "",
+    aboveId: "",
+    belowId: "",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function addPrevSibling<T extends TreeNode>(
   service: FirestoreService,
   batch: WriteBatch,
@@ -418,7 +443,6 @@ export async function addNextSibling<T extends TreeNode>(
   }
 }
 
-// BUG(youxkei): two indentation cause invalid belowId
 export async function indent<T extends TreeNode>(
   service: FirestoreService,
   batch: WriteBatch,

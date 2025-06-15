@@ -1,11 +1,12 @@
+import { type Meta, type StoryObj } from "@kachurun/storybook-solid-vite";
 import { doc, Timestamp, writeBatch } from "firebase/firestore";
 import { createSignal, onMount, Suspense } from "solid-js";
-import { type Meta, type StoryObj } from "storybook-solidjs";
 
-import { LifeLogs, LifeLogTree, noneTimestamp } from "@/panes/lifeLogs";
+import { LifeLogs, LifeLogTree } from "@/panes/lifeLogs";
 import { FirebaseServiceProvoider } from "@/services/firebase";
 import { FirestoreServiceProvider, getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
+import { noneTimestamp } from "@/timestamp";
 
 export default {
   title: "panes/lifeLogs",

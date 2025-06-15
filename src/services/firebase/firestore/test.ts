@@ -14,7 +14,7 @@ import { getDoc as getDocOriginal, getDocs as getDocsOriginal, type FirestoreSer
 import { type Schema } from "@/services/firebase/firestore/schema";
 import { firebaseServiceForTest } from "@/services/firebase/test";
 
-function crateFirestoreServiceForTest() {
+function createFirestoreServiceForTest() {
   const firestore = initializeFirestore(firebaseServiceForTest.firebaseApp, { localCache: persistentLocalCache() });
 
   connectFirestoreEmulator(firestore, "localhost", 8080);
@@ -22,7 +22,7 @@ function crateFirestoreServiceForTest() {
   return { firestore };
 }
 
-export const serviceForTest = crateFirestoreServiceForTest() as FirestoreService;
+export const serviceForTest = createFirestoreServiceForTest() as FirestoreService;
 export const firestoreForTest = serviceForTest.firestore;
 
 export function getCollectionForTest<Name extends keyof Schema>(name: Name, postfix: string) {

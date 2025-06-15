@@ -2,15 +2,17 @@ import { Key } from "@solid-primitives/keyed";
 import equal from "fast-deep-equal";
 import { doc, orderBy, query, Timestamp, where } from "firebase/firestore";
 import { createMemo, Show, startTransition } from "solid-js";
+import { uuidv4 } from "uuidv7";
 
 import { ChildrenNodes } from "@/components/lifeLogTree";
-import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
+import { getCollection, getDoc, runBatch, useFirestoreService } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
-import { getFirstChildNode } from "@/services/firebase/firestore/treeNode";
+import { addSingle, getFirstChildNode } from "@/services/firebase/firestore/treeNode";
 import { initialState, useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
 import { createTickSignal } from "@/solid/signal";
 import { styles } from "@/styles.css";
+import { dayMs, noneTimestamp, timestampToTimeText } from "@/timestamp";
 
 declare module "@/services/store" {
   interface State {
@@ -47,9 +49,6 @@ declare module "@/services/firebase/firestore/schema" {
     };
   }
 }
-
-const dayMs = 24 * 60 * 60 * 1000;
-export const noneTimestamp = Timestamp.fromDate(new Date("3000-12-31T23:59:59Z"));
 
 initialState.panesLifeLogs = {
   selectedLifeLogId: "",
@@ -97,16 +96,7 @@ export function LifeLogList(props: { start: Timestamp; end: Timestamp }) {
 
   return (
     <ul>
-      <Key
-        each={(() => {
-          const ids = lifeLogIdWithNeighborIds$();
-          console.log("lifeLogIdWithNeighborIds$", ids);
-
-          return ids;
-        })()}
-        by={(item) => item.id}
-        fallback={<span>lifeLogs empty</span>}
-      >
+      <Key each={lifeLogIdWithNeighborIds$()} by={(item) => item.id}>
         {(lifeLogWithNeighborIds) => (
           <li id={lifeLogWithNeighborIds().id}>
             <LifeLogTree
@@ -153,16 +143,29 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
         if (!lifeLog) return;
 
         const firstChildNode = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
-        if (!firstChildNode) return;
+        let id = "";
 
         firestore.setClock(true);
-        await startTransition(() => {
-          try {
-            setSelectedLifeLogNodeId(firstChildNode.id);
-          } finally {
-            firestore.setClock(false);
+        try {
+          if (firstChildNode) {
+            id = firstChildNode.id;
+          } else {
+            id = uuidv4();
+            await runBatch(firestore, (batch) => {
+              addSingle(firestore, batch, lifeLogTreeNodesCol, lifeLog.id, {
+                id,
+                text: "new",
+              });
+
+              return Promise.resolve();
+            });
           }
-        });
+        } finally {
+          await startTransition(() => {
+            setSelectedLifeLogNodeId(id);
+            firestore.setClock(false);
+          });
+        }
 
         break;
       }
@@ -205,18 +208,19 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
       {(lifeLog$) => (
         <>
           <div classList={{ [styles.lifeLogTree.selected]: isLifeLogSelected$() }}>
-            <span>{lifeLog$().text}</span>
+            <div>
+              {timestampToTimeText(lifeLog$().startAt) ?? "N/A"} {timestampToTimeText(lifeLog$().endAt) ?? "N/A"}
+            </div>
+            <div> {lifeLog$().text} </div>
           </div>
-          <Show when={selectedLifeLogNodeId$()}>
-            {(selectedLifeLogNodeId$) => (
-              <ChildrenNodes
-                col={getCollection(firestore, "lifeLogTreeNodes")}
-                parentId={props.id}
-                selectedId={selectedLifeLogNodeId$()}
-                setSelectedId={setSelectedLifeLogNodeId}
-                showNode={(node) => <span>{node.text}</span>}
-              />
-            )}
+          <Show when={isLifeLogNodeSelected$()}>
+            <ChildrenNodes
+              col={getCollection(firestore, "lifeLogTreeNodes")}
+              parentId={props.id}
+              selectedId={selectedLifeLogNodeId$()}
+              setSelectedId={setSelectedLifeLogNodeId}
+              showNode={(node) => <span>{node.text}</span>}
+            />
           </Show>
         </>
       )}

@@ -1,14 +1,18 @@
-import type { Preview } from 'storybook-solidjs-vite'
+import type { Preview } from "@kachurun/storybook-solid-vite";
 
-const preview: Preview = {
+export default {
+  tags: ["!autodocs"],
   parameters: {
+    // automatically create action args for all props that start with "on"
+    actions: { argTypesRegex: "^on.*" },
     controls: {
       matchers: {
-       color: /(background|color)$/i,
-       date: /Date$/i,
+        color: /(background|color)$/i,
+        date: /Date$/,
       },
     },
+    docs: {
+      codePanel: true,
+    },
   },
-};
-
-export default preview;
+} as Preview;

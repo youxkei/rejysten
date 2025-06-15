@@ -1,3 +1,4 @@
+import { type Meta, type StoryObj } from "@kachurun/storybook-solid-vite";
 import {
   doc,
   getDocs,
@@ -11,7 +12,6 @@ import {
   enableNetwork,
 } from "firebase/firestore";
 import { For, Suspense, createSignal, createMemo, Show, startTransition, createComputed } from "solid-js";
-import { type Meta, type StoryObj } from "storybook-solidjs";
 import { uuidv7 } from "uuidv7";
 import XRegExp from "xregexp";
 
@@ -29,6 +29,12 @@ const firebaseConfig = `{ apiKey: "apiKey", authDomain: "authDomain", projectId:
 
 const nonPrintableUnicodeRegex = XRegExp("[\\p{C}\\p{Z}]", "g");
 const segmenter = new Intl.Segmenter();
+
+function split(text: string) {
+  const segmented = segmenter.segment(text);
+
+  return [...segmented[Symbol.iterator]().map((segment) => segment.segment)];
+}
 
 function trimNonPrintableChars(text: string) {
   return XRegExp.replace(text, nonPrintableUnicodeRegex, "");
@@ -79,11 +85,7 @@ export const FirestoreNgram: StoryObj = {
 
                   const [text$, setText] = createSignal("");
                   const [searchText$, setSearchText] = createSignal("");
-                  const searchTextChars$ = createMemo(
-                    () =>
-                      [...segmenter.segment(trimNonPrintableChars(searchText$()))].map((segment) => segment.segment),
-                    [],
-                  );
+                  const searchTextChars$ = createMemo(() => split(trimNonPrintableChars(searchText$())), []);
 
                   const itemCollection = getCollection(firestore, "pocFirestoreNgramItems");
                   const bigramCollection = getCollection(firestore, "pocFirestoreNgrams");
@@ -146,9 +148,7 @@ export const FirestoreNgram: StoryObj = {
                               batch.set(doc(bigramCollection, id), {
                                 collection: "pocFirestoreNgramItems",
                                 text,
-                                ngram: calcBigram(
-                                  [...segmenter.segment(trimNonPrintableChars(text))].map((segment) => segment.segment),
-                                ),
+                                ngram: calcBigram(split(trimNonPrintableChars(text))),
                                 createdAt: Timestamp.fromDate(new Date()),
                                 updatedAt: Timestamp.fromDate(new Date()),
                               });
