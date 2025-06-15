@@ -74,7 +74,11 @@ export function timeTextToTimestamp(text: string) {
         second >= 0 &&
         second <= 59
       ) {
-        return Timestamp.fromDate(new Date(year, month - 1, dateOfMonth, hour, minute, second));
+        const date = new Date(year, month - 1, dateOfMonth, hour, minute, second);
+        // Verify the date components match to avoid rollover (e.g., month 13 -> next year)
+        if (date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === dateOfMonth) {
+          return Timestamp.fromDate(date);
+        }
       }
     }
   }
