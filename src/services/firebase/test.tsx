@@ -13,7 +13,11 @@ function createFirebaseServiceForTest(): FirebaseService {
     measurementId: "",
   });
 
-  return { firebaseApp };
+  return { 
+    firebaseApp,
+    errors$: () => [],
+    clearErrors: () => {},
+  };
 }
 
 export const firebaseServiceForTest = createFirebaseServiceForTest();

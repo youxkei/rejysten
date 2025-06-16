@@ -3,7 +3,7 @@ import { doc, Timestamp, writeBatch } from "firebase/firestore";
 import { onMount, Suspense, createEffect, type JSXElement } from "solid-js";
 
 import { LifeLogs, LifeLogTree } from "@/panes/lifeLogs";
-import { FirebaseServiceProvoider, useFirebaseConfig } from "@/services/firebase";
+import { FirebaseServiceProvoider, useFirebaseConfig, useFirebaseErrors } from "@/services/firebase";
 import { FirestoreServiceProvider, getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
 import { noneTimestamp } from "@/timestamp";
@@ -15,7 +15,7 @@ export default {
 const firebaseConfig = `{ apiKey: "apiKey", authDomain: "authDomain", projectId: "demo", storageBucket: "", messagingSenderId: "", appId: "", measurementId: "" }`;
 
 function StorybookFirebaseWrapper(props: { children: JSXElement }) {
-  const { errors$, setConfigYAML } = useFirebaseConfig();
+  const { setConfigYAML } = useFirebaseConfig();
 
   createEffect(() => {
     setConfigYAML(firebaseConfig);
@@ -23,11 +23,18 @@ function StorybookFirebaseWrapper(props: { children: JSXElement }) {
 
   return (
     <>
-      <pre>
-        <code>{errors$().join("\n")}</code>
-      </pre>
       <FirebaseServiceProvoider>
-        <FirestoreServiceProvider>{props.children}</FirestoreServiceProvider>
+        {(() => {
+          const { errors$ } = useFirebaseErrors();
+          return (
+            <>
+              <pre>
+                <code>{errors$().join("\n")}</code>
+              </pre>
+              <FirestoreServiceProvider>{props.children}</FirestoreServiceProvider>
+            </>
+          );
+        })()}
       </FirebaseServiceProvoider>
     </>
   );

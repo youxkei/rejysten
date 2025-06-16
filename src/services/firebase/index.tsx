@@ -10,6 +10,7 @@ import {
   Show,
   createContext,
   useContext,
+  createSignal,
 } from "solid-js";
 import * as s from "superstruct";
 
@@ -19,6 +20,8 @@ import { createSubscribeWithSignal } from "@/solid/subscribe";
 
 export type FirebaseService = {
   firebaseApp: FirebaseApp;
+  errors$: () => string[];
+  clearErrors: () => void;
 };
 
 export type FirebaseConfig = s.Infer<typeof firebaseConfigSchema>;
@@ -29,14 +32,12 @@ declare module "@/services/store" {
   interface State {
     servicesFirebase: {
       configYAML: string | undefined;
-      errors: string[];
     };
   }
 }
 
 initialState.servicesFirebase = {
   configYAML: undefined,
-  errors: [],
 };
 
 const firebaseConfigSchema = s.object({
@@ -50,7 +51,16 @@ const firebaseConfigSchema = s.object({
 });
 
 export function FirebaseServiceProvoider(props: { children: JSXElement }) {
-  const { state, updateState } = useStoreService();
+  const { state } = useStoreService();
+  const [errors$, setErrors] = createSignal<string[]>([]);
+
+  const addError = (error: string) => {
+    setErrors((prev) => [...prev, error]);
+  };
+
+  const clearErrors = () => {
+    setErrors([]);
+  };
 
   const config$ = createMemo(() => {
     if (!state.servicesFirebase.configYAML) return;
@@ -63,9 +73,7 @@ export function FirebaseServiceProvoider(props: { children: JSXElement }) {
       return config;
     } catch (error) {
       createEffect(() => {
-        updateState((state) => {
-          state.servicesFirebase.errors = [...state.servicesFirebase.errors, `${error}`];
-        });
+        addError(`${error}`);
       });
     }
   });
@@ -127,9 +135,7 @@ export function FirebaseServiceProvoider(props: { children: JSXElement }) {
         return true;
       } catch (error) {
         // no need to use createEffect because it is after the await
-        updateState((state) => {
-          state.servicesFirebase.errors = [...state.servicesFirebase.errors, `${error}`];
-        });
+        addError(`${error}`);
       }
     },
   );
@@ -137,7 +143,7 @@ export function FirebaseServiceProvoider(props: { children: JSXElement }) {
   return (
     <Show when={authed$() && firebaseApp$()} keyed>
       {(firebaseApp) => {
-        return <context.Provider value={{ firebaseApp }}>{props.children}</context.Provider>;
+        return <context.Provider value={{ firebaseApp, errors$, clearErrors }}>{props.children}</context.Provider>;
       }}
     </Show>
   );
@@ -159,16 +165,17 @@ export function useFirebaseConfig() {
     });
   };
 
-  const clearErrors = () => {
-    updateState((state) => {
-      state.servicesFirebase.errors = [];
-    });
-  };
-
   return {
     configYAML$: () => state.servicesFirebase.configYAML,
-    errors$: () => state.servicesFirebase.errors,
     setConfigYAML,
-    clearErrors,
+  };
+}
+
+export function useFirebaseErrors() {
+  const service = useFirebaseService();
+
+  return {
+    errors$: service.errors$,
+    clearErrors: service.clearErrors,
   };
 }
