@@ -3,7 +3,6 @@ import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup } from
 import YAML from "js-yaml";
 import {
   type JSXElement,
-  type Setter,
   createMemo,
   createEffect,
   onCleanup,
@@ -15,6 +14,7 @@ import {
 import * as s from "superstruct";
 
 import { ServiceNotAvailable } from "@/services/error";
+import { initialState, useStoreService } from "@/services/store";
 import { createSubscribeWithSignal } from "@/solid/subscribe";
 
 export type FirebaseService = {
@@ -24,6 +24,20 @@ export type FirebaseService = {
 export type FirebaseConfig = s.Infer<typeof firebaseConfigSchema>;
 
 const context = createContext<FirebaseService>();
+
+declare module "@/services/store" {
+  interface State {
+    servicesFirebase: {
+      configYAML: string | undefined;
+      errors: string[];
+    };
+  }
+}
+
+initialState.servicesFirebase = {
+  configYAML: undefined,
+  errors: [],
+};
 
 const firebaseConfigSchema = s.object({
   apiKey: s.string(),
@@ -35,22 +49,24 @@ const firebaseConfigSchema = s.object({
   measurementId: s.string(),
 });
 
-export function FirebaseServiceProvoider(props: {
-  configYAML: string | undefined;
-  setErrors: Setter<string[]>;
-  children: JSXElement;
-}) {
+export function FirebaseServiceProvoider(props: { children: JSXElement }) {
+  const { state, updateState } = useStoreService();
+
   const config$ = createMemo(() => {
-    if (!props.configYAML) return;
+    if (!state.servicesFirebase.configYAML) return;
 
     try {
-      const config = YAML.load(props.configYAML);
+      const config = YAML.load(state.servicesFirebase.configYAML);
 
       s.assert(config, firebaseConfigSchema);
 
       return config;
     } catch (error) {
-      createEffect(() => props.setErrors((errors) => [...errors, `${error}`]));
+      createEffect(() => {
+        updateState((state) => {
+          state.servicesFirebase.errors = [...state.servicesFirebase.errors, `${error}`];
+        });
+      });
     }
   });
 
@@ -111,7 +127,9 @@ export function FirebaseServiceProvoider(props: {
         return true;
       } catch (error) {
         // no need to use createEffect because it is after the await
-        props.setErrors((errors) => [...errors, `${error}`]);
+        updateState((state) => {
+          state.servicesFirebase.errors = [...state.servicesFirebase.errors, `${error}`];
+        });
       }
     },
   );
@@ -130,4 +148,27 @@ export function useFirebaseService() {
   if (!service) throw new ServiceNotAvailable("Firebase");
 
   return service;
+}
+
+export function useFirebaseConfig() {
+  const { state, updateState } = useStoreService();
+
+  const setConfigYAML = (configYAML: string) => {
+    updateState((state) => {
+      state.servicesFirebase.configYAML = configYAML;
+    });
+  };
+
+  const clearErrors = () => {
+    updateState((state) => {
+      state.servicesFirebase.errors = [];
+    });
+  };
+
+  return {
+    configYAML$: () => state.servicesFirebase.configYAML,
+    errors$: () => state.servicesFirebase.errors,
+    setConfigYAML,
+    clearErrors,
+  };
 }
