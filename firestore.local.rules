@@ -6,7 +6,7 @@ service cloud.firestore {
       allow read, create, delete: if true
 
       allow update: if
-        col == "pocVersion"
+        col == "batchVersion"
           ? request.resource.data.prevVersion == resource.data.version
           : true
     }

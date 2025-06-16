@@ -3,12 +3,10 @@ import {
   type CollectionReference,
   type DocumentSnapshot,
   type Query,
-  type WriteBatch,
   collection,
   doc,
   getDocFromCache,
   getDocsFromCache,
-  writeBatch,
   getDocsFromServer,
   getDocFromServer,
   type Firestore,
@@ -31,21 +29,8 @@ import {
 
 import { ServiceNotAvailable } from "@/services/error";
 import { type FirebaseService, useFirebaseService } from "@/services/firebase";
-import { TransactionAborted } from "@/services/firebase/firestore/error";
 import { type Schema } from "@/services/firebase/firestore/schema";
-import { initialState, type StoreService, useStoreService } from "@/services/store";
-
-declare module "@/services/store" {
-  interface State {
-    servicesFirestore: {
-      lock: boolean;
-    };
-  }
-}
-
-initialState.servicesFirestore = {
-  lock: false,
-};
+import { type StoreService, useStoreService } from "@/services/store";
 
 export type FirestoreService = {
   services: {
@@ -135,6 +120,20 @@ export async function getDoc<T extends object>(
   }
 }
 
+export const singletonDocumentId = "singleton";
+
+export async function getSingletonDoc<T extends object>(
+  _service: FirestoreService,
+  col: CollectionReference<T>,
+): Promise<T | undefined> {
+  const data = await getDoc(_service, col, singletonDocumentId);
+  if (!data) return;
+
+  const { id: _, ...dataWithoutId } = data;
+
+  return dataWithoutId as T;
+}
+
 export async function getDocs<T extends object>(
   _service: FirestoreService,
   query: Query<T>,
@@ -149,51 +148,5 @@ export async function getDocs<T extends object>(
     }
 
     throw e;
-  }
-}
-
-export async function runBatch(
-  service: FirestoreService,
-  updateFunction: (batch: WriteBatch) => Promise<void>,
-): Promise<void> {
-  const {
-    services: {
-      store: { state, updateState },
-    },
-    firestore,
-  } = service;
-
-  if (state.servicesFirestore.lock) {
-    return;
-  }
-
-  try {
-    console.timeStamp("batch start");
-
-    updateState((state) => {
-      state.servicesFirestore.lock = true;
-    });
-
-    const batch = writeBatch(firestore);
-    await updateFunction(batch);
-
-    await Promise.race([
-      new Promise<void>((resolve) => {
-        service.resolve = resolve;
-      }),
-      batch.commit(),
-    ]);
-  } catch (e) {
-    if (e instanceof TransactionAborted) {
-      return;
-    } else {
-      throw e;
-    }
-  } finally {
-    updateState((state) => {
-      state.servicesFirestore.lock = false;
-    });
-
-    console.timeStamp("batch end");
   }
 }

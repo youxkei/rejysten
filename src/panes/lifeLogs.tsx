@@ -5,7 +5,8 @@ import { createMemo, Show, startTransition } from "solid-js";
 import { uuidv4 } from "uuidv7";
 
 import { ChildrenNodes } from "@/components/lifeLogTree";
-import { getCollection, getDoc, runBatch, useFirestoreService } from "@/services/firebase/firestore";
+import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
+import { runBatch } from "@/services/firebase/firestore/batch";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { addSingle, getFirstChildNode } from "@/services/firebase/firestore/treeNode";
 import { initialState, useStoreService } from "@/services/store";

@@ -2,7 +2,8 @@ import equals from "fast-deep-equal";
 import { type CollectionReference, doc, query, where } from "firebase/firestore";
 import { createComputed, createMemo, For, type JSXElement, Show, startTransition } from "solid-js";
 
-import { type DocumentData, getDoc, runBatch, useFirestoreService } from "@/services/firebase/firestore";
+import { type DocumentData, getDoc, useFirestoreService } from "@/services/firebase/firestore";
+import { runBatch } from "@/services/firebase/firestore/batch";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { dedent, indent, type TreeNode } from "@/services/firebase/firestore/treeNode";
 import { addKeyDownEventListener } from "@/solid/event";
