@@ -25,7 +25,12 @@ import {
 import { uuidv7 } from "uuidv7";
 import XRegExp from "xregexp";
 
-import { FirebaseServiceProvoider, useFirebaseConfig, useFirebaseErrors } from "@/services/firebase";
+import {
+  FirebaseServiceProvoider,
+  useFirebaseConfig,
+  useFirebaseErrors,
+  useFirebaseService,
+} from "@/services/firebase";
 import { FirestoreServiceProvider, getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { StoreServiceProvider } from "@/services/store";
@@ -38,17 +43,18 @@ export default {
 const firebaseConfig = `{ apiKey: "apiKey", authDomain: "authDomain", projectId: "demo", storageBucket: "", messagingSenderId: "", appId: "", measurementId: "" }`;
 
 function StorybookFirebaseWrapper(props: { children: JSXElement }) {
-  const { setConfigYAML } = useFirebaseConfig();
-
-  createEffect(() => {
-    setConfigYAML(firebaseConfig);
-  });
-
   return (
     <>
       <FirebaseServiceProvoider>
         {(() => {
-          const { errors$ } = useFirebaseErrors();
+          const firebaseService = useFirebaseService();
+          const { setConfigYAML } = useFirebaseConfig(firebaseService);
+          const { errors$ } = useFirebaseErrors(firebaseService);
+
+          createEffect(() => {
+            setConfigYAML(firebaseConfig);
+          });
+
           return (
             <>
               <pre>{errors$().join("\n")}</pre>

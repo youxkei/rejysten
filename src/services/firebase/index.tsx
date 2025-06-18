@@ -156,7 +156,7 @@ export function useFirebaseService() {
   return service;
 }
 
-export function useFirebaseConfig() {
+export function useFirebaseConfig(_service: FirebaseService) {
   const { state, updateState } = useStoreService();
 
   const setConfigYAML = (configYAML: string) => {
@@ -171,9 +171,7 @@ export function useFirebaseConfig() {
   };
 }
 
-export function useFirebaseErrors() {
-  const service = useFirebaseService();
-
+export function useFirebaseErrors(service: FirebaseService) {
   return {
     errors$: service.errors$,
     clearErrors: service.clearErrors,
