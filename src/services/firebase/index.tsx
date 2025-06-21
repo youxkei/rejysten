@@ -10,35 +10,19 @@ import {
   Show,
   createContext,
   useContext,
-  createSignal,
 } from "solid-js";
 import * as s from "superstruct";
 
 import { ServiceNotAvailable } from "@/services/error";
-import { initialState, useStoreService } from "@/services/store";
 import { createSubscribeWithSignal } from "@/solid/subscribe";
 
 export type FirebaseService = {
   firebaseApp: FirebaseApp;
-  errors$: () => string[];
-  clearErrors: () => void;
 };
 
 export type FirebaseConfig = s.Infer<typeof firebaseConfigSchema>;
 
 const context = createContext<FirebaseService>();
-
-declare module "@/services/store" {
-  interface State {
-    servicesFirebase: {
-      configYAML: string | undefined;
-    };
-  }
-}
-
-initialState.servicesFirebase = {
-  configYAML: undefined,
-};
 
 const firebaseConfigSchema = s.object({
   apiKey: s.string(),
@@ -50,23 +34,27 @@ const firebaseConfigSchema = s.object({
   measurementId: s.string(),
 });
 
-export function FirebaseServiceProvoider(props: { children: JSXElement }) {
-  const { state } = useStoreService();
-  const [errors$, setErrors] = createSignal<string[]>([]);
+export function FirebaseServiceProvider(props: {
+  children: JSXElement;
+  configYAML: string;
+  setErrors: (errors: string[]) => void;
+}) {
+  let errors = [] as string[];
 
   const addError = (error: string) => {
-    setErrors((prev) => [...prev, error]);
-  };
-
-  const clearErrors = () => {
-    setErrors([]);
+    errors.push(error);
+    props.setErrors(errors);
   };
 
   const config$ = createMemo(() => {
-    if (!state.servicesFirebase.configYAML) return;
-
     try {
-      const config = YAML.load(state.servicesFirebase.configYAML);
+      errors = [];
+
+      createEffect(() => {
+        props.setErrors(errors);
+      });
+
+      const config = YAML.load(props.configYAML);
 
       s.assert(config, firebaseConfigSchema);
 
@@ -143,7 +131,7 @@ export function FirebaseServiceProvoider(props: { children: JSXElement }) {
   return (
     <Show when={authed$() && firebaseApp$()} keyed>
       {(firebaseApp) => {
-        return <context.Provider value={{ firebaseApp, errors$, clearErrors }}>{props.children}</context.Provider>;
+        return <context.Provider value={{ firebaseApp }}>{props.children}</context.Provider>;
       }}
     </Show>
   );
@@ -154,26 +142,4 @@ export function useFirebaseService() {
   if (!service) throw new ServiceNotAvailable("Firebase");
 
   return service;
-}
-
-export function useFirebaseConfig(_service: FirebaseService) {
-  const { state, updateState } = useStoreService();
-
-  const setConfigYAML = (configYAML: string) => {
-    updateState((state) => {
-      state.servicesFirebase.configYAML = configYAML;
-    });
-  };
-
-  return {
-    configYAML$: () => state.servicesFirebase.configYAML,
-    setConfigYAML,
-  };
-}
-
-export function useFirebaseErrors(service: FirebaseService) {
-  return {
-    errors$: service.errors$,
-    clearErrors: service.clearErrors,
-  };
 }

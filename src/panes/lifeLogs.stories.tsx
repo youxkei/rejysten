@@ -1,14 +1,9 @@
 import { type Meta, type StoryObj } from "@kachurun/storybook-solid-vite";
 import { doc, Timestamp, writeBatch } from "firebase/firestore";
-import { onMount, Suspense, createEffect, type JSXElement } from "solid-js";
+import { onMount, Suspense, type JSXElement, createSignal } from "solid-js";
 
 import { LifeLogs, LifeLogTree } from "@/panes/lifeLogs";
-import {
-  FirebaseServiceProvoider,
-  useFirebaseConfig,
-  useFirebaseErrors,
-  useFirebaseService,
-} from "@/services/firebase";
+import { FirebaseServiceProvider } from "@/services/firebase";
 import { FirestoreServiceProvider, getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
 import { noneTimestamp } from "@/timestamp";
@@ -20,29 +15,29 @@ export default {
 const firebaseConfig = `{ apiKey: "apiKey", authDomain: "authDomain", projectId: "demo", storageBucket: "", messagingSenderId: "", appId: "", measurementId: "" }`;
 
 function StorybookFirebaseWrapper(props: { children: JSXElement }) {
+  const [configText, setConfigText] = createSignal(firebaseConfig);
+  const [errors, setErrors] = createSignal<string[]>([]);
+
   return (
-    <>
-      <FirebaseServiceProvoider>
-        {(() => {
-          const firebaseService = useFirebaseService();
-          const { setConfigYAML } = useFirebaseConfig(firebaseService);
-          const { errors$ } = useFirebaseErrors(firebaseService);
-
-          createEffect(() => {
-            setConfigYAML(firebaseConfig);
-          });
-
-          return (
-            <>
-              <pre>
-                <code>{errors$().join("\n")}</code>
-              </pre>
-              <FirestoreServiceProvider>{props.children}</FirestoreServiceProvider>
-            </>
-          );
-        })()}
-      </FirebaseServiceProvoider>
-    </>
+    <FirebaseServiceProvider configYAML={configText()} setErrors={setErrors}>
+      <div style={{ "margin-bottom": "20px" }}>
+        <label style={{ display: "block", "margin-bottom": "5px" }}>Firebase Configuration:</label>
+        <textarea
+          value={configText()}
+          onInput={(e) => setConfigText(e.currentTarget.value)}
+          style={{
+            width: "100%",
+            height: "50px",
+            "font-family": "monospace",
+            padding: "8px",
+            border: "1px solid #ccc",
+            "border-radius": "4px",
+          }}
+        />
+      </div>
+      <pre>{errors().join("\n")}</pre>
+      <FirestoreServiceProvider>{props.children}</FirestoreServiceProvider>
+    </FirebaseServiceProvider>
   );
 }
 

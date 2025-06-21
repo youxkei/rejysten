@@ -2,8 +2,12 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth.uid == "Z07ieDz92tdjQrb3xbf4zaS61Cx1";
+    match /{col}/{docs=**} {
+      allow read, create, delete: if request.auth.uid == "Z07ieDz92tdjQrb3xbf4zaS61Cx1";
+
+      allow update: if
+        request.auth.uid == "Z07ieDz92tdjQrb3xbf4zaS61Cx1" &&
+          (col != "batchVersion" || request.resource.data.prevVersion == resource.data.version);
     }
   }
 }

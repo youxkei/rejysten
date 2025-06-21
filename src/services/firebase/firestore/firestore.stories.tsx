@@ -10,6 +10,7 @@ import {
   Timestamp,
   disableNetwork,
   enableNetwork,
+  orderBy,
 } from "firebase/firestore";
 import {
   For,
@@ -19,18 +20,12 @@ import {
   Show,
   startTransition,
   createComputed,
-  createEffect,
   type JSXElement,
 } from "solid-js";
 import { uuidv7 } from "uuidv7";
 import XRegExp from "xregexp";
 
-import {
-  FirebaseServiceProvoider,
-  useFirebaseConfig,
-  useFirebaseErrors,
-  useFirebaseService,
-} from "@/services/firebase";
+import { FirebaseServiceProvider } from "@/services/firebase";
 import { FirestoreServiceProvider, getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { StoreServiceProvider } from "@/services/store";
@@ -43,27 +38,29 @@ export default {
 const firebaseConfig = `{ apiKey: "apiKey", authDomain: "authDomain", projectId: "demo", storageBucket: "", messagingSenderId: "", appId: "", measurementId: "" }`;
 
 function StorybookFirebaseWrapper(props: { children: JSXElement }) {
+  const [configText, setConfigText] = createSignal(firebaseConfig);
+  const [errors, setErrors] = createSignal<string[]>([]);
+
   return (
-    <>
-      <FirebaseServiceProvoider>
-        {(() => {
-          const firebaseService = useFirebaseService();
-          const { setConfigYAML } = useFirebaseConfig(firebaseService);
-          const { errors$ } = useFirebaseErrors(firebaseService);
-
-          createEffect(() => {
-            setConfigYAML(firebaseConfig);
-          });
-
-          return (
-            <>
-              <pre>{errors$().join("\n")}</pre>
-              <FirestoreServiceProvider>{props.children}</FirestoreServiceProvider>
-            </>
-          );
-        })()}
-      </FirebaseServiceProvoider>
-    </>
+    <FirebaseServiceProvider configYAML={configText()} setErrors={setErrors}>
+      <div style={{ "margin-bottom": "20px" }}>
+        <label style={{ display: "block", "margin-bottom": "5px" }}>Firebase Configuration:</label>
+        <textarea
+          value={configText()}
+          onInput={(e) => setConfigText(e.currentTarget.value)}
+          style={{
+            width: "100%",
+            height: "50px",
+            "font-family": "monospace",
+            padding: "8px",
+            border: "1px solid #ccc",
+            "border-radius": "4px",
+          }}
+        />
+      </div>
+      <pre>{errors().join("\n")}</pre>
+      <FirestoreServiceProvider>{props.children}</FirestoreServiceProvider>
+    </FirebaseServiceProvider>
   );
 }
 
@@ -564,6 +561,126 @@ export const FirestoreSnapshotTiming: StoryObj = {
                   </button>
                   <p>{`A: ${a$()?.text}`}</p>
                   <p>{`B: ${b$()?.text}`}</p>
+                </>
+              );
+            })()}
+          </Suspense>
+        </StorybookFirebaseWrapper>
+      </StoreServiceProvider>
+    );
+  },
+};
+
+declare module "@/services/firebase/firestore/schema" {
+  interface Schema {
+    pocFirestoreIndexOrderItems: {
+      startAt: number;
+      endAt: number;
+    };
+  }
+}
+
+export const IndexOrder: StoryObj = {
+  render: () => {
+    return (
+      <StoreServiceProvider>
+        <StorybookFirebaseWrapper>
+          <Suspense>
+            {(() => {
+              const firestoreService = useFirestoreService();
+              const [results, setResults] = createSignal<{ id: string; startAt: number; endAt: number }[]>([]);
+
+              const addTestData = async () => {
+                const batch = writeBatch(firestoreService.firestore);
+                const collectionRef = getCollection(firestoreService, "pocFirestoreIndexOrderItems");
+
+                // Create test documents with various startAt and endAt values
+                const testData = [
+                  { id: "1", startAt: 1, endAt: 5 },
+                  { id: "2", startAt: 2, endAt: 3 },
+                  { id: "3", startAt: 1, endAt: 10 },
+                  { id: "4", startAt: 3, endAt: 7 },
+                  { id: "5", startAt: 2, endAt: 8 },
+                  { id: "6", startAt: 2, endAt: 8 },
+                ];
+
+                for (const data of testData) {
+                  const docRef = doc(collectionRef, data.id);
+                  batch.set(docRef, data);
+                }
+
+                await batch.commit();
+              };
+
+              const queryData = async () => {
+                const collectionRef = getCollection(firestoreService, "pocFirestoreIndexOrderItems");
+                const q = query(
+                  collectionRef,
+                  where("startAt", ">=", 1),
+                  where("endAt", "<=", 10),
+                  orderBy("startAt"),
+                  orderBy("endAt"),
+                );
+
+                const snapshot = await getDocs(q);
+                const docs = snapshot.docs.map((doc) => ({
+                  id: doc.id,
+                  ...doc.data(),
+                }));
+
+                setResults(docs);
+              };
+
+              const deleteTestData = async () => {
+                const collectionRef = getCollection(firestoreService, "pocFirestoreIndexOrderItems");
+                const snapshot = await getDocs(collectionRef);
+
+                const batch = writeBatch(firestoreService.firestore);
+                snapshot.docs.forEach((doc) => {
+                  batch.delete(doc.ref);
+                });
+
+                await batch.commit();
+                setResults([]);
+              };
+
+              return (
+                <>
+                  <h3>Firestore Index Order Test</h3>
+                  <p>Index: startAt (ASC), endAt (ASC)</p>
+
+                  <button onClick={addTestData}>Add Test Data</button>
+
+                  <button onClick={queryData}>Query with index</button>
+
+                  <button onClick={deleteTestData}>Delete Test Data</button>
+
+                  <h4>Results:</h4>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Document ID</th>
+                        <th>startAt</th>
+                        <th>endAt</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <For each={results()}>
+                        {(item) => (
+                          <tr>
+                            <td>{item.id}</td>
+                            <td>{item.startAt}</td>
+                            <td>{item.endAt}</td>
+                          </tr>
+                        )}
+                      </For>
+                    </tbody>
+                  </table>
+
+                  <p>
+                    Expected order: Documents are sorted by startAt (ascending), then by endAt (ascending) for same
+                    startAt values
+                  </p>
                 </>
               );
             })()}

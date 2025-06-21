@@ -15,8 +15,6 @@ function createFirebaseServiceForTest(): FirebaseService {
 
   return {
     firebaseApp,
-    errors$: () => [],
-    clearErrors: () => {},
   };
 }
 
