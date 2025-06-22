@@ -775,3 +775,213 @@ export const IndexOrder: StoryObj = {
     );
   },
 };
+
+declare module "@/services/firebase/firestore/schema" {
+  interface Schema {
+    pocSingleFieldIndexOrder: {
+      field1: string;
+      field2: string;
+      value: number;
+    };
+  }
+}
+
+export const SingleFieldIndexOrder: StoryObj = {
+  /*
+   * result: can order by __name__ asc and desc
+   */
+  render: () => {
+    return (
+      <StoreServiceProvider>
+        <StorybookFirebaseWrapper>
+          <Suspense>
+            {(() => {
+              const firestoreService = useFirestoreService();
+              const [results, setResults] = createSignal<
+                { id: string; field1: string; field2: string; value: number }[]
+              >([]);
+              const [error, setError] = createSignal<string | null>(null);
+
+              const addTestData = async () => {
+                const collectionRef = getCollection(firestoreService, "pocSingleFieldIndexOrder");
+
+                const batch = writeBatch(firestoreService.firestore);
+
+                // Create documents with specific IDs to test __name__ ordering
+                const testData = [
+                  { id: "doc_a", field1: "apple", field2: "red", value: 10 },
+                  { id: "doc_b", field1: "apple", field2: "red", value: 30 },
+                  { id: "doc_c", field1: "apple", field2: "red", value: 20 },
+                  { id: "doc_d", field1: "apple", field2: "red", value: 40 },
+                  { id: "doc_e", field1: "banana", field2: "yellow", value: 50 },
+                ];
+
+                testData.forEach(({ id, ...data }) => {
+                  const docRef = doc(collectionRef, id);
+                  batch.set(docRef, data);
+                });
+
+                await batch.commit();
+                setError(null);
+              };
+
+              const queryWithNameOrder = async () => {
+                try {
+                  const collectionRef = getCollection(firestoreService, "pocSingleFieldIndexOrder");
+                  // Query with multiple equality conditions and order by __name__
+                  const q = query(
+                    collectionRef,
+                    where("field1", "==", "apple"),
+                    where("field2", "==", "red"),
+                    orderBy("__name__"),
+                  );
+
+                  const snapshot = await getDocs(q);
+                  const docs = snapshot.docs.map((doc) => ({
+                    id: doc.id,
+                    ...doc.data(),
+                  }));
+
+                  setResults(docs);
+                  setError(null);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : String(err));
+                  setResults([]);
+                }
+              };
+
+              const queryWithNameOrderDesc = async () => {
+                try {
+                  const collectionRef = getCollection(firestoreService, "pocSingleFieldIndexOrder");
+                  // Query with multiple equality conditions and order by __name__ in descending order
+                  const q = query(
+                    collectionRef,
+                    where("field1", "==", "apple"),
+                    where("field2", "==", "red"),
+                    orderBy("__name__", "desc"),
+                  );
+
+                  const snapshot = await getDocs(q);
+                  const docs = snapshot.docs.map((doc) => ({
+                    id: doc.id,
+                    ...doc.data(),
+                  }));
+
+                  setResults(docs);
+                  setError(null);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : String(err));
+                  setResults([]);
+                }
+              };
+
+              const queryWithoutOrder = async () => {
+                try {
+                  const collectionRef = getCollection(firestoreService, "pocSingleFieldIndexOrder");
+                  // Query with multiple equality conditions without ordering
+                  const q = query(collectionRef, where("field1", "==", "apple"), where("field2", "==", "red"));
+
+                  const snapshot = await getDocs(q);
+                  const docs = snapshot.docs.map((doc) => ({
+                    id: doc.id,
+                    ...doc.data(),
+                  }));
+
+                  setResults(docs);
+                  setError(null);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : String(err));
+                  setResults([]);
+                }
+              };
+
+              const queryWithValueOrder = async () => {
+                try {
+                  const collectionRef = getCollection(firestoreService, "pocSingleFieldIndexOrder");
+                  // Query with multiple equality conditions and order by value
+                  const q = query(
+                    collectionRef,
+                    where("field1", "==", "apple"),
+                    where("field2", "==", "red"),
+                    orderBy("value"),
+                  );
+
+                  const snapshot = await getDocs(q);
+                  const docs = snapshot.docs.map((doc) => ({
+                    id: doc.id,
+                    ...doc.data(),
+                  }));
+
+                  setResults(docs);
+                  setError(null);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : String(err));
+                  setResults([]);
+                }
+              };
+
+              const deleteTestData = async () => {
+                const collectionRef = getCollection(firestoreService, "pocSingleFieldIndexOrder");
+                const snapshot = await getDocs(collectionRef);
+
+                const batch = writeBatch(firestoreService.firestore);
+                snapshot.docs.forEach((doc) => {
+                  batch.delete(doc.ref);
+                });
+
+                await batch.commit();
+                setResults([]);
+                setError(null);
+              };
+
+              return (
+                <>
+                  <h3>Single Field Index with __name__ Order Test</h3>
+                  <p>
+                    Test if Firestore's auto-generated single field indexes support ordering by __name__ with multiple
+                    equality where conditions
+                  </p>
+
+                  <button onClick={addTestData}>Add Test Data</button>
+                  <button onClick={queryWithNameOrder}>Query with orderBy("__name__")</button>
+                  <button onClick={queryWithNameOrderDesc}>Query with orderBy("__name__", "desc")</button>
+                  <button onClick={queryWithoutOrder}>Query without orderBy</button>
+                  <button onClick={queryWithValueOrder}>Query with orderBy("value")</button>
+                  <button onClick={deleteTestData}>Delete Test Data</button>
+
+                  {error() && (
+                    <div style={{ color: "red", "margin-top": "10px" }}>
+                      <strong>Error:</strong> {error()}
+                    </div>
+                  )}
+
+                  <h4>Results:</h4>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Document ID</th>
+                        <th>field1</th>
+                        <th>field2</th>
+                        <th>value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results().map((doc) => (
+                        <tr>
+                          <td>{doc.id}</td>
+                          <td>{doc.field1}</td>
+                          <td>{doc.field2}</td>
+                          <td>{doc.value}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              );
+            })()}
+          </Suspense>
+        </StorybookFirebaseWrapper>
+      </StoreServiceProvider>
+    );
+  },
+};
