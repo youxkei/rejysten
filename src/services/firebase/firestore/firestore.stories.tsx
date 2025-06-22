@@ -581,6 +581,19 @@ declare module "@/services/firebase/firestore/schema" {
 }
 
 export const IndexOrder: StoryObj = {
+  /*
+   * result:
+   * - where("startAt", ">=", 1), where("endAt", "<=", 10), orderBy("startAt"), orderBy("endAt")
+   *   - startAt, endAt
+   * - where("endAt", "<=", 10), where("startAt", ">=", 1), orderBy("endAt"), orderBy("startAt")
+   *   - endAt, startAt
+   * - where("startAt", ">=", 1), where("endAt", "<=", 10)
+   *   - endAt, startAt
+   * - where("startAt", ">=", 1), where("endAt", "<=", 10), orderBy("endAt"), orderBy("startAt")
+   *   - endAt, startAt
+   * - where("endAt", "<=", 10), where("startAt", ">=", 1)
+   *   - endAt, startAt
+   */
   render: () => {
     return (
       <StoreServiceProvider>
@@ -631,6 +644,70 @@ export const IndexOrder: StoryObj = {
                 setResults(docs);
               };
 
+              const queryDataReversed = async () => {
+                const collectionRef = getCollection(firestoreService, "pocFirestoreIndexOrderItems");
+                const q = query(
+                  collectionRef,
+                  where("endAt", "<=", 10),
+                  where("startAt", ">=", 1),
+                  orderBy("endAt"),
+                  orderBy("startAt"),
+                );
+
+                const snapshot = await getDocs(q);
+                const docs = snapshot.docs.map((doc) => ({
+                  id: doc.id,
+                  ...doc.data(),
+                }));
+
+                setResults(docs);
+              };
+
+              const queryDataNoOrderBy = async () => {
+                const collectionRef = getCollection(firestoreService, "pocFirestoreIndexOrderItems");
+                const q = query(collectionRef, where("startAt", ">=", 1), where("endAt", "<=", 10));
+
+                const snapshot = await getDocs(q);
+                const docs = snapshot.docs.map((doc) => ({
+                  id: doc.id,
+                  ...doc.data(),
+                }));
+
+                setResults(docs);
+              };
+
+              const queryDataReverseOrder = async () => {
+                const collectionRef = getCollection(firestoreService, "pocFirestoreIndexOrderItems");
+                const q = query(
+                  collectionRef,
+                  where("startAt", ">=", 1),
+                  where("endAt", "<=", 10),
+                  orderBy("endAt"),
+                  orderBy("startAt"),
+                );
+
+                const snapshot = await getDocs(q);
+                const docs = snapshot.docs.map((doc) => ({
+                  id: doc.id,
+                  ...doc.data(),
+                }));
+
+                setResults(docs);
+              };
+
+              const queryDataReverseNoOrderBy = async () => {
+                const collectionRef = getCollection(firestoreService, "pocFirestoreIndexOrderItems");
+                const q = query(collectionRef, where("endAt", "<=", 10), where("startAt", ">=", 1));
+
+                const snapshot = await getDocs(q);
+                const docs = snapshot.docs.map((doc) => ({
+                  id: doc.id,
+                  ...doc.data(),
+                }));
+
+                setResults(docs);
+              };
+
               const deleteTestData = async () => {
                 const collectionRef = getCollection(firestoreService, "pocFirestoreIndexOrderItems");
                 const snapshot = await getDocs(collectionRef);
@@ -652,6 +729,14 @@ export const IndexOrder: StoryObj = {
                   <button onClick={addTestData}>Add Test Data</button>
 
                   <button onClick={queryData}>Query with index</button>
+
+                  <button onClick={queryDataReversed}>Query with reversed fields</button>
+
+                  <button onClick={queryDataNoOrderBy}>Query without orderBy</button>
+
+                  <button onClick={queryDataReverseOrder}>Query with reversed orderBy</button>
+
+                  <button onClick={queryDataReverseNoOrderBy}>Query reversed without orderBy</button>
 
                   <button onClick={deleteTestData}>Delete Test Data</button>
 
