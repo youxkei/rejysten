@@ -148,26 +148,26 @@ describe("treeNode", () => {
 
       await test.expect(getPrevNode(serviceForTest, col, await getDoc(col, "base"))).rejects
         .toThrowErrorMatchingInlineSnapshot(`
-        [Error: previous node of baseNode is not exist: {
-          "baseNode": {
-            "text": "base",
-            "parentId": "",
-            "prevId": "invalid",
-            "nextId": "",
-            "aboveId": "prev",
-            "belowId": "",
-            "createdAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "updatedAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "id": "base"
-          }
-        }]
-      `);
+          [Error: previous node of baseNode is not exist: {
+            "baseNode": {
+              "text": "base",
+              "parentId": "",
+              "prevId": "invalid",
+              "nextId": "",
+              "aboveId": "prev",
+              "belowId": "",
+              "createdAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "updatedAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "id": "base"
+            }
+          }]
+        `);
     });
 
     test("invalid prevNode.nextId", async (test) => {
@@ -185,43 +185,43 @@ describe("treeNode", () => {
 
       await test.expect(getPrevNode(serviceForTest, col, await getDoc(col, "base"))).rejects
         .toThrowErrorMatchingInlineSnapshot(`
-        [Error: next node of previous node of baseNode is not baseNode: {
-          "baseNode": {
-            "text": "base",
-            "parentId": "",
-            "prevId": "prev",
-            "nextId": "",
-            "aboveId": "prev",
-            "belowId": "",
-            "createdAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
+          [Error: next node of previous node of baseNode is not baseNode: {
+            "baseNode": {
+              "text": "base",
+              "parentId": "",
+              "prevId": "prev",
+              "nextId": "",
+              "aboveId": "prev",
+              "belowId": "",
+              "createdAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "updatedAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "id": "base"
             },
-            "updatedAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "id": "base"
-          },
-          "prevNode": {
-            "text": "prev",
-            "parentId": "",
-            "prevId": "",
-            "nextId": "invalid",
-            "aboveId": "",
-            "belowId": "base",
-            "createdAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "updatedAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "id": "prev"
-          }
-        }]
-      `);
+            "prevNode": {
+              "text": "prev",
+              "parentId": "",
+              "prevId": "",
+              "nextId": "invalid",
+              "aboveId": "",
+              "belowId": "base",
+              "createdAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "updatedAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "id": "prev"
+            }
+          }]
+        `);
     });
 
     test("different parentId", async (test) => {
@@ -239,43 +239,43 @@ describe("treeNode", () => {
 
       await test.expect(getPrevNode(serviceForTest, col, await getDoc(col, "base"))).rejects
         .toThrowErrorMatchingInlineSnapshot(`
-        [Error: parent node of previous node of baseNode is not one of baseNode: {
-          "baseNode": {
-            "text": "base",
-            "parentId": "bar",
-            "prevId": "prev",
-            "nextId": "",
-            "aboveId": "prev",
-            "belowId": "",
-            "createdAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
+          [Error: parent node of previous node of baseNode is not one of baseNode: {
+            "baseNode": {
+              "text": "base",
+              "parentId": "bar",
+              "prevId": "prev",
+              "nextId": "",
+              "aboveId": "prev",
+              "belowId": "",
+              "createdAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "updatedAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "id": "base"
             },
-            "updatedAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "id": "base"
-          },
-          "prevNode": {
-            "text": "prev",
-            "parentId": "foo",
-            "prevId": "",
-            "nextId": "base",
-            "aboveId": "foo",
-            "belowId": "base",
-            "createdAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "updatedAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "id": "prev"
-          }
-        }]
-      `);
+            "prevNode": {
+              "text": "prev",
+              "parentId": "foo",
+              "prevId": "",
+              "nextId": "base",
+              "aboveId": "foo",
+              "belowId": "base",
+              "createdAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "updatedAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "id": "prev"
+            }
+          }]
+        `);
     });
   });
 
@@ -327,26 +327,26 @@ describe("treeNode", () => {
 
       await test.expect(getNextNode(serviceForTest, col, await getDoc(col, "base"))).rejects
         .toThrowErrorMatchingInlineSnapshot(`
-        [Error: next node of baseNode is not exist: {
-          "baseNode": {
-            "text": "base",
-            "parentId": "",
-            "prevId": "",
-            "nextId": "invalid",
-            "aboveId": "",
-            "belowId": "next",
-            "createdAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "updatedAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "id": "base"
-          }
-        }]
-      `);
+          [Error: next node of baseNode is not exist: {
+            "baseNode": {
+              "text": "base",
+              "parentId": "",
+              "prevId": "",
+              "nextId": "invalid",
+              "aboveId": "",
+              "belowId": "next",
+              "createdAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "updatedAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "id": "base"
+            }
+          }]
+        `);
     });
 
     test("invalid nextNode.prevId", async (test) => {
@@ -364,43 +364,43 @@ describe("treeNode", () => {
 
       await test.expect(getNextNode(serviceForTest, col, await getDoc(col, "base"))).rejects
         .toThrowErrorMatchingInlineSnapshot(`
-        [Error: previous node of next node of baseNode is not baseNode: {
-          "baseNode": {
-            "text": "base",
-            "parentId": "",
-            "prevId": "",
-            "nextId": "next",
-            "aboveId": "",
-            "belowId": "next",
-            "createdAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
+          [Error: previous node of next node of baseNode is not baseNode: {
+            "baseNode": {
+              "text": "base",
+              "parentId": "",
+              "prevId": "",
+              "nextId": "next",
+              "aboveId": "",
+              "belowId": "next",
+              "createdAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "updatedAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "id": "base"
             },
-            "updatedAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "id": "base"
-          },
-          "nextNode": {
-            "text": "next",
-            "parentId": "",
-            "prevId": "invalid",
-            "nextId": "",
-            "aboveId": "base",
-            "belowId": "",
-            "createdAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "updatedAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "id": "next"
-          }
-        }]
-      `);
+            "nextNode": {
+              "text": "next",
+              "parentId": "",
+              "prevId": "invalid",
+              "nextId": "",
+              "aboveId": "base",
+              "belowId": "",
+              "createdAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "updatedAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "id": "next"
+            }
+          }]
+        `);
     });
 
     test("different parentId", async (test) => {
@@ -418,43 +418,43 @@ describe("treeNode", () => {
 
       await test.expect(getNextNode(serviceForTest, col, await getDoc(col, "base"))).rejects
         .toThrowErrorMatchingInlineSnapshot(`
-        [Error: parent node of next node of baseNode is not one of baseNode: {
-          "baseNode": {
-            "text": "base",
-            "parentId": "foo",
-            "prevId": "",
-            "nextId": "next",
-            "aboveId": "foo",
-            "belowId": "next",
-            "createdAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
+          [Error: parent node of next node of baseNode is not one of baseNode: {
+            "baseNode": {
+              "text": "base",
+              "parentId": "foo",
+              "prevId": "",
+              "nextId": "next",
+              "aboveId": "foo",
+              "belowId": "next",
+              "createdAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "updatedAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "id": "base"
             },
-            "updatedAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "id": "base"
-          },
-          "nextNode": {
-            "text": "next",
-            "parentId": "bar",
-            "prevId": "base",
-            "nextId": "",
-            "aboveId": "base",
-            "belowId": "",
-            "createdAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "updatedAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "id": "next"
-          }
-        }]
-      `);
+            "nextNode": {
+              "text": "next",
+              "parentId": "bar",
+              "prevId": "base",
+              "nextId": "",
+              "aboveId": "base",
+              "belowId": "",
+              "createdAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "updatedAt": {
+                "seconds": 4836316028,
+                "nanoseconds": 0
+              },
+              "id": "next"
+            }
+          }]
+        `);
     });
   });
 
@@ -551,49 +551,14 @@ describe("treeNode", () => {
 
       await test.expect(getFirstChildNode(serviceForTest, col, await getDoc(col, "base"))).rejects
         .toThrowErrorMatchingInlineSnapshot(`
-        [Error: multiple first child nodes: {
-          "baseNode": {
-            "text": "base",
-            "parentId": "",
-            "prevId": "",
-            "nextId": "",
-            "aboveId": "",
-            "belowId": "first1",
-            "createdAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "updatedAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "id": "base"
-          },
-          "childrenDocs": [
-            {
-              "text": "first1",
-              "parentId": "base",
-              "prevId": "",
-              "nextId": "first2",
-              "aboveId": "base",
-              "belowId": "first2",
-              "createdAt": {
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "updatedAt": {
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "id": "first1"
-            },
-            {
-              "text": "first2",
-              "parentId": "base",
+          [Error: multiple first child nodes: {
+            "baseNode": {
+              "text": "base",
+              "parentId": "",
               "prevId": "",
               "nextId": "",
-              "aboveId": "first1",
-              "belowId": "",
+              "aboveId": "",
+              "belowId": "first1",
               "createdAt": {
                 "seconds": 4836316028,
                 "nanoseconds": 0
@@ -602,11 +567,46 @@ describe("treeNode", () => {
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
-              "id": "first2"
-            }
-          ]
-        }]
-      `);
+              "id": "base"
+            },
+            "childrenDocs": [
+              {
+                "text": "first1",
+                "parentId": "base",
+                "prevId": "",
+                "nextId": "first2",
+                "aboveId": "base",
+                "belowId": "first2",
+                "createdAt": {
+                  "seconds": 4836316028,
+                  "nanoseconds": 0
+                },
+                "updatedAt": {
+                  "seconds": 4836316028,
+                  "nanoseconds": 0
+                },
+                "id": "first1"
+              },
+              {
+                "text": "first2",
+                "parentId": "base",
+                "prevId": "",
+                "nextId": "",
+                "aboveId": "first1",
+                "belowId": "",
+                "createdAt": {
+                  "seconds": 4836316028,
+                  "nanoseconds": 0
+                },
+                "updatedAt": {
+                  "seconds": 4836316028,
+                  "nanoseconds": 0
+                },
+                "id": "first2"
+              }
+            ]
+          }]
+        `);
     });
   });
 
@@ -658,32 +658,14 @@ describe("treeNode", () => {
 
       await test.expect(getLastChildNode(serviceForTest, col, await getDoc(col, "base"))).rejects
         .toThrowErrorMatchingInlineSnapshot(`
-        [Error: multiple last child nodes: {
-          "baseNode": {
-            "text": "base",
-            "parentId": "",
-            "prevId": "",
-            "nextId": "",
-            "aboveId": "",
-            "belowId": "last1",
-            "createdAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "updatedAt": {
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "id": "base"
-          },
-          "childrenDocs": [
-            {
-              "text": "last1",
-              "parentId": "base",
+          [Error: multiple last child nodes: {
+            "baseNode": {
+              "text": "base",
+              "parentId": "",
               "prevId": "",
               "nextId": "",
-              "aboveId": "base",
-              "belowId": "last2",
+              "aboveId": "",
+              "belowId": "last1",
               "createdAt": {
                 "seconds": 4836316028,
                 "nanoseconds": 0
@@ -692,28 +674,46 @@ describe("treeNode", () => {
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
-              "id": "last1"
+              "id": "base"
             },
-            {
-              "text": "last2",
-              "parentId": "base",
-              "prevId": "last1",
-              "nextId": "",
-              "aboveId": "last1",
-              "belowId": "",
-              "createdAt": {
-                "seconds": 4836316028,
-                "nanoseconds": 0
+            "childrenDocs": [
+              {
+                "text": "last1",
+                "parentId": "base",
+                "prevId": "",
+                "nextId": "",
+                "aboveId": "base",
+                "belowId": "last2",
+                "createdAt": {
+                  "seconds": 4836316028,
+                  "nanoseconds": 0
+                },
+                "updatedAt": {
+                  "seconds": 4836316028,
+                  "nanoseconds": 0
+                },
+                "id": "last1"
               },
-              "updatedAt": {
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "id": "last2"
-            }
-          ]
-        }]
-      `);
+              {
+                "text": "last2",
+                "parentId": "base",
+                "prevId": "last1",
+                "nextId": "",
+                "aboveId": "last1",
+                "belowId": "",
+                "createdAt": {
+                  "seconds": 4836316028,
+                  "nanoseconds": 0
+                },
+                "updatedAt": {
+                  "seconds": 4836316028,
+                  "nanoseconds": 0
+                },
+                "id": "last2"
+              }
+            ]
+          }]
+        `);
     });
   });
 

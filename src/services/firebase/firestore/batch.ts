@@ -15,6 +15,7 @@ import {
   singletonDocumentId,
   type FirestoreService,
 } from "@/services/firebase/firestore";
+import { setBigram } from "@/services/firebase/firestore/bigram";
 import { TransactionAborted } from "@/services/firebase/firestore/error";
 import { initialState } from "@/services/store";
 
@@ -76,12 +77,12 @@ export async function runBatch(
     const newBatchVersion = uuidv7();
     const batchVersionDoc = await getSingletonDoc(service, batchVersionCol);
     if (batchVersionDoc) {
-      updateSingletonDoc(batch, batchVersionCol, {
+      updateSingletonDoc(service, batch, batchVersionCol, {
         prevVersion: batchVersionDoc.version,
         version: newBatchVersion,
       });
     } else {
-      setSingletonDoc(batch, batchVersionCol, {
+      setSingletonDoc(service, batch, batchVersionCol, {
         prevVersion: "",
         version: newBatchVersion,
       });
@@ -111,6 +112,7 @@ export async function runBatch(
 }
 
 export function updateDoc<T extends Timestamps>(
+  service: FirestoreService,
   batch: WriteBatch,
   col: CollectionReference<T>,
   newDocData: DocumentData<Partial<Omit<T, keyof Timestamps>>>,
@@ -121,20 +123,26 @@ export function updateDoc<T extends Timestamps>(
     ...newDocDataContent,
     updatedAt: serverTimestamp(),
   });
+
+  if ("text" in newDocDataContent && typeof newDocDataContent.text === "string") {
+    setBigram(service, batch, col, id, newDocDataContent.text);
+  }
 }
 
 export function updateSingletonDoc<T extends Timestamps>(
+  service: FirestoreService,
   batch: WriteBatch,
   col: CollectionReference<T>,
   newDocData: Partial<Omit<T, keyof Timestamps>>,
 ) {
-  updateDoc(batch, col, {
+  updateDoc(service, batch, col, {
     id: singletonDocumentId,
     ...newDocData,
   });
 }
 
 export function setDoc<T extends Timestamps>(
+  service: FirestoreService,
   batch: WriteBatch,
   col: CollectionReference<T>,
   newDocData: DocumentData<Omit<T, keyof Timestamps>>,
@@ -146,14 +154,19 @@ export function setDoc<T extends Timestamps>(
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   } as unknown);
+
+  if ("text" in newDocDataContent && typeof newDocDataContent.text === "string") {
+    setBigram(service, batch, col, id, newDocDataContent.text);
+  }
 }
 
 export function setSingletonDoc<T extends Timestamps>(
+  service: FirestoreService,
   batch: WriteBatch,
   col: CollectionReference<T>,
   newDocData: Omit<T, keyof Timestamps>,
 ) {
-  setDoc(batch, col, {
+  setDoc(service, batch, col, {
     id: singletonDocumentId,
     ...newDocData,
   });
