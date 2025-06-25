@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 
-import { normalize, stripNonPrintables, splitByNonPrintables, splitToChars, calcBigramMap } from "@/bigram";
+import { normalize, splitToChars, calcBigramMap } from "@/bigram";
 
 describe("bigram", () => {
   describe("normalize", () => {
@@ -20,6 +20,13 @@ describe("bigram", () => {
       expect(normalize("アイウエオ")).toBe("あいうえお");
     });
 
+    test("converts half-width katakana to hiragana", () => {
+      expect(normalize("ｶﾀｶﾅ")).toBe("かたかな");
+      expect(normalize("ｱｲｳｴｵ")).toBe("あいうえお");
+      expect(normalize("ﾊﾟﾋﾟﾌﾟﾍﾟﾎﾟ")).toBe("ぱぴぷぺぽ");
+      expect(normalize("ｶﾞｷﾞｸﾞｹﾞｺﾞ")).toBe("がぎぐげご");
+    });
+
     test("handles mixed text correctly", () => {
       expect(normalize("Hello カタカナ")).toBe("hello かたかな");
       expect(normalize("ABC①ＡＢＣ")).toBe("abc1abc");
@@ -28,68 +35,11 @@ describe("bigram", () => {
     test("handles empty string", () => {
       expect(normalize("")).toBe("");
     });
-  });
 
-  describe("stripNonPrintables", () => {
-    test("removes spaces", () => {
-      expect(stripNonPrintables("hello world")).toBe("helloworld");
-      expect(stripNonPrintables("  spaces  ")).toBe("spaces");
-    });
-
-    test("removes tabs and newlines", () => {
-      expect(stripNonPrintables("hello\tworld")).toBe("helloworld");
-      expect(stripNonPrintables("hello\nworld")).toBe("helloworld");
-      expect(stripNonPrintables("hello\r\nworld")).toBe("helloworld");
-    });
-
-    test("removes zero-width characters", () => {
-      expect(stripNonPrintables("hello\u200Bworld")).toBe("helloworld"); // zero-width space
-      expect(stripNonPrintables("hello\u200Cworld")).toBe("helloworld"); // zero-width non-joiner
-    });
-
-    test("preserves printable characters", () => {
-      expect(stripNonPrintables("abc123")).toBe("abc123");
-      expect(stripNonPrintables("日本語")).toBe("日本語");
-      expect(stripNonPrintables("!@#$%^&*()")).toBe("!@#$%^&*()");
-    });
-
-    test("handles empty string", () => {
-      expect(stripNonPrintables("")).toBe("");
-    });
-
-    test("handles string with only non-printables", () => {
-      expect(stripNonPrintables("   \t\n\r   ")).toBe("");
-    });
-  });
-
-  describe("splitByNonPrintables", () => {
-    test("splits by spaces", () => {
-      expect(splitByNonPrintables("hello world")).toEqual(["hello", "world"]);
-      expect(splitByNonPrintables("one two three")).toEqual(["one", "two", "three"]);
-    });
-
-    test("splits by various whitespace characters", () => {
-      expect(splitByNonPrintables("hello\tworld")).toEqual(["hello", "world"]);
-      expect(splitByNonPrintables("hello\nworld")).toEqual(["hello", "world"]);
-      expect(splitByNonPrintables("hello\r\nworld")).toEqual(["hello", "", "world"]);
-    });
-
-    test("handles multiple consecutive non-printables", () => {
-      expect(splitByNonPrintables("hello   world")).toEqual(["hello", "", "", "world"]);
-      expect(splitByNonPrintables("hello\t\tworld")).toEqual(["hello", "", "world"]);
-    });
-
-    test("handles leading and trailing non-printables", () => {
-      expect(splitByNonPrintables(" hello world ")).toEqual(["", "hello", "world", ""]);
-      expect(splitByNonPrintables("\thello\n")).toEqual(["", "hello", ""]);
-    });
-
-    test("handles empty string", () => {
-      expect(splitByNonPrintables("")).toEqual([""]);
-    });
-
-    test("handles string without non-printables", () => {
-      expect(splitByNonPrintables("helloworld")).toEqual(["helloworld"]);
+    test("splits emoji ZWJ sequences", () => {
+      expect(normalize("👨‍👩‍👧‍👦")).toBe("👨👩👧👦"); // family emoji without ZWJ
+      expect(normalize("👨‍💻")).toBe("👨💻"); // man technologist without ZWJ
+      expect(normalize("🧑‍🤝‍🧑")).toBe("🧑🤝🧑"); // people holding hands without ZWJ
     });
   });
 
@@ -107,7 +57,7 @@ describe("bigram", () => {
 
     test("handles emoji correctly", () => {
       expect(splitToChars("👍")).toEqual(["👍"]);
-      expect(splitToChars("👨‍👩‍👧‍👦")).toEqual(["👨‍👩‍👧‍👦"]); // family emoji
+      expect(splitToChars("👨👩👧👦")).toEqual(["👨", "👩", "👧", "👦"]); // family emoji
       expect(splitToChars("🇯🇵")).toEqual(["🇯🇵"]); // flag emoji
     });
 
@@ -233,7 +183,10 @@ describe("bigram", () => {
     test("handles complex emoji sequences", () => {
       const result = calcBigramMap("👨‍👩‍👧‍👦🇯🇵");
       expect(result).toEqual({
-        "👨‍👩‍👧‍👦": true,
+        "👨": true,
+        "👩": true,
+        "👧": true,
+        "👦": true,
         "🇯🇵": true,
       });
     });
