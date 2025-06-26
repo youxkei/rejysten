@@ -7,7 +7,7 @@ import { uuidv4 } from "uuidv7";
 import { ChildrenNodes } from "@/components/lifeLogTree";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
-import { collectionBigramConfig } from "@/services/firebase/firestore/bigram";
+import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { addSingle, getFirstChildNode } from "@/services/firebase/firestore/treeNode";
 import { initialState, useStoreService } from "@/services/store";
@@ -57,8 +57,8 @@ declare module "@/services/firebase/firestore/schema" {
   }
 }
 
-collectionBigramConfig.lifeLogs = true;
-collectionBigramConfig.lifeLogTreeNodes = true;
+collectionNgramConfig.lifeLogs = true;
+collectionNgramConfig.lifeLogTreeNodes = true;
 
 export function LifeLogs() {
   const tickDay$ = createTickSignal(dayMs);

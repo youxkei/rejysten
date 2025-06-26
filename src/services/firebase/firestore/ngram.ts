@@ -1,37 +1,37 @@
 import { type CollectionReference, doc, type WriteBatch } from "firebase/firestore";
 
 import { type FirestoreService, getCollection } from ".";
-import { calcBigramMap } from "@/bigram";
+import { calcNgramMap } from "@/ngram";
 
 declare module "@/services/firebase/firestore/schema" {
   interface Schema {
-    bigrams: {
+    ngrams: {
       collection: string;
       text: string;
-      bigramMap: Partial<Record<string, true>>;
+      ngramMap: Partial<Record<string, true>>;
     };
   }
 }
 
-export const collectionBigramConfig: Partial<Record<string, true>> = {};
+export const collectionNgramConfig: Partial<Record<string, true>> = {};
 
-export function setBigram<T>(
+export function setNgram<T>(
   service: FirestoreService,
   batch: WriteBatch,
   col: CollectionReference<T>,
   id: string,
   text: string,
 ) {
-  if (!collectionBigramConfig[col.id]) return;
+  if (!collectionNgramConfig[col.id]) return;
 
   const colId = col.id;
-  if (colId === "bigrams") return;
+  if (colId === "ngrams") return;
 
-  const bigramsCol = getCollection(service, "bigrams");
+  const ngramsCol = getCollection(service, "ngrams");
 
-  batch.set(doc(bigramsCol, `${id}${col.id}`), {
+  batch.set(doc(ngramsCol, `${id}${col.id}`), {
     collection: colId,
     text,
-    bigramMap: calcBigramMap(text),
+    ngramMap: calcNgramMap(text),
   });
 }

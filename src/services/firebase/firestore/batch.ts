@@ -15,8 +15,8 @@ import {
   singletonDocumentId,
   type FirestoreService,
 } from "@/services/firebase/firestore";
-import { setBigram } from "@/services/firebase/firestore/bigram";
 import { TransactionAborted } from "@/services/firebase/firestore/error";
+import { setNgram } from "@/services/firebase/firestore/ngram";
 import { initialState } from "@/services/store";
 
 interface Timestamps {
@@ -125,7 +125,7 @@ export function updateDoc<T extends Timestamps>(
   });
 
   if ("text" in newDocDataContent && typeof newDocDataContent.text === "string") {
-    setBigram(service, batch, col, id, newDocDataContent.text);
+    setNgram(service, batch, col, id, newDocDataContent.text);
   }
 }
 
@@ -156,7 +156,7 @@ export function setDoc<T extends Timestamps>(
   } as unknown);
 
   if ("text" in newDocDataContent && typeof newDocDataContent.text === "string") {
-    setBigram(service, batch, col, id, newDocDataContent.text);
+    setNgram(service, batch, col, id, newDocDataContent.text);
   }
 }
 

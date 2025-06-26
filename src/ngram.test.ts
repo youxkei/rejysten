@@ -1,8 +1,8 @@
 import { describe, test, expect } from "vitest";
 
-import { normalize, splitToChars, calcBigramMap } from "@/bigram";
+import { normalize, splitToChars, calcNgramMap } from "@/ngram";
 
-describe("bigram", () => {
+describe("ngram", () => {
   describe("normalize", () => {
     test("converts to lowercase", () => {
       expect(normalize("HELLO")).toBe("hello");
@@ -71,9 +71,9 @@ describe("bigram", () => {
     });
   });
 
-  describe("calcBigramMap", () => {
-    test("calculates bigrams for simple text", () => {
-      const result = calcBigramMap("hello");
+  describe("calcNgramMap", () => {
+    test("calculates ngrams for simple text", () => {
+      const result = calcNgramMap("hello");
       expect(result).toEqual({
         he: true,
         el: true,
@@ -82,8 +82,8 @@ describe("bigram", () => {
       });
     });
 
-    test("calculates bigrams with normalization", () => {
-      const result = calcBigramMap("HELLO");
+    test("calculates ngrams with normalization", () => {
+      const result = calcNgramMap("HELLO");
       expect(result).toEqual({
         he: true,
         el: true,
@@ -93,7 +93,7 @@ describe("bigram", () => {
     });
 
     test("handles spaces as separators", () => {
-      const result = calcBigramMap("hi world");
+      const result = calcNgramMap("hi world");
       expect(result).toEqual({
         hi: true,
         wo: true,
@@ -104,7 +104,7 @@ describe("bigram", () => {
     });
 
     test("handles Japanese text", () => {
-      const result = calcBigramMap("こんにちは");
+      const result = calcNgramMap("こんにちは");
       expect(result).toEqual({
         こん: true,
         んに: true,
@@ -114,7 +114,7 @@ describe("bigram", () => {
     });
 
     test("converts katakana to hiragana", () => {
-      const result = calcBigramMap("コンニチハ");
+      const result = calcNgramMap("コンニチハ");
       expect(result).toEqual({
         こん: true,
         んに: true,
@@ -124,22 +124,22 @@ describe("bigram", () => {
     });
 
     test("skips single character groups", () => {
-      const result = calcBigramMap("a b c");
+      const result = calcNgramMap("a b c");
       expect(result).toEqual({});
     });
 
     test("handles empty string", () => {
-      const result = calcBigramMap("");
+      const result = calcNgramMap("");
       expect(result).toEqual({});
     });
 
     test("handles string with only non-printables", () => {
-      const result = calcBigramMap("   \t\n   ");
+      const result = calcNgramMap("   \t\n   ");
       expect(result).toEqual({});
     });
 
     test("handles complex mixed text", () => {
-      const result = calcBigramMap("Hello 世界");
+      const result = calcNgramMap("Hello 世界");
       expect(result).toEqual({
         he: true,
         el: true,
@@ -149,8 +149,8 @@ describe("bigram", () => {
       });
     });
 
-    test("handles duplicate bigrams", () => {
-      const result = calcBigramMap("ababa");
+    test("handles duplicate ngrams", () => {
+      const result = calcNgramMap("ababa");
       expect(result).toEqual({
         ab: true,
         ba: true,
@@ -158,7 +158,7 @@ describe("bigram", () => {
     });
 
     test("handles emoji correctly", () => {
-      const result = calcBigramMap("👍👎");
+      const result = calcNgramMap("👍👎");
       expect(result).toEqual({
         "👍": true,
         "👎": true,
@@ -166,7 +166,7 @@ describe("bigram", () => {
     });
 
     test("handles mixed emoji and text", () => {
-      const result = calcBigramMap("hello👍world");
+      const result = calcNgramMap("hello👍world");
       expect(result).toEqual({
         he: true,
         el: true,
@@ -181,7 +181,7 @@ describe("bigram", () => {
     });
 
     test("handles complex emoji sequences", () => {
-      const result = calcBigramMap("👨‍👩‍👧‍👦🇯🇵");
+      const result = calcNgramMap("👨‍👩‍👧‍👦🇯🇵");
       expect(result).toEqual({
         "👨": true,
         "👩": true,
