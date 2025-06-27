@@ -1,6 +1,6 @@
 import equals from "fast-deep-equal";
 import { type CollectionReference, doc, query, where } from "firebase/firestore";
-import { createComputed, createMemo, For, type JSXElement, Show, startTransition } from "solid-js";
+import { type Accessor, createComputed, createMemo, For, type JSXElement, Show, startTransition } from "solid-js";
 
 import { type DocumentData, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
@@ -13,7 +13,7 @@ export function ChildrenNodes<T extends TreeNode>(props: {
   parentId: string;
   selectedId: string;
   setSelectedId: (selectedID: string) => void;
-  showNode: (node: DocumentData<T>, isSelected: boolean) => JSXElement;
+  showNode: (node$: Accessor<DocumentData<T>>, isSelected$: Accessor<boolean>) => JSXElement;
 }) {
   const firestore = useFirestoreService();
 
@@ -75,7 +75,7 @@ export function Node<T extends TreeNode>(props: {
   id: string;
   selectedId: string;
   setSelectedId: (selectedId: string) => void;
-  showNode: (node: DocumentData<T>, isSelected: boolean) => JSXElement;
+  showNode: (node$: Accessor<DocumentData<T>>, isSelected$: Accessor<boolean>) => JSXElement;
 }) {
   const firestore = useFirestoreService();
 
@@ -154,10 +154,10 @@ export function Node<T extends TreeNode>(props: {
 
   return (
     <Show when={node$()}>
-      {(node) => {
+      {(node$) => {
         return (
           <>
-            <div>{props.showNode(node(), isSelected$())}</div>
+            <div>{props.showNode(node$, isSelected$)}</div>
             <ChildrenNodes
               col={props.col}
               parentId={props.id}

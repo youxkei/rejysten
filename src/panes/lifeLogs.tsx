@@ -137,14 +137,14 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
 
   const isSelected$ = () => state.panesLifeLogs.selectedLifeLogId === props.id;
   const isLifeLogSelected$ = () => isSelected$() && selectedLifeLogNodeId$() === "";
-  const isLifeLogNodeSelected$ = () => isSelected$() && selectedLifeLogNodeId$() !== "";
+  const isLifeLogTreeFocused$ = () => isSelected$() && selectedLifeLogNodeId$() !== "";
 
   addKeyDownEventListener(async (event) => {
     const { shiftKey, ctrlKey } = event;
 
     switch (event.code) {
       case "KeyL": {
-        if (ctrlKey || shiftKey || !isSelected$() || isLifeLogNodeSelected$()) return;
+        if (ctrlKey || shiftKey || !isSelected$() || isLifeLogTreeFocused$()) return;
 
         event.stopImmediatePropagation();
 
@@ -189,7 +189,7 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
       }
 
       case "KeyJ": {
-        if (ctrlKey || shiftKey || !isSelected$() || isLifeLogNodeSelected$() || props.nextId === "") return;
+        if (ctrlKey || shiftKey || !isSelected$() || isLifeLogTreeFocused$() || props.nextId === "") return;
         event.stopImmediatePropagation();
 
         updateState((state) => {
@@ -200,7 +200,7 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
       }
 
       case "KeyK": {
-        if (ctrlKey || shiftKey || !isSelected$() || isLifeLogNodeSelected$() || props.prevId === "") return;
+        if (ctrlKey || shiftKey || !isSelected$() || isLifeLogTreeFocused$() || props.prevId === "") return;
         event.stopImmediatePropagation();
 
         updateState((state) => {
@@ -224,15 +224,15 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
             </div>
             <div class={styles.lifeLogTree.text}>{lifeLog$().text}</div>
           </div>
-          <Show when={isLifeLogNodeSelected$()}>
+          <Show when={isLifeLogTreeFocused$()}>
             <div class={styles.lifeLogTree.childrenNodes}>
               <ChildrenNodes
                 col={getCollection(firestore, "lifeLogTreeNodes")}
                 parentId={props.id}
                 selectedId={selectedLifeLogNodeId$()}
                 setSelectedId={setSelectedLifeLogNodeId}
-                showNode={(node, isSelected) => (
-                  <div classList={{ [styles.lifeLogTree.selected]: isSelected }}>{node.text}</div>
+                showNode={(node$, isSelected$) => (
+                  <div classList={{ [styles.lifeLogTree.selected]: isSelected$() }}>{node$().text}</div>
                 )}
               />
             </div>
