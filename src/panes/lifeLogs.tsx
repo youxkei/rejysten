@@ -63,10 +63,14 @@ collectionNgramConfig.lifeLogTreeNodes = true;
 export function LifeLogs() {
   const tickDay$ = createTickSignal(dayMs);
 
-  return <LifeLogList start={Timestamp.fromMillis(tickDay$() - 7 * dayMs)} end={noneTimestamp} />;
+  return (
+    <div class={styles.lifeLogs.container}>
+      <TimeRangedLifeLogs start={Timestamp.fromMillis(tickDay$() - 7 * dayMs)} end={noneTimestamp} />
+    </div>
+  );
 }
 
-export function LifeLogList(props: { start: Timestamp; end: Timestamp }) {
+export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp }) {
   const firestore = useFirestoreService();
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
 
@@ -100,10 +104,10 @@ export function LifeLogList(props: { start: Timestamp; end: Timestamp }) {
   );
 
   return (
-    <ul>
+    <ul class={styles.lifeLogs.list}>
       <Key each={lifeLogIdWithNeighborIds$()} by={(item) => item.id}>
         {(lifeLogWithNeighborIds) => (
-          <li id={lifeLogWithNeighborIds().id}>
+          <li id={lifeLogWithNeighborIds().id} class={styles.lifeLogs.listItem}>
             <LifeLogTree
               id={lifeLogWithNeighborIds().id}
               prevId={lifeLogWithNeighborIds().prevId}
@@ -212,20 +216,24 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
     <Show when={lifeLog$()}>
       {(lifeLog$) => (
         <>
-          <div classList={{ [styles.lifeLogTree.selected]: isLifeLogSelected$() }}>
-            <div>
-              {timestampToTimeText(lifeLog$().startAt) ?? "N/A"} {timestampToTimeText(lifeLog$().endAt) ?? "N/A"}
+          <div class={styles.lifeLogTree.container} classList={{ [styles.lifeLogTree.selected]: isLifeLogSelected$() }}>
+            <div class={styles.lifeLogTree.timeRange}>
+              <span>{timestampToTimeText(lifeLog$().startAt) ?? "N/A"}</span>
+              <span>-</span>
+              <span>{timestampToTimeText(lifeLog$().endAt) ?? "N/A"}</span>
             </div>
-            <div> {lifeLog$().text} </div>
+            <div class={styles.lifeLogTree.text}>{lifeLog$().text}</div>
           </div>
           <Show when={isLifeLogNodeSelected$()}>
-            <ChildrenNodes
-              col={getCollection(firestore, "lifeLogTreeNodes")}
-              parentId={props.id}
-              selectedId={selectedLifeLogNodeId$()}
-              setSelectedId={setSelectedLifeLogNodeId}
-              showNode={(node) => <span>{node.text}</span>}
-            />
+            <div class={styles.lifeLogTree.childrenNodes}>
+              <ChildrenNodes
+                col={getCollection(firestore, "lifeLogTreeNodes")}
+                parentId={props.id}
+                selectedId={selectedLifeLogNodeId$()}
+                setSelectedId={setSelectedLifeLogNodeId}
+                showNode={(node) => <span>{node.text}</span>}
+              />
+            </div>
           </Show>
         </>
       )}

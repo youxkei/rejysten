@@ -1,4 +1,5 @@
 ## tools
 - use pnpm instead of npm
-- when you `git commit`, check `git diff` and do not `git add`
+- when you only `git commit`, first check `git diff`
 - when precommit hook failed, try `pnpm run fix` first
+- use playwright MCP server to check web pages and first check `pueue status` for servers

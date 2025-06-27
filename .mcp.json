@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "podman",
+      "args": ["run", "-i", "--rm", "--init", "--pull=always", "--net=host", "mcr.microsoft.com/playwright/mcp"],
+      "env": {}
+    }
+  }
+}
