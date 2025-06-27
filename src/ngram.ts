@@ -16,7 +16,10 @@ export function splitToChars(text: string) {
   return [...segmented[Symbol.iterator]().map((segment) => segment.segment)];
 }
 
-export function analyzeTextForNgrams(text: string): { normalizedText: string; ngramMap: Partial<Record<string, true>> } {
+export function analyzeTextForNgrams(text: string): {
+  normalizedText: string;
+  ngramMap: Partial<Record<string, true>>;
+} {
   const normalizedText = normalize(text);
   const chars = splitToChars(normalizedText);
   const ngramMap = {} as Partial<Record<string, true>>;

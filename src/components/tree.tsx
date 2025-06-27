@@ -7,14 +7,13 @@ import { runBatch } from "@/services/firebase/firestore/batch";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { dedent, indent, type TreeNode } from "@/services/firebase/firestore/treeNode";
 import { addKeyDownEventListener } from "@/solid/event";
-import { styles } from "@/styles.css";
 
 export function ChildrenNodes<T extends TreeNode>(props: {
   col: CollectionReference<T>;
   parentId: string;
   selectedId: string;
   setSelectedId: (selectedID: string) => void;
-  showNode: (node: DocumentData<T>) => JSXElement;
+  showNode: (node: DocumentData<T>, isSelected: boolean) => JSXElement;
 }) {
   const firestore = useFirestoreService();
 
@@ -76,7 +75,7 @@ export function Node<T extends TreeNode>(props: {
   id: string;
   selectedId: string;
   setSelectedId: (selectedId: string) => void;
-  showNode: (node: DocumentData<T>) => JSXElement;
+  showNode: (node: DocumentData<T>, isSelected: boolean) => JSXElement;
 }) {
   const firestore = useFirestoreService();
 
@@ -158,7 +157,7 @@ export function Node<T extends TreeNode>(props: {
       {(node) => {
         return (
           <>
-            <div classList={{ [styles.lifeLogTree.selected]: isSelected$() }}>{props.showNode(node())}</div>
+            <div>{props.showNode(node(), isSelected$())}</div>
             <ChildrenNodes
               col={props.col}
               parentId={props.id}

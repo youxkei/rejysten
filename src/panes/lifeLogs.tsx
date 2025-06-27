@@ -4,7 +4,7 @@ import { doc, orderBy, query, Timestamp, where } from "firebase/firestore";
 import { createMemo, Show, startTransition } from "solid-js";
 import { uuidv4 } from "uuidv7";
 
-import { ChildrenNodes } from "@/components/lifeLogTree";
+import { ChildrenNodes } from "@/components/tree";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
 import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
@@ -231,7 +231,9 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
                 parentId={props.id}
                 selectedId={selectedLifeLogNodeId$()}
                 setSelectedId={setSelectedLifeLogNodeId}
-                showNode={(node) => <span>{node.text}</span>}
+                showNode={(node, isSelected) => (
+                  <div classList={{ [styles.lifeLogTree.selected]: isSelected }}>{node.text}</div>
+                )}
               />
             </div>
           </Show>
