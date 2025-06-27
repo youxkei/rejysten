@@ -93,6 +93,7 @@ describe("batch", () => {
       const ngramDoc = await getDocOriginal(doc(ngramsCol, `testDoc${tid}`));
       test.expect(ngramDoc.exists()).toBe(true);
       test.expect(ngramDoc.data()?.text).toBe("hello world");
+      test.expect(ngramDoc.data()?.normalizedText).toBe("hello world");
       test.expect(ngramDoc.data()?.collection).toBe(tid);
     });
 
@@ -212,6 +213,7 @@ describe("batch", () => {
       const ngramDoc = await getDocOriginal(doc(ngramsCol, `newDoc${tid}`));
       test.expect(ngramDoc.exists()).toBe(true);
       test.expect(ngramDoc.data()?.text).toBe("hello ngram");
+      test.expect(ngramDoc.data()?.normalizedText).toBe("hello ngram");
       test.expect(ngramDoc.data()?.collection).toBe(tid);
     });
 
@@ -294,6 +296,7 @@ describe("batch", () => {
       const ngramDoc = await getDocOriginal(doc(ngramsCol, `${singletonDocumentId}${tid}`));
       test.expect(ngramDoc.exists()).toBe(true);
       test.expect(ngramDoc.data()?.text).toBe("singleton ngram text");
+      test.expect(ngramDoc.data()?.normalizedText).toBe("singleton ngram text");
       test.expect(ngramDoc.data()?.collection).toBe(tid);
     });
   });

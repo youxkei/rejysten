@@ -16,11 +16,12 @@ export function splitToChars(text: string) {
   return [...segmented[Symbol.iterator]().map((segment) => segment.segment)];
 }
 
-export function calcNgramMap(text: string): Partial<Record<string, true>> {
-  const chars = splitToChars(normalize(text));
+export function analyzeTextForNgrams(text: string): { normalizedText: string; ngramMap: Partial<Record<string, true>> } {
+  const normalizedText = normalize(text);
+  const chars = splitToChars(normalizedText);
   const ngramMap = {} as Partial<Record<string, true>>;
 
-  if (chars.length < 2) return ngramMap;
+  if (chars.length < 2) return { normalizedText, ngramMap };
 
   for (let i = 0; i < chars.length; i++) {
     // Skip if current character is non-printable
@@ -41,5 +42,5 @@ export function calcNgramMap(text: string): Partial<Record<string, true>> {
     }
   }
 
-  return ngramMap;
+  return { normalizedText, ngramMap };
 }

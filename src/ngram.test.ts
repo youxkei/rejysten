@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 
-import { normalize, splitToChars, calcNgramMap } from "@/ngram";
+import { normalize, splitToChars, analyzeTextForNgrams } from "@/ngram";
 
 describe("ngram", () => {
   describe("normalize", () => {
@@ -71,103 +71,114 @@ describe("ngram", () => {
     });
   });
 
-  describe("calcNgramMap", () => {
+  describe("analyzeTextForNgrams", () => {
     test("calculates ngrams for simple text", () => {
-      const result = calcNgramMap("hello");
-      expect(result).toEqual({
+      const result = analyzeTextForNgrams("hello");
+      expect(result.ngramMap).toEqual({
         he: true,
         el: true,
         ll: true,
         lo: true,
       });
+      expect(result.normalizedText).toBe("hello");
     });
 
     test("calculates ngrams with normalization", () => {
-      const result = calcNgramMap("HELLO");
-      expect(result).toEqual({
+      const result = analyzeTextForNgrams("HELLO");
+      expect(result.ngramMap).toEqual({
         he: true,
         el: true,
         ll: true,
         lo: true,
       });
+      expect(result.normalizedText).toBe("hello");
     });
 
     test("handles spaces as separators", () => {
-      const result = calcNgramMap("hi world");
-      expect(result).toEqual({
+      const result = analyzeTextForNgrams("hi world");
+      expect(result.ngramMap).toEqual({
         hi: true,
         wo: true,
         or: true,
         rl: true,
         ld: true,
       });
+      expect(result.normalizedText).toBe("hi world");
     });
 
     test("handles Japanese text", () => {
-      const result = calcNgramMap("こんにちは");
-      expect(result).toEqual({
+      const result = analyzeTextForNgrams("こんにちは");
+      expect(result.ngramMap).toEqual({
         こん: true,
         んに: true,
         にち: true,
         ちは: true,
       });
+      expect(result.normalizedText).toBe("こんにちは");
     });
 
     test("converts katakana to hiragana", () => {
-      const result = calcNgramMap("コンニチハ");
-      expect(result).toEqual({
+      const result = analyzeTextForNgrams("コンニチハ");
+      expect(result.ngramMap).toEqual({
         こん: true,
         んに: true,
         にち: true,
         ちは: true,
       });
+      expect(result.normalizedText).toBe("こんにちは");
     });
 
     test("skips single character groups", () => {
-      const result = calcNgramMap("a b c");
-      expect(result).toEqual({});
+      const result = analyzeTextForNgrams("a b c");
+      expect(result.ngramMap).toEqual({});
+      expect(result.normalizedText).toBe("a b c");
     });
 
     test("handles empty string", () => {
-      const result = calcNgramMap("");
-      expect(result).toEqual({});
+      const result = analyzeTextForNgrams("");
+      expect(result.ngramMap).toEqual({});
+      expect(result.normalizedText).toBe("");
     });
 
     test("handles string with only non-printables", () => {
-      const result = calcNgramMap("   \t\n   ");
-      expect(result).toEqual({});
+      const result = analyzeTextForNgrams("   \t\n   ");
+      expect(result.ngramMap).toEqual({});
+      expect(result.normalizedText).toBe("   \t\n   ");
     });
 
     test("handles complex mixed text", () => {
-      const result = calcNgramMap("Hello 世界");
-      expect(result).toEqual({
+      const result = analyzeTextForNgrams("Hello 世界");
+      expect(result.ngramMap).toEqual({
         he: true,
         el: true,
         ll: true,
         lo: true,
         世界: true,
       });
+      expect(result.normalizedText).toBe("hello 世界");
     });
 
     test("handles duplicate ngrams", () => {
-      const result = calcNgramMap("ababa");
-      expect(result).toEqual({
+      const result = analyzeTextForNgrams("ababa");
+      expect(result.ngramMap).toEqual({
         ab: true,
         ba: true,
       });
+      expect(result.normalizedText).toBe("ababa");
     });
 
     test("handles emoji correctly", () => {
-      const result = calcNgramMap("👍👎");
-      expect(result).toEqual({
+      const result = analyzeTextForNgrams("👍👎");
+      expect(result.ngramMap).toEqual({
         "👍": true,
         "👎": true,
       });
+      expect(result.normalizedText).toBe("👍👎");
     });
 
     test("handles mixed emoji and text", () => {
-      const result = calcNgramMap("hello👍world");
-      expect(result).toEqual({
+      const result = analyzeTextForNgrams("hello👍world");
+      expect(result.ngramMap).toEqual({
         he: true,
         el: true,
         ll: true,
@@ -178,17 +189,19 @@ describe("ngram", () => {
         rl: true,
         ld: true,
       });
+      expect(result.normalizedText).toBe("hello👍world");
     });
 
     test("handles complex emoji sequences", () => {
-      const result = calcNgramMap("👨‍👩‍👧‍👦🇯🇵");
-      expect(result).toEqual({
+      const result = analyzeTextForNgrams("👨‍👩‍👧‍👦🇯🇵");
+      expect(result.ngramMap).toEqual({
         "👨": true,
         "👩": true,
         "👧": true,
         "👦": true,
         "🇯🇵": true,
       });
+      expect(result.normalizedText).toBe("👨👩👧👦🇯🇵");
     });
   });
 });

@@ -1,13 +1,14 @@
 import { type CollectionReference, doc, type WriteBatch } from "firebase/firestore";
 
 import { type FirestoreService, getCollection } from ".";
-import { calcNgramMap } from "@/ngram";
+import { analyzeTextForNgrams } from "@/ngram";
 
 declare module "@/services/firebase/firestore/schema" {
   interface Schema {
     ngrams: {
       collection: string;
       text: string;
+      normalizedText: string;
       ngramMap: Partial<Record<string, true>>;
     };
   }
@@ -28,10 +29,12 @@ export function setNgram<T>(
   if (colId === "ngrams") return;
 
   const ngramsCol = getCollection(service, "ngrams");
+  const { normalizedText, ngramMap } = analyzeTextForNgrams(text);
 
   batch.set(doc(ngramsCol, `${id}${col.id}`), {
     collection: colId,
     text,
-    ngramMap: calcNgramMap(text),
+    normalizedText,
+    ngramMap,
   });
 }
