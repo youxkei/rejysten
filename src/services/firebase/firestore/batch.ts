@@ -14,15 +14,11 @@ import {
   getSingletonDoc,
   singletonDocumentId,
   type FirestoreService,
+  type Timestamps,
 } from "@/services/firebase/firestore";
 import { TransactionAborted } from "@/services/firebase/firestore/error";
 import { setNgram } from "@/services/firebase/firestore/ngram";
 import { initialState } from "@/services/store";
-
-interface Timestamps {
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-}
 
 declare module "@/services/store" {
   interface State {
@@ -115,7 +111,7 @@ export function updateDoc<T extends Timestamps>(
   service: FirestoreService,
   batch: WriteBatch,
   col: CollectionReference<T>,
-  newDocData: DocumentData<Partial<Omit<T, keyof Timestamps>>>,
+  newDocData: DocumentData<Omit<Partial<T>, keyof Timestamps>>,
 ) {
   const { id, ...newDocDataContent } = newDocData;
 
@@ -133,7 +129,7 @@ export function updateSingletonDoc<T extends Timestamps>(
   service: FirestoreService,
   batch: WriteBatch,
   col: CollectionReference<T>,
-  newDocData: Partial<Omit<T, keyof Timestamps>>,
+  newDocData: Omit<Partial<T>, keyof Timestamps>,
 ) {
   updateDoc(service, batch, col, {
     id: singletonDocumentId,
@@ -145,7 +141,7 @@ export function setDoc<T extends Timestamps>(
   service: FirestoreService,
   batch: WriteBatch,
   col: CollectionReference<T>,
-  newDocData: DocumentData<Omit<T, keyof Timestamps>>,
+  newDocData: Omit<DocumentData<T>, keyof Timestamps>,
 ) {
   const { id, ...newDocDataContent } = newDocData;
 
@@ -167,7 +163,7 @@ export function setSingletonDoc<T extends Timestamps>(
   newDocData: Omit<T, keyof Timestamps>,
 ) {
   setDoc(service, batch, col, {
+    ...(newDocData as Omit<DocumentData<T>, keyof Timestamps>),
     id: singletonDocumentId,
-    ...newDocData,
   });
 }

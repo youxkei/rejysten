@@ -1,16 +1,15 @@
 import equal from "fast-deep-equal";
-import {
-  type CollectionReference,
-  type Timestamp,
-  type WriteBatch,
-  doc,
-  query,
-  serverTimestamp,
-  where,
-} from "firebase/firestore";
+import { type CollectionReference, type WriteBatch, doc, query, where } from "firebase/firestore";
 
 import { ErrorWithFields } from "@/error";
-import { type DocumentData, type FirestoreService, getDoc, getDocs } from "@/services/firebase/firestore";
+import {
+  type DocumentData,
+  type FirestoreService,
+  type Timestamps,
+  getDoc,
+  getDocs,
+} from "@/services/firebase/firestore";
+import { setDoc, updateDoc } from "@/services/firebase/firestore/batch";
 import { InconsistentError, TransactionAborted } from "@/services/firebase/firestore/error";
 
 export type TreeNode = {
@@ -19,9 +18,7 @@ export type TreeNode = {
   nextId: string;
   aboveId: string;
   belowId: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-};
+} & Timestamps;
 
 export async function getPrevNode<T extends TreeNode>(
   service: FirestoreService,
@@ -221,29 +218,32 @@ export async function unlinkFromTree<T extends TreeNode>(
 
   const belowNodeOfBottomNode = await getBelowNode(service, col, bottomNode);
 
-  batch.update(doc(col, baseNode.id), {
+  updateDoc<TreeNode>(service, batch, col, {
+    id: baseNode.id,
     parentId: "",
     nextId: "",
     prevId: "",
     aboveId: "",
-    updatedAt: serverTimestamp(),
   });
 
-  batch.update(doc(col, bottomNode.id), { belowId: "", updatedAt: serverTimestamp() });
+  updateDoc<TreeNode>(service, batch, col, { id: bottomNode.id, belowId: "" });
 
   if (prevNode) {
-    batch.update(doc(col, prevNode.id), { nextId: baseNode.nextId, updatedAt: serverTimestamp() });
+    updateDoc<TreeNode>(service, batch, col, { id: prevNode.id, nextId: baseNode.nextId });
   }
   if (nextNode) {
-    batch.update(doc(col, nextNode.id), { prevId: baseNode.prevId, updatedAt: serverTimestamp() });
+    updateDoc<TreeNode>(service, batch, col, { id: nextNode.id, prevId: baseNode.prevId });
   }
 
   if (aboveNode) {
-    batch.update(doc(col, aboveNode.id), { belowId: bottomNode.belowId, updatedAt: serverTimestamp() });
+    updateDoc<TreeNode>(service, batch, col, { id: aboveNode.id, belowId: bottomNode.belowId });
   }
 
   if (belowNodeOfBottomNode) {
-    batch.update(doc(col, belowNodeOfBottomNode.id), { aboveId: baseNode.aboveId, updatedAt: serverTimestamp() });
+    updateDoc<TreeNode>(service, batch, col, {
+      id: belowNodeOfBottomNode.id,
+      aboveId: baseNode.aboveId,
+    });
   }
 }
 
@@ -279,27 +279,23 @@ export async function getBottomNodeExclusive<T extends TreeNode, U extends objec
 }
 
 export function addSingle<T extends TreeNode>(
-  _service: FirestoreService,
+  service: FirestoreService,
   batch: WriteBatch,
   col: CollectionReference<T>,
   parentId: string,
-  newNode: DocumentData<Omit<T, keyof TreeNode>>,
+  newNode: Omit<DocumentData<T>, keyof TreeNode>,
 ) {
   if (newNode.id === "") {
     throw new ErrorWithFields("new node must have a valid id", { newNode });
   }
 
-  const { id: _, ...newNodeData } = newNode;
-
-  batch.set(doc(col, newNode.id), {
-    ...(newNodeData as unknown as T),
+  setDoc(service, batch, col, {
+    ...(newNode as Omit<DocumentData<T>, keyof Timestamps>),
     parentId,
     prevId: "",
     nextId: "",
     aboveId: "",
     belowId: "",
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
   });
 }
 
@@ -325,42 +321,38 @@ export async function addPrevSibling<T extends TreeNode>(
     getAboveNode(service, col, baseNode),
   ]);
 
-  const { id: _, ...newNodeData } = newNode;
-
   if (fetchedNewNode) {
-    batch.update(doc(col, newNode.id), {
+    updateDoc<TreeNode>(service, batch, col, {
+      id: newNode.id,
       parentId: baseNode.parentId,
       prevId: baseNode.prevId,
       nextId: baseNode.id,
       aboveId: baseNode.aboveId,
-      updatedAt: serverTimestamp(),
     });
-    batch.update(doc(col, bottomNodeOfNewNode.id), { belowId: baseNode.id, updatedAt: serverTimestamp() });
+    updateDoc<TreeNode>(service, batch, col, { id: bottomNodeOfNewNode.id, belowId: baseNode.id });
   } else {
-    batch.set(doc(col, newNode.id), {
-      ...(newNodeData as unknown as T),
+    setDoc(service, batch, col, {
+      ...newNode,
       parentId: baseNode.parentId,
       prevId: baseNode.prevId,
       nextId: baseNode.id,
       aboveId: baseNode.aboveId,
       belowId: baseNode.id,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
     });
   }
 
-  batch.update(doc(col, baseNode.id), {
+  updateDoc<TreeNode>(service, batch, col, {
+    id: baseNode.id,
     prevId: newNode.id,
     aboveId: bottomNodeOfNewNode.id,
-    updatedAt: serverTimestamp(),
   });
 
   if (prevNode) {
-    batch.update(doc(col, prevNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
+    updateDoc<TreeNode>(service, batch, col, { id: prevNode.id, nextId: newNode.id });
   }
 
   if (aboveNode) {
-    batch.update(doc(col, aboveNode.id), { belowId: newNode.id, updatedAt: serverTimestamp() });
+    updateDoc<TreeNode>(service, batch, col, { id: aboveNode.id, belowId: newNode.id });
   }
 }
 
@@ -407,39 +399,37 @@ export async function addNextSibling<T extends TreeNode>(
   }
 
   if (fetchedNewNode) {
-    batch.update(doc(col, newNode.id), {
+    updateDoc<TreeNode>(service, batch, col, {
+      id: newNode.id,
       parentId: baseNode.parentId,
       prevId: baseNode.id,
       nextId: baseNode.nextId,
       aboveId: newAboveIdOfNewNode,
-      updatedAt: serverTimestamp(),
     });
-    batch.update(doc(col, bottomNodeOfNewNode.id), { belowId: newBelowIdOfNewNode, updatedAt: serverTimestamp() });
+    updateDoc<TreeNode>(service, batch, col, { id: bottomNodeOfNewNode.id, belowId: newBelowIdOfNewNode });
   } else {
-    batch.set(doc(col, newNode.id), {
-      ...(newNode as unknown as T),
+    setDoc(service, batch, col, {
+      ...newNode,
       parentId: baseNode.parentId,
       prevId: baseNode.id,
       nextId: baseNode.nextId,
       aboveId: newAboveIdOfNewNode,
       belowId: newBelowIdOfNewNode,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
     });
   }
 
-  batch.update(doc(col, baseNode.id), { nextId: newNode.id, updatedAt: serverTimestamp() });
+  updateDoc<TreeNode>(service, batch, col, { id: baseNode.id, nextId: newNode.id });
 
   if (newAboveNodeOfNewNode) {
-    batch.update(doc(col, newAboveNodeOfNewNode.id), { belowId: newNode.id, updatedAt: serverTimestamp() });
+    updateDoc<TreeNode>(service, batch, col, { id: newAboveNodeOfNewNode.id, belowId: newNode.id });
   }
 
   if (newNextNodeOfNewNode) {
-    batch.update(doc(col, newNextNodeOfNewNode.id), { prevId: newNode.id, updatedAt: serverTimestamp() });
+    updateDoc<TreeNode>(service, batch, col, { id: newNextNodeOfNewNode.id, prevId: newNode.id });
   }
 
   if (newBelowNodeOfNewNode) {
-    batch.update(doc(col, newBelowNodeOfNewNode.id), { aboveId: bottomNodeOfNewNode.id, updatedAt: serverTimestamp() });
+    updateDoc<TreeNode>(service, batch, col, { id: newBelowNodeOfNewNode.id, aboveId: bottomNodeOfNewNode.id });
   }
 }
 
@@ -463,28 +453,28 @@ export async function indent<T extends TreeNode>(
     const bottomNodeOfNode = await getBottomNodeInclusive(service, col, node);
     const belowNodeOfBottomNodeOfNode = await getBelowNode(service, col, bottomNodeOfNode);
 
-    batch.update(doc(col, node.id), {
+    updateDoc<TreeNode>(service, batch, col, {
+      id: node.id,
       parentId: prevNode.id,
       prevId: "",
       nextId: "",
       aboveId: prevNode.id,
-      updatedAt: serverTimestamp(),
     });
 
-    batch.update(doc(col, bottomNodeOfNode.id), {
+    updateDoc<TreeNode>(service, batch, col, {
+      id: bottomNodeOfNode.id,
       belowId: bottomNodeOfNode.belowId,
-      updatedAt: serverTimestamp(),
     });
 
-    batch.update(doc(col, prevNode.id), {
+    updateDoc<TreeNode>(service, batch, col, {
+      id: prevNode.id,
       belowId: node.id,
-      updatedAt: serverTimestamp(),
     });
 
     if (belowNodeOfBottomNodeOfNode) {
-      batch.update(doc(col, belowNodeOfBottomNodeOfNode.id), {
+      updateDoc<TreeNode>(service, batch, col, {
+        id: belowNodeOfBottomNodeOfNode.id,
         aboveId: bottomNodeOfNode.id,
-        updatedAt: serverTimestamp(),
       });
     }
   }

@@ -15,6 +15,7 @@ import {
   persistentMultipleTabManager,
   onSnapshotsInSync,
   connectFirestoreEmulator,
+  type Timestamp,
 } from "firebase/firestore";
 import {
   type Accessor,
@@ -87,6 +88,11 @@ export function useFirestoreService() {
 
 export function getCollection<Name extends keyof Schema>(service: FirestoreService, name: Name) {
   return collection(service.firestore, name) as CollectionReference<Schema[Name]>;
+}
+
+export interface Timestamps {
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 export type DocumentData<T extends object> = T & { id: string };
