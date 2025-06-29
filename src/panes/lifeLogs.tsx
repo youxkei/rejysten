@@ -140,12 +140,16 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
   const isLifeLogSelected$ = () => isSelected$() && selectedLifeLogNodeId$() === "";
   const isLifeLogTreeFocused$ = () => isSelected$() && selectedLifeLogNodeId$() !== "";
 
+  const [isEditing$, setIsEditing] = createSignal(false);
+
   addKeyDownEventListener(async (event) => {
     const { shiftKey, ctrlKey, isComposing } = event;
 
+    if (isEditing$() || isComposing || !isSelected$()) return;
+
     switch (event.code) {
       case "KeyL": {
-        if (ctrlKey || shiftKey || isComposing || !isSelected$() || isLifeLogTreeFocused$()) return;
+        if (ctrlKey || shiftKey || isLifeLogTreeFocused$()) return;
 
         event.stopImmediatePropagation();
 
@@ -181,7 +185,7 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
       }
 
       case "KeyH": {
-        if (ctrlKey || shiftKey || isComposing || !isSelected$() || isLifeLogSelected$()) return;
+        if (ctrlKey || shiftKey || isLifeLogSelected$()) return;
         event.stopImmediatePropagation();
 
         setSelectedLifeLogNodeId("");
@@ -190,8 +194,7 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
       }
 
       case "KeyJ": {
-        if (ctrlKey || shiftKey || isComposing || !isSelected$() || isLifeLogTreeFocused$() || props.nextId === "")
-          return;
+        if (ctrlKey || shiftKey || isLifeLogTreeFocused$() || props.nextId === "") return;
         event.stopImmediatePropagation();
 
         updateState((state) => {
@@ -202,8 +205,7 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
       }
 
       case "KeyK": {
-        if (ctrlKey || shiftKey || isComposing || !isSelected$() || isLifeLogTreeFocused$() || props.prevId === "")
-          return;
+        if (ctrlKey || shiftKey || isLifeLogTreeFocused$() || props.prevId === "") return;
         event.stopImmediatePropagation();
 
         updateState((state) => {
@@ -236,7 +238,6 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
                 setSelectedId={setSelectedLifeLogNodeId}
                 showNode={(node$, isSelected$) => {
                   const owner = getOwner();
-                  const [isEditing, setIsEditing] = createSignal(false);
                   const [editText, setEditText] = createSignal("");
                   let inputRef: HTMLInputElement | undefined;
 
@@ -264,7 +265,7 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
                   const debouncedSaveChanges = debounce(saveChanges, 1000);
 
                   addKeyDownEventListener(async (e: KeyboardEvent) => {
-                    if (e.code === "KeyI" && isSelected$() && !isEditing()) {
+                    if (e.code === "KeyI" && isSelected$() && !isEditing$()) {
                       e.preventDefault();
                       e.stopPropagation();
 
@@ -276,7 +277,7 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
                           inputRef?.focus();
                         });
                       });
-                    } else if (e.code === "Escape" && isEditing()) {
+                    } else if (e.code === "Escape" && isSelected$() && isEditing$()) {
                       e.preventDefault();
                       e.stopPropagation();
 
@@ -291,8 +292,7 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
 
                   return (
                     <div classList={{ [styles.lifeLogTree.selected]: isSelected$() }}>
-                      <div style={{ display: isEditing() ? "none" : "block" }}>{node$().text}</div>
-                      <Show when={isEditing()}>
+                      <Show when={isSelected$() && isEditing$()} fallback={node$().text}>
                         <input
                           ref={inputRef}
                           type="text"
@@ -303,8 +303,11 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
                             setEditText(newText);
                             debouncedSaveChanges(newText);
                           }}
-                          onBlur={() => {
+                          onBlur={async () => {
+                            debouncedSaveChanges.clear();
+                            await saveChanges(editText());
                             setIsEditing(false);
+                            setEditText("");
                           }}
                         />
                       </Show>
