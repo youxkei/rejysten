@@ -1,12 +1,13 @@
 import { Key } from "@solid-primitives/keyed";
+import { debounce } from "@solid-primitives/scheduled";
 import equal from "fast-deep-equal";
 import { doc, orderBy, query, Timestamp, where } from "firebase/firestore";
-import { createMemo, Show, startTransition } from "solid-js";
+import { createEffect, createMemo, createSignal, getOwner, runWithOwner, Show, startTransition } from "solid-js";
 import { uuidv4 } from "uuidv7";
 
 import { ChildrenNodes } from "@/components/tree";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
-import { runBatch } from "@/services/firebase/firestore/batch";
+import { runBatch, updateDoc } from "@/services/firebase/firestore/batch";
 import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { addSingle, getFirstChildNode } from "@/services/firebase/firestore/treeNode";
@@ -140,11 +141,11 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
   const isLifeLogTreeFocused$ = () => isSelected$() && selectedLifeLogNodeId$() !== "";
 
   addKeyDownEventListener(async (event) => {
-    const { shiftKey, ctrlKey } = event;
+    const { shiftKey, ctrlKey, isComposing } = event;
 
     switch (event.code) {
       case "KeyL": {
-        if (ctrlKey || shiftKey || !isSelected$() || isLifeLogTreeFocused$()) return;
+        if (ctrlKey || shiftKey || isComposing || !isSelected$() || isLifeLogTreeFocused$()) return;
 
         event.stopImmediatePropagation();
 
@@ -180,7 +181,7 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
       }
 
       case "KeyH": {
-        if (ctrlKey || shiftKey || !isSelected$() || isLifeLogSelected$()) return;
+        if (ctrlKey || shiftKey || isComposing || !isSelected$() || isLifeLogSelected$()) return;
         event.stopImmediatePropagation();
 
         setSelectedLifeLogNodeId("");
@@ -189,7 +190,8 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
       }
 
       case "KeyJ": {
-        if (ctrlKey || shiftKey || !isSelected$() || isLifeLogTreeFocused$() || props.nextId === "") return;
+        if (ctrlKey || shiftKey || isComposing || !isSelected$() || isLifeLogTreeFocused$() || props.nextId === "")
+          return;
         event.stopImmediatePropagation();
 
         updateState((state) => {
@@ -200,7 +202,8 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
       }
 
       case "KeyK": {
-        if (ctrlKey || shiftKey || !isSelected$() || isLifeLogTreeFocused$() || props.prevId === "") return;
+        if (ctrlKey || shiftKey || isComposing || !isSelected$() || isLifeLogTreeFocused$() || props.prevId === "")
+          return;
         event.stopImmediatePropagation();
 
         updateState((state) => {
@@ -231,9 +234,83 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
                 parentId={props.id}
                 selectedId={selectedLifeLogNodeId$()}
                 setSelectedId={setSelectedLifeLogNodeId}
-                showNode={(node$, isSelected$) => (
-                  <div classList={{ [styles.lifeLogTree.selected]: isSelected$() }}>{node$().text}</div>
-                )}
+                showNode={(node$, isSelected$) => {
+                  const owner = getOwner();
+                  const [isEditing, setIsEditing] = createSignal(false);
+                  const [editText, setEditText] = createSignal("");
+                  let inputRef: HTMLInputElement | undefined;
+
+                  async function saveChanges(text: string) {
+                    const node = node$();
+                    if (text !== node.text) {
+                      firestore.setClock(true);
+                      try {
+                        await runBatch(firestore, (batch) => {
+                          updateDoc(firestore, batch, getCollection(firestore, "lifeLogTreeNodes"), {
+                            id: node.id,
+                            text,
+                          });
+
+                          return Promise.resolve();
+                        });
+                      } finally {
+                        await startTransition(() => {
+                          firestore.setClock(false);
+                        });
+                      }
+                    }
+                  }
+
+                  const debouncedSaveChanges = debounce(saveChanges, 1000);
+
+                  addKeyDownEventListener(async (e: KeyboardEvent) => {
+                    if (e.code === "KeyI" && isSelected$() && !isEditing()) {
+                      e.preventDefault();
+                      e.stopPropagation();
+
+                      setEditText(node$().text);
+                      setIsEditing(true);
+
+                      runWithOwner(owner, () => {
+                        createEffect(() => {
+                          inputRef?.focus();
+                        });
+                      });
+                    } else if (e.code === "Escape" && isEditing()) {
+                      e.preventDefault();
+                      e.stopPropagation();
+
+                      debouncedSaveChanges.clear();
+
+                      await saveChanges(editText());
+
+                      setIsEditing(false);
+                      setEditText("");
+                    }
+                  });
+
+                  return (
+                    <div classList={{ [styles.lifeLogTree.selected]: isSelected$() }}>
+                      <div style={{ display: isEditing() ? "none" : "block" }}>{node$().text}</div>
+                      <Show when={isEditing()}>
+                        <input
+                          ref={inputRef}
+                          type="text"
+                          class={styles.lifeLogTree.editInput}
+                          value={editText()}
+                          onInput={(e) => {
+                            const newText = e.currentTarget.value;
+                            setEditText(newText);
+                            debouncedSaveChanges(newText);
+                          }}
+                          onBlur={() => {
+                            setIsEditing(false);
+                          }}
+                        />
+                      </Show>
+                    </div>
+                  );
+                }}
               />
             </div>
           </Show>

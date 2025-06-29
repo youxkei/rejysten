@@ -85,11 +85,11 @@ export function Node<T extends TreeNode>(props: {
   addKeyDownEventListener(async (event) => {
     if (!isSelected$()) return;
 
-    const { shiftKey, ctrlKey } = event;
+    const { shiftKey, ctrlKey, isComposing } = event;
 
     switch (event.code) {
       case "KeyJ": {
-        if (ctrlKey || shiftKey) return;
+        if (ctrlKey || shiftKey || isComposing) return;
 
         event.stopImmediatePropagation();
 
@@ -104,7 +104,7 @@ export function Node<T extends TreeNode>(props: {
       }
 
       case "KeyK": {
-        if (ctrlKey || shiftKey) return;
+        if (ctrlKey || shiftKey || isComposing) return;
 
         event.stopImmediatePropagation();
 
@@ -119,7 +119,7 @@ export function Node<T extends TreeNode>(props: {
       }
 
       case "Tab": {
-        if (ctrlKey) return;
+        if (ctrlKey || isComposing) return;
 
         event.preventDefault();
         event.stopPropagation();

@@ -80,6 +80,18 @@ export const styles = {
       paddingLeft: "1.5rem",
       borderLeft: `2px solid ${nord[2]}`,
     }),
+    editInput: style({
+      backgroundColor: "transparent",
+      border: "none",
+      outline: "none",
+      fontSize: "1rem",
+      lineHeight: 1.5,
+      color: nord[4],
+      width: "100%",
+      padding: 0,
+      margin: 0,
+      fontFamily: "inherit",
+    }),
   },
 };
 

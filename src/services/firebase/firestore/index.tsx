@@ -129,10 +129,10 @@ export async function getDoc<T extends object>(
 export const singletonDocumentId = "singleton";
 
 export async function getSingletonDoc<T extends object>(
-  _service: FirestoreService,
+  service: FirestoreService,
   col: CollectionReference<T>,
 ): Promise<T | undefined> {
-  const data = await getDoc(_service, col, singletonDocumentId);
+  const data = await getDoc(service, col, singletonDocumentId);
   if (!data) return;
 
   const { id: _, ...dataWithoutId } = data;
