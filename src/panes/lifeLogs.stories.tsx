@@ -4,7 +4,12 @@ import { onMount, Suspense, type JSXElement, createSignal } from "solid-js";
 
 import { LifeLogs, LifeLogTree } from "@/panes/lifeLogs";
 import { FirebaseServiceProvider } from "@/services/firebase";
-import { FirestoreServiceProvider, getCollection, useFirestoreService } from "@/services/firebase/firestore";
+import {
+  FirestoreServiceProvider,
+  getCollection,
+  singletonDocumentId,
+  useFirestoreService,
+} from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
 import { noneTimestamp } from "@/timestamp";
 
@@ -50,6 +55,7 @@ export const LifeLogsStory: StoryObj = {
             {(() => {
               const firestore = useFirestoreService();
 
+              const batchVersion = getCollection(firestore, "batchVersion");
               const lifeLogs = getCollection(firestore, "lifeLogs");
               const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
 
@@ -57,6 +63,13 @@ export const LifeLogsStory: StoryObj = {
 
               onMount(() => {
                 const batch = writeBatch(firestore.firestore);
+
+                batch.set(doc(batchVersion, singletonDocumentId), {
+                  version: "__INITIAL__",
+                  prevVersion: "",
+                  createdAt: Timestamp.fromDate(new Date()),
+                  updatedAt: Timestamp.fromDate(new Date()),
+                });
 
                 batch.set(doc(lifeLogs, "log1"), {
                   text: "lifelog1",
@@ -190,6 +203,7 @@ export const LifeLogTreeStory: StoryObj = {
             {(() => {
               const firestore = useFirestoreService();
 
+              const batchVersion = getCollection(firestore, "batchVersion");
               const lifeLogs = getCollection(firestore, "lifeLogs");
               const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
 
@@ -197,6 +211,13 @@ export const LifeLogTreeStory: StoryObj = {
 
               onMount(() => {
                 const batch = writeBatch(firestore.firestore);
+
+                batch.set(doc(batchVersion, singletonDocumentId), {
+                  version: "__INITIAL__",
+                  prevVersion: "",
+                  createdAt: Timestamp.fromDate(new Date()),
+                  updatedAt: Timestamp.fromDate(new Date()),
+                });
 
                 batch.set(doc(lifeLogs, "log1"), {
                   text: "lifelog",

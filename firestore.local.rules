@@ -7,6 +7,7 @@ service cloud.firestore {
 
       allow update: if
         (col != "batchVersion" && col != "pocFirestoreRulesVersion")
+          || request.resource.data.version == "__INITIAL__"
           || request.resource.data.prevVersion == resource.data.version;
     }
   }
