@@ -14,6 +14,7 @@ export function ChildrenNodes<T extends TreeNode>(props: {
   selectedId: string;
   setSelectedId: (selectedID: string) => void;
   showNode: (node$: Accessor<DocumentData<T>>, isSelected$: Accessor<boolean>) => JSXElement;
+  isEditing?: Accessor<boolean>;
 }) {
   const firestore = useFirestoreService();
 
@@ -62,6 +63,7 @@ export function ChildrenNodes<T extends TreeNode>(props: {
               selectedId={props.selectedId}
               setSelectedId={props.setSelectedId}
               showNode={props.showNode}
+              isEditing={props.isEditing}
             />
           </li>
         )}
@@ -76,6 +78,7 @@ export function Node<T extends TreeNode>(props: {
   selectedId: string;
   setSelectedId: (selectedId: string) => void;
   showNode: (node$: Accessor<DocumentData<T>>, isSelected$: Accessor<boolean>) => JSXElement;
+  isEditing?: Accessor<boolean>;
 }) {
   const firestore = useFirestoreService();
 
@@ -83,7 +86,7 @@ export function Node<T extends TreeNode>(props: {
   const isSelected$ = () => props.id === props.selectedId;
 
   addKeyDownEventListener(async (event) => {
-    if (!isSelected$()) return;
+    if (!isSelected$() || props.isEditing?.()) return;
 
     const { shiftKey, ctrlKey, isComposing } = event;
 

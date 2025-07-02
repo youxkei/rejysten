@@ -2,7 +2,7 @@ import { Key } from "@solid-primitives/keyed";
 import { debounce } from "@solid-primitives/scheduled";
 import equal from "fast-deep-equal";
 import { doc, orderBy, query, Timestamp, where } from "firebase/firestore";
-import { createEffect, createMemo, createSignal, Show, startTransition } from "solid-js";
+import { createMemo, createSignal, onMount, Show, startTransition } from "solid-js";
 import { uuidv4 } from "uuidv7";
 
 import { ChildrenNodes } from "@/components/tree";
@@ -236,6 +236,7 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
                 parentId={props.id}
                 selectedId={selectedLifeLogNodeId$()}
                 setSelectedId={setSelectedLifeLogNodeId}
+                isEditing={isEditing$}
                 showNode={(node$, isSelected$) => {
                   const [editText, setEditText] = createSignal("");
                   let inputRef: HTMLInputElement | undefined;
@@ -271,7 +272,7 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
                       setEditText(node$().text);
                       setIsEditing(true);
 
-                      createEffect(() => {
+                      onMount(() => {
                         inputRef?.focus();
                       });
                     } else if (e.code === "Escape" && isSelected$() && isEditing$()) {
