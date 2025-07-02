@@ -1,10 +1,10 @@
 import { Key } from "@solid-primitives/keyed";
-import { debounce } from "@solid-primitives/scheduled";
 import equal from "fast-deep-equal";
 import { doc, orderBy, query, Timestamp, where } from "firebase/firestore";
-import { createMemo, createSignal, onMount, Show, startTransition } from "solid-js";
+import { createMemo, createSignal, Show, startTransition } from "solid-js";
 import { uuidv4 } from "uuidv7";
 
+import { EditableItem } from "@/components/EditableItem";
 import { ChildrenNodes } from "@/components/tree";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch, updateDoc } from "@/services/firebase/firestore/batch";
@@ -238,78 +238,34 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
                 setSelectedId={setSelectedLifeLogNodeId}
                 isEditing={isEditing$}
                 showNode={(node$, isSelected$) => {
-                  const [editText, setEditText] = createSignal("");
-                  let inputRef: HTMLInputElement | undefined;
-
-                  async function saveChanges(text: string) {
-                    const node = node$();
-                    if (text !== node.text) {
-                      firestore.setClock(true);
-                      try {
-                        await runBatch(firestore, (batch) => {
-                          updateDoc(firestore, batch, getCollection(firestore, "lifeLogTreeNodes"), {
-                            id: node.id,
-                            text,
-                          });
-
-                          return Promise.resolve();
+                  async function onSaveNode(nodeId: string, newText: string) {
+                    firestore.setClock(true);
+                    try {
+                      await runBatch(firestore, (batch) => {
+                        updateDoc(firestore, batch, getCollection(firestore, "lifeLogTreeNodes"), {
+                          id: nodeId,
+                          text: newText,
                         });
-                      } finally {
-                        await startTransition(() => {
-                          firestore.setClock(false);
-                        });
-                      }
+
+                        return Promise.resolve();
+                      });
+                    } finally {
+                      await startTransition(() => {
+                        firestore.setClock(false);
+                      });
                     }
                   }
 
-                  const debouncedSaveChanges = debounce(saveChanges, 1000);
-
-                  addKeyDownEventListener(async (e: KeyboardEvent) => {
-                    if (e.code === "KeyI" && isSelected$() && !isEditing$()) {
-                      e.preventDefault();
-                      e.stopPropagation();
-
-                      setEditText(node$().text);
-                      setIsEditing(true);
-
-                      onMount(() => {
-                        inputRef?.focus();
-                      });
-                    } else if (e.code === "Escape" && isSelected$() && isEditing$()) {
-                      e.preventDefault();
-                      e.stopPropagation();
-
-                      debouncedSaveChanges.clear();
-
-                      await saveChanges(editText());
-
-                      setIsEditing(false);
-                      setEditText("");
-                    }
-                  });
-
                   return (
-                    <div classList={{ [styles.lifeLogTree.selected]: isSelected$() }}>
-                      <Show when={isSelected$() && isEditing$()} fallback={node$().text}>
-                        <input
-                          ref={inputRef}
-                          type="text"
-                          class={styles.lifeLogTree.editInput}
-                          value={editText()}
-                          onInput={(e) => {
-                            const newText = e.currentTarget.value;
-                            setEditText(newText);
-                            debouncedSaveChanges(newText);
-                          }}
-                          onBlur={async () => {
-                            debouncedSaveChanges.clear();
-                            await saveChanges(editText());
-                            setIsEditing(false);
-                            setEditText("");
-                          }}
-                        />
-                      </Show>
-                    </div>
+                    <EditableItem
+                      item$={node$}
+                      isSelected$={isSelected$}
+                      isEditing$={isEditing$}
+                      setIsEditing={setIsEditing}
+                      onSave={onSaveNode}
+                      selectedClassName={styles.lifeLogTree.selected}
+                      editInputClassName={styles.lifeLogTree.editInput}
+                    />
                   );
                 }}
               />
