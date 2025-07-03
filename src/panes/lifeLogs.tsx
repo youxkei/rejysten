@@ -4,7 +4,7 @@ import { doc, orderBy, query, Timestamp, where } from "firebase/firestore";
 import { createMemo, createSignal, Show, startTransition } from "solid-js";
 import { uuidv4 } from "uuidv7";
 
-import { EditableItem } from "@/components/EditableItem";
+import { EditableValue } from "@/components/EditableValue";
 import { ChildrenNodes } from "@/components/tree";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch, updateDoc } from "@/services/firebase/firestore/batch";
@@ -15,7 +15,7 @@ import { initialState, useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
 import { createTickSignal } from "@/solid/signal";
 import { styles } from "@/styles.css";
-import { dayMs, noneTimestamp, timestampToTimeText } from "@/timestamp";
+import { dayMs, noneTimestamp, timestampToTimeText, timeTextToTimestamp } from "@/timestamp";
 
 declare module "@/services/store" {
   interface State {
@@ -121,6 +121,13 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp }) 
   );
 }
 
+enum EditingField {
+  None = "none",
+  StartAt = "startAt",
+  EndAt = "endAt",
+  Text = "text",
+}
+
 export function LifeLogTree(props: { id: string; prevId: string; nextId: string }) {
   const firestore = useFirestoreService();
   const { state, updateState } = useStoreService();
@@ -141,11 +148,12 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
   const isLifeLogTreeFocused$ = () => isSelected$() && selectedLifeLogNodeId$() !== "";
 
   const [isEditing$, setIsEditing] = createSignal(false);
+  const [editingField$, setEditingField] = createSignal<EditingField>(EditingField.None);
 
   addKeyDownEventListener(async (event) => {
     const { shiftKey, ctrlKey, isComposing } = event;
 
-    if (isEditing$() || isComposing || !isSelected$()) return;
+    if (isEditing$() || editingField$() !== EditingField.None || isComposing || !isSelected$()) return;
 
     switch (event.code) {
       case "KeyL": {
@@ -217,17 +225,114 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
     }
   });
 
+  async function saveStartAt(newTimestamp: Timestamp) {
+    firestore.setClock(true);
+    try {
+      await runBatch(firestore, (batch) => {
+        updateDoc(firestore, batch, lifeLogsCol, {
+          id: props.id,
+          startAt: newTimestamp,
+        });
+        return Promise.resolve();
+      });
+    } finally {
+      await startTransition(() => {
+        firestore.setClock(false);
+      });
+    }
+  }
+
+  async function saveEndAt(newTimestamp: Timestamp) {
+    firestore.setClock(true);
+    try {
+      await runBatch(firestore, (batch) => {
+        updateDoc(firestore, batch, lifeLogsCol, {
+          id: props.id,
+          endAt: newTimestamp,
+        });
+        return Promise.resolve();
+      });
+    } finally {
+      await startTransition(() => {
+        firestore.setClock(false);
+      });
+    }
+  }
+
+  async function saveText(newText: string) {
+    firestore.setClock(true);
+    try {
+      await runBatch(firestore, (batch) => {
+        updateDoc(firestore, batch, lifeLogsCol, {
+          id: props.id,
+          text: newText,
+        });
+        return Promise.resolve();
+      });
+    } finally {
+      await startTransition(() => {
+        firestore.setClock(false);
+      });
+    }
+  }
+
+  function handleTabNavigation(shiftKey: boolean) {
+    const fields = [EditingField.Text, EditingField.StartAt, EditingField.EndAt];
+    const currentIndex = fields.indexOf(editingField$());
+
+    if (shiftKey) {
+      // Shift+Tab: go to previous field
+      const nextIndex = currentIndex > 0 ? currentIndex - 1 : fields.length - 1;
+      setEditingField(fields[nextIndex]);
+    } else {
+      // Tab: go to next field
+      const nextIndex = currentIndex < fields.length - 1 ? currentIndex + 1 : 0;
+      setEditingField(fields[nextIndex]);
+    }
+  }
+
   return (
     <Show when={lifeLog$()}>
       {(lifeLog$) => (
         <>
           <div class={styles.lifeLogTree.container} classList={{ [styles.lifeLogTree.selected]: isLifeLogSelected$() }}>
             <div class={styles.lifeLogTree.timeRange}>
-              <span>{timestampToTimeText(lifeLog$().startAt) ?? "N/A"}</span>
+              <EditableValue
+                value={lifeLog$().startAt}
+                onSave={saveStartAt}
+                isSelected={isLifeLogSelected$()}
+                isEditing={editingField$() === EditingField.StartAt}
+                setIsEditing={(editing) => setEditingField(editing ? EditingField.StartAt : EditingField.None)}
+                toText={(ts) => timestampToTimeText(ts) ?? "N/A"}
+                fromText={timeTextToTimestamp}
+                editInputClassName={styles.lifeLogTree.editInput}
+                onTabPress={handleTabNavigation}
+              />
               <span>-</span>
-              <span>{timestampToTimeText(lifeLog$().endAt) ?? "N/A"}</span>
+              <EditableValue
+                value={lifeLog$().endAt}
+                onSave={saveEndAt}
+                isSelected={isLifeLogSelected$()}
+                isEditing={editingField$() === EditingField.EndAt}
+                setIsEditing={(editing) => setEditingField(editing ? EditingField.EndAt : EditingField.None)}
+                toText={(ts) => timestampToTimeText(ts) ?? "N/A"}
+                fromText={timeTextToTimestamp}
+                editInputClassName={styles.lifeLogTree.editInput}
+                onTabPress={handleTabNavigation}
+              />
             </div>
-            <div class={styles.lifeLogTree.text}>{lifeLog$().text}</div>
+            <EditableValue
+              value={lifeLog$().text}
+              onSave={saveText}
+              isSelected={isLifeLogSelected$()}
+              isEditing={editingField$() === EditingField.Text}
+              setIsEditing={(editing) => setEditingField(editing ? EditingField.Text : EditingField.None)}
+              toText={(text) => text}
+              fromText={(text) => text}
+              className={styles.lifeLogTree.text}
+              editInputClassName={styles.lifeLogTree.editInput}
+              onTabPress={handleTabNavigation}
+            />
           </div>
           <Show when={isLifeLogTreeFocused$()}>
             <div class={styles.lifeLogTree.childrenNodes}>
@@ -238,12 +343,12 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
                 setSelectedId={setSelectedLifeLogNodeId}
                 isEditing={isEditing$}
                 showNode={(node$, isSelected$) => {
-                  async function onSaveNode(nodeId: string, newText: string) {
+                  async function onSaveNode(newText: string) {
                     firestore.setClock(true);
                     try {
                       await runBatch(firestore, (batch) => {
                         updateDoc(firestore, batch, getCollection(firestore, "lifeLogTreeNodes"), {
-                          id: nodeId,
+                          id: node$().id,
                           text: newText,
                         });
 
@@ -257,12 +362,16 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
                   }
 
                   return (
-                    <EditableItem
-                      item$={node$}
-                      isSelected$={isSelected$}
-                      isEditing$={isEditing$}
+                    <EditableValue
+                      value={node$().text}
+                      toText={(text) => text}
+                      fromText={(text) => text}
+                      onSave={async (newText) => {
+                        await onSaveNode(newText);
+                      }}
+                      isSelected={isSelected$()}
+                      isEditing={isEditing$()}
                       setIsEditing={setIsEditing}
-                      onSave={onSaveNode}
                       selectedClassName={styles.lifeLogTree.selected}
                       editInputClassName={styles.lifeLogTree.editInput}
                     />
