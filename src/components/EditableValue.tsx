@@ -12,6 +12,8 @@ export interface EditableValueProps<V> {
   // Converter functions
   toText: (value: V) => string;
   fromText: (text: string) => V | undefined;
+  // Optional converter for edit mode (defaults to toText if not provided)
+  toEditText?: (value: V) => string;
   // Display component when not editing
   displayComponent?: (value: V) => JSX.Element;
   className?: string;
@@ -39,7 +41,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
   // Focus the input when editing becomes true
   createEffect(() => {
     if (props.isEditing) {
-      setEditText(props.toText(props.value));
+      setEditText((props.toEditText ?? props.toText)(props.value));
       inputRef?.focus();
     }
   });
