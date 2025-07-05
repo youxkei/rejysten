@@ -71,7 +71,7 @@ export const LifeLogsStory: StoryObj = {
                   updatedAt: Timestamp.fromDate(new Date()),
                 });
 
-                batch.set(doc(lifeLogs, "log1"), {
+                batch.set(doc(lifeLogs, "$log1"), {
                   text: "lifelog1",
                   startAt: noneTimestamp,
                   endAt: noneTimestamp,
@@ -79,7 +79,7 @@ export const LifeLogsStory: StoryObj = {
                   updatedAt: Timestamp.fromDate(new Date()),
                 });
 
-                batch.set(doc(lifeLogs, "log2"), {
+                batch.set(doc(lifeLogs, "$log2"), {
                   text: "lifelog2",
                   startAt: noneTimestamp,
                   endAt: noneTimestamp,
@@ -181,7 +181,7 @@ export const LifeLogsStory: StoryObj = {
                 void batch.commit();
 
                 updateState((state) => {
-                  state.panesLifeLogs.selectedLifeLogId = "log1";
+                  state.panesLifeLogs.selectedLifeLogId = "$log1";
                 });
               });
 

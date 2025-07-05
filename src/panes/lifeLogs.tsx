@@ -2,12 +2,12 @@ import { Key } from "@solid-primitives/keyed";
 import equal from "fast-deep-equal";
 import { doc, orderBy, query, Timestamp, where } from "firebase/firestore";
 import { createMemo, createSignal, Show, startTransition } from "solid-js";
-import { uuidv4 } from "uuidv7";
+import { uuidv4, uuidv7 } from "uuidv7";
 
 import { EditableValue } from "@/components/EditableValue";
 import { ChildrenNodes } from "@/components/tree";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
-import { runBatch, updateDoc } from "@/services/firebase/firestore/batch";
+import { runBatch, setDoc, updateDoc } from "@/services/firebase/firestore/batch";
 import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { addSingle, getFirstChildNode } from "@/services/firebase/firestore/treeNode";
@@ -219,6 +219,43 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
         updateState((state) => {
           state.panesLifeLogs.selectedLifeLogId = props.prevId;
         });
+
+        break;
+      }
+
+      case "KeyO": {
+        if (ctrlKey || shiftKey || isLifeLogTreeFocused$()) return;
+        event.stopImmediatePropagation();
+
+        const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
+        if (!lifeLog) return;
+
+        const newLifeLogId = uuidv7();
+
+        firestore.setClock(true);
+        try {
+          await runBatch(firestore, (batch) => {
+            setDoc(firestore, batch, lifeLogsCol, {
+              id: newLifeLogId,
+              text: "",
+              startAt: lifeLog.endAt,
+              endAt: noneTimestamp,
+            });
+
+            return Promise.resolve();
+          });
+
+          await startTransition(() => {
+            updateState((state) => {
+              state.panesLifeLogs.selectedLifeLogId = newLifeLogId;
+              state.panesLifeLogs.selectedLifeLogNodeId = "";
+            });
+
+            firestore.setClock(false);
+          });
+        } finally {
+          firestore.setClock(false);
+        }
 
         break;
       }
