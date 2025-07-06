@@ -24,7 +24,7 @@ export function timestampToTimeText(ts: Timestamp, withSeparator = true) {
 }
 
 export function timeTextToTimestamp(text: string) {
-  if (text === "") return;
+  if (text === "") return noneTimestamp;
 
   const now = new Date();
   let year = now.getFullYear();

@@ -32,8 +32,8 @@ describe("timestamp", () => {
   });
 
   describe("timeTextToTimestamp", () => {
-    test("returns undefined for empty string", () => {
-      expect(timeTextToTimestamp("")).toBeUndefined();
+    test("returns noneTimestamp for empty string", () => {
+      expect(timeTextToTimestamp("")).toEqual(noneTimestamp);
     });
 
     test("parses full format with year (15 characters)", () => {
