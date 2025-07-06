@@ -273,6 +273,30 @@ export function LifeLogTree(props: {
 
         break;
       }
+
+      case "KeyS": {
+        if (ctrlKey || shiftKey || isLifeLogTreeFocused$()) return;
+        event.stopImmediatePropagation();
+
+        const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
+        if (!lifeLog || !lifeLog.startAt.isEqual(noneTimestamp)) return;
+
+        await saveStartAt(Timestamp.fromMillis(Math.floor(Date.now() / 1000) * 1000));
+
+        break;
+      }
+
+      case "KeyF": {
+        if (ctrlKey || shiftKey || isLifeLogTreeFocused$()) return;
+        event.stopImmediatePropagation();
+
+        const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
+        if (!lifeLog || !lifeLog.endAt.isEqual(noneTimestamp)) return;
+
+        await saveEndAt(Timestamp.fromMillis(Math.floor(Date.now() / 1000) * 1000));
+
+        break;
+      }
     }
   });
 
