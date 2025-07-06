@@ -1,5 +1,5 @@
 import { debounce } from "@solid-primitives/scheduled";
-import { createSignal, Show, type Setter, type JSX, createEffect } from "solid-js";
+import { createSignal, Show, type JSX, onMount } from "solid-js";
 
 import { addKeyDownEventListener } from "@/solid/event";
 
@@ -8,7 +8,7 @@ export interface EditableValueProps<V> {
   onSave: (newValue: V) => Promise<void>;
   isSelected: boolean;
   isEditing: boolean;
-  setIsEditing: Setter<boolean>;
+  setIsEditing: (isEditing: boolean) => void;
   // Converter functions
   toText: (value: V) => string;
   fromText: (text: string) => V | undefined;
@@ -22,12 +22,12 @@ export interface EditableValueProps<V> {
   debounceMs?: number;
   // Tab navigation callback
   onTabPress?: (shiftKey: boolean) => void;
+  debugId?: string;
 }
 
 export function EditableValue<V>(props: EditableValueProps<V>) {
   const [editText, setEditText] = createSignal("");
   const [isTabPressed, setIsTabPressed] = createSignal(false);
-  let inputRef: HTMLInputElement | undefined;
 
   async function saveChanges(text: string) {
     const newValue = props.fromText(text);
@@ -37,14 +37,6 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
   }
 
   const debouncedSaveChanges = debounce(saveChanges, props.debounceMs ?? 1000);
-
-  // Focus the input when editing becomes true
-  createEffect(() => {
-    if (props.isEditing) {
-      setEditText((props.toEditText ?? props.toText)(props.value));
-      inputRef?.focus();
-    }
-  });
 
   // Add key event listeners for "i" and "Escape"
   addKeyDownEventListener(async (e: KeyboardEvent) => {
@@ -69,49 +61,60 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
         when={props.isSelected && props.isEditing}
         fallback={<>{props.displayComponent ? props.displayComponent(props.value) : props.toText(props.value)}</>}
       >
-        <input
-          ref={inputRef}
-          type="text"
-          class={props.editInputClassName}
-          value={editText()}
-          onInput={(e) => {
-            const newText = e.currentTarget.value;
-            setEditText(newText);
-            debouncedSaveChanges(newText);
-          }}
-          onKeyDown={async (e) => {
-            // Handle Tab key
-            if (e.code === "Tab") {
-              e.preventDefault();
-              e.stopPropagation();
+        {(() => {
+          let inputRef: HTMLInputElement | undefined;
 
-              setIsTabPressed(true);
-              // Save changes
-              debouncedSaveChanges.clear();
-              await saveChanges(editText());
+          onMount(() => {
+            setEditText((props.toEditText ?? props.toText)(props.value));
+            inputRef?.focus();
+          });
 
-              if (props.onTabPress) {
-                // Call the Tab navigation callback if provided
-                props.onTabPress(e.shiftKey);
-              } else {
-                // If no onTabPress callback, behave like Escape (exit editing mode)
+          return (
+            <input
+              ref={inputRef}
+              type="text"
+              class={props.editInputClassName}
+              value={editText()}
+              onInput={(e) => {
+                const newText = e.currentTarget.value;
+                setEditText(newText);
+                debouncedSaveChanges(newText);
+              }}
+              onKeyDown={async (e) => {
+                // Handle Tab key
+                if (e.code === "Tab") {
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  setIsTabPressed(true);
+                  // Save changes
+                  debouncedSaveChanges.clear();
+                  await saveChanges(editText());
+
+                  if (props.onTabPress) {
+                    // Call the Tab navigation callback if provided
+                    props.onTabPress(e.shiftKey);
+                  } else {
+                    // If no onTabPress callback, behave like Escape (exit editing mode)
+                    props.setIsEditing(false);
+                    setEditText("");
+                  }
+                }
+              }}
+              onBlur={async () => {
+                // Ignore blur if Tab was pressed
+                if (isTabPressed()) {
+                  setIsTabPressed(false);
+                  return;
+                }
+                debouncedSaveChanges.clear();
+                await saveChanges(editText());
                 props.setIsEditing(false);
                 setEditText("");
-              }
-            }
-          }}
-          onBlur={async () => {
-            // Ignore blur if Tab was pressed
-            if (isTabPressed()) {
-              setIsTabPressed(false);
-              return;
-            }
-            debouncedSaveChanges.clear();
-            await saveChanges(editText());
-            props.setIsEditing(false);
-            setEditText("");
-          }}
-        />
+              }}
+            />
+          );
+        })()}
       </Show>
     </div>
   );

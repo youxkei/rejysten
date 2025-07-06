@@ -2,7 +2,7 @@ import { type Meta, type StoryObj } from "@kachurun/storybook-solid-vite";
 import { doc, Timestamp, writeBatch } from "firebase/firestore";
 import { onMount, Suspense, type JSXElement, createSignal } from "solid-js";
 
-import { LifeLogs, LifeLogTree } from "@/panes/lifeLogs";
+import { EditingField, LifeLogs, LifeLogTree } from "@/panes/lifeLogs";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import {
   FirestoreServiceProvider,
@@ -79,18 +79,18 @@ export const LifeLogsStory: StoryObj = {
                   updatedAt: Timestamp.fromDate(new Date()),
                 });
 
-                batch.set(doc(lifeLogs, "$log2"), {
-                  text: "lifelog2",
-                  startAt: noneTimestamp,
-                  endAt: noneTimestamp,
-                  createdAt: Timestamp.fromDate(new Date()),
-                  updatedAt: Timestamp.fromDate(new Date()),
-                });
+                // batch.set(doc(lifeLogs, "$log2"), {
+                //   text: "lifelog2",
+                //   startAt: noneTimestamp,
+                //   endAt: noneTimestamp,
+                //   createdAt: Timestamp.fromDate(new Date()),
+                //   updatedAt: Timestamp.fromDate(new Date()),
+                // });
 
                 batch.set(doc(lifeLogTreeNodes, "child1"), {
                   text: "child1",
 
-                  parentId: "log1",
+                  parentId: "$log1",
                   prevId: "",
                   nextId: "child2",
                   aboveId: "",
@@ -103,7 +103,7 @@ export const LifeLogsStory: StoryObj = {
                 batch.set(doc(lifeLogTreeNodes, "child2"), {
                   text: "child2",
 
-                  parentId: "log1",
+                  parentId: "$log1",
                   prevId: "child1",
                   nextId: "child3",
                   aboveId: "child1 of child1",
@@ -116,7 +116,7 @@ export const LifeLogsStory: StoryObj = {
                 batch.set(doc(lifeLogTreeNodes, "child3"), {
                   text: "child3",
 
-                  parentId: "log1",
+                  parentId: "$log1",
                   prevId: "child2",
                   nextId: "child4",
                   aboveId: "child2",
@@ -129,7 +129,7 @@ export const LifeLogsStory: StoryObj = {
                 batch.set(doc(lifeLogTreeNodes, "child4"), {
                   text: "child4",
 
-                  parentId: "log1",
+                  parentId: "$log1",
                   prevId: "child3",
                   nextId: "child5",
                   aboveId: "child3",
@@ -142,7 +142,7 @@ export const LifeLogsStory: StoryObj = {
                 batch.set(doc(lifeLogTreeNodes, "child5"), {
                   text: "child5",
 
-                  parentId: "log1",
+                  parentId: "$log1",
                   prevId: "child4",
                   nextId: "child6",
                   aboveId: "child4",
@@ -155,7 +155,7 @@ export const LifeLogsStory: StoryObj = {
                 batch.set(doc(lifeLogTreeNodes, "child6"), {
                   text: "child6",
 
-                  parentId: "log1",
+                  parentId: "$log1",
                   prevId: "child5",
                   nextId: "",
                   aboveId: "child5",
@@ -208,6 +208,9 @@ export const LifeLogTreeStory: StoryObj = {
               const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
 
               const { updateState } = useStoreService();
+
+              const [editingField, setEditingField] = createSignal<EditingField>(EditingField.Text);
+              const [isEditing, setIsEditing] = createSignal(false);
 
               onMount(() => {
                 const batch = writeBatch(firestore.firestore);
@@ -325,7 +328,17 @@ export const LifeLogTreeStory: StoryObj = {
                 });
               });
 
-              return <LifeLogTree id="log1" prevId="" nextId="" />;
+              return (
+                <LifeLogTree
+                  id="log1"
+                  prevId=""
+                  nextId=""
+                  editingField={editingField()}
+                  setEditingField={setEditingField}
+                  isEditing={isEditing()}
+                  setIsEditing={setIsEditing}
+                />
+              );
             })()}
           </Suspense>
         </StorybookFirebaseWrapper>

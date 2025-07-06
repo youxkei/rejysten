@@ -75,6 +75,9 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp }) 
   const firestore = useFirestoreService();
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
 
+  const [editingField$, setEditingField] = createSignal<EditingField>(EditingField.Text);
+  const [isEditing$, setIsEditing] = createSignal(false);
+
   const lifeLogs$ = createSubscribeAllSignal(firestore, () =>
     query(
       lifeLogsCol,
@@ -113,6 +116,10 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp }) 
               id={lifeLogWithNeighborIds().id}
               prevId={lifeLogWithNeighborIds().prevId}
               nextId={lifeLogWithNeighborIds().nextId}
+              isEditing={isEditing$()}
+              setIsEditing={setIsEditing}
+              editingField={editingField$()}
+              setEditingField={setEditingField}
             />
           </li>
         )}
@@ -121,14 +128,21 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp }) 
   );
 }
 
-enum EditingField {
-  None = "none",
+export enum EditingField {
   StartAt = "startAt",
   EndAt = "endAt",
   Text = "text",
 }
 
-export function LifeLogTree(props: { id: string; prevId: string; nextId: string }) {
+export function LifeLogTree(props: {
+  id: string;
+  prevId: string;
+  nextId: string;
+  isEditing: boolean;
+  setIsEditing: (isEditing: boolean) => void;
+  editingField: EditingField;
+  setEditingField: (field: EditingField) => void;
+}) {
   const firestore = useFirestoreService();
   const { state, updateState } = useStoreService();
 
@@ -147,13 +161,10 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
   const isLifeLogSelected$ = () => isSelected$() && selectedLifeLogNodeId$() === "";
   const isLifeLogTreeFocused$ = () => isSelected$() && selectedLifeLogNodeId$() !== "";
 
-  const [isEditing$, setIsEditing] = createSignal(false);
-  const [editingField$, setEditingField] = createSignal<EditingField>(EditingField.None);
-
   addKeyDownEventListener(async (event) => {
     const { shiftKey, ctrlKey, isComposing } = event;
 
-    if (isEditing$() || editingField$() !== EditingField.None || isComposing || !isSelected$()) return;
+    if (props.isEditing || isComposing || !isSelected$()) return;
 
     switch (event.code) {
       case "KeyL": {
@@ -251,6 +262,9 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
               state.panesLifeLogs.selectedLifeLogNodeId = "";
             });
 
+            props.setIsEditing(true);
+            props.setEditingField(EditingField.Text);
+
             firestore.setClock(false);
           });
         } finally {
@@ -315,16 +329,16 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
 
   function handleTabNavigation(shiftKey: boolean) {
     const fields = [EditingField.Text, EditingField.StartAt, EditingField.EndAt];
-    const currentIndex = fields.indexOf(editingField$());
+    const currentIndex = fields.indexOf(props.editingField);
 
     if (shiftKey) {
       // Shift+Tab: go to previous field
       const nextIndex = currentIndex > 0 ? currentIndex - 1 : fields.length - 1;
-      setEditingField(fields[nextIndex]);
+      props.setEditingField(fields[nextIndex]);
     } else {
       // Tab: go to next field
       const nextIndex = currentIndex < fields.length - 1 ? currentIndex + 1 : 0;
-      setEditingField(fields[nextIndex]);
+      props.setEditingField(fields[nextIndex]);
     }
   }
 
@@ -335,11 +349,15 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
           <div class={styles.lifeLogTree.container} classList={{ [styles.lifeLogTree.selected]: isLifeLogSelected$() }}>
             <div class={styles.lifeLogTree.timeRange}>
               <EditableValue
+                debugId="startAt"
                 value={lifeLog$().startAt}
                 onSave={saveStartAt}
-                isSelected={isLifeLogSelected$()}
-                isEditing={editingField$() === EditingField.StartAt}
-                setIsEditing={(editing) => setEditingField(editing ? EditingField.StartAt : EditingField.None)}
+                isSelected={isLifeLogSelected$() && props.editingField == EditingField.StartAt}
+                isEditing={props.isEditing && props.editingField === EditingField.StartAt}
+                setIsEditing={(editing) => {
+                  props.setIsEditing(editing);
+                  props.setEditingField(editing ? EditingField.StartAt : EditingField.Text);
+                }}
                 toText={(ts) => timestampToTimeText(ts) ?? "N/A"}
                 toEditText={(ts) => timestampToTimeText(ts) ?? ""}
                 fromText={timeTextToTimestamp}
@@ -348,11 +366,15 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
               />
               <span>-</span>
               <EditableValue
+                debugId="endAt"
                 value={lifeLog$().endAt}
                 onSave={saveEndAt}
-                isSelected={isLifeLogSelected$()}
-                isEditing={editingField$() === EditingField.EndAt}
-                setIsEditing={(editing) => setEditingField(editing ? EditingField.EndAt : EditingField.None)}
+                isSelected={isLifeLogSelected$() && props.editingField == EditingField.EndAt}
+                isEditing={props.isEditing && props.editingField === EditingField.EndAt}
+                setIsEditing={(editing) => {
+                  props.setIsEditing(editing);
+                  props.setEditingField(editing ? EditingField.EndAt : EditingField.Text);
+                }}
                 toText={(ts) => timestampToTimeText(ts) ?? "N/A"}
                 toEditText={(ts) => timestampToTimeText(ts) ?? ""}
                 fromText={timeTextToTimestamp}
@@ -361,11 +383,15 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
               />
             </div>
             <EditableValue
+              debugId="text"
               value={lifeLog$().text}
               onSave={saveText}
-              isSelected={isLifeLogSelected$()}
-              isEditing={editingField$() === EditingField.Text}
-              setIsEditing={(editing) => setEditingField(editing ? EditingField.Text : EditingField.None)}
+              isSelected={isLifeLogSelected$() && props.editingField === EditingField.Text}
+              isEditing={props.isEditing && props.editingField === EditingField.Text}
+              setIsEditing={(editing) => {
+                props.setEditingField(EditingField.Text);
+                props.setIsEditing(editing);
+              }}
               toText={(text) => text}
               fromText={(text) => text}
               className={styles.lifeLogTree.text}
@@ -380,7 +406,7 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
                 parentId={props.id}
                 selectedId={selectedLifeLogNodeId$()}
                 setSelectedId={setSelectedLifeLogNodeId}
-                isEditing={isEditing$}
+                isEditing={() => props.isEditing}
                 showNode={(node$, isSelected$) => {
                   async function onSaveNode(newText: string) {
                     firestore.setClock(true);
@@ -409,8 +435,8 @@ export function LifeLogTree(props: { id: string; prevId: string; nextId: string 
                         await onSaveNode(newText);
                       }}
                       isSelected={isSelected$()}
-                      isEditing={isEditing$()}
-                      setIsEditing={setIsEditing}
+                      isEditing={props.isEditing}
+                      setIsEditing={props.setIsEditing}
                       selectedClassName={styles.lifeLogTree.selected}
                       editInputClassName={styles.lifeLogTree.editInput}
                     />
