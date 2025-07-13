@@ -157,10 +157,12 @@ describe("treeNode", () => {
               "aboveId": "prev",
               "belowId": "",
               "createdAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
               "updatedAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
@@ -194,10 +196,12 @@ describe("treeNode", () => {
               "aboveId": "prev",
               "belowId": "",
               "createdAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
               "updatedAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
@@ -211,10 +215,12 @@ describe("treeNode", () => {
               "aboveId": "",
               "belowId": "base",
               "createdAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
               "updatedAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
@@ -248,10 +254,12 @@ describe("treeNode", () => {
               "aboveId": "prev",
               "belowId": "",
               "createdAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
               "updatedAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
@@ -265,10 +273,12 @@ describe("treeNode", () => {
               "aboveId": "foo",
               "belowId": "base",
               "createdAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
               "updatedAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
@@ -336,10 +346,12 @@ describe("treeNode", () => {
               "aboveId": "",
               "belowId": "next",
               "createdAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
               "updatedAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
@@ -373,10 +385,12 @@ describe("treeNode", () => {
               "aboveId": "",
               "belowId": "next",
               "createdAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
               "updatedAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
@@ -390,10 +404,12 @@ describe("treeNode", () => {
               "aboveId": "base",
               "belowId": "",
               "createdAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
               "updatedAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
@@ -427,10 +443,12 @@ describe("treeNode", () => {
               "aboveId": "foo",
               "belowId": "next",
               "createdAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
               "updatedAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
@@ -444,10 +462,12 @@ describe("treeNode", () => {
               "aboveId": "base",
               "belowId": "",
               "createdAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
               "updatedAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
@@ -560,10 +580,12 @@ describe("treeNode", () => {
               "aboveId": "",
               "belowId": "first1",
               "createdAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
               "updatedAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
@@ -578,10 +600,12 @@ describe("treeNode", () => {
                 "aboveId": "base",
                 "belowId": "first2",
                 "createdAt": {
+                  "type": "firestore/timestamp/1.0",
                   "seconds": 4836316028,
                   "nanoseconds": 0
                 },
                 "updatedAt": {
+                  "type": "firestore/timestamp/1.0",
                   "seconds": 4836316028,
                   "nanoseconds": 0
                 },
@@ -595,10 +619,12 @@ describe("treeNode", () => {
                 "aboveId": "first1",
                 "belowId": "",
                 "createdAt": {
+                  "type": "firestore/timestamp/1.0",
                   "seconds": 4836316028,
                   "nanoseconds": 0
                 },
                 "updatedAt": {
+                  "type": "firestore/timestamp/1.0",
                   "seconds": 4836316028,
                   "nanoseconds": 0
                 },
@@ -667,10 +693,12 @@ describe("treeNode", () => {
               "aboveId": "",
               "belowId": "last1",
               "createdAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
               "updatedAt": {
+                "type": "firestore/timestamp/1.0",
                 "seconds": 4836316028,
                 "nanoseconds": 0
               },
@@ -685,10 +713,12 @@ describe("treeNode", () => {
                 "aboveId": "base",
                 "belowId": "last2",
                 "createdAt": {
+                  "type": "firestore/timestamp/1.0",
                   "seconds": 4836316028,
                   "nanoseconds": 0
                 },
                 "updatedAt": {
+                  "type": "firestore/timestamp/1.0",
                   "seconds": 4836316028,
                   "nanoseconds": 0
                 },
@@ -702,10 +732,12 @@ describe("treeNode", () => {
                 "aboveId": "last1",
                 "belowId": "",
                 "createdAt": {
+                  "type": "firestore/timestamp/1.0",
                   "seconds": 4836316028,
                   "nanoseconds": 0
                 },
                 "updatedAt": {
+                  "type": "firestore/timestamp/1.0",
                   "seconds": 4836316028,
                   "nanoseconds": 0
                 },
@@ -3214,10 +3246,12 @@ describe("treeNode", () => {
             "aboveId": "",
             "belowId": "child",
             "createdAt": {
+              "type": "firestore/timestamp/1.0",
               "seconds": 4836316028,
               "nanoseconds": 0
             },
             "updatedAt": {
+              "type": "firestore/timestamp/1.0",
               "seconds": 4836316028,
               "nanoseconds": 0
             },
@@ -3231,10 +3265,12 @@ describe("treeNode", () => {
             "aboveId": "node",
             "belowId": "",
             "createdAt": {
+              "type": "firestore/timestamp/1.0",
               "seconds": 4836316028,
               "nanoseconds": 0
             },
             "updatedAt": {
+              "type": "firestore/timestamp/1.0",
               "seconds": 4836316028,
               "nanoseconds": 0
             },

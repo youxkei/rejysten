@@ -15,34 +15,34 @@ export default defineConfig({
     solidPlugin({
       hot: !process.env.VITEST,
     }),
-    checker({
-      typescript: true,
-      eslint: {
-        useFlatConfig: true,
-        lintCommand: "eslint 'src/**/*.{ts,tsx}'",
-      },
-    }),
+    !process.env.VITEST &&
+      checker({
+        typescript: true,
+        eslint: {
+          useFlatConfig: true,
+          lintCommand: "eslint 'src/**/*.{ts,tsx}'",
+        },
+      }),
     vanillaExtractPlugin(),
     tsconfigPaths(),
-    VitePWA({
-      registerType: "autoUpdate",
-      manifest: {
-        name: "Rejysten",
-        icons: [{ src: "logo.svg", sizes: "512x512", type: "image/svg+xml" }],
-      },
-    }),
+    !process.env.VITEST &&
+      VitePWA({
+        registerType: "autoUpdate",
+        manifest: {
+          name: "Rejysten",
+          icons: [{ src: "logo.svg", sizes: "512x512", type: "image/svg+xml" }],
+        },
+      }),
   ],
   define: {
     "import.meta.vitest": false,
   },
   test: {
-    reporters: "verbose",
-    include: ["src/**/*.test.ts{,x}"],
-    environment: "happy-dom",
-    setupFiles: ["fake-indexeddb/auto"],
-    isolate: false,
-    chaiConfig: {
-      truncateThreshold: 0,
+    browser: {
+      provider: "playwright",
+      enabled: true,
+      headless: true,
+      instances: [{ browser: "chromium" }],
     },
   },
 });
