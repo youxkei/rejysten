@@ -1,4 +1,3 @@
-import { type Meta, type StoryObj } from "@kachurun/storybook-solid-vite";
 import {
   doc,
   getDocs,
@@ -22,6 +21,7 @@ import {
   createComputed,
   type JSXElement,
 } from "solid-js";
+import { type Meta, type StoryObj } from "storybook-solidjs-vite";
 import { uuidv7 } from "uuidv7";
 import XRegExp from "xregexp";
 

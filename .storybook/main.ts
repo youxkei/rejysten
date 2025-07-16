@@ -1,7 +1,7 @@
-import type { StorybookConfig } from "@kachurun/storybook-solid-vite";
+import type { StorybookConfig } from "storybook-solidjs-vite";
 
 export default {
-  framework: "@kachurun/storybook-solid-vite",
+  framework: "storybook-solidjs-vite",
   stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
   addons: [],
   docs: {

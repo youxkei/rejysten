@@ -1,5 +1,5 @@
-import { type Meta, type StoryObj } from "@kachurun/storybook-solid-vite";
 import { createComputed, createEffect, createMemo, createSignal } from "solid-js";
+import { type Meta, type StoryObj } from "storybook-solidjs-vite";
 
 export default {
   title: "poc/memo",
