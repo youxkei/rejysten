@@ -20,9 +20,7 @@ describe("<LifeLogs />", () => {
       <StoreServiceProvider>
         <FirebaseServiceProvider
           configYAML={`{ apiKey: "apiKey", authDomain: "authDomain", projectId: "demo", storageBucket: "", messagingSenderId: "", appId: "", measurementId: "" }`}
-          setErrors={() => {
-            // No-op for test
-          }}
+          setErrors={() => {}}
         >
           <FirestoreServiceProvider>
             <Suspense fallback={<span>loading....</span>}>
