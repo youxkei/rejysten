@@ -14,12 +14,13 @@ import { createSubscribeWithResource } from "@/solid/subscribe";
 export function createSubscribeSignal<T extends object>(
   service: FirestoreService,
   query$: () => DocumentReference<T> | undefined,
+  timestampPrefix$?: () => string,
 ): Accessor<DocumentData<T> | undefined> {
   const snapshot$ = createSubscribeWithResource(
     query$,
     (query, setValue: (value: DocumentSnapshot<T>) => void) => {
       const unsubscribe = onSnapshot(query, (snapshot) => {
-        console.timeStamp("createSubscribeSignal onSnapshot");
+        console.timeStamp(`${timestampPrefix$?.() ?? "no prefix"}: createSubscribeSignal onSnapshot`);
         setValue(snapshot);
       });
       onCleanup(unsubscribe);
@@ -42,12 +43,13 @@ export function createSubscribeSignal<T extends object>(
 export function createSubscribeAllSignal<T extends object>(
   service: FirestoreService,
   query$: () => Query<T> | undefined,
+  timestampPrefix$?: () => string,
 ): Accessor<DocumentData<T>[]> {
   const snapshot$ = createSubscribeWithResource(
     query$,
     (query, setValue: (value: QuerySnapshot<T>) => void) => {
       const unsubscribe = onSnapshot(query, (snapshot) => {
-        console.timeStamp("createSubscribeAllSignal onSnapshot");
+        console.timeStamp(`${timestampPrefix$?.() ?? "no prefix"}: createSubscribeAllSignal onSnapshot`);
         setValue(snapshot);
       });
 

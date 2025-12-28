@@ -1,6 +1,6 @@
 import equals from "fast-deep-equal";
 import { type CollectionReference, doc, query, where } from "firebase/firestore";
-import { type Accessor, createComputed, createMemo, For, type JSXElement, Show, startTransition } from "solid-js";
+import { type Accessor, createMemo, For, type JSXElement, Show, startTransition } from "solid-js";
 
 import { type DocumentData, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
@@ -18,8 +18,10 @@ export function ChildrenNodes<T extends TreeNode>(props: {
 }) {
   const firestore = useFirestoreService();
 
-  const childrenNodes$ = createSubscribeAllSignal(firestore, () =>
-    query(props.col, where("parentId", "==", props.parentId)),
+  const childrenNodes$ = createSubscribeAllSignal(
+    firestore,
+    () => query(props.col, where("parentId", "==", props.parentId)),
+    () => `children nodes of "${props.parentId}"`,
   );
   const sortedChildrenNodes$ = () => {
     const childrenNodes = childrenNodes$();
@@ -42,15 +44,6 @@ export function ChildrenNodes<T extends TreeNode>(props: {
     return sortedChildren;
   };
   const childrenIds$ = createMemo(() => sortedChildrenNodes$().map((childNode) => childNode.id), [], { equals });
-
-  createComputed(() => {
-    childrenNodes$();
-    console.timeStamp(`childrenNodes of ${props.parentId} updated`);
-  });
-
-  createComputed(() => {
-    console.timeStamp(`childrenIds of ${props.parentId} updated`);
-  });
 
   return (
     <ul>
@@ -82,7 +75,11 @@ export function Node<T extends TreeNode>(props: {
 }) {
   const firestore = useFirestoreService();
 
-  const node$ = createSubscribeSignal(firestore, () => doc(props.col, props.id));
+  const node$ = createSubscribeSignal(
+    firestore,
+    () => doc(props.col, props.id),
+    () => `node "${props.id}"`,
+  );
   const isSelected$ = () => props.id === props.selectedId;
 
   addKeyDownEventListener(async (event) => {

@@ -78,14 +78,17 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp }) 
   const [editingField$, setEditingField] = createSignal<EditingField>(EditingField.Text);
   const [isEditing$, setIsEditing] = createSignal(false);
 
-  const lifeLogs$ = createSubscribeAllSignal(firestore, () =>
-    query(
-      lifeLogsCol,
-      where("startAt", ">=", props.start),
-      where("endAt", "<=", props.end),
-      orderBy("startAt"),
-      orderBy("endAt"),
-    ),
+  const lifeLogs$ = createSubscribeAllSignal(
+    firestore,
+    () =>
+      query(
+        lifeLogsCol,
+        where("startAt", ">=", props.start),
+        where("endAt", "<=", props.end),
+        orderBy("startAt"),
+        orderBy("endAt"),
+      ),
+    () => `toplevel life logs`,
   );
 
   const lifeLogIdWithNeighborIds$ = createMemo(
@@ -148,7 +151,11 @@ export function LifeLogTree(props: {
 
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
   const lifeLogTreeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-  const lifeLog$ = createSubscribeSignal(firestore, () => doc(lifeLogsCol, props.id));
+  const lifeLog$ = createSubscribeSignal(
+    firestore,
+    () => doc(lifeLogsCol, props.id),
+    () => `life log tree "${props.id}"`,
+  );
 
   const selectedLifeLogNodeId$ = () => state.panesLifeLogs.selectedLifeLogNodeId;
   const setSelectedLifeLogNodeId = (selectedLifeLogNodeId: string) => {

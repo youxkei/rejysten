@@ -38,6 +38,7 @@ export function FirebaseServiceProvider(props: {
   children: JSXElement;
   configYAML: string;
   setErrors: (errors: string[]) => void;
+  appName?: string;
 }) {
   let errors = [] as string[];
 
@@ -70,7 +71,7 @@ export function FirebaseServiceProvider(props: {
     const config = config$();
     if (!config) return;
 
-    const app = initializeApp(config);
+    const app = initializeApp(config, props.appName);
 
     onCleanup(async () => {
       await deleteApp(app);
@@ -83,7 +84,7 @@ export function FirebaseServiceProvider(props: {
     const config = config$();
     if (!config) return;
 
-    if (config.projectId === "demo") {
+    if (config.projectId.startsWith("demo")) {
       setValue({ signedIn: true });
 
       return;

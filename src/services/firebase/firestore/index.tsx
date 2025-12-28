@@ -17,16 +17,7 @@ import {
   connectFirestoreEmulator,
   type Timestamp,
 } from "firebase/firestore";
-import {
-  type Accessor,
-  createComputed,
-  createContext,
-  createSignal,
-  type JSXElement,
-  onCleanup,
-  type Setter,
-  useContext,
-} from "solid-js";
+import { type Accessor, createContext, createSignal, type JSXElement, onCleanup, useContext } from "solid-js";
 
 import { ServiceNotAvailable } from "@/services/error";
 import { type FirebaseService, useFirebaseService } from "@/services/firebase";
@@ -41,7 +32,7 @@ export type FirestoreService = {
 
   firestore: Firestore;
   clock$: Accessor<boolean>;
-  setClock: Setter<boolean>;
+  setClock: (clock: boolean) => void;
   resolve: (() => void) | undefined;
 };
 
@@ -59,14 +50,16 @@ export function FirestoreServiceProvider(props: { children: JSXElement }) {
     connectFirestoreEmulator(firestore, "localhost", 8080);
   }
 
-  const [clock$, setClock] = createSignal(false);
-  createComputed(() => {
-    if (clock$()) {
+  const [clock$, setClockOriginal] = createSignal(false);
+  const setClock = (clock: boolean) => {
+    if (clock) {
       console.timeStamp("clock high");
     } else {
       console.timeStamp("clock low");
     }
-  });
+
+    setClockOriginal(clock);
+  };
 
   const service: FirestoreService = { services: { firebase, store }, firestore, clock$, setClock, resolve: undefined };
 
