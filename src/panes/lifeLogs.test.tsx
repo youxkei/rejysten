@@ -20,6 +20,8 @@ function setupLifeLogsTest(appName: string) {
   let updateStateRef: ReturnType<typeof useStoreService>["updateState"] | null = null;
   const [ready, setReady] = createSignal(false);
 
+  const baseTime: Date = new Date();
+
   const result = render(() => (
     <StoreServiceProvider>
       <FirebaseServiceProvider
@@ -52,33 +54,32 @@ function setupLifeLogsTest(appName: string) {
                   batch.set(doc(batchVersion, singletonDocumentId), {
                     version: "__INITIAL__",
                     prevVersion: "",
-                    createdAt: Timestamp.fromDate(new Date()),
-                    updatedAt: Timestamp.fromDate(new Date()),
+                    createdAt: Timestamp.fromDate(baseTime),
+                    updatedAt: Timestamp.fromDate(baseTime),
                   });
 
-                  const now = new Date();
                   // First lifelog - with specific time
-                  const startTime1 = new Date(now);
+                  const startTime1 = new Date(baseTime);
                   startTime1.setHours(10, 30, 0, 0);
 
                   batch.set(doc(lifeLogs, "$log1"), {
                     text: "first lifelog",
                     startAt: Timestamp.fromDate(startTime1),
                     endAt: noneTimestamp,
-                    createdAt: Timestamp.fromDate(now),
-                    updatedAt: Timestamp.fromDate(now),
+                    createdAt: Timestamp.fromDate(baseTime),
+                    updatedAt: Timestamp.fromDate(baseTime),
                   });
 
                   // Second lifelog - later time
-                  const startTime2 = new Date(now);
+                  const startTime2 = new Date(baseTime);
                   startTime2.setHours(12, 0, 0, 0);
 
                   batch.set(doc(lifeLogs, "$log2"), {
                     text: "second lifelog",
                     startAt: Timestamp.fromDate(startTime2),
                     endAt: noneTimestamp,
-                    createdAt: Timestamp.fromDate(now),
-                    updatedAt: Timestamp.fromDate(now),
+                    createdAt: Timestamp.fromDate(baseTime),
+                    updatedAt: Timestamp.fromDate(baseTime),
                   });
 
                   // Create two sibling tree nodes under $log1
@@ -90,8 +91,8 @@ function setupLifeLogsTest(appName: string) {
                     nextId: "child2",
                     aboveId: "",
                     belowId: "child2",
-                    createdAt: Timestamp.fromDate(now),
-                    updatedAt: Timestamp.fromDate(now),
+                    createdAt: Timestamp.fromDate(baseTime),
+                    updatedAt: Timestamp.fromDate(baseTime),
                   });
 
                   batch.set(doc(lifeLogTreeNodes, "child2"), {
@@ -101,8 +102,8 @@ function setupLifeLogsTest(appName: string) {
                     nextId: "",
                     aboveId: "child1",
                     belowId: "",
-                    createdAt: Timestamp.fromDate(now),
-                    updatedAt: Timestamp.fromDate(now),
+                    createdAt: Timestamp.fromDate(baseTime),
+                    updatedAt: Timestamp.fromDate(baseTime),
                   });
 
                   await batch.commit();
@@ -128,14 +129,22 @@ function setupLifeLogsTest(appName: string) {
   return {
     result,
     ready,
+    baseTime,
     getFirestoreRef: () => firestoreRef!,
     getUpdateStateRef: () => updateStateRef!,
   };
 }
 
+function formatDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 describe("<LifeLogs />", () => {
   test("it renders lifelog data correctly", async (ctx) => {
-    const { result, ready } = setupLifeLogsTest(ctx.task.id);
+    const { result, ready, baseTime } = setupLifeLogsTest(ctx.task.id);
 
     // Wait for setup to complete
     await waitFor(() => {
@@ -161,8 +170,9 @@ describe("<LifeLogs />", () => {
     expect(naElements.length).toBe(2); // Both lifelogs have noneTimestamp endAt
 
     // Test: time is displayed correctly (format: YYYY-MM-DD HH:MM:SS)
-    expect(result.getByText(/10:30:00/)).toBeTruthy();
-    expect(result.getByText(/12:00:00/)).toBeTruthy();
+    const dateStr = formatDate(baseTime);
+    expect(result.getByText(`${dateStr} 10:30:00`)).toBeTruthy();
+    expect(result.getByText(`${dateStr} 12:00:00`)).toBeTruthy();
 
     result.unmount();
   });
