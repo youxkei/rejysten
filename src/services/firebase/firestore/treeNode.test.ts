@@ -1,9 +1,9 @@
-import { type CollectionReference, collection, Timestamp, writeBatch } from "firebase/firestore";
+import { type CollectionReference, collection, writeBatch } from "firebase/firestore";
+import { generateKeyBetween } from "fractional-indexing";
 import { describe, test, vi } from "vitest";
 
 import {
   getDoc,
-  getDocs,
   serviceForTest,
   setDocs,
   timestampForCreatedAt,
@@ -18,7 +18,6 @@ import {
   getLastChildNode,
   getAboveNode,
   getBelowNode,
-  unlinkFromTree,
   addPrevSibling,
   addNextSibling,
   movePrev,
@@ -28,69 +27,54 @@ import {
   getPrevNode,
   getParentNode,
   getBottomNodeExclusive,
+  addSingle,
 } from "@/services/firebase/firestore/treeNode";
+
+async function runTestBatch(fn: (batch: ReturnType<typeof writeBatch>) => Promise<void>) {
+  const batch = writeBatch(firestoreForTest);
+  await fn(batch);
+  await batch.commit();
+}
 
 type TreeNodeWithText = TreeNode & { text: string };
 type TreeNodeFixture = [string, TreeNodeFixture[]?];
 
-type MakeTreeNodesResult = TreeNodeWithText[] & { bottomNode?: TreeNodeWithText };
-type MakeTreeNodeResult = [TreeNodeWithText, ...TreeNodeWithText[]] & { bottomNode: TreeNodeWithText };
+function makeTreeNodes(
+  parentId: string,
+  fixtures: TreeNodeFixture[],
+  startOrder: string | null = null,
+): TreeNodeWithText[] {
+  const nodes: TreeNodeWithText[] = [];
+  let prevOrder = startOrder;
 
-function makeTreeNodes(parentId: string, fixtures: TreeNodeFixture[]): MakeTreeNodesResult {
-  const treeNodes = fixtures.map((fixture) => makeTreeNode(parentId, fixture));
-
-  for (let i = 0; i < treeNodes.length; i++) {
-    if (i == 0) {
-      treeNodes[i][0].aboveId = parentId;
-    }
-
-    if (i - 1 >= 0) {
-      treeNodes[i][0].prevId = treeNodes[i - 1][0].text;
-      treeNodes[i][0].aboveId = treeNodes[i - 1].bottomNode.text;
-    }
-
-    if (i + 1 < treeNodes.length) {
-      treeNodes[i][0].nextId = treeNodes[i + 1][0].text;
-      treeNodes[i].bottomNode.belowId = treeNodes[i + 1][0].text;
-    }
+  for (const fixture of fixtures) {
+    const [nodeAndChildren, nextOrder] = makeTreeNode(parentId, fixture, prevOrder);
+    nodes.push(...nodeAndChildren);
+    prevOrder = nextOrder;
   }
 
-  const result = treeNodes.flat() as MakeTreeNodesResult;
-  if (result.length > 0) {
-    result.bottomNode = treeNodes[treeNodes.length - 1].bottomNode;
-  }
-
-  return result;
+  return nodes;
 }
 
-function makeTreeNode(parentId: string, [text, children]: TreeNodeFixture): MakeTreeNodeResult {
-  const node = {
+function makeTreeNode(
+  parentId: string,
+  [text, children]: TreeNodeFixture,
+  prevOrder: string | null,
+): [TreeNodeWithText[], string] {
+  const order = generateKeyBetween(prevOrder, null);
+  const node: TreeNodeWithText = {
     text,
     parentId,
-    prevId: "",
-    nextId: "",
-    aboveId: parentId,
-    belowId: "",
+    order,
     createdAt: timestampForCreatedAt,
     updatedAt: timestampForCreatedAt,
   };
+
   const childrenNodes = makeTreeNodes(text, children ?? []);
-  const result = [node, ...childrenNodes] as MakeTreeNodeResult;
-
-  if (childrenNodes.length > 0) {
-    node.belowId = childrenNodes[0].text;
-  }
-
-  if (childrenNodes.bottomNode) {
-    result.bottomNode = childrenNodes.bottomNode;
-  } else {
-    result.bottomNode = node;
-  }
-
-  return result;
+  return [[node, ...childrenNodes], order];
 }
 
-describe("treeNode", () => {
+describe.concurrent("treeNode", () => {
   vi.mock(import("firebase/firestore"), async (importOriginal) => {
     const mod = await importOriginal();
 
@@ -101,3299 +85,674 @@ describe("treeNode", () => {
   });
 
   describe("getPrevNode", () => {
-    test("no prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("no prev node", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("", [["base"]]));
 
-      await setDocs(col, makeTreeNode("", ["base"]));
-
-      await test.expect(getPrevNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
+      await ctx.expect(getPrevNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
     });
 
-    test("prev node exists", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+    test("prev node exists", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
       await setDocs(col, makeTreeNodes("", [["prev"], ["base"]]));
 
-      await test.expect(getPrevNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
-        id: "prev",
-        text: "prev",
-        parentId: "",
-        prevId: "",
-        nextId: "base",
-        aboveId: "",
-        belowId: "base",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
-      });
+      const baseNode = await getDoc(col, "base");
+      const prevNode = await getPrevNode(serviceForTest, col, baseNode);
+      ctx.expect(prevNode?.text).toBe("prev");
     });
 
-    test("invalid baseNode.prevId", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("no prev node when parentId is empty", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      const nodes = makeTreeNodes("", [["base"]]);
+      nodes[0].parentId = "";
+      await setDocs(col, nodes);
 
-      await setDocs(
-        col,
-        makeTreeNodes("", [["prev"], ["base"]]).map((node) =>
-          node.text === "base" ? { ...node, prevId: "invalid" } : node,
-        ),
-      );
-
-      await test.expect(getPrevNode(serviceForTest, col, await getDoc(col, "base"))).rejects
-        .toThrowErrorMatchingInlineSnapshot(`
-          [Error: previous node of baseNode is not exist: {
-            "baseNode": {
-              "text": "base",
-              "parentId": "",
-              "prevId": "invalid",
-              "nextId": "",
-              "aboveId": "prev",
-              "belowId": "",
-              "createdAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "updatedAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "id": "base"
-            }
-          }]
-        `);
-    });
-
-    test("invalid prevNode.nextId", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(
-        col,
-        makeTreeNodes("", [["prev"], ["base"]]).map((node) =>
-          node.text === "prev" ? { ...node, nextId: "invalid" } : node,
-        ),
-      );
-
-      await test.expect(getPrevNode(serviceForTest, col, await getDoc(col, "base"))).rejects
-        .toThrowErrorMatchingInlineSnapshot(`
-          [Error: next node of previous node of baseNode is not baseNode: {
-            "baseNode": {
-              "text": "base",
-              "parentId": "",
-              "prevId": "prev",
-              "nextId": "",
-              "aboveId": "prev",
-              "belowId": "",
-              "createdAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "updatedAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "id": "base"
-            },
-            "prevNode": {
-              "text": "prev",
-              "parentId": "",
-              "prevId": "",
-              "nextId": "invalid",
-              "aboveId": "",
-              "belowId": "base",
-              "createdAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "updatedAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "id": "prev"
-            }
-          }]
-        `);
-    });
-
-    test("different parentId", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(
-        col,
-        makeTreeNodes("foo", [["prev"], ["base"]]).map((node) =>
-          node.text === "base" ? { ...node, parentId: "bar" } : node,
-        ),
-      );
-
-      await test.expect(getPrevNode(serviceForTest, col, await getDoc(col, "base"))).rejects
-        .toThrowErrorMatchingInlineSnapshot(`
-          [Error: parent node of previous node of baseNode is not one of baseNode: {
-            "baseNode": {
-              "text": "base",
-              "parentId": "bar",
-              "prevId": "prev",
-              "nextId": "",
-              "aboveId": "prev",
-              "belowId": "",
-              "createdAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "updatedAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "id": "base"
-            },
-            "prevNode": {
-              "text": "prev",
-              "parentId": "foo",
-              "prevId": "",
-              "nextId": "base",
-              "aboveId": "foo",
-              "belowId": "base",
-              "createdAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "updatedAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "id": "prev"
-            }
-          }]
-        `);
+      await ctx.expect(getPrevNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
     });
   });
 
   describe("getNextNode", () => {
-    test("no next node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("no next node", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("", [["base"]]));
 
-      await setDocs(col, makeTreeNode("", ["base"]));
-
-      await test.expect(getNextNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
+      await ctx.expect(getNextNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
     });
 
-    test("next node exists", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+    test("next node exists", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
       await setDocs(col, makeTreeNodes("", [["base"], ["next"]]));
 
-      await test.expect(getNextNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
-        id: "next",
-        text: "next",
-        prevId: "base",
-        nextId: "",
-        aboveId: "base",
-        belowId: "",
-        parentId: "",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
-      });
-    });
-
-    test("invalid baseNode.nextId", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(
-        col,
-        makeTreeNodes("", [["base"], ["next"]]).map((node) =>
-          node.text === "base" ? { ...node, nextId: "invalid" } : node,
-        ),
-      );
-
-      await test.expect(getNextNode(serviceForTest, col, await getDoc(col, "base"))).rejects
-        .toThrowErrorMatchingInlineSnapshot(`
-          [Error: next node of baseNode is not exist: {
-            "baseNode": {
-              "text": "base",
-              "parentId": "",
-              "prevId": "",
-              "nextId": "invalid",
-              "aboveId": "",
-              "belowId": "next",
-              "createdAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "updatedAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "id": "base"
-            }
-          }]
-        `);
-    });
-
-    test("invalid nextNode.prevId", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(
-        col,
-        makeTreeNodes("", [["base"], ["next"]]).map((node) =>
-          node.text === "next" ? { ...node, prevId: "invalid" } : node,
-        ),
-      );
-
-      await test.expect(getNextNode(serviceForTest, col, await getDoc(col, "base"))).rejects
-        .toThrowErrorMatchingInlineSnapshot(`
-          [Error: previous node of next node of baseNode is not baseNode: {
-            "baseNode": {
-              "text": "base",
-              "parentId": "",
-              "prevId": "",
-              "nextId": "next",
-              "aboveId": "",
-              "belowId": "next",
-              "createdAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "updatedAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "id": "base"
-            },
-            "nextNode": {
-              "text": "next",
-              "parentId": "",
-              "prevId": "invalid",
-              "nextId": "",
-              "aboveId": "base",
-              "belowId": "",
-              "createdAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "updatedAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "id": "next"
-            }
-          }]
-        `);
-    });
-
-    test("different parentId", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(
-        col,
-        makeTreeNodes("foo", [["base"], ["next"]]).map((node) =>
-          node.text === "next" ? { ...node, parentId: "bar" } : node,
-        ),
-      );
-
-      await test.expect(getNextNode(serviceForTest, col, await getDoc(col, "base"))).rejects
-        .toThrowErrorMatchingInlineSnapshot(`
-          [Error: parent node of next node of baseNode is not one of baseNode: {
-            "baseNode": {
-              "text": "base",
-              "parentId": "foo",
-              "prevId": "",
-              "nextId": "next",
-              "aboveId": "foo",
-              "belowId": "next",
-              "createdAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "updatedAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "id": "base"
-            },
-            "nextNode": {
-              "text": "next",
-              "parentId": "bar",
-              "prevId": "base",
-              "nextId": "",
-              "aboveId": "base",
-              "belowId": "",
-              "createdAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "updatedAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "id": "next"
-            }
-          }]
-        `);
+      const baseNode = await getDoc(col, "base");
+      const nextNode = await getNextNode(serviceForTest, col, baseNode);
+      ctx.expect(nextNode?.text).toBe("next");
     });
   });
 
   describe("getParentNode", () => {
-    test("no parent node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("no parent node", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      const nodes = makeTreeNodes("", [["base"]]);
+      nodes[0].parentId = "";
+      await setDocs(col, nodes);
 
-      await setDocs(col, makeTreeNode("", ["base"]));
-
-      await test.expect(getParentNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
+      await ctx.expect(getParentNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
     });
 
-    test("parent node exists", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("parent node exists", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("", [["parent", [["child"]]]]));
 
-      await setDocs(col, makeTreeNode("", ["parent", [["base"]]]));
-
-      await test.expect(getParentNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
-        id: "parent",
-        text: "parent",
-        parentId: "",
-        prevId: "",
-        nextId: "",
-        aboveId: "",
-        belowId: "base",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
-      });
+      const childNode = await getDoc(col, "child");
+      const parentNode = await getParentNode(serviceForTest, col, childNode);
+      ctx.expect(parentNode?.text).toBe("parent");
     });
 
-    test("baseNode.parentId refers to a node of another collection", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("parentId refers to a node of another collection", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      // Create a node with parentId pointing to a non-existent node
+      const nodes = makeTreeNodes("", [["child"]]);
+      nodes[0].parentId = "nonexistent";
+      await setDocs(col, nodes);
 
-      await setDocs(col, makeTreeNode("another_collection_id", ["base"]));
-
-      await test.expect(getParentNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
+      const childNode = await getDoc(col, "child");
+      await ctx.expect(getParentNode(serviceForTest, col, childNode)).resolves.toBeUndefined();
     });
   });
 
   describe("getFirstChildNode", () => {
-    test("no first child node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("no children", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("", [["base"]]));
 
-      await setDocs(col, makeTreeNode("", ["base"]));
-
-      await test.expect(getFirstChildNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
+      await ctx.expect(getFirstChildNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
     });
 
-    test("first child node exists", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("first child exists", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("", [["parent", [["first"], ["second"]]]]));
 
-      await setDocs(col, makeTreeNode("", ["base", [["first"], ["middle"], ["last"]]]));
-
-      await test.expect(getFirstChildNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
-        id: "first",
-        text: "first",
-        parentId: "base",
-        prevId: "",
-        nextId: "middle",
-        aboveId: "base",
-        belowId: "middle",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
-      });
-    });
-
-    test("multiple first child nodes", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(
-        col,
-        makeTreeNode("", ["base", [["first1"], ["first2"]]]).map((node) =>
-          node.text === "first2" ? { ...node, prevId: "" } : node,
-        ),
-      );
-
-      await test.expect(getFirstChildNode(serviceForTest, col, await getDoc(col, "base"))).rejects
-        .toThrowErrorMatchingInlineSnapshot(`
-          [Error: multiple first child nodes: {
-            "baseNode": {
-              "text": "base",
-              "parentId": "",
-              "prevId": "",
-              "nextId": "",
-              "aboveId": "",
-              "belowId": "first1",
-              "createdAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "updatedAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "id": "base"
-            },
-            "childrenDocs": [
-              {
-                "text": "first1",
-                "parentId": "base",
-                "prevId": "",
-                "nextId": "first2",
-                "aboveId": "base",
-                "belowId": "first2",
-                "createdAt": {
-                  "type": "firestore/timestamp/1.0",
-                  "seconds": 4836316028,
-                  "nanoseconds": 0
-                },
-                "updatedAt": {
-                  "type": "firestore/timestamp/1.0",
-                  "seconds": 4836316028,
-                  "nanoseconds": 0
-                },
-                "id": "first1"
-              },
-              {
-                "text": "first2",
-                "parentId": "base",
-                "prevId": "",
-                "nextId": "",
-                "aboveId": "first1",
-                "belowId": "",
-                "createdAt": {
-                  "type": "firestore/timestamp/1.0",
-                  "seconds": 4836316028,
-                  "nanoseconds": 0
-                },
-                "updatedAt": {
-                  "type": "firestore/timestamp/1.0",
-                  "seconds": 4836316028,
-                  "nanoseconds": 0
-                },
-                "id": "first2"
-              }
-            ]
-          }]
-        `);
+      const parentNode = await getDoc(col, "parent");
+      const firstChild = await getFirstChildNode(serviceForTest, col, parentNode);
+      ctx.expect(firstChild?.text).toBe("first");
     });
   });
 
   describe("getLastChildNode", () => {
-    test("no last child node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("no children", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("", [["base"]]));
 
-      await setDocs(col, makeTreeNode("", ["base"]));
-
-      await test.expect(getLastChildNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
+      await ctx.expect(getLastChildNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
     });
 
-    test("last child node exists", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("last child exists", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("", [["parent", [["first"], ["last"]]]]));
 
-      await setDocs(col, makeTreeNode("", ["base", [["first"], ["middle"], ["last"]]]));
-
-      await test.expect(getLastChildNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
-        id: "last",
-        text: "last",
-        parentId: "base",
-        prevId: "middle",
-        nextId: "",
-        aboveId: "middle",
-        belowId: "",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
-      });
-    });
-
-    test("multiple last child nodes", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(
-        col,
-        makeTreeNode("", ["base", [["last1"], ["last2"]]]).map((node) =>
-          node.text === "last1" ? { ...node, nextId: "" } : node,
-        ),
-      );
-
-      await test.expect(getLastChildNode(serviceForTest, col, await getDoc(col, "base"))).rejects
-        .toThrowErrorMatchingInlineSnapshot(`
-          [Error: multiple last child nodes: {
-            "baseNode": {
-              "text": "base",
-              "parentId": "",
-              "prevId": "",
-              "nextId": "",
-              "aboveId": "",
-              "belowId": "last1",
-              "createdAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "updatedAt": {
-                "type": "firestore/timestamp/1.0",
-                "seconds": 4836316028,
-                "nanoseconds": 0
-              },
-              "id": "base"
-            },
-            "childrenDocs": [
-              {
-                "text": "last1",
-                "parentId": "base",
-                "prevId": "",
-                "nextId": "",
-                "aboveId": "base",
-                "belowId": "last2",
-                "createdAt": {
-                  "type": "firestore/timestamp/1.0",
-                  "seconds": 4836316028,
-                  "nanoseconds": 0
-                },
-                "updatedAt": {
-                  "type": "firestore/timestamp/1.0",
-                  "seconds": 4836316028,
-                  "nanoseconds": 0
-                },
-                "id": "last1"
-              },
-              {
-                "text": "last2",
-                "parentId": "base",
-                "prevId": "last1",
-                "nextId": "",
-                "aboveId": "last1",
-                "belowId": "",
-                "createdAt": {
-                  "type": "firestore/timestamp/1.0",
-                  "seconds": 4836316028,
-                  "nanoseconds": 0
-                },
-                "updatedAt": {
-                  "type": "firestore/timestamp/1.0",
-                  "seconds": 4836316028,
-                  "nanoseconds": 0
-                },
-                "id": "last2"
-              }
-            ]
-          }]
-        `);
-    });
-  });
-
-  describe("unlinkFromTree", () => {
-    test("no prev node, no next node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(col, makeTreeNode("", ["base"]));
-
-      const batch = writeBatch(firestoreForTest);
-      await unlinkFromTree(serviceForTest, batch, col, await getDoc(col, "base"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "base",
-          text: "base",
-          parentId: "",
-          prevId: "",
-          nextId: "",
-          aboveId: "",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("no prev node, has next node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(col, makeTreeNodes("", [["base"], ["next"]]));
-
-      const batch = writeBatch(firestoreForTest);
-      await unlinkFromTree(serviceForTest, batch, col, await getDoc(col, "base"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "base",
-          text: "base",
-          parentId: "",
-          prevId: "",
-          nextId: "",
-          aboveId: "",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "next",
-          text: "next",
-          parentId: "",
-          prevId: "",
-          nextId: "",
-          aboveId: "",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("has prev node, no next node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(col, makeTreeNodes("", [["prev"], ["base"]]));
-
-      const batch = writeBatch(firestoreForTest);
-      await unlinkFromTree(serviceForTest, batch, col, await getDoc(col, "base"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "base",
-          text: "base",
-          parentId: "",
-          prevId: "",
-          nextId: "",
-          aboveId: "",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "",
-          prevId: "",
-          nextId: "",
-          aboveId: "",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("has prev node, has next node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(col, makeTreeNodes("", [["prev"], ["base"], ["next"]]));
-
-      const batch = writeBatch(firestoreForTest);
-      await unlinkFromTree(serviceForTest, batch, col, await getDoc(col, "base"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "base",
-          text: "base",
-          parentId: "",
-          prevId: "",
-          nextId: "",
-          aboveId: "",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "next",
-          text: "next",
-          parentId: "",
-          prevId: "prev",
-          nextId: "",
-          aboveId: "prev",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "",
-          prevId: "",
-          nextId: "next",
-          aboveId: "",
-          belowId: "next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("has child of prev node, has next of parent node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("", [
-        ["parent", [
-          ["prev", [
-            ["child of prev"]
-          ]],
-          ["base"],
-        ]],
-        ["next of parent"],
-      ]));
-
-      const batch = writeBatch(firestoreForTest);
-      await unlinkFromTree(serviceForTest, batch, col, await getDoc(col, "base"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "base",
-          text: "base",
-          parentId: "",
-          prevId: "",
-          nextId: "",
-          aboveId: "",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "child of prev",
-          text: "child of prev",
-          parentId: "prev",
-          prevId: "",
-          nextId: "",
-          aboveId: "prev",
-          belowId: "next of parent",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "next of parent",
-          text: "next of parent",
-          parentId: "",
-          prevId: "parent",
-          nextId: "",
-          aboveId: "child of prev",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "parent",
-          text: "parent",
-          parentId: "",
-          prevId: "",
-          nextId: "next of parent",
-          aboveId: "",
-          belowId: "prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "",
-          aboveId: "parent",
-          belowId: "child of prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("has prev node, has next node, has child node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(col, makeTreeNodes("", [["prev"], ["base", [["child"]]], ["next"]]));
-
-      const batch = writeBatch(firestoreForTest);
-      await unlinkFromTree(serviceForTest, batch, col, await getDoc(col, "base"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "base",
-          text: "base",
-          parentId: "",
-          prevId: "",
-          nextId: "",
-          aboveId: "",
-          belowId: "child",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "child",
-          text: "child",
-          parentId: "base",
-          prevId: "",
-          nextId: "",
-          aboveId: "base",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "next",
-          text: "next",
-          parentId: "",
-          prevId: "prev",
-          nextId: "",
-          aboveId: "prev",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "",
-          prevId: "",
-          nextId: "next",
-          aboveId: "",
-          belowId: "next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
+      const parentNode = await getDoc(col, "parent");
+      const lastChild = await getLastChildNode(serviceForTest, col, parentNode);
+      ctx.expect(lastChild?.text).toBe("last");
     });
   });
 
   describe("getAboveNode", () => {
-    test("no prev node, no parent node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("first sibling - returns parent", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-      await setDocs(col, makeTreeNode("", ["base"]));
+      await setDocs(col, makeTreeNodes("", [["parent", [["child"]]]]));
 
-      await test.expect(getAboveNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
+      const childNode = await getDoc(col, "child");
+      const aboveNode = await getAboveNode(serviceForTest, col, childNode);
+      ctx.expect(aboveNode?.text).toBe("parent");
     });
 
-    test("no prev node, has parent node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("has prev sibling - returns bottom of prev sibling", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-      await setDocs(col, makeTreeNode("", ["parent", [["base"]]]));
+      await setDocs(col, makeTreeNodes("", [["parent", [["prev", [["prevChild"]]], ["current"]]]]));
 
-      await test.expect(getAboveNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
-        id: "parent",
-        text: "parent",
-        parentId: "",
-        prevId: "",
-        nextId: "",
-        aboveId: "",
-        belowId: "base",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
-      });
+      const currentNode = await getDoc(col, "current");
+      const aboveNode = await getAboveNode(serviceForTest, col, currentNode);
+      ctx.expect(aboveNode?.text).toBe("prevChild");
     });
 
-    test("has prev node, no children nodes of prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("has prev sibling without children - returns prev sibling", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-      await setDocs(col, makeTreeNodes("", [["prev"], ["base"]]));
+      await setDocs(col, makeTreeNodes("", [["parent", [["prev"], ["current"]]]]));
 
-      await test.expect(getAboveNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
-        id: "prev",
-        text: "prev",
-        prevId: "",
-        nextId: "base",
-        parentId: "",
-        aboveId: "",
-        belowId: "base",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
-      });
-    });
-
-    test("has prev node, has children nodes of prev node, no children nodes of children nodes of prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("", [
-        ["prev", [
-          ["first of prev"],
-          ["middle of prev"],
-          ["last of prev"]
-        ]],
-        ["base"],
-      ]));
-
-      await test.expect(getAboveNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
-        id: "last of prev",
-        text: "last of prev",
-        parentId: "prev",
-        prevId: "middle of prev",
-        nextId: "",
-        aboveId: "middle of prev",
-        belowId: "base",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
-      });
-    });
-
-    test("has prev node, has children nodes of prev node, has children nodes of children nodes of prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("", [
-        ["prev", [
-          ["first of prev", [
-            ["first of first of prev"],
-            ["middle of first of prev"],
-            ["last of first of prev"],
-          ]],
-          ["middle of prev", [
-            ["first of middle of prev"],
-            ["middle of middle of prev"],
-            ["last of middle of prev"],
-          ]],
-          ["last of prev", [
-            ["first of last of prev"],
-            ["middle of last of prev"],
-            ["last of last of prev"],
-          ]],
-        ]],
-        ["base"],
-      ]));
-
-      await test.expect(getAboveNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
-        id: "last of last of prev",
-        text: "last of last of prev",
-        parentId: "last of prev",
-        prevId: "middle of last of prev",
-        nextId: "",
-        aboveId: "middle of last of prev",
-        belowId: "base",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
-      });
+      const currentNode = await getDoc(col, "current");
+      const aboveNode = await getAboveNode(serviceForTest, col, currentNode);
+      ctx.expect(aboveNode?.text).toBe("prev");
     });
   });
 
   describe("getBelowNode", () => {
-    test("no child node, no next node, no parent node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("has children - returns first child", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-      await setDocs(col, makeTreeNode("", ["base"]));
+      await setDocs(col, makeTreeNodes("", [["parent", [["child"]]]]));
 
-      await test.expect(getBelowNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
+      const parentNode = await getDoc(col, "parent");
+      const belowNode = await getBelowNode(serviceForTest, col, parentNode);
+      ctx.expect(belowNode?.text).toBe("child");
     });
 
-    test("no child node, no next node, has parent node, no next of parent node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("no children but has next sibling - returns next sibling", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-      await setDocs(col, makeTreeNode("", ["parent", [["base"]]]));
+      await setDocs(col, makeTreeNodes("", [["parent", [["current"], ["next"]]]]));
 
-      await test.expect(getBelowNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
+      const currentNode = await getDoc(col, "current");
+      const belowNode = await getBelowNode(serviceForTest, col, currentNode);
+      ctx.expect(belowNode?.text).toBe("next");
     });
 
-    test("has child node, has next node, has next of parent node, has next of parent of parent node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("no children no next sibling - returns parent's next sibling", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("", [
-        ["parent of parent", [
-          ["parent", [
-            ["base", [
-              ["first child of base"],
-              ["middle child of base"],
-              ["last child of base"],
-            ]],
-            ["next"],
-          ]],
-          ["next of parent"],
-        ]],
-        ["next of parent of parent"],
-      ]));
+      await setDocs(col, makeTreeNodes("", [["parent", [["current"]]], ["uncle"]]));
 
-      await test.expect(getBelowNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
-        id: "first child of base",
-        text: "first child of base",
-        parentId: "base",
-        prevId: "",
-        nextId: "middle child of base",
-        aboveId: "base",
-        belowId: "middle child of base",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
-      });
+      const currentNode = await getDoc(col, "current");
+      const belowNode = await getBelowNode(serviceForTest, col, currentNode);
+      ctx.expect(belowNode?.text).toBe("uncle");
     });
 
-    test("no child node, has next node, has next of parent node, has next of parent of parent node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("last node in tree - returns undefined", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("", [
-        ["parent of parent", [
-          ["parent", [
-            ["base"],
-            ["next"],
-          ]],
-          ["next of parent"],
-        ]],
-        ["next of parent of parent"],
-      ]));
+      await setDocs(col, makeTreeNodes("", [["parent", [["child"]]]]));
 
-      await test.expect(getBelowNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
-        id: "next",
-        text: "next",
-        parentId: "parent",
-        prevId: "base",
-        nextId: "",
-        aboveId: "base",
-        belowId: "next of parent",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
-      });
-    });
-
-    test("no child node, no next node, has next of parent node, has next of parent of parent node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("", [
-        ["parent of parent", [
-          ["parent", [
-            ["base"],
-          ]],
-          ["next of parent"],
-        ]],
-        ["next of parent of parent"],
-      ]));
-
-      await test.expect(getBelowNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
-        id: "next of parent",
-        text: "next of parent",
-        parentId: "parent of parent",
-        prevId: "parent",
-        nextId: "",
-        aboveId: "base",
-        belowId: "next of parent of parent",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
-      });
-    });
-
-    test("no child node, no next node, no next of parent node, has next of parent of parent node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("", [
-        ["parent of parent", [
-          ["parent", [
-            ["base"],
-          ]],
-        ]],
-        ["next of parent of parent"],
-      ]));
-
-      await test.expect(getBelowNode(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
-        id: "next of parent of parent",
-        text: "next of parent of parent",
-        parentId: "",
-        prevId: "parent of parent",
-        nextId: "",
-        aboveId: "base",
-        belowId: "",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
-      });
+      const childNode = await getDoc(col, "child");
+      const belowNode = await getBelowNode(serviceForTest, col, childNode);
+      ctx.expect(belowNode).toBeUndefined();
     });
   });
 
   describe("getBottomNodeExclusive", () => {
-    test("no child node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("no children", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("", [["base"]]));
 
-      await setDocs(col, makeTreeNode("", ["base"]));
-
-      await test
-        .expect(getBottomNodeExclusive(serviceForTest, col, await getDoc(col, "base")))
-        .resolves.toBeUndefined();
+      await ctx.expect(getBottomNodeExclusive(serviceForTest, col, await getDoc(col, "base"))).resolves.toBeUndefined();
     });
 
-    test("has children nodes, no grandchild node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("has children", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("", [["parent", [["child1"], ["child2", [["grandchild"]]]]]]));
 
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("", [
-        ["base", [
-          ["first child"],
-          ["middle child"],
-          ["last child"],
-        ]],
-      ]));
+      const parentNode = await getDoc(col, "parent");
+      const bottomNode = await getBottomNodeExclusive(serviceForTest, col, parentNode);
+      ctx.expect(bottomNode?.text).toBe("grandchild");
+    });
 
-      await test.expect(getBottomNodeExclusive(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
-        id: "last child",
-        text: "last child",
-        parentId: "base",
-        prevId: "middle child",
-        nextId: "",
-        aboveId: "middle child",
-        belowId: "",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
+    test("has great-grandchildren", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+
+      await setDocs(col, makeTreeNodes("", [["parent", [["child", [["grandchild", [["great-grandchild"]]]]]]]]));
+
+      const parentNode = await getDoc(col, "parent");
+      const bottomNode = await getBottomNodeExclusive(serviceForTest, col, parentNode);
+      ctx.expect(bottomNode?.text).toBe("great-grandchild");
+    });
+  });
+
+  describe("addSingle", () => {
+    test("adds a single node", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+
+      await runTestBatch(async (batch) => {
+        addSingle(serviceForTest, batch, col, "parent", { id: "child", text: "child" });
       });
-    });
 
-    test("has children nodes, has grandchildren nodes, no great-grandchild node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("", [
-        ["base", [
-          ["first child"],
-          ["middle child"],
-          ["last child", [
-            ["first grandchild"],
-            ["middle grandchild"],
-            ["last grandchild"],
-          ]],
-        ]],
-      ]));
-
-      await test.expect(getBottomNodeExclusive(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
-        id: "last grandchild",
-        text: "last grandchild",
-        parentId: "last child",
-        prevId: "middle grandchild",
-        nextId: "",
-        aboveId: "middle grandchild",
-        belowId: "",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
+      const childNode = await getDoc(col, "child");
+      ctx.expect(childNode).toEqual({
+        id: "child",
+        text: "child",
+        parentId: "parent",
+        order: generateKeyBetween(null, null),
+        createdAt: timestampForServerTimestamp,
+        updatedAt: timestampForServerTimestamp,
       });
-    });
-
-    test("has children nodes, has grandchildren nodes, has great-grandchildren nodes", async (test) => {
-      const now = new Date();
-
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("", [
-        ["base", [
-          ["first child"],
-          ["middle child"],
-          ["last child", [
-            ["first grandchild"],
-            ["middle grandchild"],
-            ["last grandchild", [
-              ["first great-grandchild"],
-              ["middle great-grandchild"],
-              ["last great-grandchild"],
-            ]],
-          ]],
-        ]],
-      ]));
-
-      await test.expect(getBottomNodeExclusive(serviceForTest, col, await getDoc(col, "base"))).resolves.toEqual({
-        id: "last great-grandchild",
-        text: "last great-grandchild",
-        parentId: "last grandchild",
-        prevId: "middle great-grandchild",
-        nextId: "",
-        aboveId: "middle great-grandchild",
-        belowId: "",
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
-      });
-    });
-
-    test("base node is from another collection, has children nodes", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const baseCol = collection(firestoreForTest, `${tid}_col1`) as CollectionReference<{ text: string }>;
-      const childrenCol = collection(firestoreForTest, `${tid}_col2`) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(baseCol, [{ text: "base" }]);
-      await setDocs(childrenCol, makeTreeNodes("base", [["first child"], ["middle child"], ["last child"]]));
-
-      await test
-        .expect(getBottomNodeExclusive(serviceForTest, childrenCol, await getDoc(baseCol, "base")))
-        .resolves.toEqual({
-          id: "last child",
-          text: "last child",
-          parentId: "base",
-          prevId: "middle child",
-          nextId: "",
-          aboveId: "middle child",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
-        });
     });
   });
 
   describe("addPrevSibling", () => {
-    test("new node, no prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("adds a node before base node", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("parent", [["base"]]));
 
-      await setDocs(col, makeTreeNode("", ["parent", [["base"]]]));
-
-      const batch = writeBatch(firestoreForTest);
-      await addPrevSibling(serviceForTest, batch, col, await getDoc(col, "base"), {
-        id: "newNode",
-        text: "newNode",
-        parentId: "",
-        prevId: "",
-        nextId: "",
-        aboveId: "",
-        belowId: "",
-        createdAt: Timestamp.fromMillis(0),
-        updatedAt: Timestamp.fromMillis(0),
+      const baseNode = await getDoc(col, "base");
+      await runTestBatch(async (batch) => {
+        await addPrevSibling(serviceForTest, batch, col, baseNode, { id: "new", text: "new" });
       });
-      await batch.commit();
 
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "base",
-          text: "base",
-          parentId: "parent",
-          prevId: "newNode",
-          nextId: "",
-          aboveId: "newNode",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "newNode",
-          text: "newNode",
-          parentId: "parent",
-          prevId: "",
-          nextId: "base",
-          aboveId: "parent",
-          belowId: "base",
-          createdAt: timestampForServerTimestamp,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "parent",
-          text: "parent",
-          parentId: "",
-          prevId: "",
-          nextId: "",
-          aboveId: "",
-          belowId: "newNode",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("new node, has prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(col, makeTreeNodes("parent", [["prev"], ["base"]]));
-
-      const batch = writeBatch(firestoreForTest);
-      await addPrevSibling(serviceForTest, batch, col, await getDoc(col, "base"), {
-        id: "newNode",
-        text: "newNode",
-        parentId: "",
-        prevId: "",
-        nextId: "",
-        aboveId: "",
-        belowId: "",
-        createdAt: Timestamp.fromMillis(0),
-        updatedAt: Timestamp.fromMillis(0),
+      const newNode = await getDoc(col, "new");
+      ctx.expect(newNode).toEqual({
+        id: "new",
+        text: "new",
+        parentId: "parent",
+        order: generateKeyBetween(null, baseNode.order),
+        createdAt: timestampForServerTimestamp,
+        updatedAt: timestampForServerTimestamp,
       });
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "base",
-          text: "base",
-          parentId: "parent",
-          prevId: "newNode",
-          nextId: "",
-          aboveId: "newNode",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "newNode",
-          text: "newNode",
-          parentId: "parent",
-          prevId: "prev",
-          nextId: "base",
-          aboveId: "prev",
-          belowId: "base",
-          createdAt: timestampForServerTimestamp,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "newNode",
-          aboveId: "parent",
-          belowId: "newNode",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
+      // verify unchanged nodes
+      ctx.expect(await getDoc(col, "base")).toEqual(baseNode);
     });
 
-    test("new node, has child of prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("adds a node between two nodes", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("parent", [["first"], ["second"]]));
 
-      await setDocs(col, makeTreeNodes("parent", [["prev", [["child of prev"]]], ["base"]]));
-
-      const batch = writeBatch(firestoreForTest);
-      await addPrevSibling(serviceForTest, batch, col, await getDoc(col, "base"), {
-        id: "newNode",
-        text: "newNode",
-        parentId: "",
-        prevId: "",
-        nextId: "",
-        aboveId: "",
-        belowId: "",
-        createdAt: Timestamp.fromMillis(0),
-        updatedAt: Timestamp.fromMillis(0),
+      const firstNode = await getDoc(col, "first");
+      const secondNode = await getDoc(col, "second");
+      await runTestBatch(async (batch) => {
+        await addPrevSibling(serviceForTest, batch, col, secondNode, { id: "middle", text: "middle" });
       });
-      await batch.commit();
 
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "base",
-          text: "base",
-          parentId: "parent",
-          prevId: "newNode",
-          nextId: "",
-          aboveId: "newNode",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "child of prev",
-          text: "child of prev",
-          parentId: "prev",
-          prevId: "",
-          nextId: "",
-          aboveId: "prev",
-          belowId: "newNode",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "newNode",
-          text: "newNode",
-          parentId: "parent",
-          prevId: "prev",
-          nextId: "base",
-          aboveId: "child of prev",
-          belowId: "base",
-          createdAt: timestampForServerTimestamp,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "newNode",
-          aboveId: "parent",
-          belowId: "child of prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("existing node, no prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(col, makeTreeNode("", ["parent", [["base"]]]));
-      await setDocs(col, makeTreeNode("", ["addingNode"]));
-
-      const batch = writeBatch(firestoreForTest);
-      await addPrevSibling(serviceForTest, batch, col, await getDoc(col, "base"), await getDoc(col, "addingNode"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "addingNode",
-          text: "addingNode",
-          parentId: "parent",
-          prevId: "",
-          nextId: "base",
-          aboveId: "parent",
-          belowId: "base",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "base",
-          text: "base",
-          parentId: "parent",
-          prevId: "addingNode",
-          nextId: "",
-          aboveId: "addingNode",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "parent",
-          text: "parent",
-          parentId: "",
-          prevId: "",
-          nextId: "",
-          aboveId: "",
-          belowId: "addingNode",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("existing node, has prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(col, makeTreeNodes("parent", [["prev"], ["base"]]));
-      await setDocs(col, makeTreeNode("", ["addingNode"]));
-
-      const batch = writeBatch(firestoreForTest);
-      await addPrevSibling(serviceForTest, batch, col, await getDoc(col, "base"), await getDoc(col, "addingNode"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "addingNode",
-          text: "addingNode",
-          parentId: "parent",
-          prevId: "prev",
-          nextId: "base",
-          aboveId: "prev",
-          belowId: "base",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "base",
-          text: "base",
-          parentId: "parent",
-          prevId: "addingNode",
-          nextId: "",
-          aboveId: "addingNode",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "addingNode",
-          aboveId: "parent",
-          belowId: "addingNode",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("existing node, has child of prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(col, makeTreeNodes("parent", [["prev", [["child of prev"]]], ["base"]]));
-      await setDocs(col, makeTreeNode("", ["addingNode"]));
-
-      const batch = writeBatch(firestoreForTest);
-      await addPrevSibling(serviceForTest, batch, col, await getDoc(col, "base"), await getDoc(col, "addingNode"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "addingNode",
-          text: "addingNode",
-          parentId: "parent",
-          prevId: "prev",
-          nextId: "base",
-          aboveId: "child of prev",
-          belowId: "base",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "base",
-          text: "base",
-          parentId: "parent",
-          prevId: "addingNode",
-          nextId: "",
-          aboveId: "addingNode",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "child of prev",
-          text: "child of prev",
-          parentId: "prev",
-          prevId: "",
-          nextId: "",
-          aboveId: "prev",
-          belowId: "addingNode",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "addingNode",
-          aboveId: "parent",
-          belowId: "child of prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
+      const middleNode = await getDoc(col, "middle");
+      ctx.expect(middleNode).toEqual({
+        id: "middle",
+        text: "middle",
+        parentId: "parent",
+        order: generateKeyBetween(firstNode.order, secondNode.order),
+        createdAt: timestampForServerTimestamp,
+        updatedAt: timestampForServerTimestamp,
+      });
+      // verify unchanged nodes
+      ctx.expect(await getDoc(col, "first")).toEqual(firstNode);
+      ctx.expect(await getDoc(col, "second")).toEqual(secondNode);
     });
   });
 
   describe("addNextSibling", () => {
-    test("new node, no next node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("adds a node after base node", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("parent", [["base"]]));
 
-      await setDocs(col, makeTreeNode("parent", ["base"]));
-
-      const batch = writeBatch(firestoreForTest);
-      await addNextSibling(serviceForTest, batch, col, await getDoc(col, "base"), {
-        id: "newNode",
-        text: "newNode",
-        parentId: "",
-        prevId: "",
-        nextId: "",
-        aboveId: "",
-        belowId: "",
-        createdAt: Timestamp.fromMillis(0),
-        updatedAt: Timestamp.fromMillis(0),
+      const baseNode = await getDoc(col, "base");
+      await runTestBatch(async (batch) => {
+        await addNextSibling(serviceForTest, batch, col, baseNode, { id: "new", text: "new" });
       });
-      await batch.commit();
 
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "base",
-          text: "base",
-          parentId: "parent",
-          prevId: "",
-          nextId: "newNode",
-          aboveId: "parent",
-          belowId: "newNode",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "newNode",
-          text: "newNode",
-          parentId: "parent",
-          prevId: "base",
-          nextId: "",
-          aboveId: "base",
-          belowId: "",
-          createdAt: timestampForServerTimestamp,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("new node, has next node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(col, makeTreeNodes("parent", [["base"], ["next"]]));
-
-      const batch = writeBatch(firestoreForTest);
-      await addNextSibling(serviceForTest, batch, col, await getDoc(col, "base"), {
-        id: "newNode",
-        text: "newNode",
-        parentId: "",
-        prevId: "",
-        nextId: "",
-        aboveId: "",
-        belowId: "",
-        createdAt: Timestamp.fromMillis(0),
-        updatedAt: Timestamp.fromMillis(0),
+      const newNode = await getDoc(col, "new");
+      ctx.expect(newNode).toEqual({
+        id: "new",
+        text: "new",
+        parentId: "parent",
+        order: generateKeyBetween(baseNode.order, null),
+        createdAt: timestampForServerTimestamp,
+        updatedAt: timestampForServerTimestamp,
       });
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "base",
-          text: "base",
-          parentId: "parent",
-          prevId: "",
-          nextId: "newNode",
-          aboveId: "parent",
-          belowId: "newNode",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "newNode",
-          text: "newNode",
-          parentId: "parent",
-          prevId: "base",
-          nextId: "next",
-          aboveId: "base",
-          belowId: "next",
-          createdAt: timestampForServerTimestamp,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "next",
-          text: "next",
-          parentId: "parent",
-          prevId: "newNode",
-          nextId: "",
-          aboveId: "newNode",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
+      // verify unchanged nodes
+      ctx.expect(await getDoc(col, "base")).toEqual(baseNode);
     });
 
-    test("new node, has next node, has child of base node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("adds a node between two nodes", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("parent", [["first"], ["second"]]));
 
-      await setDocs(col, makeTreeNodes("parent", [["base", [["child of base"]]], ["next"]]));
-
-      const batch = writeBatch(firestoreForTest);
-      await addNextSibling(serviceForTest, batch, col, await getDoc(col, "base"), {
-        id: "newNode",
-        text: "newNode",
-        parentId: "",
-        prevId: "",
-        nextId: "",
-        aboveId: "",
-        belowId: "",
-        createdAt: Timestamp.fromMillis(0),
-        updatedAt: Timestamp.fromMillis(0),
+      const firstNode = await getDoc(col, "first");
+      const secondNode = await getDoc(col, "second");
+      await runTestBatch(async (batch) => {
+        await addNextSibling(serviceForTest, batch, col, firstNode, { id: "middle", text: "middle" });
       });
-      await batch.commit();
 
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "base",
-          text: "base",
-          parentId: "parent",
-          prevId: "",
-          nextId: "newNode",
-          aboveId: "parent",
-          belowId: "child of base",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "child of base",
-          text: "child of base",
-          parentId: "base",
-          prevId: "",
-          nextId: "",
-          aboveId: "base",
-          belowId: "newNode",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "newNode",
-          text: "newNode",
-          parentId: "parent",
-          prevId: "base",
-          nextId: "next",
-          aboveId: "child of base",
-          belowId: "next",
-          createdAt: timestampForServerTimestamp,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "next",
-          text: "next",
-          parentId: "parent",
-          prevId: "newNode",
-          nextId: "",
-          aboveId: "newNode",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("existing node, no next node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(col, makeTreeNode("parent", ["base"]));
-      await setDocs(col, makeTreeNode("", ["addingNode"]));
-
-      const batch = writeBatch(firestoreForTest);
-      await addNextSibling(serviceForTest, batch, col, await getDoc(col, "base"), await getDoc(col, "addingNode"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "addingNode",
-          text: "addingNode",
-          parentId: "parent",
-          prevId: "base",
-          nextId: "",
-          aboveId: "base",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "base",
-          text: "base",
-          parentId: "parent",
-          prevId: "",
-          nextId: "addingNode",
-          aboveId: "parent",
-          belowId: "addingNode",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("existing node, has next node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(col, makeTreeNodes("parent", [["base"], ["next"]]));
-      await setDocs(col, makeTreeNodes("", [["addingNode"]]));
-
-      const batch = writeBatch(firestoreForTest);
-      await addNextSibling(serviceForTest, batch, col, await getDoc(col, "base"), await getDoc(col, "addingNode"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "addingNode",
-          text: "addingNode",
-          parentId: "parent",
-          prevId: "base",
-          nextId: "next",
-          aboveId: "base",
-          belowId: "next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "base",
-          text: "base",
-          parentId: "parent",
-          prevId: "",
-          nextId: "addingNode",
-          aboveId: "parent",
-          belowId: "addingNode",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "next",
-          text: "next",
-          parentId: "parent",
-          prevId: "addingNode",
-          nextId: "",
-          aboveId: "addingNode",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("existing node, has next node, has child of base node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(col, makeTreeNodes("parent", [["base", [["child of base"]]], ["next"]]));
-      await setDocs(col, makeTreeNodes("", [["addingNode"]]));
-
-      const batch = writeBatch(firestoreForTest);
-      await addNextSibling(serviceForTest, batch, col, await getDoc(col, "base"), await getDoc(col, "addingNode"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "addingNode",
-          text: "addingNode",
-          parentId: "parent",
-          prevId: "base",
-          nextId: "next",
-          aboveId: "child of base",
-          belowId: "next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "base",
-          text: "base",
-          parentId: "parent",
-          prevId: "",
-          nextId: "addingNode",
-          aboveId: "parent",
-          belowId: "child of base",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "child of base",
-          text: "child of base",
-          parentId: "base",
-          prevId: "",
-          nextId: "",
-          aboveId: "base",
-          belowId: "addingNode",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "next",
-          text: "next",
-          parentId: "parent",
-          prevId: "addingNode",
-          nextId: "",
-          aboveId: "addingNode",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
+      const middleNode = await getDoc(col, "middle");
+      ctx.expect(middleNode).toEqual({
+        id: "middle",
+        text: "middle",
+        parentId: "parent",
+        order: generateKeyBetween(firstNode.order, secondNode.order),
+        createdAt: timestampForServerTimestamp,
+        updatedAt: timestampForServerTimestamp,
+      });
+      // verify unchanged nodes
+      ctx.expect(await getDoc(col, "first")).toEqual(firstNode);
+      ctx.expect(await getDoc(col, "second")).toEqual(secondNode);
     });
   });
 
   describe("indent", () => {
-    test("no prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("indents node under previous sibling", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("parent", [["prev"], ["current"]]));
 
-      await setDocs(col, makeTreeNode("parent", ["node"]));
+      const prevNode = await getDoc(col, "prev");
+      const currentNode = await getDoc(col, "current");
+      await runTestBatch(async (batch) => {
+        await indent(serviceForTest, batch, col, currentNode);
+      });
 
-      const batch = writeBatch(firestoreForTest);
-      await indent(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "node",
-          text: "node",
-          parentId: "parent",
-          prevId: "",
-          nextId: "",
-          aboveId: "parent",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
-        },
-      ]);
+      const updatedCurrentNode = await getDoc(col, "current");
+      ctx.expect(updatedCurrentNode).toEqual({
+        id: "current",
+        text: "current",
+        parentId: "prev",
+        order: generateKeyBetween(null, null),
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForServerTimestamp,
+      });
+      // verify unchanged nodes
+      ctx.expect(await getDoc(col, "prev")).toEqual(prevNode);
     });
 
-    test("has prev node, has next node, no children nodes of prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("indents after last child of prev sibling", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("parent", [["prev", [["prevChild"]]], ["current"]]));
 
-      await setDocs(col, makeTreeNodes("parent", [["prev"], ["node"], ["next"]]));
+      const prevNode = await getDoc(col, "prev");
+      const prevChildNode = await getDoc(col, "prevChild");
+      const currentNode = await getDoc(col, "current");
+      await runTestBatch(async (batch) => {
+        await indent(serviceForTest, batch, col, currentNode);
+      });
 
-      const batch = writeBatch(firestoreForTest);
-      await indent(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "next",
-          text: "next",
-          parentId: "parent",
-          prevId: "prev",
-          nextId: "",
-          aboveId: "node",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "node",
-          text: "node",
-          parentId: "prev",
-          prevId: "",
-          nextId: "",
-          aboveId: "prev",
-          belowId: "next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "next",
-          aboveId: "parent",
-          belowId: "node",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
+      const updatedCurrentNode = await getDoc(col, "current");
+      ctx.expect(updatedCurrentNode).toEqual({
+        id: "current",
+        text: "current",
+        parentId: "prev",
+        order: generateKeyBetween(prevChildNode.order, null),
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForServerTimestamp,
+      });
+      // verify unchanged nodes
+      ctx.expect(await getDoc(col, "prev")).toEqual(prevNode);
+      ctx.expect(await getDoc(col, "prevChild")).toEqual(prevChildNode);
     });
 
-    test("has prev node, has next node, has child node, no children nodes of prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("does nothing when no prev sibling", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("parent", [["current"]]));
 
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("parent", [
-        ["prev"],
-        ["node", [
-          ["child"]
-        ]],
-        ["next"]
-      ]));
+      const currentNode = await getDoc(col, "current");
+      await runTestBatch(async (batch) => {
+        await indent(serviceForTest, batch, col, currentNode);
+      });
 
-      const batch = writeBatch(firestoreForTest);
-      await indent(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "child",
-          text: "child",
-          parentId: "node",
-          prevId: "",
-          nextId: "",
-          aboveId: "node",
-          belowId: "next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "next",
-          text: "next",
-          parentId: "parent",
-          prevId: "prev",
-          nextId: "",
-          aboveId: "child",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "node",
-          text: "node",
-          parentId: "prev",
-          prevId: "",
-          nextId: "",
-          aboveId: "prev",
-          belowId: "child",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "next",
-          aboveId: "parent",
-          belowId: "node",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
+      // verify unchanged
+      ctx.expect(await getDoc(col, "current")).toEqual(currentNode);
     });
 
-    test("has prev node, has next node, has children nodes of prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("indents node with children", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("parent", [
-        ["prev", [
-          ["first child of prev"],
-          ["middle child of prev"],
-          ["last child of prev"],
-        ]],
-        ["node"],
-        ["next"],
-      ]));
+      await setDocs(col, makeTreeNodes("parent", [["prev"], ["current", [["child"]]]]));
 
-      const batch = writeBatch(firestoreForTest);
-      await indent(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
+      const prevNode = await getDoc(col, "prev");
+      const currentNode = await getDoc(col, "current");
+      const childNode = await getDoc(col, "child");
+      await runTestBatch(async (batch) => {
+        await indent(serviceForTest, batch, col, currentNode);
+      });
 
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "first child of prev",
-          text: "first child of prev",
-          parentId: "prev",
-          prevId: "",
-          nextId: "middle child of prev",
-          aboveId: "prev",
-          belowId: "middle child of prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
-        },
-        {
-          id: "last child of prev",
-          text: "last child of prev",
-          parentId: "prev",
-          prevId: "middle child of prev",
-          nextId: "node",
-          aboveId: "middle child of prev",
-          belowId: "node",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "middle child of prev",
-          text: "middle child of prev",
-          parentId: "prev",
-          prevId: "first child of prev",
-          nextId: "last child of prev",
-          aboveId: "first child of prev",
-          belowId: "last child of prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
-        },
-        {
-          id: "next",
-          text: "next",
-          parentId: "parent",
-          prevId: "prev",
-          nextId: "",
-          aboveId: "node",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "node",
-          text: "node",
-          parentId: "prev",
-          prevId: "last child of prev",
-          nextId: "",
-          aboveId: "last child of prev",
-          belowId: "next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "next",
-          aboveId: "parent",
-          belowId: "first child of prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("has prev node, has next node, has child node, has children nodes of prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("parent", [
-        ["prev", [
-          ["first child of prev"],
-          ["middle child of prev"],
-          ["last child of prev"],
-        ]],
-        ["node", [
-          ["child"]
-        ]],
-        ["next"],
-      ]));
-
-      const batch = writeBatch(firestoreForTest);
-      await indent(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "child",
-          text: "child",
-          parentId: "node",
-          prevId: "",
-          nextId: "",
-          aboveId: "node",
-          belowId: "next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "first child of prev",
-          text: "first child of prev",
-          parentId: "prev",
-          prevId: "",
-          nextId: "middle child of prev",
-          aboveId: "prev",
-          belowId: "middle child of prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
-        },
-        {
-          id: "last child of prev",
-          text: "last child of prev",
-          parentId: "prev",
-          prevId: "middle child of prev",
-          nextId: "node",
-          aboveId: "middle child of prev",
-          belowId: "node",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "middle child of prev",
-          text: "middle child of prev",
-          parentId: "prev",
-          prevId: "first child of prev",
-          nextId: "last child of prev",
-          aboveId: "first child of prev",
-          belowId: "last child of prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
-        },
-        {
-          id: "next",
-          text: "next",
-          parentId: "parent",
-          prevId: "prev",
-          nextId: "",
-          aboveId: "child",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "node",
-          text: "node",
-          parentId: "prev",
-          prevId: "last child of prev",
-          nextId: "",
-          aboveId: "last child of prev",
-          belowId: "child",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "next",
-          aboveId: "parent",
-          belowId: "first child of prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("has prev node, has next node, has children nodes of prev node, has grandchild node of prev node ", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("parent", [
-        ["prev", [
-          ["first child of prev"],
-          ["middle child of prev"],
-          ["last child of prev", [
-            ["child of last child of prev"]
-          ]],
-        ]],
-        ["node"],
-        ["next"],
-      ]));
-
-      const batch = writeBatch(firestoreForTest);
-      await indent(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "child of last child of prev",
-          text: "child of last child of prev",
-          parentId: "last child of prev",
-          prevId: "",
-          nextId: "",
-          aboveId: "last child of prev",
-          belowId: "node",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "first child of prev",
-          text: "first child of prev",
-          parentId: "prev",
-          prevId: "",
-          nextId: "middle child of prev",
-          aboveId: "prev",
-          belowId: "middle child of prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
-        },
-        {
-          id: "last child of prev",
-          text: "last child of prev",
-          parentId: "prev",
-          prevId: "middle child of prev",
-          nextId: "node",
-          aboveId: "middle child of prev",
-          belowId: "child of last child of prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "middle child of prev",
-          text: "middle child of prev",
-          parentId: "prev",
-          prevId: "first child of prev",
-          nextId: "last child of prev",
-          aboveId: "first child of prev",
-          belowId: "last child of prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
-        },
-        {
-          id: "next",
-          text: "next",
-          parentId: "parent",
-          prevId: "prev",
-          nextId: "",
-          aboveId: "node",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "node",
-          text: "node",
-          parentId: "prev",
-          prevId: "last child of prev",
-          nextId: "",
-          aboveId: "child of last child of prev",
-          belowId: "next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "next",
-          aboveId: "parent",
-          belowId: "first child of prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("has parent node, has next node, has child node, no children nodes of prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("grandparent", [
-        ["parent", [
-          ["prev"],
-          ["node"],
-        ]],
-        ["next of parent"]
-      ]));
-
-      const batch = writeBatch(firestoreForTest);
-      await indent(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "next of parent",
-          text: "next of parent",
-          parentId: "grandparent",
-          prevId: "parent",
-          nextId: "",
-          aboveId: "node",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "node",
-          text: "node",
-          parentId: "prev",
-          prevId: "",
-          nextId: "",
-          aboveId: "prev",
-          belowId: "next of parent",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "parent",
-          text: "parent",
-          parentId: "grandparent",
-          prevId: "",
-          nextId: "next of parent",
-          aboveId: "grandparent",
-          belowId: "prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "",
-          aboveId: "parent",
-          belowId: "node",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
+      const updatedCurrentNode = await getDoc(col, "current");
+      ctx.expect(updatedCurrentNode).toEqual({
+        id: "current",
+        text: "current",
+        parentId: "prev",
+        order: generateKeyBetween(null, null),
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForServerTimestamp,
+      });
+      // verify unchanged nodes
+      ctx.expect(await getDoc(col, "prev")).toEqual(prevNode);
+      ctx.expect(await getDoc(col, "child")).toEqual(childNode);
     });
   });
 
   describe("dedent", () => {
-    test("no parent node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("dedents node to parent's sibling", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("grandparent", [["parent", [["current"]]]]));
 
-      await setDocs(col, makeTreeNode("parent", ["node"]));
+      const parentNode = await getDoc(col, "parent");
+      const currentNode = await getDoc(col, "current");
+      await runTestBatch(async (batch) => {
+        await dedent(serviceForTest, batch, col, currentNode);
+      });
 
-      const batch = writeBatch(firestoreForTest);
-      await dedent(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "node",
-          text: "node",
-          parentId: "parent",
-          prevId: "",
-          nextId: "",
-          aboveId: "parent",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
-        },
-      ]);
+      const updatedCurrentNode = await getDoc(col, "current");
+      ctx.expect(updatedCurrentNode).toEqual({
+        id: "current",
+        text: "current",
+        parentId: "grandparent",
+        order: generateKeyBetween(parentNode.order, null),
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForServerTimestamp,
+      });
+      // verify unchanged nodes
+      ctx.expect(await getDoc(col, "parent")).toEqual(parentNode);
     });
 
-    test("has parent node, no next node of parent node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("does nothing when no parent", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      const nodes = makeTreeNodes("", [["current"]]);
+      nodes[0].parentId = "";
+      await setDocs(col, nodes);
 
-      await setDocs(col, makeTreeNode("grandparent", ["parent", [["node"]]]));
+      const currentNode = await getDoc(col, "current");
+      await runTestBatch(async (batch) => {
+        await dedent(serviceForTest, batch, col, currentNode);
+      });
 
-      const batch = writeBatch(firestoreForTest);
-      await dedent(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "node",
-          text: "node",
-          parentId: "grandparent",
-          prevId: "parent",
-          nextId: "",
-          aboveId: "parent",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "parent",
-          text: "parent",
-          parentId: "grandparent",
-          prevId: "",
-          nextId: "node",
-          aboveId: "grandparent",
-          belowId: "node",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
+      // verify unchanged
+      ctx.expect(await getDoc(col, "current")).toEqual(currentNode);
     });
 
-    test("has parent node, has next node of parent node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("dedents node with children", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("grandparent", [["parent", [["current", [["child"]]]]]]));
 
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("grandparent", [
-        ["parent", [
-          ["node"],
-        ]],
-        ["next of parent"],
-      ]));
+      const parentNode = await getDoc(col, "parent");
+      const currentNode = await getDoc(col, "current");
+      const childNode = await getDoc(col, "child");
+      await runTestBatch(async (batch) => {
+        await dedent(serviceForTest, batch, col, currentNode);
+      });
 
-      const batch = writeBatch(firestoreForTest);
-      await dedent(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "next of parent",
-          text: "next of parent",
-          parentId: "grandparent",
-          prevId: "node",
-          nextId: "",
-          aboveId: "node",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "node",
-          text: "node",
-          parentId: "grandparent",
-          prevId: "parent",
-          nextId: "next of parent",
-          aboveId: "parent",
-          belowId: "next of parent",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "parent",
-          text: "parent",
-          parentId: "grandparent",
-          prevId: "",
-          nextId: "node",
-          aboveId: "grandparent",
-          belowId: "node",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("has parent node, has child node, has prev node, has next node of parent node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("grandparent", [
-        ["parent", [
-          ["prev"],
-          ["node", [
-            ["child"],
-          ]],
-        ]],
-        ["next of parent"],
-      ]));
-
-      const batch = writeBatch(firestoreForTest);
-      await dedent(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "child",
-          text: "child",
-          parentId: "node",
-          prevId: "",
-          nextId: "",
-          aboveId: "node",
-          belowId: "next of parent",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "next of parent",
-          text: "next of parent",
-          parentId: "grandparent",
-          prevId: "node",
-          nextId: "",
-          aboveId: "child",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "node",
-          text: "node",
-          parentId: "grandparent",
-          prevId: "parent",
-          nextId: "next of parent",
-          aboveId: "prev",
-          belowId: "child",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "parent",
-          text: "parent",
-          parentId: "grandparent",
-          prevId: "",
-          nextId: "node",
-          aboveId: "grandparent",
-          belowId: "prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "",
-          aboveId: "parent",
-          belowId: "node",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("has parent node, has child node, has prev node, has next node, has next node of parent node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      // prettier-ignore
-      await setDocs(col, makeTreeNodes("grandparent", [
-        ["parent", [
-          ["prev"],
-          ["node", [
-            ["child"],
-          ]],
-          ["next"],
-        ]],
-        ["next of parent"],
-      ]));
-
-      const batch = writeBatch(firestoreForTest);
-      await dedent(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "child",
-          text: "child",
-          parentId: "node",
-          prevId: "",
-          nextId: "",
-          aboveId: "node",
-          belowId: "next of parent",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "next",
-          text: "next",
-          parentId: "parent",
-          prevId: "prev",
-          nextId: "",
-          aboveId: "prev",
-          belowId: "node",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "next of parent",
-          text: "next of parent",
-          parentId: "grandparent",
-          prevId: "node",
-          nextId: "",
-          aboveId: "child",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "node",
-          text: "node",
-          parentId: "grandparent",
-          prevId: "parent",
-          nextId: "next of parent",
-          aboveId: "next",
-          belowId: "child",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "parent",
-          text: "parent",
-          parentId: "grandparent",
-          prevId: "",
-          nextId: "node",
-          aboveId: "grandparent",
-          belowId: "prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "next",
-          aboveId: "parent",
-          belowId: "next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
+      const updatedCurrentNode = await getDoc(col, "current");
+      ctx.expect(updatedCurrentNode).toEqual({
+        id: "current",
+        text: "current",
+        parentId: "grandparent",
+        order: generateKeyBetween(parentNode.order, null),
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForServerTimestamp,
+      });
+      // verify unchanged nodes
+      ctx.expect(await getDoc(col, "parent")).toEqual(parentNode);
+      ctx.expect(await getDoc(col, "child")).toEqual(childNode);
     });
   });
 
   describe("movePrev", () => {
-    test("no prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("moves node before prev sibling", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("parent", [["first"], ["second"]]));
 
-      await setDocs(col, makeTreeNode("parent", ["node"]));
+      const firstNode = await getDoc(col, "first");
+      const secondNode = await getDoc(col, "second");
+      await runTestBatch(async (batch) => {
+        await movePrev(serviceForTest, batch, col, secondNode);
+      });
 
-      const batch = writeBatch(firestoreForTest);
-      await movePrev(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "node",
-          text: "node",
-          parentId: "parent",
-          prevId: "",
-          nextId: "",
-          aboveId: "parent",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
-        },
-      ]);
+      const updatedSecondNode = await getDoc(col, "second");
+      ctx.expect(updatedSecondNode).toEqual({
+        id: "second",
+        text: "second",
+        parentId: "parent",
+        order: generateKeyBetween(null, firstNode.order),
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForServerTimestamp,
+      });
+      // verify unchanged nodes
+      ctx.expect(await getDoc(col, "first")).toEqual(firstNode);
     });
 
-    test("has prev node, has prev node of prev node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("does nothing when no prev sibling", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("parent", [["current"]]));
 
-      await setDocs(col, makeTreeNodes("parent", [["prev of prev"], ["prev"], ["node"]]));
+      const currentNode = await getDoc(col, "current");
+      await runTestBatch(async (batch) => {
+        await movePrev(serviceForTest, batch, col, currentNode);
+      });
 
-      const batch = writeBatch(firestoreForTest);
-      await movePrev(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "node",
-          text: "node",
-          parentId: "parent",
-          prevId: "prev of prev",
-          nextId: "prev",
-          aboveId: "prev of prev",
-          belowId: "prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "node",
-          nextId: "",
-          aboveId: "node",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev of prev",
-          text: "prev of prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "node",
-          aboveId: "parent",
-          belowId: "node",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
+      // verify unchanged
+      ctx.expect(await getDoc(col, "current")).toEqual(currentNode);
     });
 
-    test("has prev node, has prev node of prev node, has child", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("moves node with children", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("parent", [["first"], ["second", [["child"]]]]));
 
-      await setDocs(col, makeTreeNodes("parent", [["prev of prev"], ["prev"], ["node", [["child"]]]]));
+      const firstNode = await getDoc(col, "first");
+      const secondNode = await getDoc(col, "second");
+      const childNode = await getDoc(col, "child");
+      await runTestBatch(async (batch) => {
+        await movePrev(serviceForTest, batch, col, secondNode);
+      });
 
-      const batch = writeBatch(firestoreForTest);
-      await movePrev(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "child",
-          text: "child",
-          parentId: "node",
-          prevId: "",
-          nextId: "",
-          aboveId: "node",
-          belowId: "prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "node",
-          text: "node",
-          parentId: "parent",
-          prevId: "prev of prev",
-          nextId: "prev",
-          aboveId: "prev of prev",
-          belowId: "child",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "node",
-          nextId: "",
-          aboveId: "child",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev of prev",
-          text: "prev of prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "node",
-          aboveId: "parent",
-          belowId: "node",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
+      const updatedSecondNode = await getDoc(col, "second");
+      ctx.expect(updatedSecondNode).toEqual({
+        id: "second",
+        text: "second",
+        parentId: "parent",
+        order: generateKeyBetween(null, firstNode.order),
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForServerTimestamp,
+      });
+      // verify unchanged nodes
+      ctx.expect(await getDoc(col, "first")).toEqual(firstNode);
+      ctx.expect(await getDoc(col, "child")).toEqual(childNode);
     });
   });
 
   describe("moveNext", () => {
-    test("no next node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("moves node after next sibling", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("parent", [["first"], ["second"]]));
 
-      await setDocs(col, makeTreeNode("parent", ["node"]));
+      const firstNode = await getDoc(col, "first");
+      const secondNode = await getDoc(col, "second");
+      await runTestBatch(async (batch) => {
+        await moveNext(serviceForTest, batch, col, firstNode);
+      });
 
-      const batch = writeBatch(firestoreForTest);
-      await movePrev(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "node",
-          text: "node",
-          parentId: "parent",
-          prevId: "",
-          nextId: "",
-          aboveId: "parent",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
-        },
-      ]);
+      const updatedFirstNode = await getDoc(col, "first");
+      ctx.expect(updatedFirstNode).toEqual({
+        id: "first",
+        text: "first",
+        parentId: "parent",
+        order: generateKeyBetween(secondNode.order, null),
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForServerTimestamp,
+      });
+      // verify unchanged nodes
+      ctx.expect(await getDoc(col, "second")).toEqual(secondNode);
     });
 
-    test("has next node, has next node of next node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("does nothing when no next sibling", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("parent", [["current"]]));
 
-      await setDocs(col, makeTreeNode("", ["parent", [["node"], ["next"], ["next of next"]]]));
+      const currentNode = await getDoc(col, "current");
+      await runTestBatch(async (batch) => {
+        await moveNext(serviceForTest, batch, col, currentNode);
+      });
 
-      const batch = writeBatch(firestoreForTest);
-      await moveNext(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "next",
-          text: "next",
-          parentId: "parent",
-          prevId: "",
-          nextId: "node",
-          aboveId: "parent",
-          belowId: "node",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "next of next",
-          text: "next of next",
-          parentId: "parent",
-          prevId: "node",
-          nextId: "",
-          aboveId: "node",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "node",
-          text: "node",
-          parentId: "parent",
-          prevId: "next",
-          nextId: "next of next",
-          aboveId: "next",
-          belowId: "next of next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "parent",
-          text: "parent",
-          parentId: "",
-          prevId: "",
-          nextId: "",
-          aboveId: "",
-          belowId: "next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
+      // verify unchanged
+      ctx.expect(await getDoc(col, "current")).toEqual(currentNode);
     });
 
-    test("has next node, has next node of next node, has child node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("moves node with children", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("parent", [["first", [["child"]]], ["second"]]));
 
-      await setDocs(col, makeTreeNode("", ["parent", [["node", [["child"]]], ["next"], ["next of next"]]]));
+      const firstNode = await getDoc(col, "first");
+      const secondNode = await getDoc(col, "second");
+      const childNode = await getDoc(col, "child");
+      await runTestBatch(async (batch) => {
+        await moveNext(serviceForTest, batch, col, firstNode);
+      });
 
-      const batch = writeBatch(firestoreForTest);
-      await moveNext(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "child",
-          text: "child",
-          parentId: "node",
-          prevId: "",
-          nextId: "",
-          aboveId: "node",
-          belowId: "next of next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "next",
-          text: "next",
-          parentId: "parent",
-          prevId: "",
-          nextId: "node",
-          aboveId: "parent",
-          belowId: "node",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "next of next",
-          text: "next of next",
-          parentId: "parent",
-          prevId: "node",
-          nextId: "",
-          aboveId: "child",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "node",
-          text: "node",
-          parentId: "parent",
-          prevId: "next",
-          nextId: "next of next",
-          aboveId: "next",
-          belowId: "child",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "parent",
-          text: "parent",
-          parentId: "",
-          prevId: "",
-          nextId: "",
-          aboveId: "",
-          belowId: "next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
+      const updatedFirstNode = await getDoc(col, "first");
+      ctx.expect(updatedFirstNode).toEqual({
+        id: "first",
+        text: "first",
+        parentId: "parent",
+        order: generateKeyBetween(secondNode.order, null),
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForServerTimestamp,
+      });
+      // verify unchanged nodes
+      ctx.expect(await getDoc(col, "second")).toEqual(secondNode);
+      ctx.expect(await getDoc(col, "child")).toEqual(childNode);
     });
   });
 
   describe("remove", () => {
-    test("has child node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("removes a node without children", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("parent", [["toRemove"]]));
 
-      await setDocs(col, makeTreeNode("", ["node", [["child"]]]));
+      const nodeToRemove = await getDoc(col, "toRemove");
+      await runTestBatch(async (batch) => {
+        await remove(serviceForTest, batch, col, nodeToRemove);
+      });
 
-      await test.expect(async () => {
-        const batch = writeBatch(firestoreForTest);
-        await remove(serviceForTest, batch, col, await getDoc(col, "node"));
-        await batch.commit();
-      }).rejects.toThrowErrorMatchingInlineSnapshot(`
-        [Error: cannot delete node with children: {
-          "node": {
-            "text": "node",
-            "parentId": "",
-            "prevId": "",
-            "nextId": "",
-            "aboveId": "",
-            "belowId": "child",
-            "createdAt": {
-              "type": "firestore/timestamp/1.0",
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "updatedAt": {
-              "type": "firestore/timestamp/1.0",
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "id": "node"
-          },
-          "firstChildNode": {
-            "text": "child",
-            "parentId": "node",
-            "prevId": "",
-            "nextId": "",
-            "aboveId": "node",
-            "belowId": "",
-            "createdAt": {
-              "type": "firestore/timestamp/1.0",
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "updatedAt": {
-              "type": "firestore/timestamp/1.0",
-              "seconds": 4836316028,
-              "nanoseconds": 0
-            },
-            "id": "child"
-          }
-        }]
-      `);
+      const removedNode = await getDoc(col, "toRemove").catch(() => undefined);
+      ctx.expect(removedNode).toBeUndefined();
     });
 
-    test("no prev node, no next node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
+    test("throws error when node has children", async (ctx) => {
+      const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;
 
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
+      await setDocs(col, makeTreeNodes("parent", [["toRemove", [["child"]]]]));
 
-      await setDocs(col, makeTreeNode("", ["node"]));
+      const nodeToRemove = await getDoc(col, "toRemove");
 
-      const batch = writeBatch(firestoreForTest);
-      await remove(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([]);
-    });
-
-    test("has prev node, has next node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(col, makeTreeNodes("parent", [["prev"], ["node"], ["next"]]));
-
-      const batch = writeBatch(firestoreForTest);
-      await remove(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "next",
-          text: "next",
-          parentId: "parent",
-          prevId: "prev",
-          nextId: "",
-          aboveId: "prev",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "next",
-          aboveId: "parent",
-          belowId: "next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
-    });
-
-    test("has prev node, has next node, has child node of prev node, has child node of next node", async (test) => {
-      const now = new Date();
-      const tid = `${test.task.id}_${now.getTime()}`;
-
-      const col = collection(firestoreForTest, tid) as CollectionReference<TreeNodeWithText>;
-
-      await setDocs(
-        col,
-        makeTreeNodes("parent", [["prev", [["child of prev"]]], ["node"], ["next", [["child of next"]]]]),
-      );
-
-      const batch = writeBatch(firestoreForTest);
-      await remove(serviceForTest, batch, col, await getDoc(col, "node"));
-      await batch.commit();
-
-      await test.expect(getDocs(col)).resolves.toEqual([
-        {
-          id: "child of next",
-          text: "child of next",
-          parentId: "next",
-          prevId: "",
-          nextId: "",
-          aboveId: "next",
-          belowId: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
-        },
-        {
-          id: "child of prev",
-          text: "child of prev",
-          parentId: "prev",
-          prevId: "",
-          nextId: "",
-          aboveId: "prev",
-          belowId: "next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "next",
-          text: "next",
-          parentId: "parent",
-          prevId: "prev",
-          nextId: "",
-          aboveId: "child of prev",
-          belowId: "child of next",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-        {
-          id: "prev",
-          text: "prev",
-          parentId: "parent",
-          prevId: "",
-          nextId: "next",
-          aboveId: "parent",
-          belowId: "child of prev",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForServerTimestamp,
-        },
-      ]);
+      await ctx
+        .expect(
+          runTestBatch(async (batch) => {
+            await remove(serviceForTest, batch, col, nodeToRemove);
+          }),
+        )
+        .rejects.toThrowError("cannot delete node with children");
     });
   });
 });

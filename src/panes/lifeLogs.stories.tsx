@@ -86,91 +86,56 @@ export const LifeLogsStory: StoryObj = {
 
                   batch.set(doc(lifeLogTreeNodes, "child1"), {
                     text: "child1",
-
                     parentId: "$log1",
-                    prevId: "",
-                    nextId: "child2",
-                    aboveId: "",
-                    belowId: "child1 of child1",
-
+                    order: "a0",
                     createdAt: Timestamp.fromDate(new Date()),
                     updatedAt: Timestamp.fromDate(new Date()),
                   });
 
                   batch.set(doc(lifeLogTreeNodes, "child2"), {
                     text: "child2",
-
                     parentId: "$log1",
-                    prevId: "child1",
-                    nextId: "child3",
-                    aboveId: "child1 of child1",
-                    belowId: "child3",
-
+                    order: "a1",
                     createdAt: Timestamp.fromDate(new Date()),
                     updatedAt: Timestamp.fromDate(new Date()),
                   });
 
                   batch.set(doc(lifeLogTreeNodes, "child3"), {
                     text: "child3",
-
                     parentId: "$log1",
-                    prevId: "child2",
-                    nextId: "child4",
-                    aboveId: "child2",
-                    belowId: "child4",
-
+                    order: "a2",
                     createdAt: Timestamp.fromDate(new Date()),
                     updatedAt: Timestamp.fromDate(new Date()),
                   });
 
                   batch.set(doc(lifeLogTreeNodes, "child4"), {
                     text: "child4",
-
                     parentId: "$log1",
-                    prevId: "child3",
-                    nextId: "child5",
-                    aboveId: "child3",
-                    belowId: "child5",
-
+                    order: "a3",
                     createdAt: Timestamp.fromDate(new Date()),
                     updatedAt: Timestamp.fromDate(new Date()),
                   });
 
                   batch.set(doc(lifeLogTreeNodes, "child5"), {
                     text: "child5",
-
                     parentId: "$log1",
-                    prevId: "child4",
-                    nextId: "child6",
-                    aboveId: "child4",
-                    belowId: "child6",
-
+                    order: "a4",
                     createdAt: Timestamp.fromDate(new Date()),
                     updatedAt: Timestamp.fromDate(new Date()),
                   });
 
                   batch.set(doc(lifeLogTreeNodes, "child6"), {
                     text: "child6",
-
                     parentId: "$log1",
-                    prevId: "child5",
-                    nextId: "",
-                    aboveId: "child5",
-                    belowId: "",
-
+                    order: "a5",
                     createdAt: Timestamp.fromDate(new Date()),
                     updatedAt: Timestamp.fromDate(new Date()),
                   });
 
                   batch.set(doc(lifeLogTreeNodes, "child1 of child1"), {
                     text: "child1 of child1",
-
                     parentId: "child1",
-                    prevId: "",
-                    nextId: "",
-                    aboveId: "child1",
-                    belowId: "child2",
-
+                    order: "a0",
                     createdAt: Timestamp.fromDate(new Date()),
                     updatedAt: Timestamp.fromDate(new Date()),
                   });

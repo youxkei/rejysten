@@ -82,6 +82,7 @@ export default tseslint.config(
       ...config.rules,
       "@typescript-eslint/no-non-null-assertion": "off",
       "@typescript-eslint/no-empty-function": "off",
+      "@typescript-eslint/require-await": "off",
     },
   },
 );

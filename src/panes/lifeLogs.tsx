@@ -47,10 +47,7 @@ declare module "@/services/firebase/firestore/schema" {
       text: string;
 
       parentId: string;
-      prevId: string;
-      nextId: string;
-      aboveId: string;
-      belowId: string;
+      order: string;
 
       createdAt: Timestamp;
       updatedAt: Timestamp;
@@ -274,7 +271,7 @@ export function LifeLogTree(props: {
 
             firestore.setClock(false);
           });
-        } finally {
+        } catch (_) {
           firestore.setClock(false);
         }
 

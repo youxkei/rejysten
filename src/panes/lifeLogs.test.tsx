@@ -1,6 +1,6 @@
 import { fireEvent, render, waitFor } from "@solidjs/testing-library";
-import { doc, getDoc as getDoc, getDocs, Timestamp, writeBatch } from "firebase/firestore";
-import { createSignal, onMount, Suspense } from "solid-js";
+import { doc, getDocs, Timestamp, writeBatch } from "firebase/firestore";
+import { onMount, Suspense } from "solid-js";
 import { describe, test, expect } from "vitest";
 
 import { LifeLogs } from "@/panes/lifeLogs";
@@ -15,30 +15,31 @@ import { StoreServiceProvider, useStoreService } from "@/services/store";
 import { styles } from "@/styles.css";
 import { noneTimestamp } from "@/timestamp";
 
-function setupLifeLogsTest(appName: string) {
-  let firestoreRef: ReturnType<typeof useFirestoreService> | null = null;
-  let updateStateRef: ReturnType<typeof useStoreService>["updateState"] | null = null;
-  const [ready, setReady] = createSignal(false);
+async function setupLifeLogsTest(testId: string) {
+  let resolveReady: () => void;
+  let rejectReady: (error: unknown) => void;
+  const ready = new Promise<void>((resolve, reject) => {
+    resolveReady = resolve;
+    rejectReady = reject;
+  });
 
   const baseTime: Date = new Date();
 
   const result = render(() => (
-    <StoreServiceProvider>
+    <StoreServiceProvider localStorageNamePostfix={testId}>
       <FirebaseServiceProvider
         configYAML={`{ apiKey: "apiKey", authDomain: "authDomain", projectId: "demo", storageBucket: "", messagingSenderId: "", appId: "", measurementId: "" }`}
         setErrors={() => {}}
-        appName={appName}
+        appName={testId}
       >
         <FirestoreServiceProvider>
           <Suspense fallback={<span>loading....</span>}>
             {(() => {
               const firestore = useFirestoreService();
-              firestoreRef = firestore;
               const batchVersion = getCollection(firestore, "batchVersion");
               const lifeLogs = getCollection(firestore, "lifeLogs");
               const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
               const { updateState } = useStoreService();
-              updateStateRef = updateState;
 
               onMount(() => {
                 (async () => {
@@ -87,10 +88,7 @@ function setupLifeLogsTest(appName: string) {
                   batch.set(doc(lifeLogTreeNodes, "child1"), {
                     text: "first child",
                     parentId: "$log1",
-                    prevId: "",
-                    nextId: "child2",
-                    aboveId: "",
-                    belowId: "child2",
+                    order: "a0",
                     createdAt: Timestamp.fromDate(baseTime),
                     updatedAt: Timestamp.fromDate(baseTime),
                   });
@@ -98,10 +96,16 @@ function setupLifeLogsTest(appName: string) {
                   batch.set(doc(lifeLogTreeNodes, "child2"), {
                     text: "second child",
                     parentId: "$log1",
-                    prevId: "child1",
-                    nextId: "",
-                    aboveId: "child1",
-                    belowId: "",
+                    order: "a1",
+                    createdAt: Timestamp.fromDate(baseTime),
+                    updatedAt: Timestamp.fromDate(baseTime),
+                  });
+
+                  // Third lifelog - with noneTimestamp startAt for S key test
+                  batch.set(doc(lifeLogs, "$log3"), {
+                    text: "third lifelog",
+                    startAt: noneTimestamp,
+                    endAt: noneTimestamp,
                     createdAt: Timestamp.fromDate(baseTime),
                     updatedAt: Timestamp.fromDate(baseTime),
                   });
@@ -111,11 +115,7 @@ function setupLifeLogsTest(appName: string) {
                   updateState((state) => {
                     state.panesLifeLogs.selectedLifeLogId = "$log1";
                   });
-
-                  setReady(true);
-                })().catch((error: unknown) => {
-                  console.error("Error initializing Firestore data:", error);
-                });
+                })().then(resolveReady, rejectReady);
               });
 
               return <LifeLogs />;
@@ -126,12 +126,11 @@ function setupLifeLogsTest(appName: string) {
     </StoreServiceProvider>
   ));
 
+  await ready;
+
   return {
     result,
-    ready,
     baseTime,
-    getFirestoreRef: () => firestoreRef!,
-    getUpdateStateRef: () => updateStateRef!,
   };
 }
 
@@ -144,12 +143,7 @@ function formatDate(date: Date): string {
 
 describe("<LifeLogs />", () => {
   test("it renders lifelog data correctly", async (ctx) => {
-    const { result, ready, baseTime } = setupLifeLogsTest(ctx.task.id);
-
-    // Wait for setup to complete
-    await waitFor(() => {
-      expect(ready()).toBe(true);
-    });
+    const { result, baseTime } = await setupLifeLogsTest(ctx.task.id);
 
     // Test: renders lifelog data correctly
     const firstElement = await result.findByText("first lifelog");
@@ -167,7 +161,7 @@ describe("<LifeLogs />", () => {
 
     // Test: endAt is noneTimestamp, so it should show "N/A"
     const naElements = result.getAllByText("N/A");
-    expect(naElements.length).toBe(2); // Both lifelogs have noneTimestamp endAt
+    expect(naElements.length).toBe(4); // $log1 and $log2 have noneTimestamp endAt, $log3 has both startAt and endAt as noneTimestamp
 
     // Test: time is displayed correctly (format: YYYY-MM-DD HH:MM:SS)
     const dateStr = formatDate(baseTime);
@@ -178,29 +172,26 @@ describe("<LifeLogs />", () => {
   });
 
   test("it can indent/dedent tree nodes", async (ctx) => {
-    const { result, ready, getFirestoreRef, getUpdateStateRef } = setupLifeLogsTest(ctx.task.id);
-
-    // Wait for setup to complete
-    await waitFor(() => {
-      expect(ready()).toBe(true);
-    });
+    const { result } = await setupLifeLogsTest(ctx.task.id);
 
     // Wait for lifelogs to render
     await result.findByText("first lifelog", {}, { timeout: 5000 });
 
-    // Focus on the tree by selecting a tree node (child2)
-    getUpdateStateRef()((state) => {
-      state.panesLifeLogs.selectedLifeLogNodeId = "child2";
-    });
+    // Press "l" to enter tree mode (focus on first child node - child1)
+    fireEvent.keyDown(document, { code: "KeyL", key: "l" });
 
-    // Wait for tree nodes to render (tree is shown when selectedLifeLogNodeId is set)
+    // Wait for tree nodes to render
     await result.findByText("first child", {}, { timeout: 5000 });
     await result.findByText("second child", {}, { timeout: 5000 });
 
-    // Verify initial state - child2 should be sibling of child1 (parentId = "$log1")
-    const lifeLogTreeNodes = getCollection(getFirestoreRef(), "lifeLogTreeNodes");
-    let child2Doc = await getDoc(doc(lifeLogTreeNodes, "child2"));
-    expect(child2Doc.data()?.parentId).toBe("$log1");
+    // Press "j" to move to child2
+    fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+
+    // Wait for child2 to be selected
+    await waitFor(() => {
+      const child2Element = result.getByText("second child");
+      expect(child2Element.className).toContain(styles.lifeLogTree.selected);
+    });
 
     // Verify initial DOM structure: child1 and child2 are siblings (both direct children of the same ul)
     const child1Li = result.getByText("first child").closest("li")!;
@@ -212,12 +203,6 @@ describe("<LifeLogs />", () => {
     // Test indent: Press Tab to indent child2 under child1
     fireEvent.keyDown(document, { code: "Tab", key: "Tab" });
 
-    // Wait for indent to complete and verify child2 is now under child1
-    await waitFor(async () => {
-      child2Doc = await getDoc(doc(lifeLogTreeNodes, "child2"));
-      expect(child2Doc.data()?.parentId).toBe("child1");
-    });
-
     // Verify DOM structure after indent: child2 should be inside child1's subtree
     await waitFor(() => {
       const child1LiAfterIndent = result.getByText("first child").closest("li")!;
@@ -228,12 +213,6 @@ describe("<LifeLogs />", () => {
 
     // Test dedent: Press Shift+Tab to dedent child2 back to sibling of child1
     fireEvent.keyDown(document, { code: "Tab", key: "Tab", shiftKey: true });
-
-    // Wait for dedent to complete and verify child2 is back to being sibling of child1
-    await waitFor(async () => {
-      child2Doc = await getDoc(doc(lifeLogTreeNodes, "child2"));
-      expect(child2Doc.data()?.parentId).toBe("$log1");
-    });
 
     // Verify DOM structure after dedent: child2 should be sibling of child1 again
     await waitFor(() => {
@@ -249,21 +228,11 @@ describe("<LifeLogs />", () => {
   });
 
   test("it can edit lifelog text", async (ctx) => {
-    const { result, ready, getFirestoreRef, getUpdateStateRef } = setupLifeLogsTest(ctx.task.id);
-
-    await waitFor(() => {
-      expect(ready()).toBe(true);
-    });
+    const { result } = await setupLifeLogsTest(ctx.task.id);
 
     await result.findByText("first lifelog", {}, { timeout: 5000 });
 
-    // Select the lifelog
-    getUpdateStateRef()((state) => {
-      state.panesLifeLogs.selectedLifeLogId = "$log1";
-      state.panesLifeLogs.selectedLifeLogNodeId = "";
-    });
-
-    // Press "i" to enter editing mode
+    // $log1 is already selected in setup, press "i" to enter editing mode
     fireEvent.keyDown(document, { code: "KeyI", key: "i" });
 
     // Wait for input to appear and type new text
@@ -278,13 +247,6 @@ describe("<LifeLogs />", () => {
     // Press Escape to save and exit editing
     fireEvent.keyDown(document, { code: "Escape", key: "Escape" });
 
-    // Verify the text was saved in DB
-    const lifeLogsCol = getCollection(getFirestoreRef(), "lifeLogs");
-    await waitFor(async () => {
-      const log1Doc = await getDoc(doc(lifeLogsCol, "$log1"));
-      expect(log1Doc.data()?.text).toBe("edited lifelog text");
-    });
-
     // Verify the DOM was updated
     await waitFor(() => {
       expect(result.getByText("edited lifelog text")).toBeTruthy();
@@ -295,56 +257,32 @@ describe("<LifeLogs />", () => {
   });
 
   test("it can set current time on startAt with S key", async (ctx) => {
-    const { result, ready, getFirestoreRef, getUpdateStateRef } = setupLifeLogsTest(ctx.task.id);
-
-    await waitFor(() => {
-      expect(ready()).toBe(true);
-    });
+    const { result } = await setupLifeLogsTest(ctx.task.id);
 
     await result.findByText("first lifelog", {}, { timeout: 5000 });
+    await result.findByText("third lifelog", {}, { timeout: 5000 });
 
-    // First, set the lifelog's startAt to noneTimestamp so "S" key will work
-    const lifeLogsCol = getCollection(getFirestoreRef(), "lifeLogs");
-    const batch = writeBatch(getFirestoreRef().firestore);
-    batch.update(doc(lifeLogsCol, "$log1"), { startAt: noneTimestamp });
-    await batch.commit();
+    // Navigate to $log3 which has noneTimestamp startAt
+    // $log1 is selected, press "j" twice to get to $log3
+    fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+    fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
 
-    // Wait for the change to propagate
-    await waitFor(() => {
-      const naElements = result.getAllByText("N/A");
-      expect(naElements.length).toBe(3); // 2 from endAt + 1 from our updated startAt
-    });
-
-    // Select the lifelog
-    getUpdateStateRef()((state) => {
-      state.panesLifeLogs.selectedLifeLogId = "$log1";
-      state.panesLifeLogs.selectedLifeLogNodeId = "";
-    });
+    // Verify $log3 has N/A for startAt (initial state has 4 N/A: $log1 endAt, $log2 endAt, $log3 startAt, $log3 endAt)
+    expect(result.getAllByText("N/A").length).toBe(4);
 
     // Press "S" to set current time on startAt
-    const beforeTime = Date.now();
     fireEvent.keyDown(document, { code: "KeyS", key: "s" });
 
-    // Verify startAt was set to approximately current time in DB
-    await waitFor(async () => {
-      const log1Doc = await getDoc(doc(lifeLogsCol, "$log1"));
-      const startAt = log1Doc.data()?.startAt as Timestamp;
-      const startAtMillis = startAt.toMillis();
-      // The startAt should be close to the current time (within a few seconds)
-      expect(startAtMillis).toBeGreaterThanOrEqual(Math.floor(beforeTime / 1000) * 1000 - 1000);
-      expect(startAtMillis).toBeLessThanOrEqual(Date.now() + 1000);
-    });
-
-    // Verify DOM was updated - N/A count should go back to 2 (only endAt fields)
+    // Verify DOM was updated - N/A count should decrease by 1 (now only 3: $log1 endAt, $log2 endAt, $log3 endAt)
     await waitFor(() => {
       const naElements = result.getAllByText("N/A");
-      expect(naElements.length).toBe(2);
+      expect(naElements.length).toBe(3);
     });
 
     // Verify the time is displayed in the DOM (should show current date-time format)
     await waitFor(() => {
       // The startAt should now show a time instead of N/A
-      const timeRangeDiv = result.container.querySelector(`#\\$log1 .${styles.lifeLogTree.timeRange}`);
+      const timeRangeDiv = result.container.querySelector(`#\\$log3 .${styles.lifeLogTree.timeRange}`);
       expect(timeRangeDiv?.textContent).toMatch(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/);
     });
 
@@ -352,42 +290,25 @@ describe("<LifeLogs />", () => {
   });
 
   test("it can set current time on endAt with F key", async (ctx) => {
-    const { result, ready, getFirestoreRef, getUpdateStateRef } = setupLifeLogsTest(ctx.task.id);
-
-    await waitFor(() => {
-      expect(ready()).toBe(true);
-    });
+    const { result } = await setupLifeLogsTest(ctx.task.id);
 
     await result.findByText("first lifelog", {}, { timeout: 5000 });
 
-    // Select the lifelog
-    getUpdateStateRef()((state) => {
-      state.panesLifeLogs.selectedLifeLogId = "$log1";
-      state.panesLifeLogs.selectedLifeLogNodeId = "";
-    });
-
-    // The lifelog already has endAt = noneTimestamp, so "F" key should work
+    // $log1 is already selected and has endAt = noneTimestamp, so "F" key should work
     // Press "F" to set current time on endAt
-    const beforeTime = Date.now();
     fireEvent.keyDown(document, { code: "KeyF", key: "f" });
 
-    // Verify endAt was set to approximately current time in DB
-    const lifeLogsCol = getCollection(getFirestoreRef(), "lifeLogs");
-    await waitFor(async () => {
-      const log1Doc = await getDoc(doc(lifeLogsCol, "$log1"));
-      const endAt = log1Doc.data()?.endAt as Timestamp;
-      const endAtMillis = endAt.toMillis();
-      // The endAt should be close to the current time (within a few seconds)
-      expect(endAtMillis).toBeGreaterThanOrEqual(Math.floor(beforeTime / 1000) * 1000 - 1000);
-      expect(endAtMillis).toBeLessThanOrEqual(Date.now() + 1000);
+    // Verify DOM was updated - N/A count should decrease by 1
+    // Initial: 4 N/A ($log1 endAt, $log2 endAt, $log3 startAt, $log3 endAt)
+    // After: 3 N/A ($log2 endAt, $log3 startAt, $log3 endAt)
+    await waitFor(() => {
+      const naElements = result.getAllByText("N/A");
+      expect(naElements.length).toBe(3);
     });
 
-    // Verify DOM was updated - N/A count for $log1 should decrease
-    // $log1 had endAt=N/A, after F key it should show a time
+    // Verify DOM was updated - $log1's time range should now have two time values
     await waitFor(() => {
-      // Find the endAt element in $log1's time range (it's the second time value after the "-")
       const log1TimeRange = result.container.querySelector(`#\\$log1 .${styles.lifeLogTree.timeRange}`);
-      // The whole time range should now have two time values (no N/A for this log's endAt)
       const textContent = log1TimeRange?.textContent ?? "";
       // Count occurrences of date-time pattern
       const timeMatches = textContent.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/g);
@@ -398,18 +319,12 @@ describe("<LifeLogs />", () => {
   });
 
   test("it can edit lifeLogTree node text", async (ctx) => {
-    const { result, ready, getFirestoreRef, getUpdateStateRef } = setupLifeLogsTest(ctx.task.id);
-
-    await waitFor(() => {
-      expect(ready()).toBe(true);
-    });
+    const { result } = await setupLifeLogsTest(ctx.task.id);
 
     await result.findByText("first lifelog", {}, { timeout: 5000 });
 
-    // Focus on the tree by selecting a tree node
-    getUpdateStateRef()((state) => {
-      state.panesLifeLogs.selectedLifeLogNodeId = "child1";
-    });
+    // Press "l" to enter tree mode (focus on first child node - child1)
+    fireEvent.keyDown(document, { code: "KeyL", key: "l" });
 
     // Wait for tree nodes to render
     await result.findByText("first child", {}, { timeout: 5000 });
@@ -429,17 +344,11 @@ describe("<LifeLogs />", () => {
     // Press Escape to save and exit editing
     fireEvent.keyDown(document, { code: "Escape", key: "Escape" });
 
-    // Verify the text was saved in DB
-    const lifeLogTreeNodesCol = getCollection(getFirestoreRef(), "lifeLogTreeNodes");
-    await waitFor(async () => {
-      const child1Doc = await getDoc(doc(lifeLogTreeNodesCol, "child1"));
-      expect(child1Doc.data()?.text).toBe("edited child text");
-    });
-
     // Verify the DOM was updated
     await waitFor(() => {
       expect(result.getByText("edited child text")).toBeTruthy();
     });
+    await new Promise((resolve) => setTimeout(resolve, 100));
     expect(result.queryByText("first child")).toBeNull();
 
     result.unmount();

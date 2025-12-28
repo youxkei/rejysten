@@ -1,11 +1,11 @@
 import equals from "fast-deep-equal";
-import { type CollectionReference, doc, query, where } from "firebase/firestore";
+import { type CollectionReference, doc, orderBy, query, where } from "firebase/firestore";
 import { type Accessor, createMemo, For, type JSXElement, Show, startTransition } from "solid-js";
 
 import { type DocumentData, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
-import { dedent, indent, type TreeNode } from "@/services/firebase/firestore/treeNode";
+import { dedent, getAboveNode, getBelowNode, indent, type TreeNode } from "@/services/firebase/firestore/treeNode";
 import { addKeyDownEventListener } from "@/solid/event";
 
 export function ChildrenNodes<T extends TreeNode>(props: {
@@ -20,30 +20,10 @@ export function ChildrenNodes<T extends TreeNode>(props: {
 
   const childrenNodes$ = createSubscribeAllSignal(
     firestore,
-    () => query(props.col, where("parentId", "==", props.parentId)),
+    () => query(props.col, where("parentId", "==", props.parentId), orderBy("order", "asc")),
     () => `children nodes of "${props.parentId}"`,
   );
-  const sortedChildrenNodes$ = () => {
-    const childrenNodes = childrenNodes$();
-
-    const nodeMap = new Map<string, DocumentData<T>>();
-    let firstNode: DocumentData<T> | undefined;
-
-    for (const node of childrenNodes) {
-      nodeMap.set(node.id, node);
-      if (node.prevId === "") firstNode = node;
-    }
-
-    const sortedChildren = [];
-    let currentNode = firstNode;
-    while (currentNode) {
-      sortedChildren.push(currentNode);
-      currentNode = nodeMap.get(currentNode.nextId);
-    }
-
-    return sortedChildren;
-  };
-  const childrenIds$ = createMemo(() => sortedChildrenNodes$().map((childNode) => childNode.id), [], { equals });
+  const childrenIds$ = createMemo(() => childrenNodes$().map((childNode) => childNode.id), [], { equals });
 
   return (
     <ul>
@@ -96,9 +76,10 @@ export function Node<T extends TreeNode>(props: {
         const node = await getDoc(firestore, props.col, props.id);
         if (!node) return;
 
-        if (node.belowId === "") return;
+        const belowNode = await getBelowNode(firestore, props.col, node);
+        if (!belowNode) return;
 
-        props.setSelectedId(node.belowId);
+        props.setSelectedId(belowNode.id);
 
         break;
       }
@@ -111,9 +92,10 @@ export function Node<T extends TreeNode>(props: {
         const node = await getDoc(firestore, props.col, props.id);
         if (!node) return;
 
-        if (node.aboveId === "") return;
+        const aboveNode = await getAboveNode(firestore, props.col, node);
+        if (!aboveNode) return;
 
-        props.setSelectedId(node.aboveId);
+        props.setSelectedId(aboveNode.id);
 
         break;
       }
