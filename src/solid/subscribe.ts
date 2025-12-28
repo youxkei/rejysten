@@ -1,4 +1,4 @@
-import { createSignal, createEffect, createResource } from "solid-js";
+import { createSignal, createEffect, createResource, createComputed, startTransition } from "solid-js";
 
 export function createSubscribeWithResource<Source, Value, InitialValue>(
   source$: () => Source | undefined,
@@ -7,6 +7,8 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
 ) {
   let setResource: ((value: Value) => void) | undefined;
   let mutateResource: ((value: Value) => void) | undefined;
+
+  const [signal$, setSignal] = createSignal<InitialValue | Value>(initialValue);
 
   const [resource$, { mutate }] = createResource<Value | InitialValue, Source>(
     source$,
@@ -43,7 +45,10 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
 
   mutateResource = mutate;
 
-  return resource$;
+  // for remote changes
+  createComputed(() => startTransition(() => setSignal(resource$)));
+
+  return signal$;
 }
 
 export function createSubscribeWithSignal<Value, InitialValue>(
