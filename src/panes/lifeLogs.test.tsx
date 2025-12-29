@@ -101,6 +101,24 @@ async function setupLifeLogsTest(testId: string) {
                     updatedAt: Timestamp.fromDate(baseTime),
                   });
 
+                  // Create a grandchild node under child1 for deep navigation tests
+                  batch.set(doc(lifeLogTreeNodes, "grandchild1"), {
+                    text: "grandchild",
+                    parentId: "child1",
+                    order: "a0",
+                    createdAt: Timestamp.fromDate(baseTime),
+                    updatedAt: Timestamp.fromDate(baseTime),
+                  });
+
+                  // Create a great-grandchild node under grandchild1 for deeper navigation tests
+                  batch.set(doc(lifeLogTreeNodes, "greatGrandchild1"), {
+                    text: "great-grandchild",
+                    parentId: "grandchild1",
+                    order: "a0",
+                    createdAt: Timestamp.fromDate(baseTime),
+                    updatedAt: Timestamp.fromDate(baseTime),
+                  });
+
                   // Third lifelog - with noneTimestamp startAt for S key test
                   batch.set(doc(lifeLogs, "$log3"), {
                     text: "third lifelog",
@@ -400,6 +418,90 @@ describe("<LifeLogs />", () => {
       result.unmount();
     });
 
+    test("it can move focus between deep and shallow nodes with j/k keys", async (ctx) => {
+      const { result } = await setupLifeLogsTest(ctx.task.id);
+
+      await result.findByText("first lifelog", {}, { timeout: 5000 });
+
+      // Press "l" to enter tree mode
+      fireEvent.keyDown(document, { code: "KeyL", key: "l" });
+
+      // Wait for all tree nodes to render
+      // Structure (depth):
+      //   child1 (depth 1)
+      //     grandchild (depth 2)
+      //       great-grandchild (depth 3)
+      //   child2 (depth 1)
+      await result.findByText("first child", {}, { timeout: 5000 });
+      await result.findByText("grandchild", {}, { timeout: 5000 });
+      await result.findByText("great-grandchild", {}, { timeout: 5000 });
+      await result.findByText("second child", {}, { timeout: 5000 });
+
+      // Initial state: child1 (depth 1) is selected
+      await waitFor(() => {
+        const child1Element = result.getByText("first child");
+        expect(child1Element.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Test j: shallow -> deep (depth 1 -> depth 2)
+      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+
+      await waitFor(() => {
+        const grandchildElement = result.getByText("grandchild");
+        expect(grandchildElement.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Test j: deep -> deeper (depth 2 -> depth 3)
+      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+
+      await waitFor(() => {
+        const greatGrandchildElement = result.getByText("great-grandchild");
+        expect(greatGrandchildElement.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Test j: deepest -> shallow (depth 3 -> depth 1)
+      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+
+      await waitFor(() => {
+        const child2Element = result.getByText("second child");
+        expect(child2Element.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Test k: shallow -> deepest (depth 1 -> depth 3)
+      fireEvent.keyDown(document, { code: "KeyK", key: "k" });
+
+      await waitFor(() => {
+        const greatGrandchildElement = result.getByText("great-grandchild");
+        expect(greatGrandchildElement.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Test k: deepest -> deep (depth 3 -> depth 2)
+      fireEvent.keyDown(document, { code: "KeyK", key: "k" });
+
+      await waitFor(() => {
+        const grandchildElement = result.getByText("grandchild");
+        expect(grandchildElement.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Test k: deep -> shallow (depth 2 -> depth 1)
+      fireEvent.keyDown(document, { code: "KeyK", key: "k" });
+
+      await waitFor(() => {
+        const child1Element = result.getByText("first child");
+        expect(child1Element.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "k" at the first node should not change selection
+      fireEvent.keyDown(document, { code: "KeyK", key: "k" });
+
+      await waitFor(() => {
+        const child1Element = result.getByText("first child");
+        expect(child1Element.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      result.unmount();
+    });
+
     test("it can indent/dedent tree nodes", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
@@ -413,7 +515,17 @@ describe("<LifeLogs />", () => {
       await result.findByText("first child", {}, { timeout: 5000 });
       await result.findByText("second child", {}, { timeout: 5000 });
 
-      // Press "j" to move to child2
+      // Press "j" three times to move to child2 (child1 -> grandchild -> great-grandchild -> child2)
+      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await waitFor(() => {
+        const grandchildElement = result.getByText("grandchild");
+        expect(grandchildElement.className).toContain(styles.lifeLogTree.selected);
+      });
+      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await waitFor(() => {
+        const greatGrandchildElement = result.getByText("great-grandchild");
+        expect(greatGrandchildElement.className).toContain(styles.lifeLogTree.selected);
+      });
       fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
 
       // Wait for child2 to be selected
