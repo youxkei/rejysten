@@ -22,8 +22,12 @@ export function ChildrenNodes<T extends TreeNode>(props: {
   parentId: string;
   selectedId: string;
   setSelectedId: (selectedID: string) => void;
-  showNode: (node$: Accessor<DocumentData<T>>, isSelected$: Accessor<boolean>) => JSXElement;
-  createNewNode: (newId: string) => Omit<DocumentData<T>, keyof TreeNode>;
+  showNode: (
+    node$: Accessor<DocumentData<T>>,
+    isSelected$: Accessor<boolean>,
+    onEnterPress?: (afterCursor: string, onNewNodeId?: (id: string) => void) => Promise<void>,
+  ) => JSXElement;
+  createNewNode: (newId: string, initialText?: string) => Omit<DocumentData<T>, keyof TreeNode>;
   isEditing?: Accessor<boolean>;
   setIsEditing?: (isEditing: boolean) => void;
 }) {
@@ -63,8 +67,12 @@ export function Node<T extends TreeNode>(props: {
   id: string;
   selectedId: string;
   setSelectedId: (selectedId: string) => void;
-  showNode: (node$: Accessor<DocumentData<T>>, isSelected$: Accessor<boolean>) => JSXElement;
-  createNewNode: (newId: string) => Omit<DocumentData<T>, keyof TreeNode>;
+  showNode: (
+    node$: Accessor<DocumentData<T>>,
+    isSelected$: Accessor<boolean>,
+    onEnterPress?: (afterCursor: string, onNewNodeId?: (id: string) => void) => Promise<void>,
+  ) => JSXElement;
+  createNewNode: (newId: string, initialText?: string) => Omit<DocumentData<T>, keyof TreeNode>;
   isEditing?: Accessor<boolean>;
   setIsEditing?: (isEditing: boolean) => void;
 }) {
@@ -185,12 +193,37 @@ export function Node<T extends TreeNode>(props: {
     }
   });
 
+  async function handleEnterPress(afterCursor: string, onNewNodeId?: (id: string) => void): Promise<void> {
+    const node = await getDoc(firestore, props.col, props.id);
+    if (!node) return;
+
+    const newNodeId = uuidv7();
+
+    // Notify the new node ID before rendering so initialCursorPosition can be set
+    onNewNodeId?.(newNodeId);
+
+    try {
+      firestore.setClock(true);
+      await runBatch(firestore, async (batch) => {
+        await addNextSibling<T>(firestore, batch, props.col, node, props.createNewNode(newNodeId, afterCursor));
+      });
+
+      await startTransition(() => {
+        props.setSelectedId(newNodeId);
+        props.setIsEditing?.(true);
+        firestore.setClock(false);
+      });
+    } finally {
+      firestore.setClock(false);
+    }
+  }
+
   return (
     <Show when={node$()}>
       {(node$) => {
         return (
           <>
-            <div>{props.showNode(node$, isSelected$)}</div>
+            <div>{props.showNode(node$, isSelected$, handleEnterPress)}</div>
             <ChildrenNodes
               col={props.col}
               parentId={props.id}

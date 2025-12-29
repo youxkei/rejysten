@@ -22,12 +22,17 @@ export interface EditableValueProps<V> {
   debounceMs?: number;
   // Tab navigation callback
   onTabPress?: (shiftKey: boolean) => void;
+  // Enter key callback with cursor position info
+  onEnterPress?: (beforeCursor: string, afterCursor: string) => void;
+  // Initial cursor position when entering edit mode
+  initialCursorPosition?: number;
   debugId?: string;
 }
 
 export function EditableValue<V>(props: EditableValueProps<V>) {
   const [editText, setEditText] = createSignal("");
   const [isTabPressed, setIsTabPressed] = createSignal(false);
+  const [isEnterPressed, setIsEnterPressed] = createSignal(false);
 
   async function saveChanges(text: string) {
     const newValue = props.fromText(text);
@@ -65,8 +70,18 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
           let inputRef: HTMLInputElement | undefined;
 
           onMount(() => {
-            setEditText((props.toEditText ?? props.toText)(props.value));
-            inputRef?.focus();
+            const initialText = (props.toEditText ?? props.toText)(props.value);
+            setEditText(initialText);
+            if (inputRef) {
+              inputRef.value = initialText;
+              inputRef.focus();
+              const cursorPos = props.initialCursorPosition;
+              if (cursorPos !== undefined) {
+                requestAnimationFrame(() => {
+                  inputRef.setSelectionRange(cursorPos, cursorPos);
+                });
+              }
+            }
           });
 
           return (
@@ -74,7 +89,6 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
               ref={inputRef}
               type="text"
               class={props.editInputClassName}
-              value={editText()}
               onInput={(e) => {
                 const newText = e.currentTarget.value;
                 setEditText(newText);
@@ -100,11 +114,30 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                     setEditText("");
                   }
                 }
+
+                // Handle Enter key (ignore during IME composition)
+                if (e.code === "Enter" && props.onEnterPress && !e.isComposing) {
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  setIsEnterPressed(true);
+                  const cursorPos = inputRef?.selectionStart ?? editText().length;
+                  const beforeCursor = editText().slice(0, cursorPos);
+                  const afterCursor = editText().slice(cursorPos);
+
+                  debouncedSaveChanges.clear();
+                  props.onEnterPress(beforeCursor, afterCursor);
+                }
               }}
               onBlur={async () => {
                 // Ignore blur if Tab was pressed
                 if (isTabPressed()) {
                   setIsTabPressed(false);
+                  return;
+                }
+                // Ignore blur if Enter was pressed
+                if (isEnterPressed()) {
+                  setIsEnterPressed(false);
                   return;
                 }
                 debouncedSaveChanges.clear();

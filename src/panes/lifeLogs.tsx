@@ -154,6 +154,9 @@ export function LifeLogTree(props: {
     () => `life log tree "${props.id}"`,
   );
 
+  // Track node ID created from Enter key split for cursor positioning
+  const [enterSplitNodeId$, setEnterSplitNodeId] = createSignal<string | undefined>(undefined);
+
   const selectedLifeLogNodeId$ = () => state.panesLifeLogs.selectedLifeLogNodeId;
   const setSelectedLifeLogNodeId = (selectedLifeLogNodeId: string) => {
     updateState((state) => {
@@ -434,10 +437,10 @@ export function LifeLogTree(props: {
                 parentId={props.id}
                 selectedId={selectedLifeLogNodeId$()}
                 setSelectedId={setSelectedLifeLogNodeId}
-                createNewNode={(newId) => ({ id: newId, text: "" })}
+                createNewNode={(newId, initialText) => ({ id: newId, text: initialText ?? "" })}
                 isEditing={() => props.isEditing}
                 setIsEditing={props.setIsEditing}
-                showNode={(node$, isSelected$) => {
+                showNode={(node$, isSelected$, onEnterPress) => {
                   async function onSaveNode(newText: string) {
                     firestore.setClock(true);
                     try {
@@ -466,9 +469,21 @@ export function LifeLogTree(props: {
                       }}
                       isSelected={isSelected$()}
                       isEditing={props.isEditing}
-                      setIsEditing={props.setIsEditing}
+                      setIsEditing={(editing) => {
+                        props.setIsEditing(editing);
+                        if (!editing) {
+                          setEnterSplitNodeId(undefined);
+                        }
+                      }}
                       selectedClassName={styles.lifeLogTree.selected}
                       editInputClassName={styles.lifeLogTree.editInput}
+                      onEnterPress={async (beforeCursor, afterCursor) => {
+                        await onSaveNode(beforeCursor);
+                        await onEnterPress?.(afterCursor, (newNodeId) => {
+                          setEnterSplitNodeId(newNodeId);
+                        });
+                      }}
+                      initialCursorPosition={enterSplitNodeId$() === node$().id ? 0 : undefined}
                     />
                   );
                 }}

@@ -619,8 +619,37 @@ describe("<LifeLogs />", () => {
         expect(input).toBeTruthy();
       });
 
-      const input = result.container.querySelector("input")!;
-      fireEvent.input(input, { target: { value: "edited child text" } });
+      const input = result.container.querySelector("input") as HTMLInputElement;
+
+      // Test cursor position is preserved while typing
+      // Type a character in the middle
+      const beforeCursor = input.value.slice(0, 5);
+      const afterCursor = input.value.slice(5);
+      input.value = beforeCursor + "X" + afterCursor;
+      fireEvent.input(input, { target: { value: input.value } });
+
+      await waitFor(() => {
+        expect(input.value).toBe("firstX child");
+      });
+
+      // Verify cursor position can be set and preserved
+      // (In a controlled component with value={}, setting cursor position would be reset on next render)
+      input.setSelectionRange(6, 6);
+      expect(input.selectionStart).toBe(6);
+
+      // Type another character
+      const value = input.value;
+      input.value = value.slice(0, 6) + "Y" + value.slice(6);
+      fireEvent.input(input, { target: { value: input.value } });
+
+      await waitFor(() => {
+        expect(input.value).toBe("firstXY child");
+      });
+
+      // Verify setSelectionRange still works after input
+      input.setSelectionRange(3, 3);
+      expect(input.selectionStart).toBe(3);
+      expect(input.selectionEnd).toBe(3);
 
       // Press Escape to save and exit editing
       const start = performance.now();
@@ -628,7 +657,7 @@ describe("<LifeLogs />", () => {
 
       // Verify the DOM was updated
       await waitFor(() => {
-        expect(result.getByText("edited child text")).toBeTruthy();
+        expect(result.getByText("firstXY child")).toBeTruthy();
       });
       const end = performance.now();
       const duration = end - start;
@@ -755,6 +784,127 @@ describe("<LifeLogs />", () => {
       // new node should come before second child in DOM order
       const children = Array.from(newNodeLi.parentElement!.children);
       expect(children.indexOf(newNodeLi)).toBeLessThan(children.indexOf(secondChildLi));
+
+      result.unmount();
+    });
+
+    it("can split node with Enter key at cursor position", async (ctx) => {
+      const { result } = await setupLifeLogsTest(ctx.task.id);
+
+      await result.findByText("first lifelog", {}, { timeout: 5000 });
+
+      // Press "l" to enter tree mode
+      fireEvent.keyDown(document, { code: "KeyL", key: "l" });
+
+      // Wait for tree nodes to render
+      await result.findByText("first child", {}, { timeout: 5000 });
+
+      // Initial state: child1 is selected
+      await waitFor(() => {
+        const child1Element = result.getByText("first child");
+        expect(child1Element.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "i" to enter editing mode
+      fireEvent.keyDown(document, { code: "KeyI", key: "i" });
+
+      // Wait for input to appear
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+      });
+
+      const input = result.container.querySelector("input")!;
+
+      // Change text to "beforeafter" and set cursor position in the middle
+      fireEvent.input(input, { target: { value: "beforeafter" } });
+
+      // Set cursor position at index 6 (between "before" and "after")
+      input.setSelectionRange(6, 6);
+
+      // Press Enter to split the node
+      const start = performance.now();
+      fireEvent.keyDown(input, { code: "Enter", key: "Enter" });
+
+      // Wait for the split to complete - original node should have "before"
+      await waitFor(() => {
+        expect(result.getByText("before")).toBeTruthy();
+      });
+
+      // New node should have "after" and be selected with editing mode
+      // Cursor should be at position 0 (beginning of the text)
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("after");
+        expect(input.selectionStart).toBe(0);
+        expect(input.selectionEnd).toBe(0);
+      });
+      const end = performance.now();
+      const duration = end - start;
+
+      expect(duration, `Split node took ${duration.toFixed(2)}ms`).toBeLessThan(250);
+
+      // Press Escape to exit editing mode
+      fireEvent.keyDown(document, { code: "Escape", key: "Escape" });
+
+      // Verify both nodes are displayed
+      await waitFor(() => {
+        expect(result.getByText("before")).toBeTruthy();
+        expect(result.getByText("after")).toBeTruthy();
+      });
+
+      // Verify the order: "before" should come before "after"
+      const beforeLi = result.getByText("before").closest("li")!;
+      const afterLi = result.getByText("after").closest("li")!;
+      // They should be siblings (same parent)
+      expect(beforeLi.parentElement).toBe(afterLi.parentElement);
+      // "before" should come before "after" in DOM order
+      const children = Array.from(beforeLi.parentElement!.children);
+      expect(children.indexOf(beforeLi)).toBeLessThan(children.indexOf(afterLi));
+
+      result.unmount();
+    });
+
+    it("can add empty node below with Enter key at end of text", async (ctx) => {
+      const { result } = await setupLifeLogsTest(ctx.task.id);
+
+      await result.findByText("first lifelog", {}, { timeout: 5000 });
+
+      // Press "l" to enter tree mode
+      fireEvent.keyDown(document, { code: "KeyL", key: "l" });
+
+      // Wait for tree nodes to render
+      await result.findByText("first child", {}, { timeout: 5000 });
+
+      // Press "i" to enter editing mode
+      fireEvent.keyDown(document, { code: "KeyI", key: "i" });
+
+      // Wait for input to appear
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+      });
+
+      const input = result.container.querySelector("input")!;
+
+      // Set cursor position at end (after "first child")
+      input.setSelectionRange(input.value.length, input.value.length);
+
+      // Press Enter to add new node below
+      fireEvent.keyDown(input, { code: "Enter", key: "Enter" });
+
+      // Wait for new node - original node should still have "first child"
+      await waitFor(() => {
+        expect(result.getByText("first child")).toBeTruthy();
+      });
+
+      // New node should be selected with editing mode and empty value
+      await waitFor(() => {
+        const newInput = result.container.querySelector("input");
+        expect(newInput).toBeTruthy();
+        expect((newInput as HTMLInputElement).value).toBe("");
+      });
 
       result.unmount();
     });
