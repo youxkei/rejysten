@@ -1,11 +1,20 @@
 import equals from "fast-deep-equal";
 import { type CollectionReference, doc, orderBy, query, where } from "firebase/firestore";
 import { type Accessor, createMemo, For, type JSXElement, Show, startTransition } from "solid-js";
+import { uuidv7 } from "uuidv7";
 
 import { type DocumentData, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
-import { dedent, getAboveNode, getBelowNode, indent, type TreeNode } from "@/services/firebase/firestore/treeNode";
+import {
+  addNextSibling,
+  addPrevSibling,
+  dedent,
+  getAboveNode,
+  getBelowNode,
+  indent,
+  type TreeNode,
+} from "@/services/firebase/firestore/treeNode";
 import { addKeyDownEventListener } from "@/solid/event";
 
 export function ChildrenNodes<T extends TreeNode>(props: {
@@ -14,7 +23,9 @@ export function ChildrenNodes<T extends TreeNode>(props: {
   selectedId: string;
   setSelectedId: (selectedID: string) => void;
   showNode: (node$: Accessor<DocumentData<T>>, isSelected$: Accessor<boolean>) => JSXElement;
+  createNewNode: (newId: string) => Omit<DocumentData<T>, keyof TreeNode>;
   isEditing?: Accessor<boolean>;
+  setIsEditing?: (isEditing: boolean) => void;
 }) {
   const firestore = useFirestoreService();
 
@@ -36,7 +47,9 @@ export function ChildrenNodes<T extends TreeNode>(props: {
               selectedId={props.selectedId}
               setSelectedId={props.setSelectedId}
               showNode={props.showNode}
+              createNewNode={props.createNewNode}
               isEditing={props.isEditing}
+              setIsEditing={props.setIsEditing}
             />
           </li>
         )}
@@ -51,7 +64,9 @@ export function Node<T extends TreeNode>(props: {
   selectedId: string;
   setSelectedId: (selectedId: string) => void;
   showNode: (node$: Accessor<DocumentData<T>>, isSelected$: Accessor<boolean>) => JSXElement;
+  createNewNode: (newId: string) => Omit<DocumentData<T>, keyof TreeNode>;
   isEditing?: Accessor<boolean>;
+  setIsEditing?: (isEditing: boolean) => void;
 }) {
   const firestore = useFirestoreService();
 
@@ -121,15 +136,53 @@ export function Node<T extends TreeNode>(props: {
               await indent(firestore, batch, props.col, node);
             }
           });
-        } finally {
-          console.timeStamp("transition begin");
 
+          console.timeStamp("transition begin");
           await startTransition(() => {
             firestore.setClock(false);
           });
-
           console.timeStamp("transition end");
+        } finally {
+          firestore.setClock(false);
         }
+
+        break;
+      }
+
+      case "KeyO": {
+        if (ctrlKey || isComposing) return;
+
+        event.stopImmediatePropagation();
+
+        const node = await getDoc(firestore, props.col, props.id);
+        if (!node) return;
+
+        const newNodeId = uuidv7();
+
+        try {
+          firestore.setClock(true);
+          await runBatch(firestore, async (batch) => {
+            if (shiftKey) {
+              // Shift+O: add above
+              await addPrevSibling(firestore, batch, props.col, node, props.createNewNode(newNodeId));
+            } else {
+              // o: add below
+              await addNextSibling<T>(firestore, batch, props.col, node, props.createNewNode(newNodeId));
+            }
+          });
+
+          console.timeStamp("transition begin");
+          await startTransition(() => {
+            props.setSelectedId(newNodeId);
+            props.setIsEditing?.(true);
+            firestore.setClock(false);
+          });
+          console.timeStamp("transition end");
+        } finally {
+          firestore.setClock(false);
+        }
+
+        break;
       }
     }
   });
@@ -146,6 +199,9 @@ export function Node<T extends TreeNode>(props: {
               selectedId={props.selectedId}
               setSelectedId={props.setSelectedId}
               showNode={props.showNode}
+              createNewNode={props.createNewNode}
+              isEditing={props.isEditing}
+              setIsEditing={props.setIsEditing}
             />
           </>
         );

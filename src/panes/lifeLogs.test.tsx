@@ -219,7 +219,7 @@ describe("<LifeLogs />", () => {
       result.unmount();
     });
 
-    test("it can set current time on startAt with S key", async (ctx) => {
+    test("it can set current time on startAt with s key", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       await result.findByText("first lifelog", {}, { timeout: 5000 });
@@ -252,7 +252,7 @@ describe("<LifeLogs />", () => {
       result.unmount();
     });
 
-    test("it can set current time on endAt with F key", async (ctx) => {
+    test("it can set current time on endAt with f key", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       await result.findByText("first lifelog", {}, { timeout: 5000 });
@@ -600,6 +600,114 @@ describe("<LifeLogs />", () => {
       });
       await new Promise((resolve) => setTimeout(resolve, 100));
       expect(result.queryByText("first child")).toBeNull();
+
+      result.unmount();
+    });
+
+    test("it can add a new tree node below with o key", async (ctx) => {
+      const { result } = await setupLifeLogsTest(ctx.task.id);
+
+      await result.findByText("first lifelog", {}, { timeout: 5000 });
+
+      // Press "l" to enter tree mode
+      fireEvent.keyDown(document, { code: "KeyL", key: "l" });
+
+      // Wait for tree nodes to render
+      await result.findByText("first child", {}, { timeout: 5000 });
+
+      // Initial state: child1 is selected
+      await waitFor(() => {
+        const child1Element = result.getByText("first child");
+        expect(child1Element.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "o" to add a new node below
+      fireEvent.keyDown(document, { code: "KeyO", key: "o" });
+
+      // Wait for input to appear (editing mode)
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+      });
+
+      // Type text for the new node
+      const input = result.container.querySelector("input")!;
+      fireEvent.input(input, { target: { value: "new node below" } });
+
+      // Press Escape to save and exit editing
+      fireEvent.keyDown(document, { code: "Escape", key: "Escape" });
+
+      // Verify the new node is displayed
+      await waitFor(() => {
+        expect(result.getByText("new node below")).toBeTruthy();
+      });
+
+      // Verify the order: first child should come before new node below
+      const firstChildLi = result.getByText("first child").closest("li")!;
+      const newNodeLi = result.getByText("new node below").closest("li")!;
+      // They should be siblings (same parent)
+      expect(firstChildLi.parentElement).toBe(newNodeLi.parentElement);
+      // first child should come before new node in DOM order
+      const children = Array.from(firstChildLi.parentElement!.children);
+      expect(children.indexOf(firstChildLi)).toBeLessThan(children.indexOf(newNodeLi));
+
+      result.unmount();
+    });
+
+    test("it can add a new tree node above with O key", async (ctx) => {
+      const { result } = await setupLifeLogsTest(ctx.task.id);
+
+      await result.findByText("first lifelog", {}, { timeout: 5000 });
+
+      // Press "l" to enter tree mode
+      fireEvent.keyDown(document, { code: "KeyL", key: "l" });
+
+      // Wait for tree nodes to render
+      await result.findByText("second child", {}, { timeout: 5000 });
+
+      // Navigate to second child (j -> j -> j to skip grandchild and great-grandchild)
+      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await waitFor(() => {
+        expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await waitFor(() => {
+        expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await waitFor(() => {
+        expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press Shift+O to add a new node above
+      fireEvent.keyDown(document, { code: "KeyO", key: "O", shiftKey: true });
+
+      // Wait for input to appear (editing mode)
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+      });
+
+      // Type text for the new node
+      const input = result.container.querySelector("input")!;
+      fireEvent.input(input, { target: { value: "new node above" } });
+
+      // Press Escape to save and exit editing
+      fireEvent.keyDown(document, { code: "Escape", key: "Escape" });
+
+      // Verify the new node is displayed
+      await waitFor(() => {
+        expect(result.getByText("new node above")).toBeTruthy();
+      });
+
+      // Verify the order: new node above should come before second child
+      const newNodeLi = result.getByText("new node above").closest("li")!;
+      const secondChildLi = result.getByText("second child").closest("li")!;
+      // They should be siblings (same parent)
+      expect(newNodeLi.parentElement).toBe(secondChildLi.parentElement);
+      // new node should come before second child in DOM order
+      const children = Array.from(newNodeLi.parentElement!.children);
+      expect(children.indexOf(newNodeLi)).toBeLessThan(children.indexOf(secondChildLi));
 
       result.unmount();
     });

@@ -203,7 +203,7 @@ export async function addPrevSibling<T extends TreeNode>(
   batch: WriteBatch,
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
-  newNode: Omit<DocumentData<T>, keyof TreeNode> & Partial<Pick<TreeNode, "parentId" | "order">>,
+  newNode: Omit<DocumentData<T>, keyof TreeNode>,
 ): Promise<void> {
   if (newNode.id === "") {
     throw new ErrorWithFields("new node must have a valid id", { newNode });
@@ -224,7 +224,7 @@ export async function addNextSibling<T extends TreeNode>(
   batch: WriteBatch,
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
-  newNode: Omit<DocumentData<T>, keyof TreeNode> & Partial<Pick<TreeNode, "parentId" | "order">>,
+  newNode: Omit<DocumentData<T>, keyof TreeNode>,
 ): Promise<void> {
   if (newNode.id === "") {
     throw new ErrorWithFields("new node must have a valid id", { newNode });

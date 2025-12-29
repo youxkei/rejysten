@@ -2,7 +2,7 @@ import { Key } from "@solid-primitives/keyed";
 import equal from "fast-deep-equal";
 import { doc, orderBy, query, Timestamp, where } from "firebase/firestore";
 import { createMemo, createSignal, Show, startTransition } from "solid-js";
-import { uuidv4, uuidv7 } from "uuidv7";
+import { uuidv7 } from "uuidv7";
 
 import { EditableValue } from "@/components/EditableValue";
 import { ChildrenNodes } from "@/components/tree";
@@ -187,7 +187,7 @@ export function LifeLogTree(props: {
           if (firstChildNode) {
             id = firstChildNode.id;
           } else {
-            id = uuidv4();
+            id = uuidv7();
             await runBatch(firestore, (batch) => {
               addSingle(firestore, batch, lifeLogTreeNodesCol, lifeLog.id, {
                 id,
@@ -271,7 +271,7 @@ export function LifeLogTree(props: {
 
             firestore.setClock(false);
           });
-        } catch (_) {
+        } finally {
           firestore.setClock(false);
         }
 
@@ -434,7 +434,9 @@ export function LifeLogTree(props: {
                 parentId={props.id}
                 selectedId={selectedLifeLogNodeId$()}
                 setSelectedId={setSelectedLifeLogNodeId}
+                createNewNode={(newId) => ({ id: newId, text: "" })}
                 isEditing={() => props.isEditing}
+                setIsEditing={props.setIsEditing}
                 showNode={(node$, isSelected$) => {
                   async function onSaveNode(newText: string) {
                     firestore.setClock(true);

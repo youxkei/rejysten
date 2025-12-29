@@ -69,6 +69,10 @@ export const LifeLogsStory: StoryObj = {
                     batch.delete(lifeLog.ref);
                   }
 
+                  for (const lifeLogTreeNode of (await getDocs(lifeLogTreeNodes)).docs) {
+                    batch.delete(lifeLogTreeNode.ref);
+                  }
+
                   batch.set(doc(batchVersion, singletonDocumentId), {
                     version: "__INITIAL__",
                     prevVersion: "",
@@ -144,6 +148,7 @@ export const LifeLogsStory: StoryObj = {
 
                   updateState((state) => {
                     state.panesLifeLogs.selectedLifeLogId = "$log1";
+                    state.panesLifeLogs.selectedLifeLogNodeId = "";
                   });
                 })().catch((error: unknown) => {
                   console.error("Error initializing Firestore data:", error);
