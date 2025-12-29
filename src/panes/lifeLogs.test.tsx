@@ -353,4 +353,139 @@ describe("<LifeLogs />", () => {
 
     result.unmount();
   });
+
+  test("it can move focus between lifelogs with j/k keys", async (ctx) => {
+    const { result } = await setupLifeLogsTest(ctx.task.id);
+
+    await result.findByText("first lifelog", {}, { timeout: 5000 });
+    await result.findByText("second lifelog", {}, { timeout: 5000 });
+
+    // Initial state: $log1 is selected
+    await waitFor(() => {
+      const log1Element = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+      expect(log1Element?.className).toContain(styles.lifeLogTree.selected);
+    });
+
+    // Press "j" to move to $log2
+    fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+
+    await waitFor(() => {
+      const log2Element = result.getByText("second lifelog").closest(`.${styles.lifeLogTree.container}`);
+      expect(log2Element?.className).toContain(styles.lifeLogTree.selected);
+    });
+
+    // Press "j" again to move to $log3
+    fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+
+    await waitFor(() => {
+      const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogTree.container}`);
+      expect(log3Element?.className).toContain(styles.lifeLogTree.selected);
+    });
+
+    // Press "k" to move back to $log2
+    fireEvent.keyDown(document, { code: "KeyK", key: "k" });
+
+    await waitFor(() => {
+      const log2Element = result.getByText("second lifelog").closest(`.${styles.lifeLogTree.container}`);
+      expect(log2Element?.className).toContain(styles.lifeLogTree.selected);
+    });
+
+    // Press "k" to move back to $log1
+    fireEvent.keyDown(document, { code: "KeyK", key: "k" });
+
+    await waitFor(() => {
+      const log1Element = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+      expect(log1Element?.className).toContain(styles.lifeLogTree.selected);
+    });
+
+    // Press "k" at the first item should not change selection
+    fireEvent.keyDown(document, { code: "KeyK", key: "k" });
+
+    await waitFor(() => {
+      const log1Element = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+      expect(log1Element?.className).toContain(styles.lifeLogTree.selected);
+    });
+
+    result.unmount();
+  });
+
+  test("it can enter/exit tree mode with l/h keys", async (ctx) => {
+    const { result } = await setupLifeLogsTest(ctx.task.id);
+
+    await result.findByText("first lifelog", {}, { timeout: 5000 });
+
+    // Initial state: $log1 is selected (lifelog mode)
+    await waitFor(() => {
+      const log1Element = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+      expect(log1Element?.className).toContain(styles.lifeLogTree.selected);
+    });
+
+    // Press "l" to enter tree mode
+    fireEvent.keyDown(document, { code: "KeyL", key: "l" });
+
+    // Wait for tree nodes to render and first child to be selected
+    await result.findByText("first child", {}, { timeout: 5000 });
+    await waitFor(() => {
+      const child1Element = result.getByText("first child");
+      expect(child1Element.className).toContain(styles.lifeLogTree.selected);
+    });
+
+    // Lifelog should no longer be selected (tree node is selected instead)
+    const log1Element = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+    expect(log1Element?.className).not.toContain(styles.lifeLogTree.selected);
+
+    // Press "h" to exit tree mode and go back to lifelog
+    fireEvent.keyDown(document, { code: "KeyH", key: "h" });
+
+    await waitFor(() => {
+      const log1ElementAfter = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+      expect(log1ElementAfter?.className).toContain(styles.lifeLogTree.selected);
+    });
+
+    // Tree nodes should no longer be visible (tree mode exited)
+    await waitFor(() => {
+      expect(result.queryByText("first child")).toBeNull();
+    });
+
+    result.unmount();
+  });
+
+  test("it can add a new lifelog with o key", async (ctx) => {
+    const { result } = await setupLifeLogsTest(ctx.task.id);
+
+    await result.findByText("first lifelog", {}, { timeout: 5000 });
+
+    // Initial count of lifelogs
+    const initialListItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+    expect(initialListItems.length).toBe(3);
+
+    // Press "o" to add a new lifelog
+    fireEvent.keyDown(document, { code: "KeyO", key: "o" });
+
+    // Wait for new lifelog to be added and editing mode to be active
+    await waitFor(() => {
+      const listItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+      expect(listItems.length).toBe(4);
+    });
+
+    // Verify that editing mode is active (input should be visible)
+    await waitFor(() => {
+      const input = result.container.querySelector("input");
+      expect(input).toBeTruthy();
+    });
+
+    // Type text for the new lifelog
+    const input = result.container.querySelector("input")!;
+    fireEvent.input(input, { target: { value: "new lifelog from o key" } });
+
+    // Press Escape to save and exit editing
+    fireEvent.keyDown(document, { code: "Escape", key: "Escape" });
+
+    // Verify the new lifelog text is displayed
+    await waitFor(() => {
+      expect(result.getByText("new lifelog from o key")).toBeTruthy();
+    });
+
+    result.unmount();
+  });
 });
