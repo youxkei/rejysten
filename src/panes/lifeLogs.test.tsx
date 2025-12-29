@@ -1,7 +1,7 @@
 import { fireEvent, render, waitFor } from "@solidjs/testing-library";
 import { doc, getDocs, Timestamp, writeBatch } from "firebase/firestore";
 import { onMount, Suspense } from "solid-js";
-import { describe, test, expect } from "vitest";
+import { describe, it, expect } from "vitest";
 
 import { LifeLogs } from "@/panes/lifeLogs";
 import { FirebaseServiceProvider } from "@/services/firebase";
@@ -161,7 +161,7 @@ function formatDate(date: Date): string {
 
 describe("<LifeLogs />", () => {
   describe("LifeLog", () => {
-    test("it renders lifelog data correctly", async (ctx) => {
+    it("renders correctly", async (ctx) => {
       const { result, baseTime } = await setupLifeLogsTest(ctx.task.id);
 
       // Test: renders lifelog data correctly
@@ -190,7 +190,7 @@ describe("<LifeLogs />", () => {
       result.unmount();
     });
 
-    test("it can edit lifelog text", async (ctx) => {
+    it("can edit text with i key", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       await result.findByText("first lifelog", {}, { timeout: 5000 });
@@ -208,18 +208,23 @@ describe("<LifeLogs />", () => {
       fireEvent.input(input, { target: { value: "edited lifelog text" } });
 
       // Press Escape to save and exit editing
+      const start = performance.now();
       fireEvent.keyDown(document, { code: "Escape", key: "Escape" });
 
       // Verify the DOM was updated
       await waitFor(() => {
         expect(result.getByText("edited lifelog text")).toBeTruthy();
       });
+      const end = performance.now();
+      const duration = end - start;
+
+      expect(duration, `Edit text took ${duration.toFixed(2)}ms`).toBeLessThan(100);
       expect(result.queryByText("first lifelog")).toBeNull();
 
       result.unmount();
     });
 
-    test("it can set current time on startAt with s key", async (ctx) => {
+    it("can set startAt to current time with s key", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       await result.findByText("first lifelog", {}, { timeout: 5000 });
@@ -234,6 +239,7 @@ describe("<LifeLogs />", () => {
       expect(result.getAllByText("N/A").length).toBe(4);
 
       // Press "S" to set current time on startAt
+      const start = performance.now();
       fireEvent.keyDown(document, { code: "KeyS", key: "s" });
 
       // Verify DOM was updated - N/A count should decrease by 1 (now only 3: $log1 endAt, $log2 endAt, $log3 endAt)
@@ -248,17 +254,22 @@ describe("<LifeLogs />", () => {
         const timeRangeDiv = result.container.querySelector(`#\\$log3 .${styles.lifeLogTree.timeRange}`);
         expect(timeRangeDiv?.textContent).toMatch(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/);
       });
+      const end = performance.now();
+      const duration = end - start;
+
+      expect(duration, `Set startAt took ${duration.toFixed(2)}ms`).toBeLessThan(100);
 
       result.unmount();
     });
 
-    test("it can set current time on endAt with f key", async (ctx) => {
+    it("can set endAt to current time with f key", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       await result.findByText("first lifelog", {}, { timeout: 5000 });
 
       // $log1 is already selected and has endAt = noneTimestamp, so "F" key should work
       // Press "F" to set current time on endAt
+      const start = performance.now();
       fireEvent.keyDown(document, { code: "KeyF", key: "f" });
 
       // Verify DOM was updated - N/A count should decrease by 1
@@ -277,11 +288,15 @@ describe("<LifeLogs />", () => {
         const timeMatches = textContent.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/g);
         expect(timeMatches?.length).toBe(2); // Both startAt and endAt should show times
       });
+      const end = performance.now();
+      const duration = end - start;
+
+      expect(duration, `Set endAt took ${duration.toFixed(2)}ms`).toBeLessThan(100);
 
       result.unmount();
     });
 
-    test("it can move focus between lifelogs with j/k keys", async (ctx) => {
+    it("can navigate between lifelogs with j/k keys", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       await result.findByText("first lifelog", {}, { timeout: 5000 });
@@ -336,7 +351,7 @@ describe("<LifeLogs />", () => {
       result.unmount();
     });
 
-    test("it can add a new lifelog with o key", async (ctx) => {
+    it("can add new lifelog with o key", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       await result.findByText("first lifelog", {}, { timeout: 5000 });
@@ -346,6 +361,7 @@ describe("<LifeLogs />", () => {
       expect(initialListItems.length).toBe(3);
 
       // Press "o" to add a new lifelog
+      const start = performance.now();
       fireEvent.keyDown(document, { code: "KeyO", key: "o" });
 
       // Wait for new lifelog to be added and editing mode to be active
@@ -359,6 +375,11 @@ describe("<LifeLogs />", () => {
         const input = result.container.querySelector("input");
         expect(input).toBeTruthy();
       });
+      const end = performance.now();
+      const duration = end - start;
+
+      // Assert operation completes within 100ms
+      expect(duration, `Add new lifelog took ${duration.toFixed(2)}ms`).toBeLessThan(100);
 
       // Type text for the new lifelog
       const input = result.container.querySelector("input")!;
@@ -377,7 +398,7 @@ describe("<LifeLogs />", () => {
   });
 
   describe("LifeLogTree", () => {
-    test("it can enter/exit tree mode with l/h keys", async (ctx) => {
+    it("can enter/exit tree mode with l/h keys", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       await result.findByText("first lifelog", {}, { timeout: 5000 });
@@ -418,7 +439,7 @@ describe("<LifeLogs />", () => {
       result.unmount();
     });
 
-    test("it can move focus between deep and shallow nodes with j/k keys", async (ctx) => {
+    it("can navigate between tree nodes with j/k keys", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       await result.findByText("first lifelog", {}, { timeout: 5000 });
@@ -502,7 +523,7 @@ describe("<LifeLogs />", () => {
       result.unmount();
     });
 
-    test("it can indent/dedent tree nodes", async (ctx) => {
+    it("can indent/dedent nodes with Tab/Shift+Tab keys", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       // Wait for lifelogs to render
@@ -542,6 +563,7 @@ describe("<LifeLogs />", () => {
       expect(child2Li.parentElement).toBe(parentUl); // child2 is sibling of child1
 
       // Test indent: Press Tab to indent child2 under child1
+      const indentStart = performance.now();
       fireEvent.keyDown(document, { code: "Tab", key: "Tab" });
 
       // Verify DOM structure after indent: child2 should be inside child1's subtree
@@ -551,8 +573,11 @@ describe("<LifeLogs />", () => {
         // child2 should now be nested inside child1 (child1's li contains a ul that contains child2's li)
         expect(child1LiAfterIndent.contains(child2LiAfterIndent)).toBe(true);
       });
+      const indentEnd = performance.now();
+      const indentDuration = indentEnd - indentStart;
 
       // Test dedent: Press Shift+Tab to dedent child2 back to sibling of child1
+      const dedentStart = performance.now();
       fireEvent.keyDown(document, { code: "Tab", key: "Tab", shiftKey: true });
 
       // Verify DOM structure after dedent: child2 should be sibling of child1 again
@@ -564,11 +589,17 @@ describe("<LifeLogs />", () => {
         // They should share the same parent ul
         expect(child1LiAfterDedent.parentElement).toBe(child2LiAfterDedent.parentElement);
       });
+      const dedentEnd = performance.now();
+      const dedentDuration = dedentEnd - dedentStart;
+
+      // Assert each operation completes within 100ms
+      expect(indentDuration, `Indent took ${indentDuration.toFixed(2)}ms`).toBeLessThan(100);
+      expect(dedentDuration, `Dedent took ${dedentDuration.toFixed(2)}ms`).toBeLessThan(100);
 
       result.unmount();
     });
 
-    test("it can edit lifeLogTree node text", async (ctx) => {
+    it("can edit node text with i key", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       await result.findByText("first lifelog", {}, { timeout: 5000 });
@@ -592,19 +623,24 @@ describe("<LifeLogs />", () => {
       fireEvent.input(input, { target: { value: "edited child text" } });
 
       // Press Escape to save and exit editing
+      const start = performance.now();
       fireEvent.keyDown(document, { code: "Escape", key: "Escape" });
 
       // Verify the DOM was updated
       await waitFor(() => {
         expect(result.getByText("edited child text")).toBeTruthy();
       });
+      const end = performance.now();
+      const duration = end - start;
+
+      expect(duration, `Edit node text took ${duration.toFixed(2)}ms`).toBeLessThan(100);
       await new Promise((resolve) => setTimeout(resolve, 100));
       expect(result.queryByText("first child")).toBeNull();
 
       result.unmount();
     });
 
-    test("it can add a new tree node below with o key", async (ctx) => {
+    it("can add node below with o key", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       await result.findByText("first lifelog", {}, { timeout: 5000 });
@@ -622,6 +658,7 @@ describe("<LifeLogs />", () => {
       });
 
       // Press "o" to add a new node below
+      const start = performance.now();
       fireEvent.keyDown(document, { code: "KeyO", key: "o" });
 
       // Wait for input to appear (editing mode)
@@ -629,6 +666,11 @@ describe("<LifeLogs />", () => {
         const input = result.container.querySelector("input");
         expect(input).toBeTruthy();
       });
+      const end = performance.now();
+      const duration = end - start;
+
+      // Assert operation completes within 100ms
+      expect(duration, `Add node below took ${duration.toFixed(2)}ms`).toBeLessThan(100);
 
       // Type text for the new node
       const input = result.container.querySelector("input")!;
@@ -654,7 +696,7 @@ describe("<LifeLogs />", () => {
       result.unmount();
     });
 
-    test("it can add a new tree node above with O key", async (ctx) => {
+    it("can add node above with O key", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       await result.findByText("first lifelog", {}, { timeout: 5000 });
@@ -680,6 +722,7 @@ describe("<LifeLogs />", () => {
       });
 
       // Press Shift+O to add a new node above
+      const start = performance.now();
       fireEvent.keyDown(document, { code: "KeyO", key: "O", shiftKey: true });
 
       // Wait for input to appear (editing mode)
@@ -687,6 +730,10 @@ describe("<LifeLogs />", () => {
         const input = result.container.querySelector("input");
         expect(input).toBeTruthy();
       });
+      const end = performance.now();
+      const duration = end - start;
+
+      expect(duration, `Add node above took ${duration.toFixed(2)}ms`).toBeLessThan(100);
 
       // Type text for the new node
       const input = result.container.querySelector("input")!;

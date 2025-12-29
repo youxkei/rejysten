@@ -171,13 +171,11 @@ export function Node<T extends TreeNode>(props: {
             }
           });
 
-          console.timeStamp("transition begin");
           await startTransition(() => {
             props.setSelectedId(newNodeId);
             props.setIsEditing?.(true);
             firestore.setClock(false);
           });
-          console.timeStamp("transition end");
         } finally {
           firestore.setClock(false);
         }

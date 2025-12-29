@@ -1,4 +1,4 @@
-import { createSignal, createEffect, createResource, createComputed, startTransition } from "solid-js";
+import { createSignal, createEffect, createResource, createComputed, startTransition, onCleanup } from "solid-js";
 
 export function createSubscribeWithResource<Source, Value, InitialValue>(
   source$: () => Source | undefined,
@@ -33,9 +33,29 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
       if (firstValue) {
         return Promise.resolve(firstValue.value);
       } else {
-        return new Promise<Value | InitialValue>((resolve) => {
-          setResource = resolve as (value: Value) => void;
+        // Race between actual data and 10ms timeout
+        // If data arrives within 10ms, use it; otherwise resolve with initialValue
+        // and data will come later via mutate
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
+        onCleanup(() => {
+          if (timeoutId) clearTimeout(timeoutId);
         });
+
+        return Promise.race([
+          new Promise<Value>((resolve) => {
+            setResource = (value) => {
+              clearTimeout(timeoutId);
+              resolve(value);
+            };
+          }),
+          new Promise<InitialValue>((resolve) => {
+            timeoutId = setTimeout(() => {
+              // Clear setResource so data goes through mutateResource instead
+              setResource = undefined;
+              resolve(initialValue);
+            }, 40);
+          }),
+        ]);
       }
     },
     {

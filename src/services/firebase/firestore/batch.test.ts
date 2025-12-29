@@ -1,5 +1,5 @@
 import { type CollectionReference, collection, writeBatch, getDoc as getDocOriginal, doc } from "firebase/firestore";
-import { describe, test, vi } from "vitest";
+import { describe, it, vi } from "vitest";
 
 import { singletonDocumentId, type Timestamps } from "@/services/firebase/firestore";
 import { updateDoc, updateSingletonDoc, setDoc, setSingletonDoc } from "@/services/firebase/firestore/batch";
@@ -24,7 +24,7 @@ describe("batch", () => {
   });
 
   describe("updateDoc", () => {
-    test("updates document with serverTimestamp", async (test) => {
+    it("updates document with serverTimestamp", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
@@ -59,7 +59,7 @@ describe("batch", () => {
       });
     });
 
-    test("updates document with ngram when text field exists and collection is configured", async (test) => {
+    it("updates document with ngram when text field exists and collection is configured", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
@@ -97,7 +97,7 @@ describe("batch", () => {
       test.expect(ngramDoc.data()?.collection).toBe(tid);
     });
 
-    test("partial update preserves existing fields", async (test) => {
+    it("partial update preserves existing fields", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
@@ -133,7 +133,7 @@ describe("batch", () => {
   });
 
   describe("updateSingletonDoc", () => {
-    test("updates singleton document", async (test) => {
+    it("updates singleton document", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
@@ -169,7 +169,7 @@ describe("batch", () => {
   });
 
   describe("setDoc", () => {
-    test("creates new document with timestamps", async (test) => {
+    it("creates new document with timestamps", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
@@ -192,7 +192,7 @@ describe("batch", () => {
       });
     });
 
-    test("creates document with ngram when text field exists and collection is configured", async (test) => {
+    it("creates document with ngram when text field exists and collection is configured", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
@@ -217,7 +217,7 @@ describe("batch", () => {
       test.expect(ngramDoc.data()?.collection).toBe(tid);
     });
 
-    test("overwrites existing document", async (test) => {
+    it("overwrites existing document", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
@@ -254,7 +254,7 @@ describe("batch", () => {
   });
 
   describe("setSingletonDoc", () => {
-    test("creates singleton document", async (test) => {
+    it("creates singleton document", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
@@ -276,7 +276,7 @@ describe("batch", () => {
       });
     });
 
-    test("creates singleton document with ngram when text field exists and collection is configured", async (test) => {
+    it("creates singleton document with ngram when text field exists and collection is configured", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
