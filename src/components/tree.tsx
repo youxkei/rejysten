@@ -86,13 +86,13 @@ export function Node<T extends TreeNode>(props: {
   const isSelected$ = () => props.id === props.selectedId;
 
   addKeyDownEventListener(async (event) => {
-    if (!isSelected$() || props.isEditing?.()) return;
+    if (event.isComposing || event.ctrlKey || !isSelected$() || props.isEditing?.()) return;
 
-    const { shiftKey, ctrlKey, isComposing } = event;
+    const { shiftKey } = event;
 
     switch (event.code) {
       case "KeyJ": {
-        if (ctrlKey || shiftKey || isComposing) return;
+        if (shiftKey) return;
 
         event.stopImmediatePropagation();
 
@@ -108,7 +108,7 @@ export function Node<T extends TreeNode>(props: {
       }
 
       case "KeyK": {
-        if (ctrlKey || shiftKey || isComposing) return;
+        if (shiftKey) return;
 
         event.stopImmediatePropagation();
 
@@ -124,8 +124,6 @@ export function Node<T extends TreeNode>(props: {
       }
 
       case "Tab": {
-        if (ctrlKey || isComposing) return;
-
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
@@ -158,8 +156,6 @@ export function Node<T extends TreeNode>(props: {
       }
 
       case "KeyO": {
-        if (ctrlKey || isComposing) return;
-
         event.stopImmediatePropagation();
 
         const node = await getDoc(firestore, props.col, props.id);

@@ -169,13 +169,13 @@ export function LifeLogTree(props: {
   const isLifeLogTreeFocused$ = () => isSelected$() && selectedLifeLogNodeId$() !== "";
 
   addKeyDownEventListener(async (event) => {
-    const { shiftKey, ctrlKey, isComposing } = event;
+    if (event.isComposing || event.ctrlKey || props.isEditing || !isSelected$()) return;
 
-    if (props.isEditing || isComposing || !isSelected$()) return;
+    const { shiftKey } = event;
 
     switch (event.code) {
       case "KeyL": {
-        if (ctrlKey || shiftKey || isLifeLogTreeFocused$()) return;
+        if (shiftKey || isLifeLogTreeFocused$()) return;
 
         event.stopImmediatePropagation();
 
@@ -211,7 +211,7 @@ export function LifeLogTree(props: {
       }
 
       case "KeyH": {
-        if (ctrlKey || shiftKey || isLifeLogSelected$()) return;
+        if (shiftKey || isLifeLogSelected$()) return;
         event.stopImmediatePropagation();
 
         setSelectedLifeLogNodeId("");
@@ -220,7 +220,7 @@ export function LifeLogTree(props: {
       }
 
       case "KeyJ": {
-        if (ctrlKey || shiftKey || isLifeLogTreeFocused$() || props.nextId === "") return;
+        if (shiftKey || isLifeLogTreeFocused$() || props.nextId === "") return;
         event.stopImmediatePropagation();
 
         updateState((state) => {
@@ -231,7 +231,7 @@ export function LifeLogTree(props: {
       }
 
       case "KeyK": {
-        if (ctrlKey || shiftKey || isLifeLogTreeFocused$() || props.prevId === "") return;
+        if (shiftKey || isLifeLogTreeFocused$() || props.prevId === "") return;
         event.stopImmediatePropagation();
 
         updateState((state) => {
@@ -242,7 +242,7 @@ export function LifeLogTree(props: {
       }
 
       case "KeyO": {
-        if (ctrlKey || shiftKey || isLifeLogTreeFocused$()) return;
+        if (shiftKey || isLifeLogTreeFocused$()) return;
         event.stopImmediatePropagation();
 
         const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
@@ -282,7 +282,7 @@ export function LifeLogTree(props: {
       }
 
       case "KeyS": {
-        if (ctrlKey || shiftKey || isLifeLogTreeFocused$()) return;
+        if (shiftKey || isLifeLogTreeFocused$()) return;
         event.stopImmediatePropagation();
 
         const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
@@ -294,7 +294,7 @@ export function LifeLogTree(props: {
       }
 
       case "KeyF": {
-        if (ctrlKey || shiftKey || isLifeLogTreeFocused$()) return;
+        if (shiftKey || isLifeLogTreeFocused$()) return;
         event.stopImmediatePropagation();
 
         const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);

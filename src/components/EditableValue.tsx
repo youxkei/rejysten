@@ -45,6 +45,8 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
 
   // Add key event listeners for "i" and "Escape"
   addKeyDownEventListener(async (e: KeyboardEvent) => {
+    if (e.isComposing || e.ctrlKey) return;
+
     if (e.code === "KeyI" && props.isSelected && !props.isEditing) {
       e.preventDefault();
       e.stopPropagation();
