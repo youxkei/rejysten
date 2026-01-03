@@ -1,8 +1,6 @@
 import { debounce } from "@solid-primitives/scheduled";
 import { createSignal, Show, type JSX, onMount } from "solid-js";
 
-import { addKeyDownEventListener } from "@/solid/event";
-
 export interface EditableValueProps<V> {
   value: V;
   onSave: (newValue: V) => Promise<void>;
@@ -42,25 +40,6 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
   }
 
   const debouncedSaveChanges = debounce(saveChanges, props.debounceMs ?? 1000);
-
-  // Add key event listeners for "i" and "Escape"
-  addKeyDownEventListener(async (e: KeyboardEvent) => {
-    if (e.isComposing || e.ctrlKey) return;
-
-    if (e.code === "KeyI" && props.isSelected && !props.isEditing) {
-      e.preventDefault();
-      e.stopPropagation();
-      props.setIsEditing(true);
-    } else if (e.code === "Escape" && props.isSelected && props.isEditing) {
-      e.preventDefault();
-      e.stopPropagation();
-
-      debouncedSaveChanges.clear();
-      await saveChanges(editText());
-      props.setIsEditing(false);
-      setEditText("");
-    }
-  });
 
   return (
     <div class={props.className} classList={{ [props.selectedClassName ?? ""]: props.isSelected }}>

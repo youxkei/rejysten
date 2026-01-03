@@ -8,7 +8,6 @@ import { runBatch } from "@/services/firebase/firestore/batch";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import {
   addNextSibling,
-  addPrevSibling,
   dedent,
   getAboveNode,
   getBelowNode,
@@ -155,37 +154,6 @@ export function Node<T extends TreeNode>(props: {
         break;
       }
 
-      case "KeyO": {
-        event.stopImmediatePropagation();
-
-        const node = await getDoc(firestore, props.col, props.id);
-        if (!node) return;
-
-        const newNodeId = uuidv7();
-
-        try {
-          firestore.setClock(true);
-          await runBatch(firestore, async (batch) => {
-            if (shiftKey) {
-              // Shift+O: add above
-              await addPrevSibling(firestore, batch, props.col, node, props.createNewNode(newNodeId));
-            } else {
-              // o: add below
-              await addNextSibling<T>(firestore, batch, props.col, node, props.createNewNode(newNodeId));
-            }
-          });
-
-          await startTransition(() => {
-            props.setSelectedId(newNodeId);
-            props.setIsEditing?.(true);
-            firestore.setClock(false);
-          });
-        } finally {
-          firestore.setClock(false);
-        }
-
-        break;
-      }
     }
   });
 
