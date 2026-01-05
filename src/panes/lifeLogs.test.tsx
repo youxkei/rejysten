@@ -193,7 +193,7 @@ describe("<LifeLogs />", () => {
     it("can edit text with i key", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
-      await result.findByText("first lifelog", {}, { timeout: 5000 });
+      await result.findByText("first lifelog");
 
       // $log1 is already selected in setup, press "i" to enter editing mode
       fireEvent.keyDown(document, { code: "KeyI", key: "i" });
@@ -227,8 +227,8 @@ describe("<LifeLogs />", () => {
     it("can set startAt to current time with s key", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
-      await result.findByText("first lifelog", {}, { timeout: 5000 });
-      await result.findByText("third lifelog", {}, { timeout: 5000 });
+      await result.findByText("first lifelog");
+      await result.findByText("third lifelog");
 
       // Navigate to $log3 which has noneTimestamp startAt
       // $log1 is selected, press "j" twice to get to $log3
@@ -265,7 +265,7 @@ describe("<LifeLogs />", () => {
     it("can set endAt to current time with f key", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
-      await result.findByText("first lifelog", {}, { timeout: 5000 });
+      await result.findByText("first lifelog");
 
       // $log1 is already selected and has endAt = noneTimestamp, so "F" key should work
       // Press "F" to set current time on endAt
@@ -299,8 +299,8 @@ describe("<LifeLogs />", () => {
     it("can navigate between lifelogs with j/k keys", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
-      await result.findByText("first lifelog", {}, { timeout: 5000 });
-      await result.findByText("second lifelog", {}, { timeout: 5000 });
+      await result.findByText("first lifelog");
+      await result.findByText("second lifelog");
 
       // Initial state: $log1 is selected
       await waitFor(() => {
@@ -354,7 +354,7 @@ describe("<LifeLogs />", () => {
     it("can add new lifelog with o key", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
-      await result.findByText("first lifelog", {}, { timeout: 5000 });
+      await result.findByText("first lifelog");
 
       // Initial count of lifelogs
       const initialListItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
@@ -401,7 +401,7 @@ describe("<LifeLogs />", () => {
     it("can enter/exit tree mode with l/h keys", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
-      await result.findByText("first lifelog", {}, { timeout: 5000 });
+      await result.findByText("first lifelog");
 
       // Initial state: $log1 is selected (lifelog mode)
       await waitFor(() => {
@@ -413,7 +413,7 @@ describe("<LifeLogs />", () => {
       fireEvent.keyDown(document, { code: "KeyL", key: "l" });
 
       // Wait for tree nodes to render and first child to be selected
-      await result.findByText("first child", {}, { timeout: 5000 });
+      await result.findByText("first child");
       await waitFor(() => {
         const child1Element = result.getByText("first child");
         expect(child1Element.className).toContain(styles.lifeLogTree.selected);
@@ -442,7 +442,7 @@ describe("<LifeLogs />", () => {
     it("can navigate between tree nodes with j/k keys", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
-      await result.findByText("first lifelog", {}, { timeout: 5000 });
+      await result.findByText("first lifelog");
 
       // Press "l" to enter tree mode
       fireEvent.keyDown(document, { code: "KeyL", key: "l" });
@@ -453,10 +453,10 @@ describe("<LifeLogs />", () => {
       //     grandchild (depth 2)
       //       great-grandchild (depth 3)
       //   child2 (depth 1)
-      await result.findByText("first child", {}, { timeout: 5000 });
-      await result.findByText("grandchild", {}, { timeout: 5000 });
-      await result.findByText("great-grandchild", {}, { timeout: 5000 });
-      await result.findByText("second child", {}, { timeout: 5000 });
+      await result.findByText("first child");
+      await result.findByText("grandchild");
+      await result.findByText("great-grandchild");
+      await result.findByText("second child");
 
       // Initial state: child1 (depth 1) is selected
       await waitFor(() => {
@@ -527,14 +527,14 @@ describe("<LifeLogs />", () => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       // Wait for lifelogs to render
-      await result.findByText("first lifelog", {}, { timeout: 5000 });
+      await result.findByText("first lifelog");
 
       // Press "l" to enter tree mode (focus on first child node - child1)
       fireEvent.keyDown(document, { code: "KeyL", key: "l" });
 
       // Wait for tree nodes to render
-      await result.findByText("first child", {}, { timeout: 5000 });
-      await result.findByText("second child", {}, { timeout: 5000 });
+      await result.findByText("first child");
+      await result.findByText("second child");
 
       // Press "j" three times to move to child2 (child1 -> grandchild -> great-grandchild -> child2)
       fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
@@ -602,13 +602,13 @@ describe("<LifeLogs />", () => {
     it("can edit node text with i key", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
-      await result.findByText("first lifelog", {}, { timeout: 5000 });
+      await result.findByText("first lifelog");
 
       // Press "l" to enter tree mode (focus on first child node - child1)
       fireEvent.keyDown(document, { code: "KeyL", key: "l" });
 
       // Wait for tree nodes to render
-      await result.findByText("first child", {}, { timeout: 5000 });
+      await result.findByText("first child");
 
       // Press "i" to enter editing mode
       fireEvent.keyDown(document, { code: "KeyI", key: "i" });
@@ -663,7 +663,6 @@ describe("<LifeLogs />", () => {
       const duration = end - start;
 
       expect(duration, `Edit node text took ${duration.toFixed(2)}ms`).toBeLessThan(100);
-      await new Promise((resolve) => setTimeout(resolve, 100));
       expect(result.queryByText("first child")).toBeNull();
 
       result.unmount();
@@ -672,13 +671,13 @@ describe("<LifeLogs />", () => {
     it("can add node below with o key", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
-      await result.findByText("first lifelog", {}, { timeout: 5000 });
+      await result.findByText("first lifelog");
 
       // Press "l" to enter tree mode
       fireEvent.keyDown(document, { code: "KeyL", key: "l" });
 
       // Wait for tree nodes to render
-      await result.findByText("first child", {}, { timeout: 5000 });
+      await result.findByText("first child");
 
       // Initial state: child1 is selected
       await waitFor(() => {
@@ -728,13 +727,13 @@ describe("<LifeLogs />", () => {
     it("can add node above with O key", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
-      await result.findByText("first lifelog", {}, { timeout: 5000 });
+      await result.findByText("first lifelog");
 
       // Press "l" to enter tree mode
       fireEvent.keyDown(document, { code: "KeyL", key: "l" });
 
       // Wait for tree nodes to render
-      await result.findByText("second child", {}, { timeout: 5000 });
+      await result.findByText("second child");
 
       // Navigate to second child (j -> j -> j to skip grandchild and great-grandchild)
       fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
@@ -791,13 +790,13 @@ describe("<LifeLogs />", () => {
     it("can split node with Enter key at cursor position", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
-      await result.findByText("first lifelog", {}, { timeout: 5000 });
+      await result.findByText("first lifelog");
 
       // Press "l" to enter tree mode
       fireEvent.keyDown(document, { code: "KeyL", key: "l" });
 
       // Wait for tree nodes to render
-      await result.findByText("first child", {}, { timeout: 5000 });
+      await result.findByText("first child");
 
       // Initial state: child1 is selected
       await waitFor(() => {
@@ -869,13 +868,13 @@ describe("<LifeLogs />", () => {
     it("can add empty node below with Enter key at end of text", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
-      await result.findByText("first lifelog", {}, { timeout: 5000 });
+      await result.findByText("first lifelog");
 
       // Press "l" to enter tree mode
       fireEvent.keyDown(document, { code: "KeyL", key: "l" });
 
       // Wait for tree nodes to render
-      await result.findByText("first child", {}, { timeout: 5000 });
+      await result.findByText("first child");
 
       // Press "i" to enter editing mode
       fireEvent.keyDown(document, { code: "KeyI", key: "i" });

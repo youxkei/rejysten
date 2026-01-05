@@ -30,6 +30,10 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
         mutateResource?.(value);
       });
 
+      onCleanup(() => {
+        mutateResource = undefined;
+      });
+
       if (firstValue) {
         return Promise.resolve(firstValue.value);
       } else {
