@@ -1,10 +1,11 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import solidPlugin from "vite-plugin-solid";
 import checker from "vite-plugin-checker";
 import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 import tsconfigPaths from "vite-tsconfig-paths";
 // @ts-ignore
 import { VitePWA } from "vite-plugin-pwa";
+import { playwright } from "@vitest/browser-playwright";
 
 export default defineConfig({
   server: {
@@ -39,7 +40,7 @@ export default defineConfig({
   },
   test: {
     browser: {
-      provider: "playwright",
+      provider: playwright(),
       enabled: true,
       headless: true,
       instances: [{ browser: "chromium" }],
