@@ -387,7 +387,8 @@ describe("<LifeLogs />", () => {
 
       // Type text for the new lifelog
       const input = result.container.querySelector("input")!;
-      await userEvent.fill(input, "new lifelog from o key");
+      input.focus();
+      await userEvent.keyboard("new lifelog from o key");
 
       // Press Escape to save and exit editing
       await userEvent.keyboard("{Escape}");
@@ -626,10 +627,10 @@ describe("<LifeLogs />", () => {
       const input = result.container.querySelector("input") as HTMLInputElement;
 
       // Test cursor position is preserved while typing
-      // Type a character in the middle
-      const beforeCursor = input.value.slice(0, 5);
-      const afterCursor = input.value.slice(5);
-      await userEvent.fill(input, beforeCursor + "X" + afterCursor);
+      // Type a character in the middle (position 5)
+      input.focus();
+      input.setSelectionRange(5, 5);
+      await userEvent.keyboard("X");
 
       await waitFor(() => {
         expect(input.value).toBe("firstX child");
@@ -640,9 +641,8 @@ describe("<LifeLogs />", () => {
       input.setSelectionRange(6, 6);
       expect(input.selectionStart).toBe(6);
 
-      // Type another character
-      const value = input.value;
-      await userEvent.fill(input, value.slice(0, 6) + "Y" + value.slice(6));
+      // Type another character at position 6
+      await userEvent.keyboard("Y");
 
       await waitFor(() => {
         expect(input.value).toBe("firstXY child");
@@ -704,7 +704,8 @@ describe("<LifeLogs />", () => {
 
       // Type text for the new node
       const input = result.container.querySelector("input")!;
-      await userEvent.fill(input, "new node below");
+      input.focus();
+      await userEvent.keyboard("new node below");
 
       // Press Escape to save and exit editing
       await userEvent.keyboard("{Escape}");
@@ -767,7 +768,8 @@ describe("<LifeLogs />", () => {
 
       // Type text for the new node
       const input = result.container.querySelector("input")!;
-      await userEvent.fill(input, "new node above");
+      input.focus();
+      await userEvent.keyboard("new node above");
 
       // Press Escape to save and exit editing
       await userEvent.keyboard("{Escape}");
@@ -818,7 +820,8 @@ describe("<LifeLogs />", () => {
       const input = result.container.querySelector("input")!;
 
       // Change text to "beforeafter" and set cursor position in the middle
-      await userEvent.fill(input, "beforeafter");
+      input.focus();
+      await userEvent.keyboard("{Control>}a{/Control}beforeafter");
 
       // Set cursor position at index 6 (between "before" and "after")
       input.setSelectionRange(6, 6);
