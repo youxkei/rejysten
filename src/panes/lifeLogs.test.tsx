@@ -1,7 +1,8 @@
-import { fireEvent, render, waitFor } from "@solidjs/testing-library";
+import { render, waitFor } from "@solidjs/testing-library";
 import { doc, getDocs, Timestamp, writeBatch } from "firebase/firestore";
 import { onMount, Suspense } from "solid-js";
 import { describe, it, expect } from "vitest";
+import { userEvent } from "vitest/browser";
 
 import { LifeLogs } from "@/panes/lifeLogs";
 import { FirebaseServiceProvider } from "@/services/firebase";
@@ -196,7 +197,7 @@ describe("<LifeLogs />", () => {
       await result.findByText("first lifelog");
 
       // $log1 is already selected in setup, press "i" to enter editing mode
-      fireEvent.keyDown(document, { code: "KeyI", key: "i" });
+      await userEvent.keyboard("{i}");
 
       // Wait for input to appear and type new text
       await waitFor(() => {
@@ -205,11 +206,11 @@ describe("<LifeLogs />", () => {
       });
 
       const input = result.container.querySelector("input")!;
-      fireEvent.input(input, { target: { value: "edited lifelog text" } });
+      await userEvent.fill(input, "edited lifelog text");
 
       // Press Escape to save and exit editing
       const start = performance.now();
-      fireEvent.keyDown(document, { code: "Escape", key: "Escape" });
+      await userEvent.keyboard("{Escape}");
 
       // Verify the DOM was updated
       await waitFor(() => {
@@ -232,15 +233,15 @@ describe("<LifeLogs />", () => {
 
       // Navigate to $log3 which has noneTimestamp startAt
       // $log1 is selected, press "j" twice to get to $log3
-      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
-      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await userEvent.keyboard("{j}");
+      await userEvent.keyboard("{j}");
 
       // Verify $log3 has N/A for startAt (initial state has 4 N/A: $log1 endAt, $log2 endAt, $log3 startAt, $log3 endAt)
       expect(result.getAllByText("N/A").length).toBe(4);
 
       // Press "S" to set current time on startAt
       const start = performance.now();
-      fireEvent.keyDown(document, { code: "KeyS", key: "s" });
+      await userEvent.keyboard("{s}");
 
       // Verify DOM was updated - N/A count should decrease by 1 (now only 3: $log1 endAt, $log2 endAt, $log3 endAt)
       await waitFor(() => {
@@ -270,7 +271,7 @@ describe("<LifeLogs />", () => {
       // $log1 is already selected and has endAt = noneTimestamp, so "F" key should work
       // Press "F" to set current time on endAt
       const start = performance.now();
-      fireEvent.keyDown(document, { code: "KeyF", key: "f" });
+      await userEvent.keyboard("{f}");
 
       // Verify DOM was updated - N/A count should decrease by 1
       // Initial: 4 N/A ($log1 endAt, $log2 endAt, $log3 startAt, $log3 endAt)
@@ -309,7 +310,7 @@ describe("<LifeLogs />", () => {
       });
 
       // Press "j" to move to $log2
-      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await userEvent.keyboard("{j}");
 
       await waitFor(() => {
         const log2Element = result.getByText("second lifelog").closest(`.${styles.lifeLogTree.container}`);
@@ -317,7 +318,7 @@ describe("<LifeLogs />", () => {
       });
 
       // Press "j" again to move to $log3
-      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await userEvent.keyboard("{j}");
 
       await waitFor(() => {
         const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogTree.container}`);
@@ -325,7 +326,7 @@ describe("<LifeLogs />", () => {
       });
 
       // Press "k" to move back to $log2
-      fireEvent.keyDown(document, { code: "KeyK", key: "k" });
+      await userEvent.keyboard("{k}");
 
       await waitFor(() => {
         const log2Element = result.getByText("second lifelog").closest(`.${styles.lifeLogTree.container}`);
@@ -333,7 +334,7 @@ describe("<LifeLogs />", () => {
       });
 
       // Press "k" to move back to $log1
-      fireEvent.keyDown(document, { code: "KeyK", key: "k" });
+      await userEvent.keyboard("{k}");
 
       await waitFor(() => {
         const log1Element = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
@@ -341,7 +342,7 @@ describe("<LifeLogs />", () => {
       });
 
       // Press "k" at the first item should not change selection
-      fireEvent.keyDown(document, { code: "KeyK", key: "k" });
+      await userEvent.keyboard("{k}");
 
       await waitFor(() => {
         const log1Element = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
@@ -362,7 +363,7 @@ describe("<LifeLogs />", () => {
 
       // Press "o" to add a new lifelog
       const start = performance.now();
-      fireEvent.keyDown(document, { code: "KeyO", key: "o" });
+      await userEvent.keyboard("{o}");
 
       // Wait for new lifelog to be added and editing mode to be active
       await waitFor(() => {
@@ -383,10 +384,10 @@ describe("<LifeLogs />", () => {
 
       // Type text for the new lifelog
       const input = result.container.querySelector("input")!;
-      fireEvent.input(input, { target: { value: "new lifelog from o key" } });
+      await userEvent.fill(input, "new lifelog from o key");
 
       // Press Escape to save and exit editing
-      fireEvent.keyDown(document, { code: "Escape", key: "Escape" });
+      await userEvent.keyboard("{Escape}");
 
       // Verify the new lifelog text is displayed
       await waitFor(() => {
@@ -410,7 +411,7 @@ describe("<LifeLogs />", () => {
       });
 
       // Press "l" to enter tree mode
-      fireEvent.keyDown(document, { code: "KeyL", key: "l" });
+      await userEvent.keyboard("{l}");
 
       // Wait for tree nodes to render and first child to be selected
       await result.findByText("first child");
@@ -424,7 +425,7 @@ describe("<LifeLogs />", () => {
       expect(log1Element?.className).not.toContain(styles.lifeLogTree.selected);
 
       // Press "h" to exit tree mode and go back to lifelog
-      fireEvent.keyDown(document, { code: "KeyH", key: "h" });
+      await userEvent.keyboard("{h}");
 
       await waitFor(() => {
         const log1ElementAfter = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
@@ -445,7 +446,7 @@ describe("<LifeLogs />", () => {
       await result.findByText("first lifelog");
 
       // Press "l" to enter tree mode
-      fireEvent.keyDown(document, { code: "KeyL", key: "l" });
+      await userEvent.keyboard("{l}");
 
       // Wait for all tree nodes to render
       // Structure (depth):
@@ -465,7 +466,7 @@ describe("<LifeLogs />", () => {
       });
 
       // Test j: shallow -> deep (depth 1 -> depth 2)
-      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await userEvent.keyboard("{j}");
 
       await waitFor(() => {
         const grandchildElement = result.getByText("grandchild");
@@ -473,7 +474,7 @@ describe("<LifeLogs />", () => {
       });
 
       // Test j: deep -> deeper (depth 2 -> depth 3)
-      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await userEvent.keyboard("{j}");
 
       await waitFor(() => {
         const greatGrandchildElement = result.getByText("great-grandchild");
@@ -481,7 +482,7 @@ describe("<LifeLogs />", () => {
       });
 
       // Test j: deepest -> shallow (depth 3 -> depth 1)
-      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await userEvent.keyboard("{j}");
 
       await waitFor(() => {
         const child2Element = result.getByText("second child");
@@ -489,7 +490,7 @@ describe("<LifeLogs />", () => {
       });
 
       // Test k: shallow -> deepest (depth 1 -> depth 3)
-      fireEvent.keyDown(document, { code: "KeyK", key: "k" });
+      await userEvent.keyboard("{k}");
 
       await waitFor(() => {
         const greatGrandchildElement = result.getByText("great-grandchild");
@@ -497,7 +498,7 @@ describe("<LifeLogs />", () => {
       });
 
       // Test k: deepest -> deep (depth 3 -> depth 2)
-      fireEvent.keyDown(document, { code: "KeyK", key: "k" });
+      await userEvent.keyboard("{k}");
 
       await waitFor(() => {
         const grandchildElement = result.getByText("grandchild");
@@ -505,7 +506,7 @@ describe("<LifeLogs />", () => {
       });
 
       // Test k: deep -> shallow (depth 2 -> depth 1)
-      fireEvent.keyDown(document, { code: "KeyK", key: "k" });
+      await userEvent.keyboard("{k}");
 
       await waitFor(() => {
         const child1Element = result.getByText("first child");
@@ -513,7 +514,7 @@ describe("<LifeLogs />", () => {
       });
 
       // Press "k" at the first node should not change selection
-      fireEvent.keyDown(document, { code: "KeyK", key: "k" });
+      await userEvent.keyboard("{k}");
 
       await waitFor(() => {
         const child1Element = result.getByText("first child");
@@ -530,24 +531,24 @@ describe("<LifeLogs />", () => {
       await result.findByText("first lifelog");
 
       // Press "l" to enter tree mode (focus on first child node - child1)
-      fireEvent.keyDown(document, { code: "KeyL", key: "l" });
+      await userEvent.keyboard("{l}");
 
       // Wait for tree nodes to render
       await result.findByText("first child");
       await result.findByText("second child");
 
       // Press "j" three times to move to child2 (child1 -> grandchild -> great-grandchild -> child2)
-      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await userEvent.keyboard("{j}");
       await waitFor(() => {
         const grandchildElement = result.getByText("grandchild");
         expect(grandchildElement.className).toContain(styles.lifeLogTree.selected);
       });
-      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await userEvent.keyboard("{j}");
       await waitFor(() => {
         const greatGrandchildElement = result.getByText("great-grandchild");
         expect(greatGrandchildElement.className).toContain(styles.lifeLogTree.selected);
       });
-      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await userEvent.keyboard("{j}");
 
       // Wait for child2 to be selected
       await waitFor(() => {
@@ -564,7 +565,7 @@ describe("<LifeLogs />", () => {
 
       // Test indent: Press Tab to indent child2 under child1
       const indentStart = performance.now();
-      fireEvent.keyDown(document, { code: "Tab", key: "Tab" });
+      await userEvent.keyboard("{Tab}");
 
       // Verify DOM structure after indent: child2 should be inside child1's subtree
       await waitFor(() => {
@@ -578,7 +579,7 @@ describe("<LifeLogs />", () => {
 
       // Test dedent: Press Shift+Tab to dedent child2 back to sibling of child1
       const dedentStart = performance.now();
-      fireEvent.keyDown(document, { code: "Tab", key: "Tab", shiftKey: true });
+      await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
 
       // Verify DOM structure after dedent: child2 should be sibling of child1 again
       await waitFor(() => {
@@ -605,13 +606,13 @@ describe("<LifeLogs />", () => {
       await result.findByText("first lifelog");
 
       // Press "l" to enter tree mode (focus on first child node - child1)
-      fireEvent.keyDown(document, { code: "KeyL", key: "l" });
+      await userEvent.keyboard("{l}");
 
       // Wait for tree nodes to render
       await result.findByText("first child");
 
       // Press "i" to enter editing mode
-      fireEvent.keyDown(document, { code: "KeyI", key: "i" });
+      await userEvent.keyboard("{i}");
 
       // Wait for input to appear
       await waitFor(() => {
@@ -625,8 +626,7 @@ describe("<LifeLogs />", () => {
       // Type a character in the middle
       const beforeCursor = input.value.slice(0, 5);
       const afterCursor = input.value.slice(5);
-      input.value = beforeCursor + "X" + afterCursor;
-      fireEvent.input(input, { target: { value: input.value } });
+      await userEvent.fill(input, beforeCursor + "X" + afterCursor);
 
       await waitFor(() => {
         expect(input.value).toBe("firstX child");
@@ -639,8 +639,7 @@ describe("<LifeLogs />", () => {
 
       // Type another character
       const value = input.value;
-      input.value = value.slice(0, 6) + "Y" + value.slice(6);
-      fireEvent.input(input, { target: { value: input.value } });
+      await userEvent.fill(input, value.slice(0, 6) + "Y" + value.slice(6));
 
       await waitFor(() => {
         expect(input.value).toBe("firstXY child");
@@ -653,7 +652,7 @@ describe("<LifeLogs />", () => {
 
       // Press Escape to save and exit editing
       const start = performance.now();
-      fireEvent.keyDown(document, { code: "Escape", key: "Escape" });
+      await userEvent.keyboard("{Escape}");
 
       // Verify the DOM was updated
       await waitFor(() => {
@@ -674,7 +673,7 @@ describe("<LifeLogs />", () => {
       await result.findByText("first lifelog");
 
       // Press "l" to enter tree mode
-      fireEvent.keyDown(document, { code: "KeyL", key: "l" });
+      await userEvent.keyboard("{l}");
 
       // Wait for tree nodes to render
       await result.findByText("first child");
@@ -687,7 +686,7 @@ describe("<LifeLogs />", () => {
 
       // Press "o" to add a new node below
       const start = performance.now();
-      fireEvent.keyDown(document, { code: "KeyO", key: "o" });
+      await userEvent.keyboard("{o}");
 
       // Wait for input to appear (editing mode)
       await waitFor(() => {
@@ -702,10 +701,10 @@ describe("<LifeLogs />", () => {
 
       // Type text for the new node
       const input = result.container.querySelector("input")!;
-      fireEvent.input(input, { target: { value: "new node below" } });
+      await userEvent.fill(input, "new node below");
 
       // Press Escape to save and exit editing
-      fireEvent.keyDown(document, { code: "Escape", key: "Escape" });
+      await userEvent.keyboard("{Escape}");
 
       // Verify the new node is displayed
       await waitFor(() => {
@@ -730,28 +729,28 @@ describe("<LifeLogs />", () => {
       await result.findByText("first lifelog");
 
       // Press "l" to enter tree mode
-      fireEvent.keyDown(document, { code: "KeyL", key: "l" });
+      await userEvent.keyboard("{l}");
 
       // Wait for tree nodes to render
       await result.findByText("second child");
 
       // Navigate to second child (j -> j -> j to skip grandchild and great-grandchild)
-      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await userEvent.keyboard("{j}");
       await waitFor(() => {
         expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
       });
-      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await userEvent.keyboard("{j}");
       await waitFor(() => {
         expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
       });
-      fireEvent.keyDown(document, { code: "KeyJ", key: "j" });
+      await userEvent.keyboard("{j}");
       await waitFor(() => {
         expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
       });
 
       // Press Shift+O to add a new node above
       const start = performance.now();
-      fireEvent.keyDown(document, { code: "KeyO", key: "O", shiftKey: true });
+      await userEvent.keyboard("{Shift>}{o}{/Shift}");
 
       // Wait for input to appear (editing mode)
       await waitFor(() => {
@@ -765,10 +764,10 @@ describe("<LifeLogs />", () => {
 
       // Type text for the new node
       const input = result.container.querySelector("input")!;
-      fireEvent.input(input, { target: { value: "new node above" } });
+      await userEvent.fill(input, "new node above");
 
       // Press Escape to save and exit editing
-      fireEvent.keyDown(document, { code: "Escape", key: "Escape" });
+      await userEvent.keyboard("{Escape}");
 
       // Verify the new node is displayed
       await waitFor(() => {
@@ -793,7 +792,7 @@ describe("<LifeLogs />", () => {
       await result.findByText("first lifelog");
 
       // Press "l" to enter tree mode
-      fireEvent.keyDown(document, { code: "KeyL", key: "l" });
+      await userEvent.keyboard("{l}");
 
       // Wait for tree nodes to render
       await result.findByText("first child");
@@ -805,7 +804,7 @@ describe("<LifeLogs />", () => {
       });
 
       // Press "i" to enter editing mode
-      fireEvent.keyDown(document, { code: "KeyI", key: "i" });
+      await userEvent.keyboard("{i}");
 
       // Wait for input to appear
       await waitFor(() => {
@@ -816,14 +815,14 @@ describe("<LifeLogs />", () => {
       const input = result.container.querySelector("input")!;
 
       // Change text to "beforeafter" and set cursor position in the middle
-      fireEvent.input(input, { target: { value: "beforeafter" } });
+      await userEvent.fill(input, "beforeafter");
 
       // Set cursor position at index 6 (between "before" and "after")
       input.setSelectionRange(6, 6);
 
       // Press Enter to split the node
       const start = performance.now();
-      fireEvent.keyDown(input, { code: "Enter", key: "Enter" });
+      await userEvent.keyboard("{Enter}");
 
       // Wait for the split to complete - original node should have "before"
       await waitFor(() => {
@@ -845,7 +844,7 @@ describe("<LifeLogs />", () => {
       expect(duration, `Split node took ${duration.toFixed(2)}ms`).toBeLessThan(250);
 
       // Press Escape to exit editing mode
-      fireEvent.keyDown(document, { code: "Escape", key: "Escape" });
+      await userEvent.keyboard("{Escape}");
 
       // Verify both nodes are displayed
       await waitFor(() => {
@@ -871,13 +870,13 @@ describe("<LifeLogs />", () => {
       await result.findByText("first lifelog");
 
       // Press "l" to enter tree mode
-      fireEvent.keyDown(document, { code: "KeyL", key: "l" });
+      await userEvent.keyboard("{l}");
 
       // Wait for tree nodes to render
       await result.findByText("first child");
 
       // Press "i" to enter editing mode
-      fireEvent.keyDown(document, { code: "KeyI", key: "i" });
+      await userEvent.keyboard("{i}");
 
       // Wait for input to appear
       await waitFor(() => {
@@ -891,7 +890,7 @@ describe("<LifeLogs />", () => {
       input.setSelectionRange(input.value.length, input.value.length);
 
       // Press Enter to add new node below
-      fireEvent.keyDown(input, { code: "Enter", key: "Enter" });
+      await userEvent.keyboard("{Enter}");
 
       // Wait for new node - original node should still have "first child"
       await waitFor(() => {

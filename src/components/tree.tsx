@@ -153,7 +153,6 @@ export function Node<T extends TreeNode>(props: {
 
         break;
       }
-
     }
   });
 

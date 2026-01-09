@@ -24,7 +24,7 @@ function StorybookFirebaseWrapper(props: { children: JSXElement }) {
   const [errors, setErrors] = createSignal<string[]>([]);
 
   return (
-    <FirebaseServiceProvider configYAML={configText()} setErrors={setErrors}>
+    <FirebaseServiceProvider configYAML={configText()} setErrors={setErrors} appName="LifeLogsStory">
       <div style={{ "margin-bottom": "20px" }}>
         <label style={{ display: "block", "margin-bottom": "5px" }}>Firebase Configuration:</label>
         <textarea
