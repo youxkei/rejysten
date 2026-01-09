@@ -206,15 +206,18 @@ describe("<LifeLogs />", () => {
       });
 
       const input = result.container.querySelector("input")!;
-      await userEvent.fill(input, "edited lifelog text");
+      // Focus input directly (avoid userEvent.click which generates invalid CSS selector due to $ in parent ID)
+      input.focus();
+      // Delete one character using backspace to verify the fix works, then type additional text
+      await userEvent.keyboard("{Backspace} edited");
 
       // Press Escape to save and exit editing
       const start = performance.now();
       await userEvent.keyboard("{Escape}");
 
-      // Verify the DOM was updated
+      // Verify the DOM was updated - original was "first lifelog", deleted 'g', added " edited"
       await waitFor(() => {
-        expect(result.getByText("edited lifelog text")).toBeTruthy();
+        expect(result.getByText("first lifelo edited")).toBeTruthy();
       });
       const end = performance.now();
       const duration = end - start;

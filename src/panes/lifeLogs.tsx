@@ -171,13 +171,12 @@ export function LifeLogTree(props: {
   addKeyDownEventListener(async (event) => {
     if (event.isComposing || event.ctrlKey || !isSelected$()) return;
 
-    event.preventDefault();
-
     const { shiftKey } = event;
 
     if (props.isEditing) {
       switch (event.code) {
         case "Escape": {
+          event.preventDefault();
           event.stopImmediatePropagation();
 
           props.setIsEditing(false);
@@ -186,8 +185,11 @@ export function LifeLogTree(props: {
         }
       }
 
+      // Don't call preventDefault during editing to allow backspace and other input keys to work
       return;
     }
+
+    event.preventDefault();
 
     switch (event.code) {
       case "KeyI": {
