@@ -428,7 +428,7 @@ export function LifeLogTree(props: {
                   props.setEditingField(editing ? EditingField.StartAt : EditingField.Text);
                 }}
                 toText={(ts) => timestampToTimeText(ts) ?? "N/A"}
-                toEditText={(ts) => timestampToTimeText(ts) ?? ""}
+                toEditText={(ts) => timestampToTimeText(ts, false) ?? ""}
                 fromText={timeTextToTimestamp}
                 editInputClassName={styles.lifeLogTree.editInput}
                 onTabPress={handleTabNavigation}
@@ -445,7 +445,7 @@ export function LifeLogTree(props: {
                   props.setEditingField(editing ? EditingField.EndAt : EditingField.Text);
                 }}
                 toText={(ts) => timestampToTimeText(ts) ?? "N/A"}
-                toEditText={(ts) => timestampToTimeText(ts) ?? ""}
+                toEditText={(ts) => timestampToTimeText(ts, false) ?? ""}
                 fromText={timeTextToTimestamp}
                 editInputClassName={styles.lifeLogTree.editInput}
                 onTabPress={handleTabNavigation}

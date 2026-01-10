@@ -14,7 +14,7 @@ import {
 } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
 import { styles } from "@/styles.css";
-import { noneTimestamp } from "@/timestamp";
+import { noneTimestamp, timestampToTimeText } from "@/timestamp";
 
 async function setupLifeLogsTest(testId: string) {
   let resolveReady: () => void;
@@ -153,11 +153,8 @@ async function setupLifeLogsTest(testId: string) {
   };
 }
 
-function formatDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function formatDate(date: Date, withSeparator = true): string {
+  return timestampToTimeText(Timestamp.fromDate(date), withSeparator)!.split(" ")[0];
 }
 
 describe("<LifeLogs />", () => {
@@ -224,6 +221,85 @@ describe("<LifeLogs />", () => {
 
       expect(duration, `Edit text took ${duration.toFixed(2)}ms`).toBeLessThan(100);
       expect(result.queryByText("first lifelog")).toBeNull();
+
+      result.unmount();
+    });
+
+    it("can navigate to startAt and endAt fields with Tab key during editing", async (ctx) => {
+      const { result, baseTime } = await setupLifeLogsTest(ctx.task.id);
+
+      const dateStr = formatDate(baseTime);
+      const dateStrNoSep = formatDate(baseTime, false);
+      await result.findByText("first lifelog");
+
+      // Verify initial startAt is displayed as "10:30:00"
+      expect(result.getByText(`${dateStr} 10:30:00`)).toBeTruthy();
+
+      // $log1 is already selected in setup, press "i" to enter editing mode (starts in text field)
+      await userEvent.keyboard("{i}");
+
+      // Wait for input to appear with text field value
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("first lifelog");
+      });
+
+      // Press Tab to navigate to startAt field
+      await userEvent.keyboard("{Tab}");
+
+      // Wait for input to show startAt value (format without separators: YYYYMMDD HHMMSS)
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe(`${dateStrNoSep} 103000`);
+      });
+
+      // Edit startAt: delete last character and type "5" to change 103000 -> 103005
+      await userEvent.keyboard("{Backspace}5");
+
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input.value).toBe(`${dateStrNoSep} 103005`);
+      });
+
+      // Press Tab to navigate to endAt field (this saves startAt)
+      await userEvent.keyboard("{Tab}");
+
+      // Wait for input to show endAt value (empty string since it's noneTimestamp)
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe(""); // noneTimestamp shows as empty in edit mode
+      });
+
+      // Edit endAt: type a new time value in format without separators (YYYYMMDD HHMMSS)
+      await userEvent.keyboard(`${dateStrNoSep} 110000`);
+
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input.value).toBe(`${dateStrNoSep} 110000`);
+      });
+
+      // Press Escape to save and exit editing
+      await userEvent.keyboard("{Escape}");
+
+      // Verify the DOM was updated with new startAt
+      await waitFor(() => {
+        expect(result.getByText(`${dateStr} 10:30:05`)).toBeTruthy();
+      });
+
+      // Verify startAt was changed (old value should not exist)
+      expect(result.queryByText(`${dateStr} 10:30:00`)).toBeNull();
+
+      // Verify endAt was set (should now show the new time instead of N/A)
+      await waitFor(() => {
+        expect(result.getByText(`${dateStr} 11:00:00`)).toBeTruthy();
+      });
+
+      // Verify N/A count decreased (was 4, now 3: $log2 endAt, $log3 startAt, $log3 endAt)
+      const naElements = result.getAllByText("N/A");
+      expect(naElements.length).toBe(3);
 
       result.unmount();
     });
