@@ -74,16 +74,16 @@ function makeTreeNode(
   return [[node, ...childrenNodes], order];
 }
 
+vi.mock(import("firebase/firestore"), async (importOriginal) => {
+  const mod = await importOriginal();
+
+  return {
+    ...mod,
+    serverTimestamp: () => timestampForServerTimestamp,
+  };
+});
+
 describe.concurrent("treeNode", () => {
-  vi.mock(import("firebase/firestore"), async (importOriginal) => {
-    const mod = await importOriginal();
-
-    return {
-      ...mod,
-      serverTimestamp: () => timestampForServerTimestamp,
-    };
-  });
-
   describe("getPrevNode", () => {
     it("no prev node", async (ctx) => {
       const col = collection(firestoreForTest, ctx.task.id) as CollectionReference<TreeNodeWithText>;

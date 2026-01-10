@@ -6,6 +6,7 @@ import { uuidv7 } from "uuidv7";
 
 import { EditableValue } from "@/components/EditableValue";
 import { ChildrenNodes } from "@/components/tree";
+import { DateNow } from "@/date";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch, setDoc, updateDoc } from "@/services/firebase/firestore/batch";
 import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
@@ -326,7 +327,7 @@ export function LifeLogTree(props: {
         const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
         if (!lifeLog || !lifeLog.startAt.isEqual(noneTimestamp)) return;
 
-        await saveStartAt(Timestamp.fromMillis(Math.floor(Date.now() / 1000) * 1000));
+        await saveStartAt(Timestamp.fromMillis(Math.floor(DateNow() / 1000) * 1000));
 
         break;
       }
@@ -338,7 +339,7 @@ export function LifeLogTree(props: {
         const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
         if (!lifeLog || !lifeLog.endAt.isEqual(noneTimestamp)) return;
 
-        await saveEndAt(Timestamp.fromMillis(Math.floor(Date.now() / 1000) * 1000));
+        await saveEndAt(Timestamp.fromMillis(Math.floor(DateNow() / 1000) * 1000));
 
         break;
       }

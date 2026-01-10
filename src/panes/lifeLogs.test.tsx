@@ -14,7 +14,19 @@ import {
 } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
 import { styles } from "@/styles.css";
-import { noneTimestamp, timestampToTimeText } from "@/timestamp";
+import { noneTimestamp } from "@/timestamp";
+
+const baseTime = new Date(2026, 0, 10, 12, 0, 0, 0);
+
+vi.mock(import("@/date"), async (importOriginal) => {
+  const mod = await importOriginal();
+
+  return {
+    ...mod,
+    NewDate: () => baseTime,
+    DateNow: () => baseTime.getTime(),
+  };
+});
 
 async function setupLifeLogsTest(testId: string) {
   let resolveReady: () => void;
@@ -23,8 +35,6 @@ async function setupLifeLogsTest(testId: string) {
     resolveReady = resolve;
     rejectReady = reject;
   });
-
-  const baseTime: Date = new Date();
 
   const result = render(() => (
     <StoreServiceProvider localStorageNamePostfix={testId}>
@@ -149,18 +159,13 @@ async function setupLifeLogsTest(testId: string) {
 
   return {
     result,
-    baseTime,
   };
-}
-
-function formatDate(date: Date, withSeparator = true): string {
-  return timestampToTimeText(Timestamp.fromDate(date), withSeparator)!.split(" ")[0];
 }
 
 describe("<LifeLogs />", () => {
   describe("LifeLog", () => {
     it("renders correctly", async (ctx) => {
-      const { result, baseTime } = await setupLifeLogsTest(ctx.task.id);
+      const { result } = await setupLifeLogsTest(ctx.task.id);
 
       // Test: renders lifelog data correctly
       const firstElement = await result.findByText("first lifelog");
@@ -181,9 +186,8 @@ describe("<LifeLogs />", () => {
       expect(naElements.length).toBe(4); // $log1 and $log2 have noneTimestamp endAt, $log3 has both startAt and endAt as noneTimestamp
 
       // Test: time is displayed correctly (format: YYYY-MM-DD HH:MM:SS)
-      const dateStr = formatDate(baseTime);
-      expect(result.getByText(`${dateStr} 10:30:00`)).toBeTruthy();
-      expect(result.getByText(`${dateStr} 12:00:00`)).toBeTruthy();
+      expect(result.getByText("2026-01-10 10:30:00")).toBeTruthy();
+      expect(result.getByText("2026-01-10 12:00:00")).toBeTruthy();
 
       result.unmount();
     });
@@ -226,14 +230,12 @@ describe("<LifeLogs />", () => {
     });
 
     it("can navigate to startAt and endAt fields with Tab key during editing", async (ctx) => {
-      const { result, baseTime } = await setupLifeLogsTest(ctx.task.id);
+      const { result } = await setupLifeLogsTest(ctx.task.id);
 
-      const dateStr = formatDate(baseTime);
-      const dateStrNoSep = formatDate(baseTime, false);
       await result.findByText("first lifelog");
 
       // Verify initial startAt is displayed as "10:30:00"
-      expect(result.getByText(`${dateStr} 10:30:00`)).toBeTruthy();
+      expect(result.getByText("2026-01-10 10:30:00")).toBeTruthy();
 
       // $log1 is already selected in setup, press "i" to enter editing mode (starts in text field)
       await userEvent.keyboard("{i}");
@@ -252,7 +254,7 @@ describe("<LifeLogs />", () => {
       await waitFor(() => {
         const input = result.container.querySelector("input") as HTMLInputElement;
         expect(input).toBeTruthy();
-        expect(input.value).toBe(`${dateStrNoSep} 103000`);
+        expect(input.value).toBe("20260110 103000");
       });
 
       // Edit startAt: delete last character and type "5" to change 103000 -> 103005
@@ -260,7 +262,7 @@ describe("<LifeLogs />", () => {
 
       await waitFor(() => {
         const input = result.container.querySelector("input") as HTMLInputElement;
-        expect(input.value).toBe(`${dateStrNoSep} 103005`);
+        expect(input.value).toBe("20260110 103005");
       });
 
       // Press Tab to navigate to endAt field (this saves startAt)
@@ -274,11 +276,11 @@ describe("<LifeLogs />", () => {
       });
 
       // Edit endAt: type a new time value in format without separators (YYYYMMDD HHMMSS)
-      await userEvent.keyboard(`${dateStrNoSep} 110000`);
+      await userEvent.keyboard("20260110 110000");
 
       await waitFor(() => {
         const input = result.container.querySelector("input") as HTMLInputElement;
-        expect(input.value).toBe(`${dateStrNoSep} 110000`);
+        expect(input.value).toBe("20260110 110000");
       });
 
       // Press Escape to save and exit editing
@@ -286,15 +288,15 @@ describe("<LifeLogs />", () => {
 
       // Verify the DOM was updated with new startAt
       await waitFor(() => {
-        expect(result.getByText(`${dateStr} 10:30:05`)).toBeTruthy();
+        expect(result.getByText("2026-01-10 10:30:05")).toBeTruthy();
       });
 
       // Verify startAt was changed (old value should not exist)
-      expect(result.queryByText(`${dateStr} 10:30:00`)).toBeNull();
+      expect(result.queryByText("2026-01-10 10:30:00")).toBeNull();
 
       // Verify endAt was set (should now show the new time instead of N/A)
       await waitFor(() => {
-        expect(result.getByText(`${dateStr} 11:00:00`)).toBeTruthy();
+        expect(result.getByText("2026-01-10 11:00:00")).toBeTruthy();
       });
 
       // Verify N/A count decreased (was 4, now 3: $log2 endAt, $log3 startAt, $log3 endAt)
@@ -305,11 +307,6 @@ describe("<LifeLogs />", () => {
     });
 
     it("can edit startAt with various digit formats", async (ctx) => {
-      // Set fixed system time for deterministic tests: Jan 10, 2026, 12:00:00
-      // Using shouldAdvanceTime: true allows real timers to work while mocking Date
-      vi.useFakeTimers({ shouldAdvanceTime: true });
-      vi.setSystemTime(new Date(2026, 0, 10, 12, 0, 0, 0));
-
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       await result.findByText("first lifelog");
@@ -365,16 +362,10 @@ describe("<LifeLogs />", () => {
         expect(result.getByText("2026-01-05 18:00:00")).toBeTruthy();
       });
 
-      vi.useRealTimers();
       result.unmount();
     });
 
     it("can edit endAt with various digit formats", async (ctx) => {
-      // Set fixed system time for deterministic tests: Jan 10, 2026, 12:00:00
-      // Using shouldAdvanceTime: true allows real timers to work while mocking Date
-      vi.useFakeTimers({ shouldAdvanceTime: true });
-      vi.setSystemTime(new Date(2026, 0, 10, 12, 0, 0, 0));
-
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       await result.findByText("first lifelog");
@@ -435,7 +426,6 @@ describe("<LifeLogs />", () => {
         expect(result.getByText("2026-01-05 18:00:00")).toBeTruthy();
       });
 
-      vi.useRealTimers();
       result.unmount();
     });
 

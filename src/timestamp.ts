@@ -1,5 +1,7 @@
 import { Timestamp } from "firebase/firestore";
 
+import { NewDate } from "@/date";
+
 export const noneTimestamp = Timestamp.fromDate(new Date("3000-12-31T23:59:59Z"));
 
 export const dayMs = 24 * 60 * 60 * 1000;
@@ -26,7 +28,7 @@ export function timestampToTimeText(ts: Timestamp, withSeparator = true) {
 export function timeTextToTimestamp(text: string) {
   if (text === "") return noneTimestamp;
 
-  const now = new Date();
+  const now = NewDate();
   let year = now.getFullYear();
   let month = now.getMonth() + 1;
   let dateOfMonth = now.getDate();
