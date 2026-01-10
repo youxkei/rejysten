@@ -1,6 +1,8 @@
 import { debounce } from "@solid-primitives/scheduled";
 import { createSignal, Show, type JSX, onMount } from "solid-js";
 
+import { addKeyDownEventListener } from "@/solid/event";
+
 export interface EditableValueProps<V> {
   value: V;
   onSave: (newValue: V) => Promise<void>;
@@ -41,6 +43,19 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
 
   const debouncedSaveChanges = debounce(saveChanges, props.debounceMs ?? 1000);
 
+  // Handle 'i' key to enter editing mode when selected but not editing
+  addKeyDownEventListener((event) => {
+    if (event.isComposing || event.ctrlKey || event.shiftKey) return Promise.resolve();
+    if (!props.isSelected || props.isEditing) return Promise.resolve();
+
+    if (event.code === "KeyI") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      props.setIsEditing(true);
+    }
+    return Promise.resolve();
+  });
+
   return (
     <div class={props.className} classList={{ [props.selectedClassName ?? ""]: props.isSelected }}>
       <Show
@@ -76,6 +91,17 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                 debouncedSaveChanges(newText);
               }}
               onKeyDown={async (e) => {
+                // Handle Escape key - exit editing mode
+                if (e.code === "Escape") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  debouncedSaveChanges.clear();
+                  await saveChanges(editText());
+                  props.setIsEditing(false);
+                  setEditText("");
+                  return;
+                }
+
                 // Handle Tab key
                 if (e.code === "Tab") {
                   e.preventDefault();

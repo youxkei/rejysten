@@ -174,17 +174,6 @@ export function LifeLogTree(props: {
     const { shiftKey } = event;
 
     if (props.isEditing) {
-      switch (event.code) {
-        case "Escape": {
-          event.preventDefault();
-          event.stopImmediatePropagation();
-
-          props.setIsEditing(false);
-
-          break;
-        }
-      }
-
       // Don't call preventDefault during editing to allow backspace and other input keys to work
       return;
     }
@@ -192,18 +181,6 @@ export function LifeLogTree(props: {
     event.preventDefault();
 
     switch (event.code) {
-      case "KeyI": {
-        if (shiftKey) return;
-        event.stopImmediatePropagation();
-
-        props.setIsEditing(true);
-        if (isLifeLogSelected$()) {
-          props.setEditingField(EditingField.Text);
-        }
-
-        break;
-      }
-
       case "KeyL": {
         if (shiftKey || isLifeLogTreeFocused$()) return;
 
