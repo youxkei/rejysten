@@ -15,8 +15,8 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "emulator:build": "podman build -t firebase-emulator -f emulator.Containerfile",
-    "emulator:run": "podman run --rm -it --network host -v $PWD/firestore.local.rules:/firebase/firestore.rules firebase-emulator",
-    "emulator:clear": "curl -X DELETE 'http://localhost:8080/emulator/v1/projects/demo/databases/(default)/documents'"
+    "emulator:run": "podman run --rm -it --network host -v $PWD/firebase.local.json:/firebase/firebase.json -v $PWD/firestore.local.rules:/firebase/firestore.rules firebase-emulator",
+    "emulator:clear": "curl -X DELETE 'http://localhost:8080/emulator/v1/projects/demo/databases/test/documents'"
   },
   "repository": {
     "type": "git",

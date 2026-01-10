@@ -33,6 +33,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
   const [editText, setEditText] = createSignal("");
   const [isTabPressed, setIsTabPressed] = createSignal(false);
   const [isEnterPressed, setIsEnterPressed] = createSignal(false);
+  const [editTrigger, setEditTrigger] = createSignal<"i" | "a" | undefined>(undefined);
 
   async function saveChanges(text: string) {
     const newValue = props.fromText(text);
@@ -43,7 +44,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
 
   const debouncedSaveChanges = debounce(saveChanges, props.debounceMs ?? 1000);
 
-  // Handle 'i' key to enter editing mode when selected but not editing
+  // Handle 'i' key to enter editing mode with cursor at start, 'a' for cursor at end
   addKeyDownEventListener((event) => {
     if (event.isComposing || event.ctrlKey || event.shiftKey) return Promise.resolve();
     if (!props.isSelected || props.isEditing) return Promise.resolve();
@@ -51,6 +52,12 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
     if (event.code === "KeyI") {
       event.preventDefault();
       event.stopImmediatePropagation();
+      setEditTrigger("i");
+      props.setIsEditing(true);
+    } else if (event.code === "KeyA") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setEditTrigger("a");
       props.setIsEditing(true);
     }
     return Promise.resolve();
@@ -71,7 +78,18 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
             if (inputRef) {
               inputRef.value = initialText;
               inputRef.focus();
-              const cursorPos = props.initialCursorPosition;
+
+              const trigger = editTrigger();
+              let cursorPos: number | undefined;
+              if (trigger === "i") {
+                cursorPos = 0;
+              } else if (trigger === "a") {
+                cursorPos = initialText.length;
+              } else {
+                cursorPos = props.initialCursorPosition;
+              }
+              setEditTrigger(undefined);
+
               if (cursorPos !== undefined) {
                 requestAnimationFrame(() => {
                   inputRef.setSelectionRange(cursorPos, cursorPos);

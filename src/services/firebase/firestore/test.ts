@@ -15,7 +15,11 @@ import { type Schema } from "@/services/firebase/firestore/schema";
 import { firebaseServiceForTest } from "@/services/firebase/test";
 
 function createFirestoreServiceForTest() {
-  const firestore = initializeFirestore(firebaseServiceForTest.firebaseApp, { localCache: persistentLocalCache() });
+  const firestore = initializeFirestore(
+    firebaseServiceForTest.firebaseApp,
+    { localCache: persistentLocalCache() },
+    "test",
+  );
 
   connectFirestoreEmulator(firestore, "localhost", 8080);
 

@@ -162,7 +162,7 @@ async function setupLifeLogsTest(testId: string) {
   };
 }
 
-describe("<LifeLogs />", () => {
+describe("<LifeLogs />", { timeout: 5000 }, () => {
   describe("LifeLog", () => {
     it("renders correctly", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
@@ -192,12 +192,12 @@ describe("<LifeLogs />", () => {
       result.unmount();
     });
 
-    it("can edit text with i key", async (ctx) => {
+    it("can edit text with i key (cursor at start)", async (ctx) => {
       const { result } = await setupLifeLogsTest(ctx.task.id);
 
       await result.findByText("first lifelog");
 
-      // $log1 is already selected in setup, press "i" to enter editing mode
+      // $log1 is already selected in setup, press "i" to enter editing mode with cursor at start
       await userEvent.keyboard("{i}");
 
       // Wait for input to appear and type new text
@@ -207,9 +207,39 @@ describe("<LifeLogs />", () => {
       });
 
       const input = result.container.querySelector("input")!;
-      // Focus input directly (avoid userEvent.click which generates invalid CSS selector due to $ in parent ID)
       input.focus();
-      // Delete one character using backspace to verify the fix works, then type additional text
+      // Type at the beginning (cursor is at start with 'i' key)
+      await userEvent.keyboard("prefix ");
+
+      // Press Escape to save and exit editing
+      await userEvent.keyboard("{Escape}");
+
+      // Verify the DOM was updated - "prefix " was added at the beginning
+      await waitFor(() => {
+        expect(result.getByText("prefix first lifelog")).toBeTruthy();
+      });
+      expect(result.queryByText("first lifelog")).toBeNull();
+
+      result.unmount();
+    });
+
+    it("can edit text with a key (cursor at end)", async (ctx) => {
+      const { result } = await setupLifeLogsTest(ctx.task.id);
+
+      await result.findByText("first lifelog");
+
+      // $log1 is already selected in setup, press "a" to enter editing mode with cursor at end
+      await userEvent.keyboard("{a}");
+
+      // Wait for input to appear and type new text
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+      });
+
+      const input = result.container.querySelector("input")!;
+      input.focus();
+      // Delete one character using backspace, then type additional text (cursor is at end with 'a' key)
       await userEvent.keyboard("{Backspace} edited");
 
       // Press Escape to save and exit editing
