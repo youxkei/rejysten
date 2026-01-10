@@ -1,7 +1,7 @@
 import { render, waitFor } from "@solidjs/testing-library";
 import { doc, getDocs, Timestamp, writeBatch } from "firebase/firestore";
 import { onMount, Suspense } from "solid-js";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 
 import { LifeLogs } from "@/panes/lifeLogs";
@@ -301,6 +301,141 @@ describe("<LifeLogs />", () => {
       const naElements = result.getAllByText("N/A");
       expect(naElements.length).toBe(3);
 
+      result.unmount();
+    });
+
+    it("can edit startAt with various digit formats", async (ctx) => {
+      // Set fixed system time for deterministic tests: Jan 10, 2026, 12:00:00
+      // Using shouldAdvanceTime: true allows real timers to work while mocking Date
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      vi.setSystemTime(new Date(2026, 0, 10, 12, 0, 0, 0));
+
+      const { result } = await setupLifeLogsTest(ctx.task.id);
+
+      await result.findByText("first lifelog");
+
+      // Helper to enter edit mode for startAt
+      async function enterStartAtEditMode() {
+        await userEvent.keyboard("{i}"); // Enter text edit mode
+        await waitFor(() => {
+          const input = result.container.querySelector("input");
+          expect(input).toBeTruthy();
+        });
+        await userEvent.keyboard("{Tab}"); // Navigate to startAt
+        await waitFor(() => {
+          const input = result.container.querySelector("input") as HTMLInputElement;
+          expect(input).toBeTruthy();
+        });
+      }
+
+      // Test 4-digit format (HHMM) - should use current date (2026-01-10) with specified time, seconds = 0
+      await enterStartAtEditMode();
+      await userEvent.keyboard("{Control>}a{/Control}1234");
+      await userEvent.keyboard("{Escape}");
+
+      await waitFor(() => {
+        expect(result.getByText("2026-01-10 12:34:00")).toBeTruthy();
+      });
+
+      // Test 6-digit format (HHMMSS) - should use current date with specified time
+      await enterStartAtEditMode();
+      await userEvent.keyboard("{Control>}a{/Control}123456");
+      await userEvent.keyboard("{Escape}");
+
+      await waitFor(() => {
+        expect(result.getByText("2026-01-10 12:34:56")).toBeTruthy();
+      });
+
+      // Test 9-digit format (DD HHMMSS) - should use current year/month (2026-01) with specified day and time
+      await enterStartAtEditMode();
+      await userEvent.keyboard("{Control>}a{/Control}08 091500");
+      await userEvent.keyboard("{Escape}");
+
+      await waitFor(() => {
+        expect(result.getByText("2026-01-08 09:15:00")).toBeTruthy();
+      });
+
+      // Test 15-digit format (YYYYMMDD HHMMSS) - full date and time
+      // Use a date within 7-day range: Jan 5, 2026
+      await enterStartAtEditMode();
+      await userEvent.keyboard("{Control>}a{/Control}20260105 180000");
+      await userEvent.keyboard("{Escape}");
+
+      await waitFor(() => {
+        expect(result.getByText("2026-01-05 18:00:00")).toBeTruthy();
+      });
+
+      vi.useRealTimers();
+      result.unmount();
+    });
+
+    it("can edit endAt with various digit formats", async (ctx) => {
+      // Set fixed system time for deterministic tests: Jan 10, 2026, 12:00:00
+      // Using shouldAdvanceTime: true allows real timers to work while mocking Date
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      vi.setSystemTime(new Date(2026, 0, 10, 12, 0, 0, 0));
+
+      const { result } = await setupLifeLogsTest(ctx.task.id);
+
+      await result.findByText("first lifelog");
+
+      // Helper to enter edit mode for endAt (Tab twice from text: once for startAt, once for endAt)
+      async function enterEndAtEditMode() {
+        await userEvent.keyboard("{i}"); // Enter text edit mode
+        await waitFor(() => {
+          const input = result.container.querySelector("input");
+          expect(input).toBeTruthy();
+        });
+        await userEvent.keyboard("{Tab}"); // Navigate to startAt
+        await waitFor(() => {
+          const input = result.container.querySelector("input") as HTMLInputElement;
+          expect(input).toBeTruthy();
+        });
+        await userEvent.keyboard("{Tab}"); // Navigate to endAt
+        await waitFor(() => {
+          const input = result.container.querySelector("input") as HTMLInputElement;
+          expect(input).toBeTruthy();
+        });
+      }
+
+      // Test 4-digit format (HHMM) - should use current date (2026-01-10) with specified time, seconds = 0
+      await enterEndAtEditMode();
+      await userEvent.keyboard("{Control>}a{/Control}1234");
+      await userEvent.keyboard("{Escape}");
+
+      await waitFor(() => {
+        expect(result.getByText("2026-01-10 12:34:00")).toBeTruthy();
+      });
+
+      // Test 6-digit format (HHMMSS) - should use current date with specified time
+      await enterEndAtEditMode();
+      await userEvent.keyboard("{Control>}a{/Control}123456");
+      await userEvent.keyboard("{Escape}");
+
+      await waitFor(() => {
+        expect(result.getByText("2026-01-10 12:34:56")).toBeTruthy();
+      });
+
+      // Test 9-digit format (DD HHMMSS) - should use current year/month (2026-01) with specified day and time
+      await enterEndAtEditMode();
+      await userEvent.keyboard("{Control>}a{/Control}08 091500");
+      await userEvent.keyboard("{Escape}");
+
+      await waitFor(() => {
+        expect(result.getByText("2026-01-08 09:15:00")).toBeTruthy();
+      });
+
+      // Test 15-digit format (YYYYMMDD HHMMSS) - full date and time
+      // Use a date within 7-day range: Jan 5, 2026
+      await enterEndAtEditMode();
+      await userEvent.keyboard("{Control>}a{/Control}20260105 180000");
+      await userEvent.keyboard("{Escape}");
+
+      await waitFor(() => {
+        expect(result.getByText("2026-01-05 18:00:00")).toBeTruthy();
+      });
+
+      vi.useRealTimers();
       result.unmount();
     });
 
