@@ -1,5 +1,5 @@
 - use pnpm instead of npm
-- when you `git commit`, first check `git diff`
+- when you `git commit`, first check `git diff` and `git diff --cached`
   - when pre-commit hook failed, try `pnpm run fix` first
-- use playwright MCP server to check web pages
-  - storybook server is running on port 6006
+- use `pnpm test` to run test, always consider to run cases one by one first
+- use `git restore` instead of `git checkout` to restore file content from commit
