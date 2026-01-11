@@ -460,7 +460,7 @@ export function LifeLogTree(props: {
                 fromText={timeTextToTimestamp}
                 editInputClassName={styles.lifeLogTree.editInput}
                 onKeyDown={async (event, inputRef, preventBlurSave) => {
-                  if (event.code === "Tab") {
+                  if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
                     event.preventDefault();
                     preventBlurSave();
                     const newValue = timeTextToTimestamp(inputRef.value);
@@ -487,7 +487,7 @@ export function LifeLogTree(props: {
                 fromText={timeTextToTimestamp}
                 editInputClassName={styles.lifeLogTree.editInput}
                 onKeyDown={async (event, inputRef, preventBlurSave) => {
-                  if (event.code === "Tab") {
+                  if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
                     event.preventDefault();
                     preventBlurSave();
                     const newValue = timeTextToTimestamp(inputRef.value);
@@ -519,7 +519,7 @@ export function LifeLogTree(props: {
                   : undefined
               }
               onKeyDown={async (event, inputRef, preventBlurSave) => {
-                if (event.code === "Tab") {
+                if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
                   event.preventDefault();
                   preventBlurSave();
                   await saveText(inputRef.value);
@@ -655,7 +655,7 @@ export function LifeLogTree(props: {
                     preventBlurSave: () => void,
                   ) {
                     // Handle Tab (save + indent/dedent via tree.tsx)
-                    if (event.code === "Tab") {
+                    if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
                       event.preventDefault();
                       preventBlurSave();
 
