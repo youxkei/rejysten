@@ -20,8 +20,8 @@ export interface EditableValueProps<V> {
   selectedClassName?: string;
   editInputClassName?: string;
   debounceMs?: number;
-  // Tab navigation callback
-  onTabPress?: (shiftKey: boolean) => void;
+  // Tab navigation callback with cursor position
+  onTabPress?: (shiftKey: boolean, cursorPosition: number) => void;
   // Enter key callback with cursor position info
   onEnterPress?: (beforeCursor: string, afterCursor: string) => void;
   // Initial cursor position when entering edit mode
@@ -132,7 +132,8 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
 
                   if (props.onTabPress) {
                     // Call the Tab navigation callback if provided
-                    props.onTabPress(e.shiftKey);
+                    const cursorPos = inputRef?.selectionStart ?? 0;
+                    props.onTabPress(e.shiftKey, cursorPos);
                   } else {
                     // If no onTabPress callback, behave like Escape (exit editing mode)
                     props.setIsEditing(false);

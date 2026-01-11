@@ -158,6 +158,11 @@ export function LifeLogTree(props: {
   // Track node ID created from Enter key split for cursor positioning
   const [enterSplitNodeId$, setEnterSplitNodeId] = createSignal<string | undefined>(undefined);
 
+  // Track cursor position for Tab indent/dedent operations
+  const [tabCursorInfo$, setTabCursorInfo] = createSignal<{ nodeId: string; cursorPosition: number } | undefined>(
+    undefined,
+  );
+
   const selectedLifeLogNodeId$ = () => state.panesLifeLogs.selectedLifeLogNodeId;
   const setSelectedLifeLogNodeId = (selectedLifeLogNodeId: string) => {
     updateState((state) => {
@@ -397,7 +402,7 @@ export function LifeLogTree(props: {
     }
   }
 
-  function handleTabNavigation(shiftKey: boolean) {
+  function handleTabNavigation(shiftKey: boolean, _cursorPosition: number) {
     const fields = [EditingField.Text, EditingField.StartAt, EditingField.EndAt];
     const currentIndex = fields.indexOf(props.editingField);
 
@@ -479,7 +484,7 @@ export function LifeLogTree(props: {
                 createNewNode={(newId, initialText) => ({ id: newId, text: initialText ?? "" })}
                 isEditing={() => props.isEditing}
                 setIsEditing={props.setIsEditing}
-                showNode={(node$, isSelected$, onEnterPress) => {
+                showNode={(node$, isSelected$, onEnterPress, onTabPress) => {
                   async function onSaveNode(newText: string) {
                     firestore.setClock(true);
                     try {
@@ -512,6 +517,7 @@ export function LifeLogTree(props: {
                         props.setIsEditing(editing);
                         if (!editing) {
                           setEnterSplitNodeId(undefined);
+                          setTabCursorInfo(undefined);
                         }
                       }}
                       selectedClassName={styles.lifeLogTree.selected}
@@ -522,7 +528,18 @@ export function LifeLogTree(props: {
                           setEnterSplitNodeId(newNodeId);
                         });
                       }}
-                      initialCursorPosition={enterSplitNodeId$() === node$().id ? 0 : undefined}
+                      onTabPress={async (shiftKey, cursorPosition) => {
+                        await onTabPress?.(shiftKey, cursorPosition, (cursorPos) => {
+                          setTabCursorInfo({ nodeId: node$().id, cursorPosition: cursorPos });
+                        });
+                      }}
+                      initialCursorPosition={
+                        enterSplitNodeId$() === node$().id
+                          ? 0
+                          : tabCursorInfo$()?.nodeId === node$().id
+                            ? tabCursorInfo$()?.cursorPosition
+                            : undefined
+                      }
                     />
                   );
                 }}

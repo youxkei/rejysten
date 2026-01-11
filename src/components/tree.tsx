@@ -25,6 +25,7 @@ export function ChildrenNodes<T extends TreeNode>(props: {
     node$: Accessor<DocumentData<T>>,
     isSelected$: Accessor<boolean>,
     onEnterPress?: (afterCursor: string, onNewNodeId?: (id: string) => void) => Promise<void>,
+    onTabPress?: (shiftKey: boolean, cursorPosition: number, onComplete?: (cursorPosition: number) => void) => Promise<void>,
   ) => JSXElement;
   createNewNode: (newId: string, initialText?: string) => Omit<DocumentData<T>, keyof TreeNode>;
   isEditing?: Accessor<boolean>;
@@ -70,6 +71,7 @@ export function Node<T extends TreeNode>(props: {
     node$: Accessor<DocumentData<T>>,
     isSelected$: Accessor<boolean>,
     onEnterPress?: (afterCursor: string, onNewNodeId?: (id: string) => void) => Promise<void>,
+    onTabPress?: (shiftKey: boolean, cursorPosition: number, onComplete?: (cursorPosition: number) => void) => Promise<void>,
   ) => JSXElement;
   createNewNode: (newId: string, initialText?: string) => Omit<DocumentData<T>, keyof TreeNode>;
   isEditing?: Accessor<boolean>;
@@ -181,12 +183,40 @@ export function Node<T extends TreeNode>(props: {
     }
   }
 
+  async function handleTabPress(
+    shiftKey: boolean,
+    cursorPosition: number,
+    onComplete?: (cursorPosition: number) => void,
+  ): Promise<void> {
+    const node = await getDoc(firestore, props.col, props.id);
+    if (!node) return;
+
+    try {
+      firestore.setClock(true);
+      await runBatch(firestore, async (batch) => {
+        if (shiftKey) {
+          await dedent(firestore, batch, props.col, node);
+        } else {
+          await indent(firestore, batch, props.col, node);
+        }
+      });
+
+      onComplete?.(cursorPosition);
+
+      await startTransition(() => {
+        firestore.setClock(false);
+      });
+    } finally {
+      firestore.setClock(false);
+    }
+  }
+
   return (
     <Show when={node$()}>
       {(node$) => {
         return (
           <>
-            <div>{props.showNode(node$, isSelected$, handleEnterPress)}</div>
+            <div>{props.showNode(node$, isSelected$, handleEnterPress, handleTabPress)}</div>
             <ChildrenNodes
               col={props.col}
               parentId={props.id}
