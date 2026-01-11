@@ -1328,6 +1328,9 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
         expect(child1Element.className).toContain(styles.lifeLogTree.selected);
       });
 
+      // Wait for any pending Firestore operations to complete
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
       // Exit tree mode to ensure clean shutdown
       await userEvent.keyboard("{h}");
       await waitFor(() => {
