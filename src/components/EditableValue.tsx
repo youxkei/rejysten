@@ -1,5 +1,5 @@
 import { debounce } from "@solid-primitives/scheduled";
-import { createSignal, Show, type JSX, onMount } from "solid-js";
+import { createEffect, createSignal, on, Show, type JSX, onMount } from "solid-js";
 
 import { addKeyDownEventListener } from "@/solid/event";
 
@@ -98,6 +98,21 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
               }
             }
           });
+
+          // Restore cursor position when initialCursorPosition changes (e.g., after Tab indent/dedent)
+          createEffect(
+            on(
+              () => props.initialCursorPosition,
+              (cursorPos) => {
+                if (cursorPos !== undefined && inputRef) {
+                  requestAnimationFrame(() => {
+                    inputRef.setSelectionRange(cursorPos, cursorPos);
+                  });
+                }
+              },
+              { defer: true },
+            ),
+          );
 
           return (
             <input
