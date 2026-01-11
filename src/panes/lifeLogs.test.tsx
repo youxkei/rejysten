@@ -88,8 +88,8 @@ async function setupLifeLogsTest(testId: string, db: DatabaseInfo) {
                     updatedAt: Timestamp.fromDate(baseTime),
                   });
 
-                  // Create two sibling tree nodes under $log1
-                  // child1 is first, child2 is second
+                  // Create three sibling tree nodes under $log1
+                  // child1 (has children), child2 (no children), child3 (has children)
                   batch.set(doc(lifeLogTreeNodes, "child1"), {
                     text: "first child",
                     parentId: "$log1",
@@ -102,6 +102,14 @@ async function setupLifeLogsTest(testId: string, db: DatabaseInfo) {
                     text: "second child",
                     parentId: "$log1",
                     order: "a1",
+                    createdAt: Timestamp.fromDate(baseTime),
+                    updatedAt: Timestamp.fromDate(baseTime),
+                  });
+
+                  batch.set(doc(lifeLogTreeNodes, "child3"), {
+                    text: "third child",
+                    parentId: "$log1",
+                    order: "a2",
                     createdAt: Timestamp.fromDate(baseTime),
                     updatedAt: Timestamp.fromDate(baseTime),
                   });
@@ -119,6 +127,16 @@ async function setupLifeLogsTest(testId: string, db: DatabaseInfo) {
                   batch.set(doc(lifeLogTreeNodes, "greatGrandchild1"), {
                     text: "great-grandchild",
                     parentId: "grandchild1",
+                    order: "a0",
+                    createdAt: Timestamp.fromDate(baseTime),
+                    updatedAt: Timestamp.fromDate(baseTime),
+                  });
+
+                  // Create a grandchild node under child3 to give child3 children
+                  // This enables testing "Delete when next node has children"
+                  batch.set(doc(lifeLogTreeNodes, "grandchild3"), {
+                    text: "third grandchild",
+                    parentId: "child3",
                     order: "a0",
                     createdAt: Timestamp.fromDate(baseTime),
                     updatedAt: Timestamp.fromDate(baseTime),
@@ -1297,6 +1315,450 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       });
 
       // Exit editing mode before unmount to ensure clean shutdown
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      result.unmount();
+    });
+
+    it("can merge nodes with Backspace at beginning of node", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await result.findByText("first lifelog");
+
+      // Press "l" to enter tree mode
+      await userEvent.keyboard("{l}");
+
+      // Wait for tree nodes to render
+      await result.findByText("first child");
+      await result.findByText("second child");
+      await result.findByText("grandchild");
+      await result.findByText("great-grandchild");
+
+      // Wait for initial selection
+      await waitFor(() => {
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Navigate to child2 (j -> j -> j: child1 -> grandchild -> great-grandchild -> child2)
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "i" to enter editing mode (cursor at beginning)
+      await userEvent.keyboard("{i}");
+
+      // Wait for input to appear
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("second child");
+        expect((input as HTMLInputElement).selectionStart).toBe(0);
+      });
+
+      // Press Backspace at beginning - should merge with previous node (great-grandchild)
+      await userEvent.keyboard("{Backspace}");
+
+      // Wait for merge to complete
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        // Merged text: "great-grandchild" + "second child" = "great-grandchildsecond child"
+        expect(input.value).toBe("great-grandchildsecond child");
+        // Cursor should be at the join point (length of "great-grandchild" = 16)
+        expect(input.selectionStart).toBe(16);
+      });
+
+      // Verify "second child" node is gone
+      await waitFor(() => {
+        expect(result.queryByText("second child")).toBeNull();
+      });
+
+      // Exit editing mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      // Verify merged text is displayed
+      expect(result.getByText("great-grandchildsecond child")).toBeTruthy();
+
+      result.unmount();
+    });
+
+    it("can merge nodes with Delete at end of node", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await result.findByText("first lifelog");
+
+      // Press "l" to enter tree mode
+      await userEvent.keyboard("{l}");
+
+      // Wait for tree nodes to render
+      await result.findByText("first child");
+      await result.findByText("second child");
+      await result.findByText("grandchild");
+      await result.findByText("great-grandchild");
+
+      // Wait for initial selection
+      await waitFor(() => {
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Navigate to great-grandchild (j -> j: child1 -> grandchild -> great-grandchild)
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "a" to enter editing mode (cursor at end)
+      await userEvent.keyboard("{a}");
+
+      // Wait for input to appear
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("great-grandchild");
+        expect((input as HTMLInputElement).selectionStart).toBe(16);
+      });
+
+      // Press Delete at end - should merge with next node (second child)
+      await userEvent.keyboard("{Delete}");
+
+      // Wait for merge to complete
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        // Merged text: "great-grandchild" + "second child" = "great-grandchildsecond child"
+        expect(input.value).toBe("great-grandchildsecond child");
+        // Cursor should stay at original position (16)
+        expect(input.selectionStart).toBe(16);
+      });
+
+      // Verify "second child" node is gone
+      await waitFor(() => {
+        expect(result.queryByText("second child")).toBeNull();
+      });
+
+      // Exit editing mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      // Verify merged text is displayed
+      expect(result.getByText("great-grandchildsecond child")).toBeTruthy();
+
+      result.unmount();
+    });
+
+    it("can merge with Delete even when current node has children (merges with first child)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await result.findByText("first lifelog");
+
+      // Press "l" to enter tree mode
+      await userEvent.keyboard("{l}");
+
+      // Wait for tree nodes to render
+      await result.findByText("first child");
+      await result.findByText("grandchild");
+      await result.findByText("great-grandchild");
+
+      // Wait for initial selection on "first child" (which has children)
+      await waitFor(() => {
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Navigate to grandchild (which has children - great-grandchild)
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "a" to enter editing mode (cursor at end)
+      await userEvent.keyboard("{a}");
+
+      // Wait for input to appear
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("grandchild");
+      });
+
+      // Press Delete at end - SHOULD merge because next node (great-grandchild) has no children
+      // Even though current node (grandchild) has children
+      await userEvent.keyboard("{Delete}");
+
+      // Wait for merge to complete
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        // Merged text: "grandchild" + "great-grandchild" = "grandchildgreat-grandchild"
+        expect(input.value).toBe("grandchildgreat-grandchild");
+      });
+
+      // "great-grandchild" node should be gone (merged into grandchild)
+      await waitFor(() => {
+        expect(result.queryByText("great-grandchild")).toBeNull();
+      });
+
+      // Exit editing mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      result.unmount();
+    });
+
+    it("does not merge with Delete when first child (next node) has children", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await result.findByText("first lifelog");
+
+      // Press "l" to enter tree mode
+      await userEvent.keyboard("{l}");
+
+      // Wait for tree nodes to render
+      await result.findByText("first child");
+      await result.findByText("grandchild");
+
+      // Wait for initial selection on "first child"
+      await waitFor(() => {
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "a" to enter editing mode (cursor at end)
+      await userEvent.keyboard("{a}");
+
+      // Wait for input to appear
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("first child");
+      });
+
+      // Press Delete at end - should NOT merge because next node (grandchild) has children
+      await userEvent.keyboard("{Delete}");
+
+      // Wait a bit and verify no merge happened
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Text should still be "first child" (no merge)
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      expect(input.value).toBe("first child");
+
+      // "grandchild" should still exist
+      expect(result.queryByText("grandchild")).toBeTruthy();
+
+      // Exit editing mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      result.unmount();
+    });
+
+    it("does not merge when cursor is not at boundary", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await result.findByText("first lifelog");
+
+      // Press "l" to enter tree mode
+      await userEvent.keyboard("{l}");
+
+      // Wait for tree nodes to render
+      await result.findByText("first child");
+      await result.findByText("second child");
+      await result.findByText("great-grandchild");
+
+      // Wait for initial selection
+      await waitFor(() => {
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Navigate to great-grandchild (j -> grandchild, j -> great-grandchild)
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "i" to enter editing mode
+      await userEvent.keyboard("{i}");
+
+      // Wait for input
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+      });
+
+      const input = result.container.querySelector("input") as HTMLInputElement;
+
+      // Move cursor to middle position
+      input.setSelectionRange(5, 5);
+
+      // Press Backspace - should just delete character, not merge
+      await userEvent.keyboard("{Backspace}");
+
+      // Wait for normal backspace to work
+      await waitFor(() => {
+        const inputAfter = result.container.querySelector("input") as HTMLInputElement;
+        // "great-grandchild" with char at position 4 deleted = "grea-grandchild"
+        expect(inputAfter.value).toBe("grea-grandchild");
+      });
+
+      // "second child" should still exist
+      expect(result.queryByText("second child")).toBeTruthy();
+
+      // Exit editing mode before unmount to ensure clean shutdown
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      result.unmount();
+    });
+
+    it("does not merge with Delete when next node has children", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await result.findByText("first lifelog");
+
+      // Press "l" to enter tree mode
+      await userEvent.keyboard("{l}");
+
+      // Wait for tree nodes to render
+      await result.findByText("first child");
+      await result.findByText("second child");
+      await result.findByText("third child");
+
+      // Wait for initial selection
+      await waitFor(() => {
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Navigate to second child (j -> grandchild -> j -> great-grandchild -> j -> second child)
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "a" to enter editing mode (cursor at end)
+      await userEvent.keyboard("{a}");
+
+      // Wait for input to appear
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("second child");
+      });
+
+      // Press Delete at end - should NOT merge because next node (third child) has children
+      await userEvent.keyboard("{Delete}");
+
+      // Wait a bit and verify no merge happened
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Text should still be "second child" (no merge)
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      expect(input.value).toBe("second child");
+
+      // "third child" should still exist
+      expect(result.queryByText("third child")).toBeTruthy();
+
+      // Exit editing mode before unmount
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      result.unmount();
+    });
+
+    it("can merge with Backspace even when previous node has children", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await result.findByText("first lifelog");
+
+      // Press "l" to enter tree mode
+      await userEvent.keyboard("{l}");
+
+      // Wait for tree nodes to render
+      await result.findByText("first child");
+      await result.findByText("grandchild");
+      await result.findByText("great-grandchild");
+
+      // Wait for initial selection
+      await waitFor(() => {
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Navigate to great-grandchild (j -> grandchild -> j -> great-grandchild)
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "i" to enter editing mode (cursor at beginning)
+      await userEvent.keyboard("{i}");
+
+      // Wait for input to appear
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("great-grandchild");
+        expect((input as HTMLInputElement).selectionStart).toBe(0);
+      });
+
+      // Press Backspace at beginning - should merge even though previous node (grandchild) has children
+      // We only check if current node has children, and great-grandchild has no children
+      await userEvent.keyboard("{Backspace}");
+
+      // Verify merge happened - now on grandchild with merged text
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("grandchildgreat-grandchild");
+        expect(input.selectionStart).toBe("grandchild".length);
+      });
+
+      // "great-grandchild" should no longer exist as a separate node
+      expect(result.queryByText("great-grandchild")).toBeNull();
+
+      // Exit editing mode before unmount
       await userEvent.keyboard("{Escape}");
       await waitFor(() => {
         expect(result.container.querySelector("input")).toBeNull();

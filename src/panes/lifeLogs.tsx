@@ -11,7 +11,15 @@ import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/
 import { runBatch, setDoc, updateDoc } from "@/services/firebase/firestore/batch";
 import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
-import { addNextSibling, addPrevSibling, addSingle, getFirstChildNode } from "@/services/firebase/firestore/treeNode";
+import {
+  addNextSibling,
+  addPrevSibling,
+  addSingle,
+  getAboveNode,
+  getBelowNode,
+  getFirstChildNode,
+  remove,
+} from "@/services/firebase/firestore/treeNode";
 import { initialState, useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
 import { createTickSignal } from "@/solid/signal";
@@ -160,6 +168,11 @@ export function LifeLogTree(props: {
 
   // Track cursor position for Tab indent/dedent operations
   const [tabCursorInfo$, setTabCursorInfo] = createSignal<{ nodeId: string; cursorPosition: number } | undefined>(
+    undefined,
+  );
+
+  // Track cursor position for Backspace/Delete merge operations
+  const [mergeCursorInfo$, setMergeCursorInfo] = createSignal<{ nodeId: string; cursorPosition: number } | undefined>(
     undefined,
   );
 
@@ -582,6 +595,98 @@ export function LifeLogTree(props: {
                         firestore.setClock(false);
                       }
                     }
+
+                    // Handle Backspace at beginning of node - merge with previous node
+                    if (event.code === "Backspace" && inputRef.selectionStart === 0) {
+                      const node = await getDoc(firestore, lifeLogTreeNodesCol, node$().id);
+                      if (!node) return;
+
+                      // Check if current node has children (we're deleting current node)
+                      const currentHasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, node);
+                      if (currentHasChildren) return; // Allow normal backspace
+
+                      // Get previous node
+                      const aboveNode = await getAboveNode(firestore, lifeLogTreeNodesCol, node);
+                      if (!aboveNode) return; // No previous node
+
+                      // Note: Previous node may have children (e.g., parent node), but that's OK
+                      // because we're only deleting the current node, not the previous one
+
+                      event.preventDefault();
+                      preventBlurSave();
+
+                      const mergedText = aboveNode.text + inputRef.value;
+                      const cursorPosition = aboveNode.text.length;
+
+                      firestore.setClock(true);
+                      try {
+                        await runBatch(firestore, async (batch) => {
+                          // Update previous node with merged text
+                          updateDoc(firestore, batch, lifeLogTreeNodesCol, {
+                            id: aboveNode.id,
+                            text: mergedText,
+                          });
+                          // Delete current node
+                          await remove(firestore, batch, lifeLogTreeNodesCol, node);
+                        });
+
+                        setMergeCursorInfo({ nodeId: aboveNode.id, cursorPosition });
+                        await startTransition(() => {
+                          setSelectedLifeLogNodeId(aboveNode.id);
+                          props.setIsEditing(true);
+                          firestore.setClock(false);
+                        });
+                      } finally {
+                        firestore.setClock(false);
+                      }
+                      return;
+                    }
+
+                    // Handle Delete at end of node - merge with next node
+                    if (event.code === "Delete" && inputRef.selectionStart === inputRef.value.length) {
+                      const node = await getDoc(firestore, lifeLogTreeNodesCol, node$().id);
+                      if (!node) return;
+
+                      // Get next node
+                      const belowNode = await getBelowNode(firestore, lifeLogTreeNodesCol, node);
+                      if (!belowNode) return;
+
+                      // Check if next node has children (we're deleting next node)
+                      const nextHasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, belowNode);
+                      if (nextHasChildren) return;
+
+                      event.preventDefault();
+                      preventBlurSave();
+
+                      const cursorPosition = inputRef.value.length;
+                      const mergedText = inputRef.value + belowNode.text;
+
+                      firestore.setClock(true);
+                      try {
+                        await runBatch(firestore, async (batch) => {
+                          // Update current node with merged text
+                          updateDoc(firestore, batch, lifeLogTreeNodesCol, {
+                            id: node.id,
+                            text: mergedText,
+                          });
+                          // Delete next node
+                          await remove(firestore, batch, lifeLogTreeNodesCol, belowNode);
+                        });
+
+                        // Update input value directly since we're staying on the same node
+                        inputRef.value = mergedText;
+                        // Dispatch input event to update EditableValue's internal state
+                        inputRef.dispatchEvent(new Event("input", { bubbles: true }));
+                        inputRef.setSelectionRange(cursorPosition, cursorPosition);
+
+                        await startTransition(() => {
+                          firestore.setClock(false);
+                        });
+                      } finally {
+                        firestore.setClock(false);
+                      }
+                      return;
+                    }
                   }
 
                   return (
@@ -599,6 +704,7 @@ export function LifeLogTree(props: {
                         if (!editing) {
                           setEnterSplitNodeId(undefined);
                           setTabCursorInfo(undefined);
+                          setMergeCursorInfo(undefined);
                         }
                       }}
                       selectedClassName={styles.lifeLogTree.selected}
@@ -609,7 +715,9 @@ export function LifeLogTree(props: {
                           ? 0
                           : tabCursorInfo$()?.nodeId === node$().id
                             ? tabCursorInfo$()?.cursorPosition
-                            : undefined
+                            : mergeCursorInfo$()?.nodeId === node$().id
+                              ? mergeCursorInfo$()?.cursorPosition
+                              : undefined
                       }
                     />
                   );
