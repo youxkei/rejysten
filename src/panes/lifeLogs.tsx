@@ -847,6 +847,7 @@ export function LifeLogTree(props: {
                           setMergeCursorInfo(undefined);
                         }
                       }}
+                      className={styles.lifeLogTree.text}
                       selectedClassName={styles.lifeLogTree.selected}
                       editInputClassName={styles.lifeLogTree.editInput}
                       onKeyDown={handleKeyDown}

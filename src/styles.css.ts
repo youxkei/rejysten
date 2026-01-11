@@ -74,6 +74,7 @@ export const styles = {
       fontSize: "1rem",
       lineHeight: 1.5,
       color: nord[4],
+      minHeight: "1.5em",
     }),
     childrenNodes: style({
       marginTop: "0.75rem",
@@ -91,6 +92,7 @@ export const styles = {
       padding: 0,
       margin: 0,
       fontFamily: "inherit",
+      minHeight: "1.5em",
     }),
   },
 };
