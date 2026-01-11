@@ -18,6 +18,8 @@ import {
   getAboveNode,
   getBelowNode,
   getFirstChildNode,
+  getNextNode,
+  getPrevNode,
   remove,
 } from "@/services/firebase/firestore/treeNode";
 import { initialState, useStoreService } from "@/services/store";
@@ -712,6 +714,36 @@ export function LifeLogTree(props: {
                       // Check if current node has children (we're deleting current node)
                       const currentHasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, node);
                       if (currentHasChildren) return; // Allow normal backspace
+
+                      // Check if this is the only empty node directly under the LifeLog
+                      const lifeLog = lifeLog$();
+                      if (
+                        inputRef.value === "" &&
+                        node.parentId === props.id &&
+                        !(await getPrevNode(firestore, lifeLogTreeNodesCol, node)) &&
+                        !(await getNextNode(firestore, lifeLogTreeNodesCol, node))
+                      ) {
+                        event.preventDefault();
+                        preventBlurSave();
+
+                        firestore.setClock(true);
+                        try {
+                          await runBatch(firestore, async (batch) => {
+                            await remove(firestore, batch, lifeLogTreeNodesCol, node);
+                          });
+
+                          props.setLifeLogCursorInfo({ lifeLogId: props.id, cursorPosition: lifeLog.text.length });
+                          await startTransition(() => {
+                            setSelectedLifeLogNodeId("");
+                            props.setEditingField(EditingField.Text);
+                            props.setIsEditing(true);
+                            firestore.setClock(false);
+                          });
+                        } finally {
+                          firestore.setClock(false);
+                        }
+                        return;
+                      }
 
                       // Get previous node
                       const aboveNode = await getAboveNode(firestore, lifeLogTreeNodesCol, node);

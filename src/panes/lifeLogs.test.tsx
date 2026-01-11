@@ -1947,6 +1947,93 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
+    it("can delete only empty node with Backspace and move cursor to LifeLog text", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      // Navigate to $log2 (has text "second lifelog", no tree nodes)
+      await result.findByText("first lifelog");
+      await userEvent.keyboard("{j}"); // Move to $log2
+      await waitFor(() => {
+        const log2Element = result.getByText("second lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log2Element?.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "l" to create a tree node with text "new"
+      await userEvent.keyboard("{l}");
+      await waitFor(() => {
+        expect(result.getByText("new").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "a" to enter edit mode at end
+      await userEvent.keyboard("{a}");
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("new");
+      });
+
+      // Delete all text (Backspace 3 times: "new" -> "ne" -> "n" -> "")
+      await userEvent.keyboard("{Backspace}{Backspace}{Backspace}");
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input.value).toBe("");
+        expect(input.selectionStart).toBe(0);
+      });
+
+      // Press Backspace to delete the empty node
+      await userEvent.keyboard("{Backspace}");
+
+      // Verify: cursor is now in LifeLog text field at end
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("second lifelog");
+        expect(input.selectionStart).toBe("second lifelog".length);
+      });
+
+      // Verify tree node is gone
+      expect(result.queryByText("new")).toBeNull();
+
+      result.unmount();
+    });
+
+    it("does not delete only node with Backspace if text is not empty", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      // Navigate to $log2 and create a tree node
+      await result.findByText("first lifelog");
+      await userEvent.keyboard("{j}");
+      await userEvent.keyboard("{l}");
+      await waitFor(() => {
+        expect(result.getByText("new").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "i" to enter edit mode at beginning
+      await userEvent.keyboard("{i}");
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input.selectionStart).toBe(0);
+      });
+
+      // Press Backspace at position 0 with non-empty text
+      await userEvent.keyboard("{Backspace}");
+
+      // Wait for async handler to complete
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Verify: node still exists, text unchanged
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      expect(input.value).toBe("new");
+
+      // Exit editing mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      result.unmount();
+    });
+
     it("can merge nodes with Delete at end of node", async ({ db, task }) => {
       const { result } = await setupLifeLogsTest(task.id, db);
 
