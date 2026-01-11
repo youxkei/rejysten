@@ -21,11 +21,7 @@ export interface EditableValueProps<V> {
   editInputClassName?: string;
   debounceMs?: number;
   // Key down callback - receives event, input ref, and function to prevent blur save
-  onKeyDown?: (
-    event: KeyboardEvent,
-    inputRef: HTMLInputElement,
-    preventBlurSave: () => void,
-  ) => void | Promise<void>;
+  onKeyDown?: (event: KeyboardEvent, inputRef: HTMLInputElement, preventBlurSave: () => void) => void | Promise<void>;
   // Initial cursor position when entering edit mode
   initialCursorPosition?: number;
   debugId?: string;

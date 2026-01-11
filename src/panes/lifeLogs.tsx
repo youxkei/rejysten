@@ -84,6 +84,11 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp }) 
   const [editingField$, setEditingField] = createSignal<EditingField>(EditingField.Text);
   const [isEditing$, setIsEditing] = createSignal(false);
 
+  // Track cursor position for LifeLog text after deletion
+  const [lifeLogCursorInfo$, setLifeLogCursorInfo] = createSignal<
+    { lifeLogId: string; cursorPosition: number } | undefined
+  >(undefined);
+
   const lifeLogs$ = createSubscribeAllSignal(
     firestore,
     () =>
@@ -129,6 +134,8 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp }) 
               setIsEditing={setIsEditing}
               editingField={editingField$()}
               setEditingField={setEditingField}
+              lifeLogCursorInfo$={lifeLogCursorInfo$}
+              setLifeLogCursorInfo={setLifeLogCursorInfo}
             />
           </li>
         )}
@@ -151,6 +158,8 @@ export function LifeLogTree(props: {
   setIsEditing: (isEditing: boolean) => void;
   editingField: EditingField;
   setEditingField: (field: EditingField) => void;
+  lifeLogCursorInfo$: () => { lifeLogId: string; cursorPosition: number } | undefined;
+  setLifeLogCursorInfo: (info: { lifeLogId: string; cursorPosition: number } | undefined) => void;
 }) {
   const firestore = useFirestoreService();
   const { state, updateState } = useStoreService();
@@ -504,12 +513,111 @@ export function LifeLogTree(props: {
               fromText={(text) => text}
               className={styles.lifeLogTree.text}
               editInputClassName={styles.lifeLogTree.editInput}
+              initialCursorPosition={
+                props.lifeLogCursorInfo$()?.lifeLogId === props.id
+                  ? props.lifeLogCursorInfo$()?.cursorPosition
+                  : undefined
+              }
               onKeyDown={async (event, inputRef, preventBlurSave) => {
                 if (event.code === "Tab") {
                   event.preventDefault();
                   preventBlurSave();
                   await saveText(inputRef.value);
                   handleTabNavigation(event.shiftKey);
+                }
+
+                // Backspace at position 0: delete empty LifeLog and move to previous
+                if (event.code === "Backspace" && inputRef.selectionStart === 0) {
+                  const lifeLog = lifeLog$();
+
+                  // Check conditions for deletion
+                  if (
+                    lifeLog.text !== "" ||
+                    !lifeLog.startAt.isEqual(noneTimestamp) ||
+                    !lifeLog.endAt.isEqual(noneTimestamp)
+                  ) {
+                    return; // Allow normal backspace
+                  }
+
+                  // Check for child tree nodes
+                  const hasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
+                  if (hasChildren) return;
+
+                  // Check if previous LifeLog exists
+                  if (props.prevId === "") return;
+
+                  event.preventDefault();
+                  preventBlurSave();
+
+                  // Get previous LifeLog's text length for cursor position
+                  const prevLifeLog = await getDoc(firestore, lifeLogsCol, props.prevId);
+                  if (!prevLifeLog) return;
+
+                  const cursorPosition = prevLifeLog.text.length;
+
+                  // Delete current LifeLog and select previous
+                  firestore.setClock(true);
+                  try {
+                    await runBatch(firestore, (batch) => {
+                      batch.delete(doc(lifeLogsCol, props.id));
+                      return Promise.resolve();
+                    });
+
+                    props.setLifeLogCursorInfo({ lifeLogId: props.prevId, cursorPosition });
+                    await startTransition(() => {
+                      updateState((state) => {
+                        state.panesLifeLogs.selectedLifeLogId = props.prevId;
+                      });
+                      props.setIsEditing(true);
+                      firestore.setClock(false);
+                    });
+                  } catch {
+                    firestore.setClock(false);
+                  }
+                }
+
+                // Delete at end: delete empty LifeLog and move to next
+                if (event.code === "Delete" && inputRef.selectionStart === inputRef.value.length) {
+                  const lifeLog = lifeLog$();
+
+                  // Check conditions for deletion
+                  if (
+                    lifeLog.text !== "" ||
+                    !lifeLog.startAt.isEqual(noneTimestamp) ||
+                    !lifeLog.endAt.isEqual(noneTimestamp)
+                  ) {
+                    return; // Allow normal delete
+                  }
+
+                  // Check for child tree nodes
+                  const hasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
+                  if (hasChildren) return;
+
+                  // Check if next LifeLog exists
+                  if (props.nextId === "") return;
+
+                  event.preventDefault();
+                  preventBlurSave();
+
+                  // Delete current LifeLog and select next with cursor at start
+                  firestore.setClock(true);
+                  try {
+                    await runBatch(firestore, (batch) => {
+                      batch.delete(doc(lifeLogsCol, props.id));
+                      return Promise.resolve();
+                    });
+
+                    props.setLifeLogCursorInfo({ lifeLogId: props.nextId, cursorPosition: 0 });
+                    await startTransition(() => {
+                      updateState((state) => {
+                        state.panesLifeLogs.selectedLifeLogId = props.nextId;
+                      });
+                      props.setIsEditing(true);
+                      firestore.setClock(false);
+                    });
+                  } catch {
+                    firestore.setClock(false);
+                  }
                 }
               }}
             />

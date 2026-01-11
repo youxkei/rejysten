@@ -653,6 +653,556 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
 
       result.unmount();
     });
+
+    // LifeLog deletion tests
+    it("can delete empty LifeLog with Backspace and move cursor to previous LifeLog", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      // Wait for initial render - setupLifeLogsTest creates $log1, $log2, $log3
+      // $log3 has startAt=none, endAt=none, text="third lifelog"
+      await result.findByText("first lifelog");
+      await result.findByText("third lifelog");
+
+      // Navigate to $log3 (last log) - press j twice
+      await userEvent.keyboard("{j}");
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll("li");
+        const item = listItems[2];
+        expect(item.querySelector(`.${styles.lifeLogTree.selected}`)).toBeTruthy();
+      });
+
+      // $log3 has startAt=none, endAt=none, text="third lifelog"
+      // Press "i" to enter editing mode at beginning (cursor at position 0)
+      await userEvent.keyboard("{i}");
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("third lifelog");
+      });
+
+      // Clear the text to make it deletable
+      await userEvent.keyboard("{Control>}a{/Control}{Backspace}");
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input.value).toBe("");
+      });
+
+      // Save the change by exiting edit mode (triggers onBlur save)
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      // Re-enter edit mode
+      await userEvent.keyboard("{i}");
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("");
+      });
+
+      // Press Backspace at position 0 on empty text - should delete and move to $log2
+      await userEvent.keyboard("{Backspace}");
+
+      // Wait for deletion and cursor move to $log2 (previous log)
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll("li");
+        expect(listItems.length).toBe(2);
+      });
+
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("second lifelog");
+        // Cursor should be at the end (14 characters)
+        expect(input.selectionStart).toBe(14);
+      });
+
+      // Exit editing mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      result.unmount();
+    });
+
+    it("can delete empty LifeLog with Delete and move cursor to next LifeLog", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      // Wait for initial render
+      await result.findByText("first lifelog");
+      await result.findByText("third lifelog");
+
+      // Navigate to $log3 (last log) - press j twice
+      await userEvent.keyboard("{j}");
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll("li");
+        const item = listItems[2];
+        expect(item.querySelector(`.${styles.lifeLogTree.selected}`)).toBeTruthy();
+      });
+
+      // Press "o" to create a new empty LifeLog after $log3
+      // This new log will have startAt=none (from $log3's endAt)
+      // Since both have startAt=none, they sort by document ID (uuidv7 is time-ordered)
+      await userEvent.keyboard("{o}");
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll("li");
+        expect(listItems.length).toBe(4);
+      });
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      // Navigate back to $log3 (press k once)
+      await userEvent.keyboard("{k}");
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll("li");
+        // Should be on $log3 now
+        const item = listItems[2];
+        expect(item.querySelector(`.${styles.lifeLogTree.selected}`)).toBeTruthy();
+        expect(item.textContent).toContain("third lifelog");
+      });
+
+      // Press "i" to enter editing mode
+      await userEvent.keyboard("{i}");
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("third lifelog");
+      });
+
+      // Clear the text to make it deletable
+      await userEvent.keyboard("{Control>}a{/Control}{Delete}");
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input.value).toBe("");
+      });
+
+      // Save the change by exiting edit mode (triggers onBlur save)
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      // Re-enter edit mode
+      await userEvent.keyboard("{i}");
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("");
+      });
+
+      // Since text is empty, position 0 = end, so Delete should work
+      // Press Delete at end of text - should delete and move to next empty LifeLog
+      await userEvent.keyboard("{Delete}");
+
+      // Wait for deletion to complete - should now have 3 items
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll("li");
+        expect(listItems.length).toBe(3);
+      });
+
+      // Verify we're in editing mode on the next LifeLog (the one we created with 'o')
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("");
+        // Cursor should be at the start (position 0)
+        expect(input.selectionStart).toBe(0);
+      });
+
+      // Exit editing mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      result.unmount();
+    });
+
+    it("does not delete LifeLog with Backspace when text is not empty", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      // Wait for initial render
+      await result.findByText("first lifelog");
+      await result.findByText("second lifelog");
+
+      // Navigate to $log2 (press j once) - it has text "second lifelog"
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll("li");
+        const item = listItems[1];
+        expect(item.querySelector(`.${styles.lifeLogTree.selected}`)).toBeTruthy();
+      });
+
+      // Press "i" to enter editing mode at beginning
+      await userEvent.keyboard("{i}");
+
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("second lifelog");
+      });
+
+      // Press Backspace - should NOT delete because text is not empty
+      await userEvent.keyboard("{Backspace}");
+
+      // Should still be on same lifelog
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("second lifelog");
+      });
+
+      // Exit editing mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      // All lifelogs should still exist
+      const listItems = result.container.querySelectorAll("li");
+      expect(listItems.length).toBe(3);
+
+      result.unmount();
+    });
+
+    it("does not delete LifeLog with Backspace when startAt is set", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      // Wait for initial render - $log1 is selected, has startAt set
+      await result.findByText("first lifelog");
+
+      // Press "i" to enter editing mode
+      await userEvent.keyboard("{i}");
+
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("first lifelog");
+      });
+
+      // Clear the text to test startAt condition (not the text condition)
+      // Select all and delete
+      await userEvent.keyboard("{Control>}a{/Control}{Backspace}");
+
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input.value).toBe("");
+      });
+
+      // Save the change by exiting edit mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      // Re-enter edit mode
+      await userEvent.keyboard("{i}");
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("");
+      });
+
+      // Now press Backspace - should NOT delete because startAt is set
+      await userEvent.keyboard("{Backspace}");
+
+      // Wait a bit to ensure nothing happens
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Should still be on same lifelog
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      expect(input).toBeTruthy();
+      expect(input.value).toBe("");
+
+      // Exit editing mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      // All lifelogs should still exist
+      const listItems = result.container.querySelectorAll("li");
+      expect(listItems.length).toBe(3);
+
+      result.unmount();
+    });
+
+    it("does not delete LifeLog with Backspace when endAt is set", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      // Wait for initial render
+      await result.findByText("first lifelog");
+
+      // Navigate to $log2
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll("li");
+        const item = listItems[1];
+        expect(item.querySelector(`.${styles.lifeLogTree.selected}`)).toBeTruthy();
+      });
+
+      // Set $log2's endAt first to give distinct startAt to new log
+      await userEvent.keyboard("{f}");
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll("li");
+        const item = listItems[1];
+        expect(item.textContent).not.toContain("N/A");
+      });
+
+      // Press "o" to add a new empty LifeLog
+      await userEvent.keyboard("{o}");
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll("li");
+        expect(listItems.length).toBe(4);
+      });
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      // Press "f" to set endAt on the new LifeLog
+      await userEvent.keyboard("{f}");
+
+      // Wait for endAt to be set
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll("li");
+        const newLog = listItems[2];
+        // Should now have no N/A (both startAt and endAt are set)
+        expect(newLog.textContent).not.toContain("N/A");
+      });
+
+      // Press "i" to enter editing mode
+      await userEvent.keyboard("{i}");
+
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("");
+      });
+
+      // Press Backspace - should NOT delete because endAt is set
+      await userEvent.keyboard("{Backspace}");
+
+      // Wait a bit to ensure nothing happens
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Should still be on same lifelog
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      expect(input).toBeTruthy();
+      expect(input.value).toBe("");
+
+      // Exit editing mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      // All lifelogs should still exist
+      const listItems = result.container.querySelectorAll("li");
+      expect(listItems.length).toBe(4);
+
+      result.unmount();
+    });
+
+    it("does not delete LifeLog with Backspace when it has child nodes", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      // Wait for initial render - $log1 has child tree nodes
+      await result.findByText("first lifelog");
+
+      // Press "i" to enter editing mode on $log1
+      await userEvent.keyboard("{i}");
+
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("first lifelog");
+      });
+
+      // Clear the text to test child nodes condition
+      await userEvent.keyboard("{Control>}a{/Control}{Backspace}");
+
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input.value).toBe("");
+      });
+
+      // Save the change by exiting edit mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      // Re-enter edit mode
+      await userEvent.keyboard("{i}");
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("");
+      });
+
+      // Now press Backspace - should NOT delete because it has child nodes
+      // (also startAt is set, but testing child nodes is the primary intent)
+      await userEvent.keyboard("{Backspace}");
+
+      // Wait a bit to ensure nothing happens
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Should still be on same lifelog
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      expect(input).toBeTruthy();
+      expect(input.value).toBe("");
+
+      // Exit editing mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      // All lifelogs should still exist
+      const listItems = result.container.querySelectorAll("li");
+      expect(listItems.length).toBe(3);
+
+      result.unmount();
+    });
+
+    it("does not delete first LifeLog with Backspace (no previous)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      // Wait for initial render - $log1 is selected (first LifeLog)
+      // $log1 has startAt set (10:30) and has children, which also block deletion
+      // but this test primarily verifies that being the first log (no previous) blocks deletion
+      await result.findByText("first lifelog");
+
+      // Press "i" to enter editing mode on $log1
+      await userEvent.keyboard("{i}");
+
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("first lifelog");
+      });
+
+      // Clear the text
+      await userEvent.keyboard("{Control>}a{/Control}{Backspace}");
+
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input.value).toBe("");
+      });
+
+      // Save the change by exiting edit mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      // Re-enter edit mode
+      await userEvent.keyboard("{i}");
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("");
+      });
+
+      // Press Backspace - should NOT delete (no previous, also startAt is set and has children)
+      await userEvent.keyboard("{Backspace}");
+
+      // Wait a bit to ensure nothing happens
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Should still be on same lifelog
+      const input = result.container.querySelector("input");
+      expect(input).toBeTruthy();
+
+      // Exit editing mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      // All lifelogs should still exist
+      const listItems = result.container.querySelectorAll("li");
+      expect(listItems.length).toBe(3);
+
+      result.unmount();
+    });
+
+    it("does not delete last LifeLog with Delete (no next)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      // Wait for initial render
+      await result.findByText("first lifelog");
+      await result.findByText("third lifelog");
+
+      // Navigate to $log3 (last LifeLog) - press j twice
+      await userEvent.keyboard("{j}");
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll("li");
+        const lastItem = listItems[2];
+        expect(lastItem.querySelector(`.${styles.lifeLogTree.selected}`)).toBeTruthy();
+      });
+
+      // Press "i" to enter editing mode
+      await userEvent.keyboard("{i}");
+
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("third lifelog");
+      });
+
+      // Clear the text
+      await userEvent.keyboard("{Control>}a{/Control}{Delete}");
+
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input.value).toBe("");
+      });
+
+      // Save the change by exiting edit mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      // Re-enter edit mode
+      await userEvent.keyboard("{i}");
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+        expect((input as HTMLInputElement).value).toBe("");
+      });
+
+      // Press Delete - should NOT delete because there's no next lifelog
+      await userEvent.keyboard("{Delete}");
+
+      // Wait a bit to ensure nothing happens
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Should still be on same lifelog
+      const input = result.container.querySelector("input");
+      expect(input).toBeTruthy();
+
+      // Exit editing mode
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
+      });
+
+      // All lifelogs should still exist
+      const listItems = result.container.querySelectorAll("li");
+      expect(listItems.length).toBe(3);
+
+      result.unmount();
+    });
   });
 
   describe("LifeLogTree", () => {
