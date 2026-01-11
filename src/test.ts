@@ -1,3 +1,5 @@
+import { test } from "vitest";
+
 const shortener = /^styles_styles_(.+)__\w{8}$/;
 
 export function shortenClassName(root: HTMLElement) {
@@ -26,3 +28,27 @@ export function getPromiseWithResolve<T = void>() {
 export function randomPosInt() {
   return Math.floor(Math.random() * 1024) + 1;
 }
+
+const TEST_SERVER_URL = "http://localhost:3333";
+
+export type DatabaseInfo = {
+  emulatorPort: number;
+};
+
+async function getEmulatorPort(): Promise<number> {
+  const res = await fetch(`${TEST_SERVER_URL}/emulator-port`);
+  const { emulatorPort } = await res.json();
+  return emulatorPort;
+}
+
+async function clearDatabase(): Promise<void> {
+  await fetch(`${TEST_SERVER_URL}/database`, { method: "DELETE" });
+}
+
+export const testWithDb = test.extend<{ db: DatabaseInfo }>({
+  db: async ({}, use) => {
+    const emulatorPort = await getEmulatorPort();
+    await use({ emulatorPort });
+    await clearDatabase();
+  },
+});

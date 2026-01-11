@@ -1,7 +1,7 @@
 import { render, waitFor } from "@solidjs/testing-library";
-import { doc, getDocs, Timestamp, writeBatch } from "firebase/firestore";
+import { doc, Timestamp, writeBatch } from "firebase/firestore";
 import { onMount, Suspense } from "solid-js";
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 
 import { LifeLogs } from "@/panes/lifeLogs";
@@ -14,6 +14,7 @@ import {
 } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
 import { styles } from "@/styles.css";
+import { testWithDb as it, type DatabaseInfo } from "@/test";
 import { noneTimestamp } from "@/timestamp";
 
 const baseTime = new Date(2026, 0, 10, 12, 0, 0, 0);
@@ -28,7 +29,7 @@ vi.mock(import("@/date"), async (importOriginal) => {
   };
 });
 
-async function setupLifeLogsTest(testId: string) {
+async function setupLifeLogsTest(testId: string, db: DatabaseInfo) {
   let resolveReady: () => void;
   let rejectReady: (error: unknown) => void;
   const ready = new Promise<void>((resolve, reject) => {
@@ -43,7 +44,7 @@ async function setupLifeLogsTest(testId: string) {
         setErrors={() => {}}
         appName={testId}
       >
-        <FirestoreServiceProvider>
+        <FirestoreServiceProvider emulatorPort={db.emulatorPort}>
           <Suspense fallback={<span>loading....</span>}>
             {(() => {
               const firestore = useFirestoreService();
@@ -55,13 +56,6 @@ async function setupLifeLogsTest(testId: string) {
               onMount(() => {
                 (async () => {
                   const batch = writeBatch(firestore.firestore);
-
-                  for (const lifeLog of (await getDocs(lifeLogs)).docs) {
-                    batch.delete(lifeLog.ref);
-                  }
-                  for (const node of (await getDocs(lifeLogTreeNodes)).docs) {
-                    batch.delete(node.ref);
-                  }
 
                   batch.set(doc(batchVersion, singletonDocumentId), {
                     version: "__INITIAL__",
@@ -164,8 +158,8 @@ async function setupLifeLogsTest(testId: string) {
 
 describe("<LifeLogs />", { timeout: 5000 }, () => {
   describe("LifeLog", () => {
-    it("renders correctly", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("renders correctly", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       // Test: renders lifelog data correctly
       const firstElement = await result.findByText("first lifelog");
@@ -192,8 +186,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
-    it("can edit text with i key (cursor at start)", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can edit text with i key (cursor at start)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       await result.findByText("first lifelog");
 
@@ -223,8 +217,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
-    it("can edit text with a key (cursor at end)", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can edit text with a key (cursor at end)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       await result.findByText("first lifelog");
 
@@ -259,8 +253,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
-    it("can navigate to startAt and endAt fields with Tab key during editing", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can navigate to startAt and endAt fields with Tab key during editing", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       await result.findByText("first lifelog");
 
@@ -336,8 +330,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
-    it("can edit startAt with various digit formats", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can edit startAt with various digit formats", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       await result.findByText("first lifelog");
 
@@ -395,8 +389,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
-    it("can edit endAt with various digit formats", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can edit endAt with various digit formats", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       await result.findByText("first lifelog");
 
@@ -459,8 +453,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
-    it("can set startAt to current time with s key", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can set startAt to current time with s key", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       await result.findByText("first lifelog");
       await result.findByText("third lifelog");
@@ -497,8 +491,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
-    it("can set endAt to current time with f key", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can set endAt to current time with f key", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       await result.findByText("first lifelog");
 
@@ -531,8 +525,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
-    it("can navigate between lifelogs with j/k keys", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can navigate between lifelogs with j/k keys", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       await result.findByText("first lifelog");
       await result.findByText("second lifelog");
@@ -586,8 +580,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
-    it("can add new lifelog with o key", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can add new lifelog with o key", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       await result.findByText("first lifelog");
 
@@ -634,8 +628,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
   });
 
   describe("LifeLogTree", () => {
-    it("can enter/exit tree mode with l/h keys", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can enter/exit tree mode with l/h keys", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       await result.findByText("first lifelog");
 
@@ -675,8 +669,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
-    it("can navigate between tree nodes with j/k keys", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can navigate between tree nodes with j/k keys", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       await result.findByText("first lifelog");
 
@@ -759,8 +753,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
-    it("can indent/dedent nodes with Tab/Shift+Tab keys", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can indent/dedent nodes with Tab/Shift+Tab keys", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       // Wait for lifelogs to render
       await result.findByText("first lifelog");
@@ -835,8 +829,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
-    it("can edit node text with i key", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can edit node text with i key", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       await result.findByText("first lifelog");
 
@@ -901,8 +895,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
-    it("can add node below with o key", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can add node below with o key", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       await result.findByText("first lifelog");
 
@@ -958,8 +952,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
-    it("can add node above with O key", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can add node above with O key", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       await result.findByText("first lifelog");
 
@@ -1022,8 +1016,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
-    it("can split node with Enter key at cursor position", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can split node with Enter key at cursor position", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       await result.findByText("first lifelog");
 
@@ -1101,8 +1095,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
-    it("can add empty node below with Enter key at end of text", async (ctx) => {
-      const { result } = await setupLifeLogsTest(ctx.task.id);
+    it("can add empty node below with Enter key at end of text", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
 
       await result.findByText("first lifelog");
 

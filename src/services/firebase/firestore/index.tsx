@@ -38,15 +38,25 @@ export type FirestoreService = {
 
 const context = createContext<FirestoreService>();
 
-export function FirestoreServiceProvider(props: { children: JSXElement }) {
+export function FirestoreServiceProvider(props: {
+  children: JSXElement;
+  databaseId?: string;
+  emulatorPort?: number;
+}) {
   const firebase = useFirebaseService();
   const store = useStoreService();
 
-  const firestore = initializeFirestore(firebase.firebaseApp, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-  });
+  const firestore = initializeFirestore(
+    firebase.firebaseApp,
+    {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    },
+    props.databaseId,
+  );
 
-  if (firebase.firebaseApp.options.projectId == "demo") {
+  if (props.emulatorPort) {
+    connectFirestoreEmulator(firestore, "localhost", props.emulatorPort);
+  } else if (firebase.firebaseApp.options.projectId == "demo") {
     connectFirestoreEmulator(firestore, "localhost", 8080);
   }
 

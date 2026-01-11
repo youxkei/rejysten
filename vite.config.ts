@@ -39,6 +39,7 @@ export default defineConfig({
     "import.meta.vitest": false,
   },
   test: {
+    globalSetup: "./test/globalSetup.ts",
     browser: {
       provider: playwright(),
       enabled: true,
