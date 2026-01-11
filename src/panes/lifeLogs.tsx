@@ -402,7 +402,7 @@ export function LifeLogTree(props: {
     }
   }
 
-  function handleTabNavigation(shiftKey: boolean, _cursorPosition: number) {
+  function handleTabNavigation(shiftKey: boolean) {
     const fields = [EditingField.Text, EditingField.StartAt, EditingField.EndAt];
     const currentIndex = fields.indexOf(props.editingField);
 
@@ -437,7 +437,17 @@ export function LifeLogTree(props: {
                 toEditText={(ts) => timestampToTimeText(ts, false) ?? ""}
                 fromText={timeTextToTimestamp}
                 editInputClassName={styles.lifeLogTree.editInput}
-                onTabPress={handleTabNavigation}
+                onKeyDown={async (event, inputRef, preventBlurSave) => {
+                  if (event.code === "Tab") {
+                    event.preventDefault();
+                    preventBlurSave();
+                    const newValue = timeTextToTimestamp(inputRef.value);
+                    if (newValue !== undefined) {
+                      await saveStartAt(newValue);
+                    }
+                    handleTabNavigation(event.shiftKey);
+                  }
+                }}
               />
               <span>-</span>
               <EditableValue
@@ -454,7 +464,17 @@ export function LifeLogTree(props: {
                 toEditText={(ts) => timestampToTimeText(ts, false) ?? ""}
                 fromText={timeTextToTimestamp}
                 editInputClassName={styles.lifeLogTree.editInput}
-                onTabPress={handleTabNavigation}
+                onKeyDown={async (event, inputRef, preventBlurSave) => {
+                  if (event.code === "Tab") {
+                    event.preventDefault();
+                    preventBlurSave();
+                    const newValue = timeTextToTimestamp(inputRef.value);
+                    if (newValue !== undefined) {
+                      await saveEndAt(newValue);
+                    }
+                    handleTabNavigation(event.shiftKey);
+                  }
+                }}
               />
             </div>
             <EditableValue
@@ -471,7 +491,14 @@ export function LifeLogTree(props: {
               fromText={(text) => text}
               className={styles.lifeLogTree.text}
               editInputClassName={styles.lifeLogTree.editInput}
-              onTabPress={handleTabNavigation}
+              onKeyDown={async (event, inputRef, preventBlurSave) => {
+                if (event.code === "Tab") {
+                  event.preventDefault();
+                  preventBlurSave();
+                  await saveText(inputRef.value);
+                  handleTabNavigation(event.shiftKey);
+                }
+              }}
             />
           </div>
           <Show when={isLifeLogTreeFocused$()}>
@@ -482,9 +509,7 @@ export function LifeLogTree(props: {
                 selectedId={selectedLifeLogNodeId$()}
                 setSelectedId={setSelectedLifeLogNodeId}
                 createNewNode={(newId, initialText) => ({ id: newId, text: initialText ?? "" })}
-                isEditing={() => props.isEditing}
-                setIsEditing={props.setIsEditing}
-                showNode={(node$, isSelected$, onEnterPress, onTabPress) => {
+                showNode={(node$, isSelected$, handleTabIndent) => {
                   async function onSaveNode(newText: string) {
                     firestore.setClock(true);
                     try {
@@ -500,6 +525,62 @@ export function LifeLogTree(props: {
                       await startTransition(() => {
                         firestore.setClock(false);
                       });
+                    }
+                  }
+
+                  async function handleKeyDown(
+                    event: KeyboardEvent,
+                    inputRef: HTMLInputElement,
+                    preventBlurSave: () => void,
+                  ) {
+                    // Handle Tab (save + indent/dedent via tree.tsx)
+                    if (event.code === "Tab") {
+                      event.preventDefault();
+                      preventBlurSave();
+
+                      const cursorPosition = inputRef.selectionStart ?? 0;
+                      await onSaveNode(inputRef.value);
+                      await handleTabIndent(event.shiftKey);
+                      setTabCursorInfo({ nodeId: node$().id, cursorPosition });
+                      return;
+                    }
+
+                    // Handle Enter (LifeLogTree-specific: split node)
+                    if (event.code === "Enter" && !event.isComposing) {
+                      event.preventDefault();
+                      preventBlurSave();
+
+                      const text = inputRef.value;
+                      const cursorPos = inputRef.selectionStart ?? text.length;
+                      const beforeCursor = text.slice(0, cursorPos);
+                      const afterCursor = text.slice(cursorPos);
+
+                      await onSaveNode(beforeCursor);
+
+                      // Create new sibling node with afterCursor
+                      const node = await getDoc(firestore, lifeLogTreeNodesCol, node$().id);
+                      if (!node) return;
+
+                      const newNodeId = uuidv7();
+                      setEnterSplitNodeId(newNodeId);
+
+                      try {
+                        firestore.setClock(true);
+                        await runBatch(firestore, async (batch) => {
+                          await addNextSibling(firestore, batch, lifeLogTreeNodesCol, node, {
+                            id: newNodeId,
+                            text: afterCursor,
+                          });
+                        });
+
+                        await startTransition(() => {
+                          setSelectedLifeLogNodeId(newNodeId);
+                          props.setIsEditing(true);
+                          firestore.setClock(false);
+                        });
+                      } finally {
+                        firestore.setClock(false);
+                      }
                     }
                   }
 
@@ -522,17 +603,7 @@ export function LifeLogTree(props: {
                       }}
                       selectedClassName={styles.lifeLogTree.selected}
                       editInputClassName={styles.lifeLogTree.editInput}
-                      onEnterPress={async (beforeCursor, afterCursor) => {
-                        await onSaveNode(beforeCursor);
-                        await onEnterPress?.(afterCursor, (newNodeId) => {
-                          setEnterSplitNodeId(newNodeId);
-                        });
-                      }}
-                      onTabPress={async (shiftKey, cursorPosition) => {
-                        await onTabPress?.(shiftKey, cursorPosition, (cursorPos) => {
-                          setTabCursorInfo({ nodeId: node$().id, cursorPosition: cursorPos });
-                        });
-                      }}
+                      onKeyDown={handleKeyDown}
                       initialCursorPosition={
                         enterSplitNodeId$() === node$().id
                           ? 0

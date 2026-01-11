@@ -1,19 +1,11 @@
 import equals from "fast-deep-equal";
 import { type CollectionReference, doc, orderBy, query, where } from "firebase/firestore";
 import { type Accessor, createMemo, For, type JSXElement, Show, startTransition } from "solid-js";
-import { uuidv7 } from "uuidv7";
 
 import { type DocumentData, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
-import {
-  addNextSibling,
-  dedent,
-  getAboveNode,
-  getBelowNode,
-  indent,
-  type TreeNode,
-} from "@/services/firebase/firestore/treeNode";
+import { dedent, getAboveNode, getBelowNode, indent, type TreeNode } from "@/services/firebase/firestore/treeNode";
 import { addKeyDownEventListener } from "@/solid/event";
 
 export function ChildrenNodes<T extends TreeNode>(props: {
@@ -24,12 +16,9 @@ export function ChildrenNodes<T extends TreeNode>(props: {
   showNode: (
     node$: Accessor<DocumentData<T>>,
     isSelected$: Accessor<boolean>,
-    onEnterPress?: (afterCursor: string, onNewNodeId?: (id: string) => void) => Promise<void>,
-    onTabPress?: (shiftKey: boolean, cursorPosition: number, onComplete?: (cursorPosition: number) => void) => Promise<void>,
+    handleTabIndent: (shiftKey: boolean) => Promise<void>,
   ) => JSXElement;
   createNewNode: (newId: string, initialText?: string) => Omit<DocumentData<T>, keyof TreeNode>;
-  isEditing?: Accessor<boolean>;
-  setIsEditing?: (isEditing: boolean) => void;
 }) {
   const firestore = useFirestoreService();
 
@@ -52,8 +41,6 @@ export function ChildrenNodes<T extends TreeNode>(props: {
               setSelectedId={props.setSelectedId}
               showNode={props.showNode}
               createNewNode={props.createNewNode}
-              isEditing={props.isEditing}
-              setIsEditing={props.setIsEditing}
             />
           </li>
         )}
@@ -70,12 +57,9 @@ export function Node<T extends TreeNode>(props: {
   showNode: (
     node$: Accessor<DocumentData<T>>,
     isSelected$: Accessor<boolean>,
-    onEnterPress?: (afterCursor: string, onNewNodeId?: (id: string) => void) => Promise<void>,
-    onTabPress?: (shiftKey: boolean, cursorPosition: number, onComplete?: (cursorPosition: number) => void) => Promise<void>,
+    handleTabIndent: (shiftKey: boolean) => Promise<void>,
   ) => JSXElement;
   createNewNode: (newId: string, initialText?: string) => Omit<DocumentData<T>, keyof TreeNode>;
-  isEditing?: Accessor<boolean>;
-  setIsEditing?: (isEditing: boolean) => void;
 }) {
   const firestore = useFirestoreService();
 
@@ -87,7 +71,7 @@ export function Node<T extends TreeNode>(props: {
   const isSelected$ = () => props.id === props.selectedId;
 
   addKeyDownEventListener(async (event) => {
-    if (event.isComposing || event.ctrlKey || !isSelected$() || props.isEditing?.()) return;
+    if (event.isComposing || event.ctrlKey || !isSelected$()) return;
 
     const { shiftKey } = event;
 
@@ -158,36 +142,7 @@ export function Node<T extends TreeNode>(props: {
     }
   });
 
-  async function handleEnterPress(afterCursor: string, onNewNodeId?: (id: string) => void): Promise<void> {
-    const node = await getDoc(firestore, props.col, props.id);
-    if (!node) return;
-
-    const newNodeId = uuidv7();
-
-    // Notify the new node ID before rendering so initialCursorPosition can be set
-    onNewNodeId?.(newNodeId);
-
-    try {
-      firestore.setClock(true);
-      await runBatch(firestore, async (batch) => {
-        await addNextSibling<T>(firestore, batch, props.col, node, props.createNewNode(newNodeId, afterCursor));
-      });
-
-      await startTransition(() => {
-        props.setSelectedId(newNodeId);
-        props.setIsEditing?.(true);
-        firestore.setClock(false);
-      });
-    } finally {
-      firestore.setClock(false);
-    }
-  }
-
-  async function handleTabPress(
-    shiftKey: boolean,
-    cursorPosition: number,
-    onComplete?: (cursorPosition: number) => void,
-  ): Promise<void> {
+  async function handleTabIndent(shiftKey: boolean): Promise<void> {
     const node = await getDoc(firestore, props.col, props.id);
     if (!node) return;
 
@@ -200,8 +155,6 @@ export function Node<T extends TreeNode>(props: {
           await indent(firestore, batch, props.col, node);
         }
       });
-
-      onComplete?.(cursorPosition);
 
       await startTransition(() => {
         firestore.setClock(false);
@@ -216,7 +169,7 @@ export function Node<T extends TreeNode>(props: {
       {(node$) => {
         return (
           <>
-            <div>{props.showNode(node$, isSelected$, handleEnterPress, handleTabPress)}</div>
+            <div>{props.showNode(node$, isSelected$, handleTabIndent)}</div>
             <ChildrenNodes
               col={props.col}
               parentId={props.id}
@@ -224,8 +177,6 @@ export function Node<T extends TreeNode>(props: {
               setSelectedId={props.setSelectedId}
               showNode={props.showNode}
               createNewNode={props.createNewNode}
-              isEditing={props.isEditing}
-              setIsEditing={props.setIsEditing}
             />
           </>
         );

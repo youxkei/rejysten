@@ -343,9 +343,12 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
           expect(input).toBeTruthy();
         });
         await userEvent.keyboard("{Tab}"); // Navigate to startAt
+        // Wait for the input to be the startAt input (check it has a time-like value)
         await waitFor(() => {
           const input = result.container.querySelector("input") as HTMLInputElement;
           expect(input).toBeTruthy();
+          // startAt value should be in format "YYYYMMDD HHMMSS" (without separators)
+          expect(input.value).toMatch(/^\d{8} \d{6}$/);
         });
       }
 
@@ -395,6 +398,8 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       await result.findByText("first lifelog");
 
       // Helper to enter edit mode for endAt (Tab twice from text: once for startAt, once for endAt)
+      // Track the startAt value to detect when we've moved to endAt
+      let startAtValue = "";
       async function enterEndAtEditMode() {
         await userEvent.keyboard("{i}"); // Enter text edit mode
         await waitFor(() => {
@@ -402,14 +407,19 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
           expect(input).toBeTruthy();
         });
         await userEvent.keyboard("{Tab}"); // Navigate to startAt
+        // Wait for the input to be the startAt input
         await waitFor(() => {
           const input = result.container.querySelector("input") as HTMLInputElement;
           expect(input).toBeTruthy();
+          expect(input.value).toMatch(/^\d{8} \d{6}$/);
+          startAtValue = input.value;
         });
         await userEvent.keyboard("{Tab}"); // Navigate to endAt
+        // Wait for the input to change from startAt value (endAt is either empty or different)
         await waitFor(() => {
           const input = result.container.querySelector("input") as HTMLInputElement;
           expect(input).toBeTruthy();
+          expect(input.value).not.toBe(startAtValue);
         });
       }
 
@@ -748,6 +758,13 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       await waitFor(() => {
         const child1Element = result.getByText("first child");
         expect(child1Element.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Exit tree mode to ensure clean shutdown
+      await userEvent.keyboard("{h}");
+      await waitFor(() => {
+        // After pressing h, tree nodes should no longer be visible
+        expect(result.queryByText("first child")).toBeNull();
       });
 
       result.unmount();
@@ -1133,6 +1150,156 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
         const newInput = result.container.querySelector("input");
         expect(newInput).toBeTruthy();
         expect((newInput as HTMLInputElement).value).toBe("");
+      });
+
+      result.unmount();
+    });
+
+    it("can indent/dedent nodes with Tab/Shift+Tab keys during editing", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await result.findByText("first lifelog");
+
+      // Press "l" to enter tree mode
+      await userEvent.keyboard("{l}");
+
+      // Wait for tree nodes to render
+      await result.findByText("first child");
+      await result.findByText("second child");
+      await result.findByText("grandchild");
+      await result.findByText("great-grandchild");
+
+      // Wait for initial selection
+      await waitFor(() => {
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Navigate to child2 (j -> j -> j: child1 -> grandchild -> great-grandchild -> child2)
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "a" to enter editing mode (cursor at end, like vim's append)
+      await userEvent.keyboard("{a}");
+
+      // Wait for input to appear
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+      });
+
+      // Type some text to modify (appends to end: "second child" -> "second child edited")
+      await userEvent.keyboard(" edited");
+
+      // Verify initial DOM structure: child1 and child2 are siblings
+      const child1Li = result.getByText("first child").closest("li")!;
+      const child2Li = result.container.querySelector("input")!.closest("li")!;
+      expect(child1Li.parentElement).toBe(child2Li.parentElement);
+
+      // Press Tab to indent while editing
+      await userEvent.keyboard("{Tab}");
+
+      // Verify text was saved and indent happened
+      // Note: After Tab, we're still in editing mode, so the text is in the input field
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("second child edited");
+        // Verify indent happened: input's li should be inside first child's li
+        const child1LiAfterIndent = result.getByText("first child").closest("li")!;
+        const inputLiAfterIndent = input.closest("li")!;
+        expect(child1LiAfterIndent.contains(inputLiAfterIndent)).toBe(true);
+      });
+
+      // Press Shift+Tab to dedent while editing
+      await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+
+      // Verify dedent happened
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("second child edited");
+        // Verify dedent happened: input's li should be sibling of first child's li
+        const child1LiAfterDedent = result.getByText("first child").closest("li")!;
+        const inputLiAfterDedent = input.closest("li")!;
+        expect(child1LiAfterDedent.contains(inputLiAfterDedent)).toBe(false);
+        expect(child1LiAfterDedent.parentElement).toBe(inputLiAfterDedent.parentElement);
+      });
+
+      result.unmount();
+    });
+
+    it("preserves cursor position after Tab indent/dedent during editing", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await result.findByText("first lifelog");
+
+      // Press "l" to enter tree mode
+      await userEvent.keyboard("{l}");
+
+      // Wait for tree nodes to render
+      await result.findByText("first child");
+      await result.findByText("second child");
+      await result.findByText("grandchild");
+      await result.findByText("great-grandchild");
+
+      // Wait for initial selection
+      await waitFor(() => {
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Navigate to child2 (j -> j -> j: child1 -> grandchild -> great-grandchild -> child2)
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+      await userEvent.keyboard("{j}");
+      await waitFor(() => {
+        expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "i" to enter editing mode
+      await userEvent.keyboard("{i}");
+
+      // Wait for input
+      await waitFor(() => {
+        const input = result.container.querySelector("input");
+        expect(input).toBeTruthy();
+      });
+
+      const input = result.container.querySelector("input") as HTMLInputElement;
+
+      // Set cursor position in the middle (position 6)
+      input.setSelectionRange(6, 6);
+      expect(input.selectionStart).toBe(6);
+
+      // Press Tab to indent
+      await userEvent.keyboard("{Tab}");
+
+      // Wait for indent to complete and verify cursor position is preserved
+      await waitFor(() => {
+        const inputAfter = result.container.querySelector("input") as HTMLInputElement;
+        expect(inputAfter).toBeTruthy();
+        expect(inputAfter.selectionStart).toBe(6);
+      });
+
+      // Exit editing mode before unmount to ensure clean shutdown
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(result.container.querySelector("input")).toBeNull();
       });
 
       result.unmount();

@@ -40,6 +40,17 @@ export const MultipleFields: Story = {
       return Promise.resolve();
     }
 
+    function createKeyDownHandler(fieldIndex: number, saveValue: () => Promise<void>) {
+      return async (event: KeyboardEvent, _inputRef: HTMLInputElement, preventBlurSave: () => void) => {
+        if (event.code === "Tab") {
+          event.preventDefault();
+          preventBlurSave();
+          await saveValue();
+          handleTabNavigation(fieldIndex, event.shiftKey);
+        }
+      };
+    }
+
     return (
       <div style={{ padding: "20px", border: "1px solid #ccc", width: "400px" }}>
         <h3>Tab Navigation Demo</h3>
@@ -54,9 +65,7 @@ export const MultipleFields: Story = {
               setIsEditing={(editing) => setEditingIndex(editing ? 0 : -1)}
               toText={(val) => val}
               fromText={(text) => text}
-              onTabPress={(shiftKey) => {
-                handleTabNavigation(0, shiftKey);
-              }}
+              onKeyDown={createKeyDownHandler(0, () => handleSave(0, values().text))}
               editInputClassName="edit-input"
             />
           </div>
@@ -70,9 +79,7 @@ export const MultipleFields: Story = {
               setIsEditing={(editing) => setEditingIndex(editing ? 1 : -1)}
               toText={(val) => val}
               fromText={(text) => text}
-              onTabPress={(shiftKey) => {
-                handleTabNavigation(1, shiftKey);
-              }}
+              onKeyDown={createKeyDownHandler(1, () => handleSave(1, values().startTime))}
               editInputClassName="edit-input"
             />
           </div>
@@ -86,9 +93,7 @@ export const MultipleFields: Story = {
               setIsEditing={(editing) => setEditingIndex(editing ? 2 : -1)}
               toText={(val) => val}
               fromText={(text) => text}
-              onTabPress={(shiftKey) => {
-                handleTabNavigation(2, shiftKey);
-              }}
+              onKeyDown={createKeyDownHandler(2, () => handleSave(2, values().endTime))}
               editInputClassName="edit-input"
             />
           </div>

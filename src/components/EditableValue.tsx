@@ -20,10 +20,12 @@ export interface EditableValueProps<V> {
   selectedClassName?: string;
   editInputClassName?: string;
   debounceMs?: number;
-  // Tab navigation callback with cursor position
-  onTabPress?: (shiftKey: boolean, cursorPosition: number) => void;
-  // Enter key callback with cursor position info
-  onEnterPress?: (beforeCursor: string, afterCursor: string) => void;
+  // Key down callback - receives event, input ref, and function to prevent blur save
+  onKeyDown?: (
+    event: KeyboardEvent,
+    inputRef: HTMLInputElement,
+    preventBlurSave: () => void,
+  ) => void | Promise<void>;
   // Initial cursor position when entering edit mode
   initialCursorPosition?: number;
   debugId?: string;
@@ -31,8 +33,7 @@ export interface EditableValueProps<V> {
 
 export function EditableValue<V>(props: EditableValueProps<V>) {
   const [editText, setEditText] = createSignal("");
-  const [isTabPressed, setIsTabPressed] = createSignal(false);
-  const [isEnterPressed, setIsEnterPressed] = createSignal(false);
+  const [blurSavePrevented, setBlurSavePrevented] = createSignal(false);
   const [editTrigger, setEditTrigger] = createSignal<"i" | "a" | undefined>(undefined);
 
   async function saveChanges(text: string) {
@@ -109,10 +110,12 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                 debouncedSaveChanges(newText);
               }}
               onKeyDown={async (e) => {
-                // Handle Escape key - exit editing mode
+                // Stop propagation of ALL key events so parent components (tree.tsx) don't see them
+                e.stopPropagation();
+
+                // Handle Escape key - exit editing mode (common behavior)
                 if (e.code === "Escape") {
                   e.preventDefault();
-                  e.stopPropagation();
                   debouncedSaveChanges.clear();
                   await saveChanges(editText());
                   props.setIsEditing(false);
@@ -120,50 +123,14 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                   return;
                 }
 
-                // Handle Tab key
-                if (e.code === "Tab") {
-                  e.preventDefault();
-                  e.stopPropagation();
-
-                  setIsTabPressed(true);
-                  // Save changes
-                  debouncedSaveChanges.clear();
-                  await saveChanges(editText());
-
-                  if (props.onTabPress) {
-                    // Call the Tab navigation callback if provided
-                    const cursorPos = inputRef?.selectionStart ?? 0;
-                    props.onTabPress(e.shiftKey, cursorPos);
-                  } else {
-                    // If no onTabPress callback, behave like Escape (exit editing mode)
-                    props.setIsEditing(false);
-                    setEditText("");
-                  }
-                }
-
-                // Handle Enter key (ignore during IME composition)
-                if (e.code === "Enter" && props.onEnterPress && !e.isComposing) {
-                  e.preventDefault();
-                  e.stopPropagation();
-
-                  setIsEnterPressed(true);
-                  const cursorPos = inputRef?.selectionStart ?? editText().length;
-                  const beforeCursor = editText().slice(0, cursorPos);
-                  const afterCursor = editText().slice(cursorPos);
-
-                  debouncedSaveChanges.clear();
-                  props.onEnterPress(beforeCursor, afterCursor);
+                // Delegate other keys to caller
+                if (props.onKeyDown && inputRef) {
+                  await props.onKeyDown(e, inputRef, () => setBlurSavePrevented(true));
                 }
               }}
               onBlur={async () => {
-                // Ignore blur if Tab was pressed
-                if (isTabPressed()) {
-                  setIsTabPressed(false);
-                  return;
-                }
-                // Ignore blur if Enter was pressed
-                if (isEnterPressed()) {
-                  setIsEnterPressed(false);
+                if (blurSavePrevented()) {
+                  setBlurSavePrevented(false);
                   return;
                 }
                 debouncedSaveChanges.clear();
