@@ -44,8 +44,8 @@ async function waitForEmulator(port: number, maxAttempts = 30): Promise<void> {
   throw new Error(`Emulator did not start within ${maxAttempts} seconds`);
 }
 
-async function clearDatabase(port: number): Promise<void> {
-  await fetch(`http://localhost:${port}/emulator/v1/projects/demo/databases/(default)/documents`, {
+async function clearDatabase(port: number, database: string = "(default)"): Promise<void> {
+  await fetch(`http://localhost:${port}/emulator/v1/projects/demo/databases/${database}/documents`, {
     method: "DELETE",
   });
 }
@@ -83,8 +83,9 @@ export async function setup() {
 
     if (req.method === "DELETE" && url.pathname === "/database") {
       // Clear the database
+      const database = url.searchParams.get("database") ?? "(default)";
       try {
-        await clearDatabase(emulatorPort);
+        await clearDatabase(emulatorPort, database);
         res.writeHead(200);
         res.end(JSON.stringify({ success: true }));
       } catch (e) {

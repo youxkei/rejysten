@@ -35,14 +35,14 @@ export type DatabaseInfo = {
   emulatorPort: number;
 };
 
-async function getEmulatorPort(): Promise<number> {
+export async function getEmulatorPort(): Promise<number> {
   const res = await fetch(`${TEST_SERVER_URL}/emulator-port`);
   const { emulatorPort } = await res.json();
   return emulatorPort;
 }
 
-async function clearDatabase(): Promise<void> {
-  await fetch(`${TEST_SERVER_URL}/database`, { method: "DELETE" });
+async function clearDatabase(database: string = "(default)"): Promise<void> {
+  await fetch(`${TEST_SERVER_URL}/database?database=${database}`, { method: "DELETE" });
 }
 
 export const testWithDb = test.extend<{ db: DatabaseInfo }>({

@@ -6,39 +6,33 @@ import {
   initializeFirestore,
   persistentLocalCache,
   connectFirestoreEmulator,
-  collection,
-  type Query,
 } from "firebase/firestore";
+import { initializeApp, getApps } from "firebase/app";
 
-import { getDoc as getDocOriginal, getDocs as getDocsOriginal, type FirestoreService } from ".";
-import { type Schema } from "@/services/firebase/firestore/schema";
-import { firebaseServiceForTest } from "@/services/firebase/test";
+export function createTestFirestoreService(emulatorPort: number, appName: string) {
+  const existingApps = getApps();
+  let firebaseApp = existingApps.find((app) => app.name === appName);
 
-function createFirestoreServiceForTest() {
-  const firestore = initializeFirestore(
-    firebaseServiceForTest.firebaseApp,
-    { localCache: persistentLocalCache() },
-    "test",
-  );
+  if (!firebaseApp) {
+    firebaseApp = initializeApp(
+      {
+        apiKey: "apiKey",
+        authDomain: "authDomain",
+        projectId: "demo",
+        storageBucket: "",
+        messagingSenderId: "",
+        appId: "",
+        measurementId: "",
+      },
+      appName,
+    );
+  }
 
-  connectFirestoreEmulator(firestore, "localhost", 8080);
+  const firestore = initializeFirestore(firebaseApp, { localCache: persistentLocalCache() }, "test");
+
+  connectFirestoreEmulator(firestore, "localhost", emulatorPort);
 
   return { firestore };
-}
-
-export const serviceForTest = createFirestoreServiceForTest() as FirestoreService;
-export const firestoreForTest = serviceForTest.firestore;
-
-export function getCollectionForTest<Name extends keyof Schema>(name: Name, postfix: string) {
-  return collection(firestoreForTest, `${name}_${postfix}`) as CollectionReference<Schema[Name]>;
-}
-
-export async function getDoc<T extends object>(col: CollectionReference<T>, id: string) {
-  return (await getDocOriginal(serviceForTest, col, id))!;
-}
-
-export async function getDocs<T extends object>(query: Query<T>) {
-  return getDocsOriginal(serviceForTest, query);
 }
 
 export async function setDocs<T extends { text: string }>(col: CollectionReference<T>, treeNodes: T[]) {

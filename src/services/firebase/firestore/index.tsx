@@ -38,11 +38,7 @@ export type FirestoreService = {
 
 const context = createContext<FirestoreService>();
 
-export function FirestoreServiceProvider(props: {
-  children: JSXElement;
-  databaseId?: string;
-  emulatorPort?: number;
-}) {
+export function FirestoreServiceProvider(props: { children: JSXElement; databaseId?: string; emulatorPort?: number }) {
   const firebase = useFirebaseService();
   const store = useStoreService();
 
