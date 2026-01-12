@@ -5,12 +5,21 @@ import { type Accessor, createMemo, For, type JSXElement, Show, startTransition 
 import { type DocumentData, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
-import { dedent, getAboveNode, getBelowNode, indent, type TreeNode } from "@/services/firebase/firestore/treeNode";
+import {
+  dedent,
+  getAboveNode,
+  getBelowNode,
+  getBottomNodeExclusive,
+  getFirstChildNode,
+  indent,
+  type TreeNode,
+} from "@/services/firebase/firestore/treeNode";
 import { addKeyDownEventListener } from "@/solid/event";
 
 export function ChildrenNodes<T extends TreeNode>(props: {
   col: CollectionReference<T>;
   parentId: string;
+  rootParentId: string;
   selectedId: string;
   setSelectedId: (selectedID: string) => void;
   showNode: (
@@ -37,6 +46,7 @@ export function ChildrenNodes<T extends TreeNode>(props: {
             <Node
               col={props.col}
               id={childId}
+              rootParentId={props.rootParentId}
               selectedId={props.selectedId}
               setSelectedId={props.setSelectedId}
               showNode={props.showNode}
@@ -52,6 +62,7 @@ export function ChildrenNodes<T extends TreeNode>(props: {
 export function Node<T extends TreeNode>(props: {
   col: CollectionReference<T>;
   id: string;
+  rootParentId: string;
   selectedId: string;
   setSelectedId: (selectedId: string) => void;
   showNode: (
@@ -104,6 +115,24 @@ export function Node<T extends TreeNode>(props: {
         if (!aboveNode) return;
 
         props.setSelectedId(aboveNode.id);
+
+        break;
+      }
+
+      case "KeyG": {
+        event.stopImmediatePropagation();
+
+        if (shiftKey) {
+          // G: move to the last tree node
+          const lastNode = await getBottomNodeExclusive(firestore, props.col, { id: props.rootParentId });
+          if (!lastNode || lastNode.id === props.id) return;
+          props.setSelectedId(lastNode.id);
+        } else {
+          // g: move to the first tree node
+          const firstNode = await getFirstChildNode(firestore, props.col, { id: props.rootParentId });
+          if (!firstNode || firstNode.id === props.id) return;
+          props.setSelectedId(firstNode.id);
+        }
 
         break;
       }
@@ -173,6 +202,7 @@ export function Node<T extends TreeNode>(props: {
             <ChildrenNodes
               col={props.col}
               parentId={props.id}
+              rootParentId={props.rootParentId}
               selectedId={props.selectedId}
               setSelectedId={props.setSelectedId}
               showNode={props.showNode}

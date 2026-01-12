@@ -608,6 +608,62 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       result.unmount();
     });
 
+    it("can navigate to first/last lifelog with g/G keys", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await result.findByText("first lifelog");
+      await result.findByText("second lifelog");
+      await result.findByText("third lifelog");
+
+      // Initial state: $log1 is selected
+      await waitFor(() => {
+        const log1Element = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log1Element?.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "G" (Shift+g) to move to last lifelog ($log3)
+      await userEvent.keyboard("{Shift>}{g}{/Shift}");
+
+      await waitFor(() => {
+        const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log3Element?.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "g" to move back to first lifelog ($log1)
+      await userEvent.keyboard("{g}");
+
+      await waitFor(() => {
+        const log1Element = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log1Element?.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "g" again at first item should not change selection
+      await userEvent.keyboard("{g}");
+
+      await waitFor(() => {
+        const log1Element = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log1Element?.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "G" to move to last again
+      await userEvent.keyboard("{Shift>}{g}{/Shift}");
+
+      await waitFor(() => {
+        const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log3Element?.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "G" at last item should not change selection
+      await userEvent.keyboard("{Shift>}{g}{/Shift}");
+
+      await waitFor(() => {
+        const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log3Element?.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      result.unmount();
+    });
+
     it("can add new lifelog with o key", async ({ db, task }) => {
       const { result } = await setupLifeLogsTest(task.id, db);
 
@@ -1335,6 +1391,86 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
       await userEvent.keyboard("{h}");
       await waitFor(() => {
         // After pressing h, tree nodes should no longer be visible
+        expect(result.queryByText("first child")).toBeNull();
+      });
+
+      result.unmount();
+    });
+
+    it("can navigate to first/last tree node with g/G keys", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await result.findByText("first lifelog");
+
+      // Press "l" to enter tree mode
+      await userEvent.keyboard("{l}");
+
+      // Wait for all tree nodes to render
+      // Structure:
+      //   child1 (first child)
+      //     grandchild
+      //       great-grandchild
+      //   child2 (second child)
+      //   child3 (third child)
+      //     grandchild3 (third grandchild) <- last node (deepest of last child)
+      await result.findByText("first child");
+      await result.findByText("grandchild");
+      await result.findByText("great-grandchild");
+      await result.findByText("second child");
+      await result.findByText("third child");
+      await result.findByText("third grandchild");
+
+      // Initial state: child1 is selected
+      await waitFor(() => {
+        const child1Element = result.getByText("first child");
+        expect(child1Element.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "G" (Shift+g) to move to last tree node (third grandchild)
+      await userEvent.keyboard("{Shift>}{g}{/Shift}");
+
+      await waitFor(() => {
+        const lastElement = result.getByText("third grandchild");
+        expect(lastElement.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "g" to move back to first tree node (first child)
+      await userEvent.keyboard("{g}");
+
+      await waitFor(() => {
+        const child1Element = result.getByText("first child");
+        expect(child1Element.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Press "g" again at first item should not change selection
+      await userEvent.keyboard("{g}");
+
+      await waitFor(() => {
+        const child1Element = result.getByText("first child");
+        expect(child1Element.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Move to last and verify G at last doesn't change selection
+      await userEvent.keyboard("{Shift>}{g}{/Shift}");
+
+      await waitFor(() => {
+        const lastElement = result.getByText("third grandchild");
+        expect(lastElement.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      await userEvent.keyboard("{Shift>}{g}{/Shift}");
+
+      await waitFor(() => {
+        const lastElement = result.getByText("third grandchild");
+        expect(lastElement.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Wait for any pending Firestore operations
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Exit tree mode to ensure clean shutdown
+      await userEvent.keyboard("{h}");
+      await waitFor(() => {
         expect(result.queryByText("first child")).toBeNull();
       });
 

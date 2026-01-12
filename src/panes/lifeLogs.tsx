@@ -123,6 +123,16 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp }) 
     { equal },
   );
 
+  const firstLifeLogId$ = createMemo(() => {
+    const lifeLogs = lifeLogs$();
+    return lifeLogs.length > 0 ? lifeLogs[0].id : "";
+  });
+
+  const lastLifeLogId$ = createMemo(() => {
+    const lifeLogs = lifeLogs$();
+    return lifeLogs.length > 0 ? lifeLogs[lifeLogs.length - 1].id : "";
+  });
+
   return (
     <ul class={styles.lifeLogs.list}>
       <Key each={lifeLogIdWithNeighborIds$()} by={(item) => item.id}>
@@ -132,6 +142,8 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp }) 
               id={lifeLogWithNeighborIds().id}
               prevId={lifeLogWithNeighborIds().prevId}
               nextId={lifeLogWithNeighborIds().nextId}
+              firstId={firstLifeLogId$()}
+              lastId={lastLifeLogId$()}
               isEditing={isEditing$()}
               setIsEditing={setIsEditing}
               editingField={editingField$()}
@@ -156,6 +168,8 @@ export function LifeLogTree(props: {
   id: string;
   prevId: string;
   nextId: string;
+  firstId: string;
+  lastId: string;
   isEditing: boolean;
   setIsEditing: (isEditing: boolean) => void;
   editingField: EditingField;
@@ -274,6 +288,27 @@ export function LifeLogTree(props: {
         updateState((state) => {
           state.panesLifeLogs.selectedLifeLogId = props.prevId;
         });
+
+        break;
+      }
+
+      case "KeyG": {
+        if (isLifeLogTreeFocused$()) return; // Tree navigation handled in tree.tsx
+        event.stopImmediatePropagation();
+
+        if (shiftKey) {
+          // G: move to the last LifeLog
+          if (props.lastId === "" || props.id === props.lastId) return;
+          updateState((state) => {
+            state.panesLifeLogs.selectedLifeLogId = props.lastId;
+          });
+        } else {
+          // g: move to the first LifeLog
+          if (props.firstId === "" || props.id === props.firstId) return;
+          updateState((state) => {
+            state.panesLifeLogs.selectedLifeLogId = props.firstId;
+          });
+        }
 
         break;
       }
@@ -629,6 +664,7 @@ export function LifeLogTree(props: {
               <ChildrenNodes
                 col={getCollection(firestore, "lifeLogTreeNodes")}
                 parentId={props.id}
+                rootParentId={props.id}
                 selectedId={selectedLifeLogNodeId$()}
                 setSelectedId={setSelectedLifeLogNodeId}
                 createNewNode={(newId, initialText) => ({ id: newId, text: initialText ?? "" })}
