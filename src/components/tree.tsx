@@ -1,6 +1,6 @@
 import equals from "fast-deep-equal";
 import { type CollectionReference, doc, orderBy, query, where } from "firebase/firestore";
-import { type Accessor, createMemo, For, type JSXElement, Show, startTransition } from "solid-js";
+import { type Accessor, createEffect, createMemo, For, type JSXElement, Show, startTransition } from "solid-js";
 
 import { type DocumentData, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
@@ -15,6 +15,7 @@ import {
   type TreeNode,
 } from "@/services/firebase/firestore/treeNode";
 import { addKeyDownEventListener } from "@/solid/event";
+import { scrollWithOffset } from "@/solid/scroll";
 
 export function ChildrenNodes<T extends TreeNode>(props: {
   col: CollectionReference<T>;
@@ -80,6 +81,13 @@ export function Node<T extends TreeNode>(props: {
     () => `node "${props.id}"`,
   );
   const isSelected$ = () => props.id === props.selectedId;
+
+  let nodeRef: HTMLDivElement | undefined;
+  createEffect(() => {
+    if (isSelected$() && nodeRef) {
+      scrollWithOffset(nodeRef);
+    }
+  });
 
   addKeyDownEventListener(async (event) => {
     if (event.isComposing || event.ctrlKey || !isSelected$()) return;
@@ -198,7 +206,7 @@ export function Node<T extends TreeNode>(props: {
       {(node$) => {
         return (
           <>
-            <div>{props.showNode(node$, isSelected$, handleTabIndent)}</div>
+            <div ref={nodeRef}>{props.showNode(node$, isSelected$, handleTabIndent)}</div>
             <ChildrenNodes
               col={props.col}
               parentId={props.id}

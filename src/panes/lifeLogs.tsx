@@ -1,7 +1,7 @@
 import { Key } from "@solid-primitives/keyed";
 import equal from "fast-deep-equal";
 import { doc, orderBy, query, Timestamp, where } from "firebase/firestore";
-import { createMemo, createSignal, Show, startTransition } from "solid-js";
+import { createEffect, createMemo, createSignal, Show, startTransition } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
 import { EditableValue } from "@/components/EditableValue";
@@ -24,6 +24,7 @@ import {
 } from "@/services/firebase/firestore/treeNode";
 import { initialState, useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
+import { scrollWithOffset, ScrollContainer } from "@/solid/scroll";
 import { createTickSignal } from "@/solid/signal";
 import { styles } from "@/styles.css";
 import { dayMs, noneTimestamp, timestampToTimeText, timeTextToTimestamp } from "@/timestamp";
@@ -73,9 +74,9 @@ export function LifeLogs() {
   const tickDay$ = createTickSignal(dayMs);
 
   return (
-    <div class={styles.lifeLogs.container}>
+    <ScrollContainer class={styles.lifeLogs.container}>
       <TimeRangedLifeLogs start={Timestamp.fromMillis(tickDay$() - 7 * dayMs)} end={noneTimestamp} />
-    </div>
+    </ScrollContainer>
   );
 }
 
@@ -211,6 +212,13 @@ export function LifeLogTree(props: {
   const isSelected$ = () => state.panesLifeLogs.selectedLifeLogId === props.id;
   const isLifeLogSelected$ = () => isSelected$() && selectedLifeLogNodeId$() === "";
   const isLifeLogTreeFocused$ = () => isSelected$() && selectedLifeLogNodeId$() !== "";
+
+  let lifeLogContainerRef: HTMLDivElement | undefined;
+  createEffect(() => {
+    if (isLifeLogSelected$() && lifeLogContainerRef) {
+      scrollWithOffset(lifeLogContainerRef);
+    }
+  });
 
   addKeyDownEventListener(async (event) => {
     if (event.isComposing || event.ctrlKey || !isSelected$()) return;
@@ -480,7 +488,11 @@ export function LifeLogTree(props: {
     <Show when={lifeLog$()}>
       {(lifeLog$) => (
         <>
-          <div class={styles.lifeLogTree.container} classList={{ [styles.lifeLogTree.selected]: isLifeLogSelected$() }}>
+          <div
+            ref={lifeLogContainerRef}
+            class={styles.lifeLogTree.container}
+            classList={{ [styles.lifeLogTree.selected]: isLifeLogSelected$() }}
+          >
             <div class={styles.lifeLogTree.timeRange}>
               <EditableValue
                 debugId="startAt"

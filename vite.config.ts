@@ -47,7 +47,6 @@ export default defineConfig({
       instances: [{ browser: "chromium" }],
     },
     setupFiles: ["node_modules/@testing-library/jest-dom/vitest.js"],
-    retry: 2,
   },
   resolve: {
     conditions: ["development|production", "browser"],
