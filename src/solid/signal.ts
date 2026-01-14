@@ -1,5 +1,7 @@
 import { type Accessor, createComputed, createMemo, createSignal, onCleanup } from "solid-js";
 
+import { DateNow } from "@/date";
+
 export function mapSignal<T, U>(signal$: Accessor<T>, callback: (element: T) => U) {
   return () => callback(signal$());
 }
@@ -36,18 +38,18 @@ export function createLatchSignal<T>(signal$: Accessor<T>, clock$: Accessor<bool
 }
 
 export function createTickSignal(unitMs: number): Accessor<number> {
-  const [now$, setNow] = createSignal(Date.now());
+  const [now$, setNow] = createSignal(DateNow());
 
   let timeoutId: number | undefined;
 
   function setTimer(): number {
     return window.setTimeout(
       () => {
-        setNow(Date.now());
+        setNow(DateNow());
 
         timeoutId = setTimer();
       },
-      unitMs - (Date.now() % unitMs),
+      unitMs - (DateNow() % unitMs),
     );
   }
 
