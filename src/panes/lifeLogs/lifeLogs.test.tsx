@@ -1045,5 +1045,222 @@ describe("<LifeLogs />", { timeout: 5000 }, () => {
 
       result.unmount();
     });
+
+    describe("scroll", () => {
+      // Vitest browser mode default iframe size: 414x896
+      // Each LifeLog is approximately 100px height, so 15 LifeLogs will require scrolling
+      const SCROLL_OFFSET = 100;
+      const OFFSET_TOLERANCE = 20;
+
+      it("maintains ~100px offset when scrolling down with j key", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15 });
+
+        const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
+
+        // Wait for items to appear in the DOM
+        await waitFor(() => {
+          const items = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+          expect(items.length).toBeGreaterThanOrEqual(5);
+        });
+
+        // Wait for some items to have content loaded
+        await waitFor(() => {
+          const items = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+          const itemsWithContent = Array.from(items).filter((item) => item.textContent && item.textContent.length > 10);
+          expect(itemsWithContent.length).toBeGreaterThanOrEqual(3);
+        });
+
+        // Wait for the selected element to be available
+        await waitFor(() => {
+          const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+          expect(selected).toBeTruthy();
+        });
+
+        // Navigate to first item with g key
+        await userEvent.keyboard("{g}");
+        await waitFor(() => {
+          const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+          expect(selected).toBeTruthy();
+        });
+
+        // Navigate down repeatedly - scrolling should trigger when item nears bottom
+        for (let i = 0; i < 5; i++) {
+          await userEvent.keyboard("{j}");
+
+          await waitFor(() => {
+            const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+            expect(selected).toBeTruthy();
+          });
+
+          // Check scroll offset for selected element
+          const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`)!;
+          const containerRect = container.getBoundingClientRect();
+          const selectedRect = selected.getBoundingClientRect();
+
+          // Selected element's bottom should be at least (SCROLL_OFFSET - TOLERANCE) from container's bottom
+          const bottomOffset = containerRect.bottom - selectedRect.bottom;
+          expect(
+            bottomOffset,
+            `Bottom offset should be ~${SCROLL_OFFSET}px (got ${bottomOffset.toFixed(0)}px)`,
+          ).toBeGreaterThanOrEqual(SCROLL_OFFSET - OFFSET_TOLERANCE);
+        }
+
+        result.unmount();
+      });
+
+      it("maintains ~100px offset when scrolling up with k key", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15 });
+
+        const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
+
+        // Wait for items to appear in the DOM
+        await waitFor(() => {
+          const items = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+          expect(items.length).toBeGreaterThanOrEqual(5);
+        });
+
+        // Wait for some items to have content loaded
+        await waitFor(() => {
+          const items = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+          const itemsWithContent = Array.from(items).filter((item) => item.textContent && item.textContent.length > 10);
+          expect(itemsWithContent.length).toBeGreaterThanOrEqual(3);
+        });
+
+        // First, go to the last LifeLog using G key
+        await userEvent.keyboard("{Shift>}{g}{/Shift}");
+        await waitFor(() => {
+          const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+          expect(selected).toBeTruthy();
+        });
+
+        // Navigate up repeatedly
+        for (let i = 0; i < 7; i++) {
+          await userEvent.keyboard("{k}");
+
+          await waitFor(() => {
+            const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+            expect(selected).toBeTruthy();
+          });
+
+          // Check scroll offset for selected element
+          const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`)!;
+          const containerRect = container.getBoundingClientRect();
+          const selectedRect = selected.getBoundingClientRect();
+
+          // Selected element's top should be at least (SCROLL_OFFSET - TOLERANCE) from container's top
+          const topOffset = selectedRect.top - containerRect.top;
+          expect(
+            topOffset,
+            `Top offset should be ~${SCROLL_OFFSET}px (got ${topOffset.toFixed(0)}px)`,
+          ).toBeGreaterThanOrEqual(SCROLL_OFFSET - OFFSET_TOLERANCE);
+        }
+
+        result.unmount();
+      });
+
+      it("scrolls to first LifeLog with g key", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15 });
+
+        const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
+
+        // Wait for items to appear in the DOM
+        await waitFor(() => {
+          const items = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+          expect(items.length).toBeGreaterThanOrEqual(5);
+        });
+
+        // Wait for some items to have content loaded
+        await waitFor(() => {
+          const items = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+          const itemsWithContent = Array.from(items).filter((item) => item.textContent && item.textContent.length > 10);
+          expect(itemsWithContent.length).toBeGreaterThanOrEqual(3);
+        });
+
+        // First, go to the last LifeLog using G key
+        await userEvent.keyboard("{Shift>}{g}{/Shift}");
+        let lastSelectedText: string | undefined;
+        await waitFor(() => {
+          const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+          expect(selected).toBeTruthy();
+          lastSelectedText = selected?.textContent ?? undefined;
+        });
+
+        // Wait for scroll to settle
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Press g to go to first LifeLog
+        await userEvent.keyboard("{g}");
+
+        // Wait for selection to change (different from the last selected)
+        await waitFor(() => {
+          const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+          expect(selected).toBeTruthy();
+          expect(selected?.textContent).not.toBe(lastSelectedText);
+        });
+
+        // Check that first element is visible within container
+        // The first element may not have 100px offset since it's at the physical top
+        const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`)!;
+        const containerRect = container.getBoundingClientRect();
+        const selectedRect = selected.getBoundingClientRect();
+
+        // First element should be visible (top should be >= container top)
+        expect(selectedRect.top).toBeGreaterThanOrEqual(containerRect.top);
+        // And should be within the visible area
+        expect(selectedRect.bottom).toBeLessThanOrEqual(containerRect.bottom);
+
+        result.unmount();
+      });
+
+      it("scrolls to last LifeLog with G key", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15 });
+
+        const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
+
+        // Wait for items to appear in the DOM
+        await waitFor(() => {
+          const items = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+          expect(items.length).toBeGreaterThanOrEqual(5);
+        });
+
+        // Wait for some items to have content loaded
+        await waitFor(() => {
+          const items = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+          const itemsWithContent = Array.from(items).filter((item) => item.textContent && item.textContent.length > 10);
+          expect(itemsWithContent.length).toBeGreaterThanOrEqual(3);
+        });
+
+        // First, go to first LifeLog using g key
+        await userEvent.keyboard("{g}");
+        let firstSelectedText: string | undefined;
+        await waitFor(() => {
+          const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+          expect(selected).toBeTruthy();
+          firstSelectedText = selected?.textContent ?? undefined;
+        });
+
+        // Press G to go to last LifeLog
+        await userEvent.keyboard("{Shift>}{g}{/Shift}");
+
+        await waitFor(() => {
+          const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+          expect(selected).toBeTruthy();
+          expect(selected?.textContent).not.toBe(firstSelectedText);
+        });
+
+        // Check that last element is visible within container
+        // The last element may not have 100px offset since it's at the physical bottom
+        const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`)!;
+        const containerRect = container.getBoundingClientRect();
+        const selectedRect = selected.getBoundingClientRect();
+
+        // Last element should be visible (bottom should be <= container bottom)
+        expect(selectedRect.bottom).toBeLessThanOrEqual(containerRect.bottom);
+        // And should be within the visible area
+        expect(selectedRect.top).toBeGreaterThanOrEqual(containerRect.top);
+
+        result.unmount();
+      });
+    });
   });
 });

@@ -19,7 +19,12 @@ export interface DatabaseInfo {
   emulatorPort: number;
 }
 
-export async function setupLifeLogsTest(testId: string, db: DatabaseInfo) {
+export interface SetupLifeLogsTestOptions {
+  lifeLogCount?: number;
+  treeNodeCount?: number;
+}
+
+export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, options?: SetupLifeLogsTestOptions) {
   let resolveReady: () => void;
   let rejectReady: (error: unknown) => void;
   const ready = new Promise<void>((resolve, reject) => {
@@ -132,6 +137,18 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo) {
                     updatedAt: Timestamp.fromDate(baseTime),
                   });
 
+                  // Generate additional tree nodes for scroll testing
+                  const treeNodeCount = options?.treeNodeCount ?? 0;
+                  for (let i = 0; i < treeNodeCount; i++) {
+                    batch.set(doc(lifeLogTreeNodes, `scrollTestNode${i}`), {
+                      text: `scroll test node ${i}`,
+                      parentId: "$log1",
+                      order: `b${String(i).padStart(3, "0")}`,
+                      createdAt: Timestamp.fromDate(baseTime),
+                      updatedAt: Timestamp.fromDate(baseTime),
+                    });
+                  }
+
                   // Third lifelog - with noneTimestamp startAt for S key test
                   batch.set(doc(lifeLogs, "$log3"), {
                     text: "third lifelog",
@@ -141,10 +158,29 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo) {
                     updatedAt: Timestamp.fromDate(baseTime),
                   });
 
+                  // Generate additional LifeLogs for scroll testing
+                  const lifeLogCount = options?.lifeLogCount ?? 3;
+                  for (let i = 4; i <= lifeLogCount; i++) {
+                    const startTime = new Date(baseTime);
+                    // Use minutes to avoid exceeding 24 hours
+                    startTime.setHours(12, i, 0, 0);
+
+                    batch.set(doc(lifeLogs, `$log${i}`), {
+                      text: `lifelog ${i}`,
+                      startAt: Timestamp.fromDate(startTime),
+                      endAt: noneTimestamp,
+                      createdAt: Timestamp.fromDate(baseTime),
+                      updatedAt: Timestamp.fromDate(baseTime),
+                    });
+                  }
+
                   await batch.commit();
 
+                  // Select the first LifeLog that exists in the query results
+                  // When lifeLogCount > 3, earlier LifeLogs might be filtered out by the time-based query
+                  const initialSelectedId = lifeLogCount > 3 ? `$log${Math.min(lifeLogCount, 10)}` : "$log1";
                   updateState((state) => {
-                    state.panesLifeLogs.selectedLifeLogId = "$log1";
+                    state.panesLifeLogs.selectedLifeLogId = initialSelectedId;
                   });
                 })().then(resolveReady, rejectReady);
               });

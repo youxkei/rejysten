@@ -1217,4 +1217,107 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     result.unmount();
   });
+
+  describe("scroll", () => {
+    // Vitest browser mode default iframe size: 414x896
+    // Each tree node is approximately 24px height, so 30 nodes will require scrolling
+    const SCROLL_OFFSET = 100;
+    const OFFSET_TOLERANCE = 20;
+
+    it("maintains ~100px offset when scrolling down with j key in tree mode", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, { treeNodeCount: 30 });
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
+
+      // Wait for LifeLog to render
+      await result.findByText("first lifelog");
+
+      // Enter tree mode with l key
+      await userEvent.keyboard("{l}");
+
+      // Wait for tree nodes to render (including scroll test nodes)
+      await result.findByText("first child");
+      await result.findByText("scroll test node 0");
+      await result.findByText("scroll test node 29");
+
+      // Navigate to first tree node with g key
+      await userEvent.keyboard("{g}");
+      await waitFor(() => {
+        const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+        expect(selected).toBeTruthy();
+      });
+
+      // Navigate down repeatedly - scrolling should trigger when item nears bottom
+      for (let i = 0; i < 20; i++) {
+        await userEvent.keyboard("{j}");
+
+        await waitFor(() => {
+          const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+          expect(selected).toBeTruthy();
+        });
+
+        // Check scroll offset for selected element
+        const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`)!;
+        const containerRect = container.getBoundingClientRect();
+        const selectedRect = selected.getBoundingClientRect();
+
+        // Selected element's bottom should be at least (SCROLL_OFFSET - TOLERANCE) from container's bottom
+        const bottomOffset = containerRect.bottom - selectedRect.bottom;
+        expect(
+          bottomOffset,
+          `Bottom offset should be ~${SCROLL_OFFSET}px (got ${bottomOffset.toFixed(0)}px)`,
+        ).toBeGreaterThanOrEqual(SCROLL_OFFSET - OFFSET_TOLERANCE);
+      }
+
+      result.unmount();
+    });
+
+    it("maintains ~100px offset when scrolling up with k key in tree mode", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, { treeNodeCount: 30 });
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
+
+      // Wait for LifeLog to render
+      await result.findByText("first lifelog");
+
+      // Enter tree mode with l key
+      await userEvent.keyboard("{l}");
+
+      // Wait for tree nodes to render (including scroll test nodes)
+      await result.findByText("first child");
+      await result.findByText("scroll test node 0");
+      await result.findByText("scroll test node 29");
+
+      // Go to last tree node with G key
+      await userEvent.keyboard("{Shift>}{g}{/Shift}");
+      await waitFor(() => {
+        const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+        expect(selected).toBeTruthy();
+      });
+
+      // Navigate up repeatedly
+      for (let i = 0; i < 20; i++) {
+        await userEvent.keyboard("{k}");
+
+        await waitFor(() => {
+          const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+          expect(selected).toBeTruthy();
+        });
+
+        // Check scroll offset for selected element
+        const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`)!;
+        const containerRect = container.getBoundingClientRect();
+        const selectedRect = selected.getBoundingClientRect();
+
+        // Selected element's top should be at least (SCROLL_OFFSET - TOLERANCE) from container's top
+        const topOffset = selectedRect.top - containerRect.top;
+        expect(
+          topOffset,
+          `Top offset should be ~${SCROLL_OFFSET}px (got ${topOffset.toFixed(0)}px)`,
+        ).toBeGreaterThanOrEqual(SCROLL_OFFSET - OFFSET_TOLERANCE);
+      }
+
+      result.unmount();
+    });
+  });
 });
