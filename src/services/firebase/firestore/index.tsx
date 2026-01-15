@@ -10,6 +10,7 @@ import {
   getDocsFromServer,
   getDocFromServer,
   type Firestore,
+  getFirestore,
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
@@ -42,13 +43,25 @@ export function FirestoreServiceProvider(props: { children: JSXElement; database
   const firebase = useFirebaseService();
   const store = useStoreService();
 
-  const firestore = initializeFirestore(
-    firebase.firebaseApp,
-    {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-    },
-    props.databaseId,
-  );
+  let firestore: Firestore;
+  try {
+    firestore = initializeFirestore(
+      firebase.firebaseApp,
+      {
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      },
+      props.databaseId,
+    );
+  } catch (error) {
+    if (error instanceof FirebaseError && error.code === "failed-precondition") {
+      // Already initialized with different settings, use getFirestore instead
+      firestore = props.databaseId
+        ? getFirestore(firebase.firebaseApp, props.databaseId)
+        : getFirestore(firebase.firebaseApp);
+    } else {
+      throw error;
+    }
+  }
 
   if (props.emulatorPort) {
     connectFirestoreEmulator(firestore, "localhost", props.emulatorPort);

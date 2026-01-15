@@ -1269,6 +1269,8 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
         ).toBeGreaterThanOrEqual(SCROLL_OFFSET - OFFSET_TOLERANCE);
       }
 
+      // Wait for pending Firestore operations to complete before unmount
+      await new Promise((resolve) => setTimeout(resolve, 500));
       result.unmount();
     });
 
@@ -1317,6 +1319,8 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
         ).toBeGreaterThanOrEqual(SCROLL_OFFSET - OFFSET_TOLERANCE);
       }
 
+      // Wait for pending Firestore operations to complete before unmount
+      await new Promise((resolve) => setTimeout(resolve, 500));
       result.unmount();
     });
   });
