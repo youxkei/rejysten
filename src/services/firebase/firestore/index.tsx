@@ -12,6 +12,7 @@ import {
   type Firestore,
   getFirestore,
   initializeFirestore,
+  memoryLocalCache,
   persistentLocalCache,
   persistentMultipleTabManager,
   onSnapshotsInSync,
@@ -39,7 +40,12 @@ export type FirestoreService = {
 
 const context = createContext<FirestoreService>();
 
-export function FirestoreServiceProvider(props: { children: JSXElement; databaseId?: string; emulatorPort?: number }) {
+export function FirestoreServiceProvider(props: {
+  children: JSXElement;
+  databaseId?: string;
+  emulatorPort?: number;
+  useMemoryCache?: boolean;
+}) {
   const firebase = useFirebaseService();
   const store = useStoreService();
 
@@ -48,7 +54,9 @@ export function FirestoreServiceProvider(props: { children: JSXElement; database
     firestore = initializeFirestore(
       firebase.firebaseApp,
       {
-        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+        localCache: props.useMemoryCache
+          ? memoryLocalCache()
+          : persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
       },
       props.databaseId,
     );

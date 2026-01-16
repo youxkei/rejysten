@@ -1,6 +1,7 @@
 import { debounce } from "@solid-primitives/scheduled";
 import { createEffect, createSignal, on, Show, type JSX, onMount } from "solid-js";
 
+import { awaitable } from "@/awaitableCallback";
 import { addKeyDownEventListener } from "@/solid/event";
 
 export interface EditableValueProps<V> {
@@ -43,8 +44,8 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
 
   // Handle 'i' key to enter editing mode with cursor at start, 'a' for cursor at end
   addKeyDownEventListener((event) => {
-    if (event.isComposing || event.ctrlKey || event.shiftKey) return Promise.resolve();
-    if (!props.isSelected || props.isEditing) return Promise.resolve();
+    if (event.isComposing || event.ctrlKey || event.shiftKey) return;
+    if (!props.isSelected || props.isEditing) return;
 
     if (event.code === "KeyI") {
       event.preventDefault();
@@ -57,7 +58,6 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
       setEditTrigger("a");
       props.setIsEditing(true);
     }
-    return Promise.resolve();
   });
 
   return (
@@ -120,7 +120,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                 setEditText(newText);
                 debouncedSaveChanges(newText);
               }}
-              onKeyDown={async (e) => {
+              onKeyDown={awaitable(async (e) => {
                 // Stop propagation of ALL key events so parent components (tree.tsx) don't see them
                 e.stopPropagation();
 
@@ -138,7 +138,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                 if (props.onKeyDown && inputRef) {
                   await props.onKeyDown(e, inputRef, () => setBlurSavePrevented(true));
                 }
-              }}
+              })}
               onBlur={async () => {
                 if (blurSavePrevented()) {
                   setBlurSavePrevented(false);

@@ -39,7 +39,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
         setErrors={() => undefined}
         appName={testId}
       >
-        <FirestoreServiceProvider emulatorPort={db.emulatorPort}>
+        <FirestoreServiceProvider emulatorPort={db.emulatorPort} useMemoryCache>
           <Suspense fallback={<span>loading....</span>}>
             {(() => {
               const firestore = useFirestoreService();
@@ -194,6 +194,8 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
   ));
 
   await ready;
+
+  await result.findByText("first lifelog");
 
   return {
     result,

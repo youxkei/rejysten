@@ -2,6 +2,7 @@ import equals from "fast-deep-equal";
 import { type CollectionReference, doc, orderBy, query, where } from "firebase/firestore";
 import { type Accessor, createEffect, createMemo, For, type JSXElement, Show, startTransition } from "solid-js";
 
+import { awaitable } from "@/awaitableCallback";
 import { type DocumentData, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
@@ -89,95 +90,97 @@ export function Node<T extends TreeNode>(props: {
     }
   });
 
-  addKeyDownEventListener(async (event) => {
-    if (event.isComposing || event.ctrlKey || !isSelected$()) return;
+  addKeyDownEventListener(
+    awaitable(async (event) => {
+      if (event.isComposing || event.ctrlKey || !isSelected$()) return;
 
-    const { shiftKey } = event;
+      const { shiftKey } = event;
 
-    switch (event.code) {
-      case "KeyJ": {
-        if (shiftKey) return;
+      switch (event.code) {
+        case "KeyJ": {
+          if (shiftKey) return;
 
-        event.stopImmediatePropagation();
+          event.stopImmediatePropagation();
 
-        const node = await getDoc(firestore, props.col, props.id);
-        if (!node) return;
+          const node = await getDoc(firestore, props.col, props.id);
+          if (!node) return;
 
-        const belowNode = await getBelowNode(firestore, props.col, node);
-        if (!belowNode) return;
+          const belowNode = await getBelowNode(firestore, props.col, node);
+          if (!belowNode) return;
 
-        props.setSelectedId(belowNode.id);
+          props.setSelectedId(belowNode.id);
 
-        break;
-      }
-
-      case "KeyK": {
-        if (shiftKey) return;
-
-        event.stopImmediatePropagation();
-
-        const node = await getDoc(firestore, props.col, props.id);
-        if (!node) return;
-
-        const aboveNode = await getAboveNode(firestore, props.col, node);
-        if (!aboveNode) return;
-
-        props.setSelectedId(aboveNode.id);
-
-        break;
-      }
-
-      case "KeyG": {
-        event.stopImmediatePropagation();
-
-        if (shiftKey) {
-          // G: move to the last tree node
-          const lastNode = await getBottomNodeExclusive(firestore, props.col, { id: props.rootParentId });
-          if (!lastNode || lastNode.id === props.id) return;
-          props.setSelectedId(lastNode.id);
-        } else {
-          // g: move to the first tree node
-          const firstNode = await getFirstChildNode(firestore, props.col, { id: props.rootParentId });
-          if (!firstNode || firstNode.id === props.id) return;
-          props.setSelectedId(firstNode.id);
+          break;
         }
 
-        break;
-      }
+        case "KeyK": {
+          if (shiftKey) return;
 
-      case "Tab": {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
+          event.stopImmediatePropagation();
 
-        const node = await getDoc(firestore, props.col, props.id);
-        if (!node) return;
+          const node = await getDoc(firestore, props.col, props.id);
+          if (!node) return;
 
-        try {
-          firestore.setClock(true);
-          await runBatch(firestore, async (batch) => {
-            if (shiftKey) {
-              console.timeStamp("dedent");
-              await dedent(firestore, batch, props.col, node);
-            } else {
-              console.timeStamp("indent");
-              await indent(firestore, batch, props.col, node);
-            }
-          });
+          const aboveNode = await getAboveNode(firestore, props.col, node);
+          if (!aboveNode) return;
 
-          console.timeStamp("transition begin");
-          await startTransition(() => {
+          props.setSelectedId(aboveNode.id);
+
+          break;
+        }
+
+        case "KeyG": {
+          event.stopImmediatePropagation();
+
+          if (shiftKey) {
+            // G: move to the last tree node
+            const lastNode = await getBottomNodeExclusive(firestore, props.col, { id: props.rootParentId });
+            if (!lastNode || lastNode.id === props.id) return;
+            props.setSelectedId(lastNode.id);
+          } else {
+            // g: move to the first tree node
+            const firstNode = await getFirstChildNode(firestore, props.col, { id: props.rootParentId });
+            if (!firstNode || firstNode.id === props.id) return;
+            props.setSelectedId(firstNode.id);
+          }
+
+          break;
+        }
+
+        case "Tab": {
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+
+          const node = await getDoc(firestore, props.col, props.id);
+          if (!node) return;
+
+          try {
+            firestore.setClock(true);
+            await runBatch(firestore, async (batch) => {
+              if (shiftKey) {
+                console.timeStamp("dedent");
+                await dedent(firestore, batch, props.col, node);
+              } else {
+                console.timeStamp("indent");
+                await indent(firestore, batch, props.col, node);
+              }
+            });
+
+            console.timeStamp("transition begin");
+            await startTransition(() => {
+              firestore.setClock(false);
+            });
+            console.timeStamp("transition end");
+          } finally {
             firestore.setClock(false);
-          });
-          console.timeStamp("transition end");
-        } finally {
-          firestore.setClock(false);
-        }
+          }
 
-        break;
+          break;
+        }
       }
-    }
-  });
+    }),
+  );
 
   async function handleTabIndent(shiftKey: boolean): Promise<void> {
     const node = await getDoc(firestore, props.col, props.id);

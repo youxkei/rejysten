@@ -1,42 +1,42 @@
-import { waitFor } from "@solidjs/testing-library";
-import { describe, expect, vi } from "vitest";
+import { cleanup, waitFor } from "@solidjs/testing-library";
+import { afterEach, describe, expect, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 
+import { awaitPendingCallbacks } from "@/awaitableCallback";
 import { baseTime, setupLifeLogsTest } from "@/panes/lifeLogs/test";
 import { styles } from "@/styles.css";
 import { testWithDb as it } from "@/test";
 
-vi.mock(import("@/date"), async (importOriginal) => {
-  const mod = await importOriginal();
-
+vi.mock(import("@/date"), async () => {
   return {
-    ...mod,
     NewDate: () => baseTime,
     DateNow: () => baseTime.getTime(),
   };
 });
 
-describe("<LifeLogTree />", { timeout: 5000 }, () => {
+afterEach(async () => {
+  await awaitPendingCallbacks();
+  cleanup();
+});
+
+describe("<LifeLogTree />", { timeout: 2000 }, () => {
   it("can enter/exit tree mode with l/h keys", async ({ db, task }) => {
     const { result } = await setupLifeLogsTest(task.id, db);
 
     await result.findByText("first lifelog");
 
     // Initial state: $log1 is selected (lifelog mode)
-    await waitFor(() => {
-      const log1Element = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
-      expect(log1Element?.className).toContain(styles.lifeLogTree.selected);
-    });
+    const log1ElementInitial = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+    expect(log1ElementInitial?.className).toContain(styles.lifeLogTree.selected);
 
     // Press "l" to enter tree mode
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for tree nodes to render and first child to be selected
     await result.findByText("first child");
-    await waitFor(() => {
-      const child1Element = result.getByText("first child");
-      expect(child1Element.className).toContain(styles.lifeLogTree.selected);
-    });
+    const child1Element = result.getByText("first child");
+    expect(child1Element.className).toContain(styles.lifeLogTree.selected);
 
     // Lifelog should no longer be selected (tree node is selected instead)
     const log1Element = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
@@ -44,18 +44,13 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "h" to exit tree mode and go back to lifelog
     await userEvent.keyboard("{h}");
+    await awaitPendingCallbacks();
 
-    await waitFor(() => {
-      const log1ElementAfter = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
-      expect(log1ElementAfter?.className).toContain(styles.lifeLogTree.selected);
-    });
+    const log1ElementAfter = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+    expect(log1ElementAfter?.className).toContain(styles.lifeLogTree.selected);
 
     // Tree nodes should no longer be visible (tree mode exited)
-    await waitFor(() => {
-      expect(result.queryByText("first child")).toBeNull();
-    });
-
-    result.unmount();
+    expect(result.queryByText("first child")).toBeNull();
   });
 
   it("can navigate between tree nodes with j/k keys", async ({ db, task }) => {
@@ -65,6 +60,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to enter tree mode
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for all tree nodes to render
     // Structure (depth):
@@ -78,78 +74,64 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
     await result.findByText("second child");
 
     // Initial state: child1 (depth 1) is selected
-    await waitFor(() => {
-      const child1Element = result.getByText("first child");
-      expect(child1Element.className).toContain(styles.lifeLogTree.selected);
-    });
+    const child1ElementInitial = result.getByText("first child");
+    expect(child1ElementInitial.className).toContain(styles.lifeLogTree.selected);
 
     // Test j: shallow -> deep (depth 1 -> depth 2)
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
 
-    await waitFor(() => {
-      const grandchildElement = result.getByText("grandchild");
-      expect(grandchildElement.className).toContain(styles.lifeLogTree.selected);
-    });
+    const grandchildElement1 = result.getByText("grandchild");
+    expect(grandchildElement1.className).toContain(styles.lifeLogTree.selected);
 
     // Test j: deep -> deeper (depth 2 -> depth 3)
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
 
-    await waitFor(() => {
-      const greatGrandchildElement = result.getByText("great-grandchild");
-      expect(greatGrandchildElement.className).toContain(styles.lifeLogTree.selected);
-    });
+    const greatGrandchildElement1 = result.getByText("great-grandchild");
+    expect(greatGrandchildElement1.className).toContain(styles.lifeLogTree.selected);
 
     // Test j: deepest -> shallow (depth 3 -> depth 1)
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
 
-    await waitFor(() => {
-      const child2Element = result.getByText("second child");
-      expect(child2Element.className).toContain(styles.lifeLogTree.selected);
-    });
+    const child2Element = result.getByText("second child");
+    expect(child2Element.className).toContain(styles.lifeLogTree.selected);
 
     // Test k: shallow -> deepest (depth 1 -> depth 3)
     await userEvent.keyboard("{k}");
+    await awaitPendingCallbacks();
 
-    await waitFor(() => {
-      const greatGrandchildElement = result.getByText("great-grandchild");
-      expect(greatGrandchildElement.className).toContain(styles.lifeLogTree.selected);
-    });
+    const greatGrandchildElement2 = result.getByText("great-grandchild");
+    expect(greatGrandchildElement2.className).toContain(styles.lifeLogTree.selected);
 
     // Test k: deepest -> deep (depth 3 -> depth 2)
     await userEvent.keyboard("{k}");
+    await awaitPendingCallbacks();
 
-    await waitFor(() => {
-      const grandchildElement = result.getByText("grandchild");
-      expect(grandchildElement.className).toContain(styles.lifeLogTree.selected);
-    });
+    const grandchildElement2 = result.getByText("grandchild");
+    expect(grandchildElement2.className).toContain(styles.lifeLogTree.selected);
 
     // Test k: deep -> shallow (depth 2 -> depth 1)
     await userEvent.keyboard("{k}");
+    await awaitPendingCallbacks();
 
-    await waitFor(() => {
-      const child1Element = result.getByText("first child");
-      expect(child1Element.className).toContain(styles.lifeLogTree.selected);
-    });
+    const child1Element1 = result.getByText("first child");
+    expect(child1Element1.className).toContain(styles.lifeLogTree.selected);
 
     // Press "k" at the first node should not change selection
     await userEvent.keyboard("{k}");
+    await awaitPendingCallbacks();
 
-    await waitFor(() => {
-      const child1Element = result.getByText("first child");
-      expect(child1Element.className).toContain(styles.lifeLogTree.selected);
-    });
-
-    // Wait for any pending Firestore operations to complete
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    const child1Element2 = result.getByText("first child");
+    expect(child1Element2.className).toContain(styles.lifeLogTree.selected);
 
     // Exit tree mode to ensure clean shutdown
     await userEvent.keyboard("{h}");
-    await waitFor(() => {
-      // After pressing h, tree nodes should no longer be visible
-      expect(result.queryByText("first child")).toBeNull();
-    });
+    await awaitPendingCallbacks();
 
-    result.unmount();
+    // After pressing h, tree nodes should no longer be visible
+    expect(result.queryByText("first child")).toBeNull();
   });
 
   it("can indent/dedent nodes with Tab/Shift+Tab keys", async ({ db, task }) => {
@@ -160,6 +142,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to enter tree mode (focus on first child node - child1)
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for tree nodes to render
     await result.findByText("first child");
@@ -167,22 +150,23 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "j" three times to move to child2 (child1 -> grandchild -> great-grandchild -> child2)
     await userEvent.keyboard("{j}");
-    await waitFor(() => {
-      const grandchildElement = result.getByText("grandchild");
-      expect(grandchildElement.className).toContain(styles.lifeLogTree.selected);
-    });
+    await awaitPendingCallbacks();
+
+    const grandchildElement = result.getByText("grandchild");
+    expect(grandchildElement.className).toContain(styles.lifeLogTree.selected);
+
     await userEvent.keyboard("{j}");
-    await waitFor(() => {
-      const greatGrandchildElement = result.getByText("great-grandchild");
-      expect(greatGrandchildElement.className).toContain(styles.lifeLogTree.selected);
-    });
+    await awaitPendingCallbacks();
+
+    const greatGrandchildElement = result.getByText("great-grandchild");
+    expect(greatGrandchildElement.className).toContain(styles.lifeLogTree.selected);
+
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
 
     // Wait for child2 to be selected
-    await waitFor(() => {
-      const child2Element = result.getByText("second child");
-      expect(child2Element.className).toContain(styles.lifeLogTree.selected);
-    });
+    const child2Element = result.getByText("second child");
+    expect(child2Element.className).toContain(styles.lifeLogTree.selected);
 
     // Verify initial DOM structure: child1 and child2 are siblings (both direct children of the same ul)
     const child1Li = result.getByText("first child").closest("li")!;
@@ -194,38 +178,34 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
     // Test indent: Press Tab to indent child2 under child1
     const indentStart = performance.now();
     await userEvent.keyboard("{Tab}");
+    await awaitPendingCallbacks();
 
     // Verify DOM structure after indent: child2 should be inside child1's subtree
-    await waitFor(() => {
-      const child1LiAfterIndent = result.getByText("first child").closest("li")!;
-      const child2LiAfterIndent = result.getByText("second child").closest("li")!;
-      // child2 should now be nested inside child1 (child1's li contains a ul that contains child2's li)
-      expect(child1LiAfterIndent.contains(child2LiAfterIndent)).toBe(true);
-    });
+    const child1LiAfterIndent = result.getByText("first child").closest("li")!;
+    const child2LiAfterIndent = result.getByText("second child").closest("li")!;
+    // child2 should now be nested inside child1 (child1's li contains a ul that contains child2's li)
+    expect(child1LiAfterIndent.contains(child2LiAfterIndent)).toBe(true);
     const indentEnd = performance.now();
     const indentDuration = indentEnd - indentStart;
 
     // Test dedent: Press Shift+Tab to dedent child2 back to sibling of child1
     const dedentStart = performance.now();
     await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+    await awaitPendingCallbacks();
 
     // Verify DOM structure after dedent: child2 should be sibling of child1 again
-    await waitFor(() => {
-      const child1LiAfterDedent = result.getByText("first child").closest("li")!;
-      const child2LiAfterDedent = result.getByText("second child").closest("li")!;
-      // child2 should no longer be nested inside child1
-      expect(child1LiAfterDedent.contains(child2LiAfterDedent)).toBe(false);
-      // They should share the same parent ul
-      expect(child1LiAfterDedent.parentElement).toBe(child2LiAfterDedent.parentElement);
-    });
+    const child1LiAfterDedent = result.getByText("first child").closest("li")!;
+    const child2LiAfterDedent = result.getByText("second child").closest("li")!;
+    // child2 should no longer be nested inside child1
+    expect(child1LiAfterDedent.contains(child2LiAfterDedent)).toBe(false);
+    // They should share the same parent ul
+    expect(child1LiAfterDedent.parentElement).toBe(child2LiAfterDedent.parentElement);
     const dedentEnd = performance.now();
     const dedentDuration = dedentEnd - dedentStart;
 
     // Assert each operation completes within 100ms
     expect(indentDuration, `Indent took ${indentDuration.toFixed(2)}ms`).toBeLessThan(100);
     expect(dedentDuration, `Dedent took ${dedentDuration.toFixed(2)}ms`).toBeLessThan(100);
-
-    result.unmount();
   });
 
   it("can edit node text with i key", async ({ db, task }) => {
@@ -235,30 +215,27 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to enter tree mode (focus on first child node - child1)
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for tree nodes to render
     await result.findByText("first child");
 
     // Press "i" to enter editing mode
     await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
 
-    // Wait for input to appear
-    await waitFor(() => {
-      const input = result.container.querySelector("input");
-      expect(input).toBeTruthy();
-    });
-
+    // Verify input appeared
     const input = result.container.querySelector("input") as HTMLInputElement;
+    expect(input).toBeTruthy();
 
     // Test cursor position is preserved while typing
     // Type a character in the middle (position 5)
     input.focus();
     input.setSelectionRange(5, 5);
     await userEvent.keyboard("X");
+    await awaitPendingCallbacks();
 
-    await waitFor(() => {
-      expect(input.value).toBe("firstX child");
-    });
+    expect(input.value).toBe("firstX child");
 
     // Verify cursor position can be set and preserved
     // (In a controlled component with value={}, setting cursor position would be reset on next render)
@@ -267,10 +244,9 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Type another character at position 6
     await userEvent.keyboard("Y");
+    await awaitPendingCallbacks();
 
-    await waitFor(() => {
-      expect(input.value).toBe("firstXY child");
-    });
+    expect(input.value).toBe("firstXY child");
 
     // Verify setSelectionRange still works after input
     input.setSelectionRange(3, 3);
@@ -280,18 +256,15 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
     // Press Escape to save and exit editing
     const start = performance.now();
     await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
 
     // Verify the DOM was updated
-    await waitFor(() => {
-      expect(result.getByText("firstXY child")).toBeTruthy();
-    });
+    expect(result.getByText("firstXY child")).toBeTruthy();
     const end = performance.now();
     const duration = end - start;
 
     expect(duration, `Edit node text took ${duration.toFixed(2)}ms`).toBeLessThan(100);
     expect(result.queryByText("first child")).toBeNull();
-
-    result.unmount();
   });
 
   it("can add node below with o key", async ({ db, task }) => {
@@ -301,25 +274,23 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to enter tree mode
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for tree nodes to render
     await result.findByText("first child");
 
     // Initial state: child1 is selected
-    await waitFor(() => {
-      const child1Element = result.getByText("first child");
-      expect(child1Element.className).toContain(styles.lifeLogTree.selected);
-    });
+    const child1Element = result.getByText("first child");
+    expect(child1Element.className).toContain(styles.lifeLogTree.selected);
 
     // Press "o" to add a new node below
     const start = performance.now();
     await userEvent.keyboard("{o}");
+    await awaitPendingCallbacks();
 
-    // Wait for input to appear (editing mode)
-    await waitFor(() => {
-      const input = result.container.querySelector("input");
-      expect(input).toBeTruthy();
-    });
+    // Verify input appeared (editing mode)
+    const input = result.container.querySelector("input")!;
+    expect(input).toBeTruthy();
     const end = performance.now();
     const duration = end - start;
 
@@ -327,17 +298,16 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
     expect(duration, `Add node below took ${duration.toFixed(2)}ms`).toBeLessThan(100);
 
     // Type text for the new node
-    const input = result.container.querySelector("input")!;
     input.focus();
     await userEvent.keyboard("new node below");
+    await awaitPendingCallbacks();
 
     // Press Escape to save and exit editing
     await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
 
     // Verify the new node is displayed
-    await waitFor(() => {
-      expect(result.getByText("new node below")).toBeTruthy();
-    });
+    expect(result.getByText("new node below")).toBeTruthy();
 
     // Verify the order: first child should come before new node below
     const firstChildLi = result.getByText("first child").closest("li")!;
@@ -347,8 +317,6 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
     // first child should come before new node in DOM order
     const children = Array.from(firstChildLi.parentElement!.children);
     expect(children.indexOf(firstChildLi)).toBeLessThan(children.indexOf(newNodeLi));
-
-    result.unmount();
   });
 
   it("can add node above with O key", async ({ db, task }) => {
@@ -358,50 +326,51 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to enter tree mode
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for tree nodes to render
     await result.findByText("second child");
 
     // Navigate to second child (j -> j -> j to skip grandchild and great-grandchild)
     await userEvent.keyboard("{j}");
-    await waitFor(() => {
-      expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
-    });
+    await awaitPendingCallbacks();
+
+    expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+
     await userEvent.keyboard("{j}");
-    await waitFor(() => {
-      expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
-    });
+    await awaitPendingCallbacks();
+
+    expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+
     await userEvent.keyboard("{j}");
-    await waitFor(() => {
-      expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
-    });
+    await awaitPendingCallbacks();
+
+    expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
 
     // Press Shift+O to add a new node above
     const start = performance.now();
     await userEvent.keyboard("{Shift>}{o}{/Shift}");
+    await awaitPendingCallbacks();
 
-    // Wait for input to appear (editing mode)
-    await waitFor(() => {
-      const input = result.container.querySelector("input");
-      expect(input).toBeTruthy();
-    });
+    // Verify input appeared (editing mode)
+    const input = result.container.querySelector("input")!;
+    expect(input).toBeTruthy();
     const end = performance.now();
     const duration = end - start;
 
     expect(duration, `Add node above took ${duration.toFixed(2)}ms`).toBeLessThan(100);
 
     // Type text for the new node
-    const input = result.container.querySelector("input")!;
     input.focus();
     await userEvent.keyboard("new node above");
+    await awaitPendingCallbacks();
 
     // Press Escape to save and exit editing
     await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
 
     // Verify the new node is displayed
-    await waitFor(() => {
-      expect(result.getByText("new node above")).toBeTruthy();
-    });
+    expect(result.getByText("new node above")).toBeTruthy();
 
     // Verify the order: new node above should come before second child
     const newNodeLi = result.getByText("new node above").closest("li")!;
@@ -411,8 +380,6 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
     // new node should come before second child in DOM order
     const children = Array.from(newNodeLi.parentElement!.children);
     expect(children.indexOf(newNodeLi)).toBeLessThan(children.indexOf(secondChildLi));
-
-    result.unmount();
   });
 
   it("can split node with Enter key at cursor position", async ({ db, task }) => {
@@ -422,30 +389,27 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to enter tree mode
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for tree nodes to render
     await result.findByText("first child");
 
     // Initial state: child1 is selected
-    await waitFor(() => {
-      const child1Element = result.getByText("first child");
-      expect(child1Element.className).toContain(styles.lifeLogTree.selected);
-    });
+    const child1Element = result.getByText("first child");
+    expect(child1Element.className).toContain(styles.lifeLogTree.selected);
 
     // Press "i" to enter editing mode
     await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
 
-    // Wait for input to appear
-    await waitFor(() => {
-      const input = result.container.querySelector("input");
-      expect(input).toBeTruthy();
-    });
-
+    // Verify input appeared
     const input = result.container.querySelector("input")!;
+    expect(input).toBeTruthy();
 
     // Change text to "beforeafter" and set cursor position in the middle
     input.focus();
     await userEvent.keyboard("{Control>}a{/Control}beforeafter");
+    await awaitPendingCallbacks();
 
     // Set cursor position at index 6 (between "before" and "after")
     input.setSelectionRange(6, 6);
@@ -453,20 +417,19 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
     // Press Enter to split the node
     const start = performance.now();
     await userEvent.keyboard("{Enter}");
+    await awaitPendingCallbacks();
 
     // Wait for the split to complete - original node should have "before"
-    await waitFor(() => {
-      expect(result.getByText("before")).toBeTruthy();
-    });
+    expect(result.getByText("before")).toBeTruthy();
 
     // New node should have "after" and be selected with editing mode
     // Cursor should be at position 0 (beginning of the text)
     await waitFor(() => {
-      const input = result.container.querySelector("input") as HTMLInputElement;
-      expect(input).toBeTruthy();
-      expect(input.value).toBe("after");
-      expect(input.selectionStart).toBe(0);
-      expect(input.selectionEnd).toBe(0);
+      const inputAfter = result.container.querySelector("input") as HTMLInputElement;
+      expect(inputAfter).toBeTruthy();
+      expect(inputAfter.value).toBe("after");
+      expect(inputAfter.selectionStart).toBe(0);
+      expect(inputAfter.selectionEnd).toBe(0);
     });
     const end = performance.now();
     const duration = end - start;
@@ -475,12 +438,11 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press Escape to exit editing mode
     await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
 
     // Verify both nodes are displayed
-    await waitFor(() => {
-      expect(result.getByText("before")).toBeTruthy();
-      expect(result.getByText("after")).toBeTruthy();
-    });
+    expect(result.getByText("before")).toBeTruthy();
+    expect(result.getByText("after")).toBeTruthy();
 
     // Verify the order: "before" should come before "after"
     const beforeLi = result.getByText("before").closest("li")!;
@@ -490,8 +452,6 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
     // "before" should come before "after" in DOM order
     const children = Array.from(beforeLi.parentElement!.children);
     expect(children.indexOf(beforeLi)).toBeLessThan(children.indexOf(afterLi));
-
-    result.unmount();
   });
 
   it("can add empty node below with Enter key at end of text", async ({ db, task }) => {
@@ -501,40 +461,33 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to enter tree mode
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for tree nodes to render
     await result.findByText("first child");
 
     // Press "i" to enter editing mode
     await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
 
-    // Wait for input to appear
-    await waitFor(() => {
-      const input = result.container.querySelector("input");
-      expect(input).toBeTruthy();
-    });
-
-    const input = result.container.querySelector("input")!;
+    // Verify input appeared
+    const input = result.container.querySelector("input") as HTMLInputElement;
+    expect(input).toBeTruthy();
 
     // Set cursor position at end (after "first child")
     input.setSelectionRange(input.value.length, input.value.length);
 
     // Press Enter to add new node below
     await userEvent.keyboard("{Enter}");
+    await awaitPendingCallbacks();
 
-    // Wait for new node - original node should still have "first child"
-    await waitFor(() => {
-      expect(result.getByText("first child")).toBeTruthy();
-    });
+    // Original node should still have "first child"
+    expect(result.getByText("first child")).toBeTruthy();
 
     // New node should be selected with editing mode and empty value
-    await waitFor(() => {
-      const newInput = result.container.querySelector("input");
-      expect(newInput).toBeTruthy();
-      expect((newInput as HTMLInputElement).value).toBe("");
-    });
-
-    result.unmount();
+    const newInput = result.container.querySelector("input");
+    expect(newInput).toBeTruthy();
+    expect((newInput as HTMLInputElement).value).toBe("");
   });
 
   it("can indent/dedent nodes with Tab/Shift+Tab keys during editing", async ({ db, task }) => {
@@ -544,6 +497,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to enter tree mode
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for tree nodes to render
     await result.findByText("first child");
@@ -551,36 +505,36 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
     await result.findByText("grandchild");
     await result.findByText("great-grandchild");
 
-    // Wait for initial selection
-    await waitFor(() => {
-      expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
-    });
+    // Verify initial selection
+    expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
 
     // Navigate to child2 (j -> j -> j: child1 -> grandchild -> great-grandchild -> child2)
     await userEvent.keyboard("{j}");
-    await waitFor(() => {
-      expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
-    });
+    await awaitPendingCallbacks();
+
+    expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+
     await userEvent.keyboard("{j}");
-    await waitFor(() => {
-      expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
-    });
+    await awaitPendingCallbacks();
+
+    expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+
     await userEvent.keyboard("{j}");
-    await waitFor(() => {
-      expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
-    });
+    await awaitPendingCallbacks();
+
+    expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
 
     // Press "a" to enter editing mode (cursor at end, like vim's append)
     await userEvent.keyboard("{a}");
+    await awaitPendingCallbacks();
 
-    // Wait for input to appear
-    await waitFor(() => {
-      const input = result.container.querySelector("input");
-      expect(input).toBeTruthy();
-    });
+    // Verify input appeared
+    const input1 = result.container.querySelector("input")!;
+    expect(input1).toBeTruthy();
 
     // Type some text to modify (appends to end: "second child" -> "second child edited")
     await userEvent.keyboard(" edited");
+    await awaitPendingCallbacks();
 
     // Verify initial DOM structure: child1 and child2 are siblings
     const child1Li = result.getByText("first child").closest("li")!;
@@ -589,35 +543,35 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press Tab to indent while editing
     await userEvent.keyboard("{Tab}");
+    await awaitPendingCallbacks();
 
     // Verify text was saved and indent happened
     // Note: After Tab, we're still in editing mode, so the text is in the input field
-    await waitFor(() => {
-      const input = result.container.querySelector("input") as HTMLInputElement;
-      expect(input).toBeTruthy();
-      expect(input.value).toBe("second child edited");
+    {
+      const input2 = result.container.querySelector("input") as HTMLInputElement;
+      expect(input2).toBeTruthy();
+      expect(input2.value).toBe("second child edited");
       // Verify indent happened: input's li should be inside first child's li
       const child1LiAfterIndent = result.getByText("first child").closest("li")!;
-      const inputLiAfterIndent = input.closest("li")!;
+      const inputLiAfterIndent = input2.closest("li")!;
       expect(child1LiAfterIndent.contains(inputLiAfterIndent)).toBe(true);
-    });
+    }
 
     // Press Shift+Tab to dedent while editing
     await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+    await awaitPendingCallbacks();
 
     // Verify dedent happened
-    await waitFor(() => {
-      const input = result.container.querySelector("input") as HTMLInputElement;
-      expect(input).toBeTruthy();
-      expect(input.value).toBe("second child edited");
+    {
+      const input3 = result.container.querySelector("input") as HTMLInputElement;
+      expect(input3).toBeTruthy();
+      expect(input3.value).toBe("second child edited");
       // Verify dedent happened: input's li should be sibling of first child's li
       const child1LiAfterDedent = result.getByText("first child").closest("li")!;
-      const inputLiAfterDedent = input.closest("li")!;
+      const inputLiAfterDedent = input3.closest("li")!;
       expect(child1LiAfterDedent.contains(inputLiAfterDedent)).toBe(false);
       expect(child1LiAfterDedent.parentElement).toBe(inputLiAfterDedent.parentElement);
-    });
-
-    result.unmount();
+    }
   });
 
   it("preserves cursor position after Tab indent/dedent during editing", async ({ db, task }) => {
@@ -627,6 +581,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to enter tree mode
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for tree nodes to render
     await result.findByText("first child");
@@ -634,35 +589,29 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
     await result.findByText("grandchild");
     await result.findByText("great-grandchild");
 
-    // Wait for initial selection
-    await waitFor(() => {
-      expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
-    });
+    // Verify initial selection
+    expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
 
     // Navigate to child2 (j -> j -> j: child1 -> grandchild -> great-grandchild -> child2)
     await userEvent.keyboard("{j}");
-    await waitFor(() => {
-      expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
-    });
+    await awaitPendingCallbacks();
+    expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+
     await userEvent.keyboard("{j}");
-    await waitFor(() => {
-      expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
-    });
+    await awaitPendingCallbacks();
+    expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+
     await userEvent.keyboard("{j}");
-    await waitFor(() => {
-      expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
-    });
+    await awaitPendingCallbacks();
+    expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
 
     // Press "i" to enter editing mode
     await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
 
-    // Wait for input
-    await waitFor(() => {
-      const input = result.container.querySelector("input");
-      expect(input).toBeTruthy();
-    });
-
+    // Verify input
     const input = result.container.querySelector("input") as HTMLInputElement;
+    expect(input).toBeTruthy();
 
     // Set cursor position in the middle (position 6)
     input.setSelectionRange(6, 6);
@@ -670,6 +619,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press Tab to indent
     await userEvent.keyboard("{Tab}");
+    await awaitPendingCallbacks();
 
     // Wait for indent to complete and verify cursor position is preserved
     await waitFor(() => {
@@ -680,11 +630,8 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Exit editing mode before unmount to ensure clean shutdown
     await userEvent.keyboard("{Escape}");
-    await waitFor(() => {
-      expect(result.container.querySelector("input")).toBeNull();
-    });
-
-    result.unmount();
+    await awaitPendingCallbacks();
+    expect(result.container.querySelector("input")).toBeNull();
   });
 
   it("can merge nodes with Backspace at beginning of node", async ({ db, task }) => {
@@ -694,6 +641,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to enter tree mode
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for tree nodes to render
     await result.findByText("first child");
@@ -708,20 +656,24 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Navigate to child2 (j -> j -> j: child1 -> grandchild -> great-grandchild -> child2)
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
     });
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
     });
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
     });
 
     // Press "i" to enter editing mode (cursor at beginning)
     await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
 
     // Wait for input to appear
     await waitFor(() => {
@@ -733,6 +685,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press Backspace at beginning - should merge with previous node (great-grandchild)
     await userEvent.keyboard("{Backspace}");
+    await awaitPendingCallbacks();
 
     // Wait for merge to complete
     await waitFor(() => {
@@ -751,14 +704,13 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Exit editing mode
     await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.container.querySelector("input")).toBeNull();
     });
 
     // Verify merged text is displayed
     expect(result.getByText("great-grandchildsecond child")).toBeTruthy();
-
-    result.unmount();
   });
 
   it("can delete only empty node with Backspace and move cursor to LifeLog text", async ({ db, task }) => {
@@ -767,6 +719,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
     // Navigate to $log2 (has text "second lifelog", no tree nodes)
     await result.findByText("first lifelog");
     await userEvent.keyboard("{j}"); // Move to $log2
+    await awaitPendingCallbacks();
     await waitFor(() => {
       const log2Element = result.getByText("second lifelog").closest(`.${styles.lifeLogTree.container}`);
       expect(log2Element?.className).toContain(styles.lifeLogTree.selected);
@@ -774,12 +727,14 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to create a tree node with text "new"
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.getByText("new").className).toContain(styles.lifeLogTree.selected);
     });
 
     // Press "a" to enter edit mode at end
     await userEvent.keyboard("{a}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       const input = result.container.querySelector("input");
       expect(input).toBeTruthy();
@@ -788,6 +743,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Delete all text (Backspace 3 times: "new" -> "ne" -> "n" -> "")
     await userEvent.keyboard("{Backspace}{Backspace}{Backspace}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       const input = result.container.querySelector("input") as HTMLInputElement;
       expect(input.value).toBe("");
@@ -796,6 +752,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press Backspace to delete the empty node
     await userEvent.keyboard("{Backspace}");
+    await awaitPendingCallbacks();
 
     // Verify: cursor is now in LifeLog text field at end
     await waitFor(() => {
@@ -807,8 +764,6 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Verify tree node is gone
     expect(result.queryByText("new")).toBeNull();
-
-    result.unmount();
   });
 
   it("does not delete only node with Backspace if text is not empty", async ({ db, task }) => {
@@ -817,13 +772,16 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
     // Navigate to $log2 and create a tree node
     await result.findByText("first lifelog");
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.getByText("new").className).toContain(styles.lifeLogTree.selected);
     });
 
     // Press "i" to enter edit mode at beginning
     await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       const input = result.container.querySelector("input") as HTMLInputElement;
       expect(input.selectionStart).toBe(0);
@@ -831,6 +789,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press Backspace at position 0 with non-empty text
     await userEvent.keyboard("{Backspace}");
+    await awaitPendingCallbacks();
 
     // Wait for async handler to complete
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -841,11 +800,10 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Exit editing mode
     await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.container.querySelector("input")).toBeNull();
     });
-
-    result.unmount();
   });
 
   it("can merge nodes with Delete at end of node", async ({ db, task }) => {
@@ -855,6 +813,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to enter tree mode
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for tree nodes to render
     await result.findByText("first child");
@@ -869,16 +828,19 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Navigate to great-grandchild (j -> j: child1 -> grandchild -> great-grandchild)
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
     });
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
     });
 
     // Press "a" to enter editing mode (cursor at end)
     await userEvent.keyboard("{a}");
+    await awaitPendingCallbacks();
 
     // Wait for input to appear
     await waitFor(() => {
@@ -890,6 +852,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press Delete at end - should merge with next node (second child)
     await userEvent.keyboard("{Delete}");
+    await awaitPendingCallbacks();
 
     // Wait for merge to complete
     await waitFor(() => {
@@ -908,14 +871,13 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Exit editing mode
     await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.container.querySelector("input")).toBeNull();
     });
 
     // Verify merged text is displayed
     expect(result.getByText("great-grandchildsecond child")).toBeTruthy();
-
-    result.unmount();
   });
 
   it("can merge with Delete even when current node has children (merges with first child)", async ({ db, task }) => {
@@ -925,6 +887,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to enter tree mode
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for tree nodes to render
     await result.findByText("first child");
@@ -938,12 +901,14 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Navigate to grandchild (which has children - great-grandchild)
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
     });
 
     // Press "a" to enter editing mode (cursor at end)
     await userEvent.keyboard("{a}");
+    await awaitPendingCallbacks();
 
     // Wait for input to appear
     await waitFor(() => {
@@ -955,6 +920,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
     // Press Delete at end - SHOULD merge because next node (great-grandchild) has no children
     // Even though current node (grandchild) has children
     await userEvent.keyboard("{Delete}");
+    await awaitPendingCallbacks();
 
     // Wait for merge to complete
     await waitFor(() => {
@@ -971,11 +937,10 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Exit editing mode
     await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.container.querySelector("input")).toBeNull();
     });
-
-    result.unmount();
   });
 
   it("does not merge with Delete when first child (next node) has children", async ({ db, task }) => {
@@ -985,6 +950,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to enter tree mode
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for tree nodes to render
     await result.findByText("first child");
@@ -997,6 +963,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "a" to enter editing mode (cursor at end)
     await userEvent.keyboard("{a}");
+    await awaitPendingCallbacks();
 
     // Wait for input to appear
     await waitFor(() => {
@@ -1007,6 +974,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press Delete at end - should NOT merge because next node (grandchild) has children
     await userEvent.keyboard("{Delete}");
+    await awaitPendingCallbacks();
 
     // Wait a bit and verify no merge happened
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -1020,11 +988,10 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Exit editing mode
     await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.container.querySelector("input")).toBeNull();
     });
-
-    result.unmount();
   });
 
   it("does not merge when cursor is not at boundary", async ({ db, task }) => {
@@ -1034,6 +1001,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to enter tree mode
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for tree nodes to render
     await result.findByText("first child");
@@ -1047,16 +1015,19 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Navigate to great-grandchild (j -> grandchild, j -> great-grandchild)
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
     });
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
     });
 
     // Press "i" to enter editing mode
     await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
 
     // Wait for input
     await waitFor(() => {
@@ -1071,6 +1042,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press Backspace - should just delete character, not merge
     await userEvent.keyboard("{Backspace}");
+    await awaitPendingCallbacks();
 
     // Wait for normal backspace to work
     await waitFor(() => {
@@ -1084,11 +1056,10 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Exit editing mode before unmount to ensure clean shutdown
     await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.container.querySelector("input")).toBeNull();
     });
-
-    result.unmount();
   });
 
   it("does not merge with Delete when next node has children", async ({ db, task }) => {
@@ -1098,6 +1069,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to enter tree mode
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for tree nodes to render
     await result.findByText("first child");
@@ -1111,20 +1083,24 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Navigate to second child (j -> grandchild -> j -> great-grandchild -> j -> second child)
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
     });
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
     });
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
     });
 
     // Press "a" to enter editing mode (cursor at end)
     await userEvent.keyboard("{a}");
+    await awaitPendingCallbacks();
 
     // Wait for input to appear
     await waitFor(() => {
@@ -1135,6 +1111,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press Delete at end - should NOT merge because next node (third child) has children
     await userEvent.keyboard("{Delete}");
+    await awaitPendingCallbacks();
 
     // Wait a bit and verify no merge happened
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -1148,11 +1125,10 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Exit editing mode before unmount
     await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.container.querySelector("input")).toBeNull();
     });
-
-    result.unmount();
   });
 
   it("can merge with Backspace even when previous node has children", async ({ db, task }) => {
@@ -1162,6 +1138,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Press "l" to enter tree mode
     await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
 
     // Wait for tree nodes to render
     await result.findByText("first child");
@@ -1175,16 +1152,19 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Navigate to great-grandchild (j -> grandchild -> j -> great-grandchild)
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
     });
     await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
     });
 
     // Press "i" to enter editing mode (cursor at beginning)
     await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
 
     // Wait for input to appear
     await waitFor(() => {
@@ -1197,6 +1177,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
     // Press Backspace at beginning - should merge even though previous node (grandchild) has children
     // We only check if current node has children, and great-grandchild has no children
     await userEvent.keyboard("{Backspace}");
+    await awaitPendingCallbacks();
 
     // Verify merge happened - now on grandchild with merged text
     await waitFor(() => {
@@ -1211,11 +1192,10 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
     // Exit editing mode before unmount
     await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
     await waitFor(() => {
       expect(result.container.querySelector("input")).toBeNull();
     });
-
-    result.unmount();
   });
 
   describe("scroll", () => {
@@ -1234,6 +1214,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
       // Enter tree mode with l key
       await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
 
       // Wait for tree nodes to render (including scroll test nodes)
       await result.findByText("first child");
@@ -1242,22 +1223,19 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
       // Navigate to first tree node with g key
       await userEvent.keyboard("{g}");
-      await waitFor(() => {
-        const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        expect(selected).toBeTruthy();
-      });
+      await awaitPendingCallbacks();
+
+      const selected0 = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+      expect(selected0).toBeTruthy();
 
       // Navigate down repeatedly - scrolling should trigger when item nears bottom
       for (let i = 0; i < 20; i++) {
         await userEvent.keyboard("{j}");
-
-        await waitFor(() => {
-          const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-          expect(selected).toBeTruthy();
-        });
+        await awaitPendingCallbacks();
 
         // Check scroll offset for selected element
         const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`)!;
+        expect(selected).toBeTruthy();
         const containerRect = container.getBoundingClientRect();
         const selectedRect = selected.getBoundingClientRect();
 
@@ -1271,7 +1249,6 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
       // Wait for pending Firestore operations to complete before unmount
       await new Promise((resolve) => setTimeout(resolve, 500));
-      result.unmount();
     });
 
     it("maintains ~100px offset when scrolling up with k key in tree mode", async ({ db, task }) => {
@@ -1284,6 +1261,7 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
       // Enter tree mode with l key
       await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
 
       // Wait for tree nodes to render (including scroll test nodes)
       await result.findByText("first child");
@@ -1292,22 +1270,19 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
       // Go to last tree node with G key
       await userEvent.keyboard("{Shift>}{g}{/Shift}");
-      await waitFor(() => {
-        const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        expect(selected).toBeTruthy();
-      });
+      await awaitPendingCallbacks();
+
+      const selected0 = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+      expect(selected0).toBeTruthy();
 
       // Navigate up repeatedly
       for (let i = 0; i < 20; i++) {
         await userEvent.keyboard("{k}");
-
-        await waitFor(() => {
-          const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-          expect(selected).toBeTruthy();
-        });
+        await awaitPendingCallbacks();
 
         // Check scroll offset for selected element
         const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`)!;
+        expect(selected).toBeTruthy();
         const containerRect = container.getBoundingClientRect();
         const selectedRect = selected.getBoundingClientRect();
 
@@ -1321,7 +1296,6 @@ describe("<LifeLogTree />", { timeout: 5000 }, () => {
 
       // Wait for pending Firestore operations to complete before unmount
       await new Promise((resolve) => setTimeout(resolve, 500));
-      result.unmount();
     });
   });
 });
