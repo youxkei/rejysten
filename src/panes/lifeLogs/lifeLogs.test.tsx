@@ -1,4 +1,5 @@
 import { cleanup } from "@solidjs/testing-library";
+import { Timestamp } from "firebase/firestore";
 import { afterEach, describe, expect, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 
@@ -11,6 +12,7 @@ vi.mock(import("@/date"), async () => {
   return {
     NewDate: () => baseTime,
     DateNow: () => baseTime.getTime(),
+    TimestampNow: () => Timestamp.fromDate(baseTime),
   };
 });
 
@@ -1094,6 +1096,123 @@ describe("<LifeLogs />", { timeout: 2000 }, () => {
       expect(selectedRect.bottom).toBeLessThanOrEqual(containerRect.bottom);
       // And should be within the visible area
       expect(selectedRect.top).toBeGreaterThanOrEqual(containerRect.top);
+    });
+  });
+
+  describe("scroll window (time range)", () => {
+    it("slides window to show out-of-range LifeLog when selected", async ({ db, task }) => {
+      // Create an out-of-range LifeLog (14 days ago, outside the default 7-day range)
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: [{ id: "$oldLog", text: "old lifelog", daysAgo: 14 }],
+        lifeLogsProps: { debounceMs: 0 }, // Disable debounce for immediate effect
+        initialSelectedId: "$oldLog", // Select the out-of-range LifeLog
+      });
+
+      // Wait for debounced update to slide the window
+      await new Promise((r) => setTimeout(r, 50));
+      await awaitPendingCallbacks();
+
+      // The out-of-range LifeLog should now be visible after window slides
+      const oldLogElement = await result.findByText("old lifelog");
+      expect(oldLogElement).toBeTruthy();
+    });
+
+    it("does not slide window when selecting LifeLog with noneTimestamp startAt", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        lifeLogsProps: { debounceMs: 0 }, // Disable debounce for immediate effect
+      });
+
+      // Verify initial state: $log1 and $log2 are visible
+      await result.findByText("first lifelog");
+      await result.findByText("second lifelog");
+
+      // Navigate to $log3 which has noneTimestamp startAt
+      // $log1 is selected, press "j" twice to get to $log3
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+
+      // Wait for any potential debounced update
+      await new Promise((r) => setTimeout(r, 50));
+      await awaitPendingCallbacks();
+
+      // $log1 and $log2 should still be visible (window did not slide)
+      expect(result.getByText("first lifelog")).toBeTruthy();
+      expect(result.getByText("second lifelog")).toBeTruthy();
+    });
+
+    it("slides window when navigating with k key to show previously hidden LifeLogs", async ({ db, task }) => {
+      // Create LifeLogs at different time points:
+      // - $nearPast: 3 days ago (within initial 7-day range)
+      // - $farPast: 9 days ago (outside initial 7-day range, but within range after sliding to $nearPast)
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: [
+          { id: "$nearPast", text: "near past lifelog", daysAgo: 3 },
+          { id: "$farPast", text: "far past lifelog", daysAgo: 9 },
+        ],
+        lifeLogsProps: { debounceMs: 0 },
+      });
+
+      // $nearPast should be visible (within 7-day range)
+      await result.findByText("near past lifelog");
+
+      // $farPast should NOT be visible initially (9 days ago, outside 7-day range)
+      expect(result.queryByText("far past lifelog")).toBeNull();
+
+      // Navigate with k key to $nearPast (going backwards in time from $log1)
+      // Order by startAt: $farPast (9d ago) -> $nearPast (3d ago) -> $log1 (day 0) -> $log2 -> $log3
+      await userEvent.keyboard("{k}");
+      await awaitPendingCallbacks();
+
+      // Wait for debounced update to slide the window
+      await new Promise((r) => setTimeout(r, 50));
+      await awaitPendingCallbacks();
+
+      // After sliding to $nearPast, the window should now include $farPast
+      // $nearPast is 3 days ago, so new range is (3-7)=10 days ago to (3+7)=4 days in future
+      // $farPast (9 days ago) is now within this range
+      const farPastElement = await result.findByText("far past lifelog");
+      expect(farPastElement).toBeTruthy();
+    });
+
+    it("slides window when navigating with j key to show previously hidden LifeLogs", async ({ db, task }) => {
+      // Create LifeLogs at different time points:
+      // - $nearPast: 9 days ago (outside initial 7-day range)
+      // - $farPast: 3 days ago (within initial 7-day range, will be selected first)
+      // Start from $farPast and navigate forward with j key
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: [
+          { id: "$farPast", text: "far past lifelog", daysAgo: 9 },
+          { id: "$nearPast", text: "near past lifelog", daysAgo: 3 },
+        ],
+        lifeLogsProps: { debounceMs: 0 },
+        initialSelectedId: "$nearPast", // Start from $nearPast (3 days ago)
+      });
+
+      // Wait for initial window slide to $nearPast
+      await new Promise((r) => setTimeout(r, 50));
+      await awaitPendingCallbacks();
+
+      // After sliding to $nearPast, $farPast should now be visible
+      await result.findByText("far past lifelog");
+      await result.findByText("near past lifelog");
+
+      // Now navigate forward with j key to $log1
+      // Order by startAt: $farPast (9d ago) -> $nearPast (3d ago) -> $log1 (day 0) -> $log2 -> $log3
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+
+      // Wait for debounced update to slide the window
+      await new Promise((r) => setTimeout(r, 50));
+      await awaitPendingCallbacks();
+
+      // After sliding to $log1, $farPast should be outside the range (9 days ago from day 0)
+      // New range is day -7 to day +7, so $farPast (day -9) is outside
+      expect(result.queryByText("far past lifelog")).toBeNull();
+
+      // $log1 should be visible and selected
+      expect(result.getByText("first lifelog")).toBeTruthy();
     });
   });
 });

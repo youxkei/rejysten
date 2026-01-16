@@ -11,7 +11,8 @@ import {
   useFirestoreService,
 } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
-import { noneTimestamp } from "@/timestamp";
+import { dayMs, noneTimestamp } from "@/timestamp";
+import { LifeLogsProps } from "@/panes/lifeLogs/index";
 
 export const baseTime = new Date(2026, 0, 10, 12, 0, 0, 0);
 
@@ -22,6 +23,13 @@ export interface DatabaseInfo {
 export interface SetupLifeLogsTestOptions {
   lifeLogCount?: number;
   treeNodeCount?: number;
+  lifeLogsProps?: LifeLogsProps;
+  outOfRangeLifeLogs?: Array<{
+    id: string;
+    text: string;
+    daysAgo: number;
+  }>;
+  initialSelectedId?: string;
 }
 
 export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, options?: SetupLifeLogsTestOptions) {
@@ -174,18 +182,32 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                     });
                   }
 
+                  // Generate out-of-range LifeLogs for scroll window testing
+                  const outOfRangeLifeLogs = options?.outOfRangeLifeLogs ?? [];
+                  for (const outOfRange of outOfRangeLifeLogs) {
+                    const startTime = new Date(baseTime.getTime() - outOfRange.daysAgo * dayMs);
+                    batch.set(doc(lifeLogs, outOfRange.id), {
+                      text: outOfRange.text,
+                      startAt: Timestamp.fromDate(startTime),
+                      endAt: noneTimestamp,
+                      createdAt: Timestamp.fromDate(baseTime),
+                      updatedAt: Timestamp.fromDate(baseTime),
+                    });
+                  }
+
                   await batch.commit();
 
                   // Select the first LifeLog that exists in the query results
                   // When lifeLogCount > 3, earlier LifeLogs might be filtered out by the time-based query
-                  const initialSelectedId = lifeLogCount > 3 ? `$log${Math.min(lifeLogCount, 10)}` : "$log1";
+                  const initialSelectedId =
+                    options?.initialSelectedId ?? (lifeLogCount > 3 ? `$log${Math.min(lifeLogCount, 10)}` : "$log1");
                   updateState((state) => {
                     state.panesLifeLogs.selectedLifeLogId = initialSelectedId;
                   });
                 })().then(resolveReady, rejectReady);
               });
 
-              return <LifeLogs />;
+              return <LifeLogs {...(options?.lifeLogsProps ?? {})} />;
             })()}
           </Suspense>
         </FirestoreServiceProvider>
@@ -195,7 +217,10 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
 
   await ready;
 
-  await result.findByText("first lifelog");
+  // Wait for initial render - skip if we're testing with out-of-range LifeLogs that might slide the window
+  if (!options?.outOfRangeLifeLogs?.length) {
+    await result.findByText("first lifelog");
+  }
 
   return {
     result,

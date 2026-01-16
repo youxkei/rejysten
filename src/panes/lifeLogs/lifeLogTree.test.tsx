@@ -1,4 +1,5 @@
 import { cleanup, waitFor } from "@solidjs/testing-library";
+import { Timestamp } from "firebase/firestore";
 import { afterEach, describe, expect, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 
@@ -11,6 +12,7 @@ vi.mock(import("@/date"), async () => {
   return {
     NewDate: () => baseTime,
     DateNow: () => baseTime.getTime(),
+    TimestampNow: () => Timestamp.fromDate(baseTime),
   };
 });
 
