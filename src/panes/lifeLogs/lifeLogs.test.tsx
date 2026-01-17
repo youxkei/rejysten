@@ -1257,21 +1257,21 @@ describe("<LifeLogs />", () => {
     });
 
     describe("navigation buttons", () => {
-      it("navigates to next LifeLog with j button click", async ({ db, task }) => {
+      it("navigates to next LifeLog with ⬇️ button click", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         // Initial: $log1 is selected
         const log1Initial = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
         expect(log1Initial?.className).toContain(styles.lifeLogTree.selected);
 
-        // Click j button
-        const jButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "j",
+        // Click ⬇️ button
+        const downButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⬇️",
         ) as HTMLButtonElement;
-        expect(jButton).toBeTruthy();
-        expect(jButton.disabled).toBe(false);
+        expect(downButton).toBeTruthy();
+        expect(downButton.disabled).toBe(false);
 
-        jButton.click();
+        downButton.click();
         await awaitPendingCallbacks();
 
         // $log2 should now be selected
@@ -1279,7 +1279,7 @@ describe("<LifeLogs />", () => {
         expect(log2?.className).toContain(styles.lifeLogTree.selected);
       });
 
-      it("navigates to previous LifeLog with k button click", async ({ db, task }) => {
+      it("navigates to previous LifeLog with ⬆️ button click", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         // Navigate to $log2 first
@@ -1289,13 +1289,13 @@ describe("<LifeLogs />", () => {
         const log2Initial = result.getByText("second lifelog").closest(`.${styles.lifeLogTree.container}`);
         expect(log2Initial?.className).toContain(styles.lifeLogTree.selected);
 
-        // Click k button
-        const kButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "k",
+        // Click ⬆️ button
+        const upButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⬆️",
         ) as HTMLButtonElement;
-        expect(kButton).toBeTruthy();
+        expect(upButton).toBeTruthy();
 
-        kButton.click();
+        upButton.click();
         await awaitPendingCallbacks();
 
         // $log1 should now be selected
@@ -1303,19 +1303,19 @@ describe("<LifeLogs />", () => {
         expect(log1?.className).toContain(styles.lifeLogTree.selected);
       });
 
-      it("enters editing mode with i button click", async ({ db, task }) => {
+      it("enters editing mode with ✏️ button click", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         // No input should exist initially
         expect(result.container.querySelector("input")).toBeNull();
 
-        // Click i button
-        const iButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "i",
+        // Click ✏️ button
+        const editButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "✏️",
         ) as HTMLButtonElement;
-        expect(iButton).toBeTruthy();
+        expect(editButton).toBeTruthy();
 
-        iButton.click();
+        editButton.click();
         await awaitPendingCallbacks();
 
         // Input should now exist with text
@@ -1324,19 +1324,19 @@ describe("<LifeLogs />", () => {
         expect(input.value).toBe("first lifelog");
       });
 
-      it("enters tree mode with l button click", async ({ db, task }) => {
+      it("enters tree mode with ➡️ button click", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         // Tree nodes should not be visible initially
         expect(result.queryByText("first child")).toBeNull();
 
-        // Click l button
-        const lButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "l",
+        // Click ➡️ button
+        const enterTreeButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "➡️",
         ) as HTMLButtonElement;
-        expect(lButton).toBeTruthy();
+        expect(enterTreeButton).toBeTruthy();
 
-        lButton.click();
+        enterTreeButton.click();
         await awaitPendingCallbacks();
 
         // Tree nodes should now be visible
@@ -1346,50 +1346,51 @@ describe("<LifeLogs />", () => {
     });
 
     describe("editing toolbar", () => {
-      it("shows Tab and S-Tab buttons when editing", async ({ db, task }) => {
+      it("shows ▶️ and ◀️ buttons when editing", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
-        // Initially, Tab/S-Tab buttons should not exist
-        const tabButtonInitial = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "Tab",
-        );
-        expect(tabButtonInitial).toBeUndefined();
+        // Initially, ▶️/◀️ buttons should not exist (only ▶️ for setStartAtNow exists in navigation mode)
+        const nextFieldButtonInitial = Array.from(
+          result.container.querySelectorAll(`.${styles.mobileToolbar.button}`),
+        ).filter((btn) => btn.textContent === "▶️");
+        // In navigation mode, only one ▶️ button exists (setStartAtNow)
+        expect(nextFieldButtonInitial.length).toBe(1);
 
         // Enter editing mode
         await userEvent.keyboard("{i}");
         await awaitPendingCallbacks();
 
-        // Tab and S-Tab buttons should now exist
-        const tabButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "Tab",
+        // ▶️ and ◀️ buttons should now exist in editing toolbar
+        const nextFieldButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "▶️",
         );
-        const sTabButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "S-Tab",
+        const prevFieldButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "◀️",
         );
 
-        expect(tabButton).toBeTruthy();
-        expect(sTabButton).toBeTruthy();
+        expect(nextFieldButton).toBeTruthy();
+        expect(prevFieldButton).toBeTruthy();
       });
 
-      it("Tab and S-Tab buttons have data-prevent-blur attribute", async ({ db, task }) => {
+      it("▶️ and ◀️ buttons have data-prevent-blur attribute", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         // Enter editing mode
         await userEvent.keyboard("{i}");
         await awaitPendingCallbacks();
 
-        const tabButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "Tab",
+        const nextFieldButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "▶️",
         ) as HTMLButtonElement;
-        const sTabButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "S-Tab",
+        const prevFieldButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "◀️",
         ) as HTMLButtonElement;
 
-        expect(tabButton.hasAttribute("data-prevent-blur")).toBe(true);
-        expect(sTabButton.hasAttribute("data-prevent-blur")).toBe(true);
+        expect(nextFieldButton.hasAttribute("data-prevent-blur")).toBe(true);
+        expect(prevFieldButton.hasAttribute("data-prevent-blur")).toBe(true);
       });
 
-      it("cycles to next field with Tab button click", async ({ db, task }) => {
+      it("cycles to next field with ▶️ button click", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         // Enter editing mode
@@ -1400,12 +1401,12 @@ describe("<LifeLogs />", () => {
         const input1 = result.container.querySelector("input") as HTMLInputElement;
         expect(input1.value).toBe("first lifelog");
 
-        // Click Tab button using userEvent
-        const tabButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "Tab",
+        // Click ▶️ button using userEvent
+        const nextFieldButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "▶️",
         ) as HTMLButtonElement;
 
-        await userEvent.click(tabButton);
+        await userEvent.click(nextFieldButton);
         await awaitPendingCallbacks();
 
         // Input should now be startAt field

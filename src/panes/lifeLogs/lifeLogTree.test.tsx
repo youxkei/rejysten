@@ -1302,23 +1302,23 @@ describe("<LifeLogTree />", /* { timeout: 2000 }, */ () => {
   });
 
   describe("MobileToolbar in tree mode", () => {
-    describe("l/h button visibility", () => {
-      it("shows l button and hides h button when not in tree mode", async ({ db, task }) => {
+    describe("➡️/⬅️ button visibility", () => {
+      it("shows ➡️ button and hides ⬅️ button when not in tree mode", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
-        // Not in tree mode - l button should be visible, h should be hidden
-        const lButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "l",
+        // Not in tree mode - ➡️ button should be visible, ⬅️ should be hidden
+        const enterTreeButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "➡️",
         );
-        const hButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "h",
+        const exitTreeButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⬅️",
         );
 
-        expect(lButton).toBeTruthy();
-        expect(hButton).toBeUndefined();
+        expect(enterTreeButton).toBeTruthy();
+        expect(exitTreeButton).toBeUndefined();
       });
 
-      it("shows h button and hides l button when in tree mode", async ({ db, task }) => {
+      it("shows ⬅️ button and hides ➡️ button when in tree mode", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         // Enter tree mode
@@ -1326,19 +1326,19 @@ describe("<LifeLogTree />", /* { timeout: 2000 }, */ () => {
         await awaitPendingCallbacks();
         await result.findByText("first child");
 
-        // In tree mode - h button should be visible, l hidden
-        const lButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "l",
+        // In tree mode - ⬅️ button should be visible, ➡️ hidden
+        const enterTreeButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "➡️",
         );
-        const hButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "h",
+        const exitTreeButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⬅️",
         );
 
-        expect(hButton).toBeTruthy();
-        expect(lButton).toBeUndefined();
+        expect(exitTreeButton).toBeTruthy();
+        expect(enterTreeButton).toBeUndefined();
       });
 
-      it("exits tree mode with h button click", async ({ db, task }) => {
+      it("exits tree mode with ⬅️ button click", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         // Enter tree mode
@@ -1349,13 +1349,13 @@ describe("<LifeLogTree />", /* { timeout: 2000 }, */ () => {
         // Tree nodes should be visible
         expect(result.getByText("first child")).toBeTruthy();
 
-        // Click h button to exit
-        const hButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "h",
+        // Click ⬅️ button to exit
+        const exitTreeButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⬅️",
         ) as HTMLButtonElement;
-        expect(hButton).toBeTruthy();
+        expect(exitTreeButton).toBeTruthy();
 
-        hButton.click();
+        exitTreeButton.click();
         await awaitPendingCallbacks();
 
         // Tree nodes should be hidden

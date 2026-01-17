@@ -46,16 +46,16 @@ function NavigationToolbar() {
   return (
     <div class={styles.mobileToolbar.buttonGroup}>
       <button class={styles.mobileToolbar.button} onClick={handleNavigatePrev} disabled={!actions.context.hasSelection}>
-        k
+        ⬆️
       </button>
       <button class={styles.mobileToolbar.button} onClick={handleNavigateNext} disabled={!actions.context.hasSelection}>
-        j
+        ⬇️
       </button>
       <button class={styles.mobileToolbar.button} onClick={handleGoToFirst} disabled={!actions.context.hasSelection}>
-        g
+        ⏫
       </button>
       <button class={styles.mobileToolbar.button} onClick={handleGoToLast} disabled={!actions.context.hasSelection}>
-        G
+        ⏬
       </button>
 
       <Show when={!actions.context.isLifeLogTreeFocused}>
@@ -64,34 +64,34 @@ function NavigationToolbar() {
           onClick={handleEnterTree}
           disabled={!actions.context.isLifeLogSelected}
         >
-          l
+          ➡️
         </button>
       </Show>
       <Show when={actions.context.isLifeLogTreeFocused}>
         <button class={styles.mobileToolbar.button} onClick={handleExitTree}>
-          h
+          ⬅️
         </button>
       </Show>
 
       <button class={styles.mobileToolbar.button} onClick={handleNewLifeLog} disabled={!actions.context.hasSelection}>
-        o
+        ➕
       </button>
       <button
         class={styles.mobileToolbar.button}
         onClick={handleSetStartAtNow}
         disabled={!actions.context.isLifeLogSelected}
       >
-        s
+        ▶️
       </button>
       <button
         class={styles.mobileToolbar.button}
         onClick={handleSetEndAtNow}
         disabled={!actions.context.isLifeLogSelected}
       >
-        f
+        ⏹️
       </button>
       <button class={styles.mobileToolbar.button} onClick={handleStartEditing} disabled={!actions.context.hasSelection}>
-        i
+        ✏️
       </button>
     </div>
   );
@@ -111,10 +111,10 @@ function EditingToolbar() {
     <div class={styles.mobileToolbar.buttonGroup}>
       <Show when={!actions.context.isLifeLogTreeFocused}>
         <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleCycleFieldPrev}>
-          S-Tab
+          ◀️
         </button>
         <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleCycleFieldNext}>
-          Tab
+          ▶️
         </button>
       </Show>
     </div>
