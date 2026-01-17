@@ -1,5 +1,5 @@
 import { doc, Timestamp } from "firebase/firestore";
-import { type Accessor, createEffect, createSignal, type Setter, Show, startTransition } from "solid-js";
+import { type Accessor, createEffect, createSignal, onCleanup, type Setter, Show, startTransition } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
 import { awaitable } from "@/awaitableCallback";
@@ -7,6 +7,7 @@ import { EditableValue } from "@/components/EditableValue";
 import { ChildrenNodes } from "@/components/tree";
 import { DateNow } from "@/date";
 import { LifeLogTreeNode } from "@/panes/lifeLogs/LifeLogTreeNode";
+import { type LifeLogActions, useActionsContext } from "@/panes/lifeLogs/actionsContext";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch, setDoc, updateDoc } from "@/services/firebase/firestore/batch";
@@ -70,6 +71,167 @@ export function LifeLogTree(props: {
   createEffect(() => {
     if (isLifeLogSelected$() && lifeLogContainerRef) {
       scrollWithOffset(lifeLogContainerRef);
+    }
+  });
+
+  // Mobile toolbar actions context
+  const actionsContext = useActionsContext();
+
+  const actions: LifeLogActions = {
+    navigateNext: () => {
+      if (isLifeLogTreeFocused$() || props.nextId === "") return;
+      updateState((state) => {
+        state.panesLifeLogs.selectedLifeLogId = props.nextId;
+      });
+    },
+    navigatePrev: () => {
+      if (isLifeLogTreeFocused$() || props.prevId === "") return;
+      updateState((state) => {
+        state.panesLifeLogs.selectedLifeLogId = props.prevId;
+      });
+    },
+    goToFirst: () => {
+      if (isLifeLogTreeFocused$() || props.firstId === "" || props.id === props.firstId) return;
+      updateState((state) => {
+        state.panesLifeLogs.selectedLifeLogId = props.firstId;
+      });
+    },
+    goToLast: () => {
+      if (isLifeLogTreeFocused$() || props.lastId === "" || props.id === props.lastId) return;
+      updateState((state) => {
+        state.panesLifeLogs.selectedLifeLogId = props.lastId;
+      });
+    },
+    enterTree: async () => {
+      if (isLifeLogTreeFocused$()) return;
+
+      const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
+      if (!lifeLog) return;
+
+      const firstChildNode = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
+      let id = "";
+
+      firestore.setClock(true);
+      try {
+        if (firstChildNode) {
+          id = firstChildNode.id;
+        } else {
+          id = uuidv7();
+          await runBatch(firestore, (batch) => {
+            addSingle(firestore, batch, lifeLogTreeNodesCol, lifeLog.id, {
+              id,
+              text: "new",
+            });
+            return Promise.resolve();
+          });
+        }
+      } finally {
+        await startTransition(() => {
+          setSelectedLifeLogNodeId(id);
+          firestore.setClock(false);
+        });
+      }
+    },
+    exitTree: () => {
+      if (isLifeLogSelected$()) return;
+      setSelectedLifeLogNodeId("");
+    },
+    newLifeLog: async () => {
+      if (isLifeLogTreeFocused$()) return;
+
+      const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
+      if (!lifeLog) return;
+
+      const newLifeLogId = uuidv7();
+
+      firestore.setClock(true);
+      try {
+        await runBatch(firestore, (batch) => {
+          setDoc(firestore, batch, lifeLogsCol, {
+            id: newLifeLogId,
+            text: "",
+            startAt: lifeLog.endAt,
+            endAt: noneTimestamp,
+          });
+          return Promise.resolve();
+        });
+
+        await startTransition(() => {
+          updateState((state) => {
+            state.panesLifeLogs.selectedLifeLogId = newLifeLogId;
+            state.panesLifeLogs.selectedLifeLogNodeId = "";
+          });
+          props.setIsEditing(true);
+          props.setEditingField(EditingField.Text);
+          firestore.setClock(false);
+        });
+      } finally {
+        firestore.setClock(false);
+      }
+    },
+    setStartAtNow: async () => {
+      if (isLifeLogTreeFocused$()) return;
+
+      const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
+      if (!lifeLog || !lifeLog.startAt.isEqual(noneTimestamp)) return;
+
+      await saveStartAt(Timestamp.fromMillis(Math.floor(DateNow() / 1000) * 1000));
+    },
+    setEndAtNow: async () => {
+      if (isLifeLogTreeFocused$()) return;
+
+      const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
+      if (!lifeLog || !lifeLog.endAt.isEqual(noneTimestamp)) return;
+
+      await saveEndAt(Timestamp.fromMillis(Math.floor(DateNow() / 1000) * 1000));
+    },
+    startEditing: () => {
+      props.setIsEditing(true);
+      if (isLifeLogSelected$()) {
+        props.setEditingField(EditingField.Text);
+      }
+    },
+    cycleFieldNext: () => {
+      handleTabNavigation(false);
+    },
+    cycleFieldPrev: () => {
+      handleTabNavigation(true);
+    },
+  };
+
+  // Update actions context when this LifeLog is selected
+  createEffect(() => {
+    if (isSelected$()) {
+      actionsContext.setActions(actions);
+      actionsContext.setState({
+        isEditing: props.isEditing,
+        isLifeLogSelected: isLifeLogSelected$(),
+        isLifeLogTreeFocused: isLifeLogTreeFocused$(),
+        hasSelection: true,
+      });
+    }
+  });
+
+  // Update editing state in context
+  createEffect(() => {
+    if (isSelected$()) {
+      actionsContext.setState({
+        isEditing: props.isEditing,
+        isLifeLogSelected: isLifeLogSelected$(),
+        isLifeLogTreeFocused: isLifeLogTreeFocused$(),
+      });
+    }
+  });
+
+  onCleanup(() => {
+    if (isSelected$()) {
+      actionsContext.setActions(undefined);
+      actionsContext.setState({
+        hasSelection: false,
+        isEditing: false,
+        isLifeLogSelected: false,
+        isLifeLogTreeFocused: false,
+      });
     }
   });
 

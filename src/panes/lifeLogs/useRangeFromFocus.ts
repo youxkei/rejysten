@@ -1,7 +1,8 @@
 import { debounce } from "@solid-primitives/scheduled";
 import { Timestamp } from "firebase/firestore";
-import { createEffect, createSignal, on } from "solid-js";
+import { createEffect, createSignal, on, startTransition } from "solid-js";
 
+import { awaitable } from "@/awaitableCallback";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { useStoreService } from "@/services/store";
 import { noneTimestamp } from "@/timestamp";
@@ -23,25 +24,30 @@ export function useRangeFromFocus(options: UseRangeFromFocusOptions) {
   const [rangeStart$, setRangeStart] = createSignal(options.initialStart);
   const [rangeEnd$, setRangeEnd] = createSignal(options.initialEnd);
 
-  const debouncedUpdateRange = debounce(async (lifeLogId: string) => {
-    if (!lifeLogId) return;
+  const debouncedUpdateRange = debounce(
+    awaitable(async (lifeLogId: string) => {
+      if (!lifeLogId) return;
 
-    const lifeLog = await getDoc(firestore, lifeLogsCol, lifeLogId);
-    if (!lifeLog) return;
+      const lifeLog = await getDoc(firestore, lifeLogsCol, lifeLogId);
+      if (!lifeLog) return;
 
-    const focusedStartAt = lifeLog.startAt;
+      const focusedStartAt = lifeLog.startAt;
 
-    // Don't slide window for LifeLogs with noneTimestamp startAt
-    // These are newly created LifeLogs that haven't had their time set yet
-    if (focusedStartAt.isEqual(noneTimestamp)) return;
+      // Don't slide window for LifeLogs with noneTimestamp startAt
+      // These are newly created LifeLogs that haven't had their time set yet
+      if (focusedStartAt.isEqual(noneTimestamp)) return;
 
-    // Slide window to center around focused LifeLog's startAt
-    const newStart = Timestamp.fromMillis(focusedStartAt.toMillis() - rangeMs);
-    const newEnd = Timestamp.fromMillis(focusedStartAt.toMillis() + rangeMs);
+      // Slide window to center around focused LifeLog's startAt
+      const newStart = Timestamp.fromMillis(focusedStartAt.toMillis() - rangeMs);
+      const newEnd = Timestamp.fromMillis(focusedStartAt.toMillis() + rangeMs);
 
-    setRangeStart(newStart);
-    setRangeEnd(newEnd);
-  }, options.debounceMs ?? 300);
+      await startTransition(() => {
+        setRangeStart(newStart);
+        setRangeEnd(newEnd);
+      });
+    }),
+    options.debounceMs ?? 300,
+  );
 
   createEffect(
     on(

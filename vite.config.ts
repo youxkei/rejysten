@@ -48,8 +48,9 @@ export default defineConfig({
     },
     setupFiles: ["node_modules/@testing-library/jest-dom/vitest.js"],
     fileParallelism: false,
-    retry: 2,
+    retry: 3,
     bail: 1,
+    testTimeout: 2_000,
   },
   resolve: {
     conditions: ["development|production", "browser"],

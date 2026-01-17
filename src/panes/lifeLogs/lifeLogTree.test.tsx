@@ -21,7 +21,7 @@ afterEach(async () => {
   cleanup();
 });
 
-describe("<LifeLogTree />", { timeout: 2000 }, () => {
+describe("<LifeLogTree />", /* { timeout: 2000 }, */ () => {
   it("can enter/exit tree mode with l/h keys", async ({ db, task }) => {
     const { result } = await setupLifeLogsTest(task.id, db);
 
@@ -1298,6 +1298,73 @@ describe("<LifeLogTree />", { timeout: 2000 }, () => {
 
       // Wait for pending Firestore operations to complete before unmount
       await new Promise((resolve) => setTimeout(resolve, 500));
+    });
+  });
+
+  describe("MobileToolbar in tree mode", () => {
+    describe("l/h button visibility", () => {
+      it("shows l button and hides h button when not in tree mode", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        // Not in tree mode - l button should be visible, h should be hidden
+        const lButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "l",
+        );
+        const hButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "h",
+        );
+
+        expect(lButton).toBeTruthy();
+        expect(hButton).toBeUndefined();
+      });
+
+      it("shows h button and hides l button when in tree mode", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        // Enter tree mode
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+        await result.findByText("first child");
+
+        // In tree mode - h button should be visible, l hidden
+        const lButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "l",
+        );
+        const hButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "h",
+        );
+
+        expect(hButton).toBeTruthy();
+        expect(lButton).toBeUndefined();
+      });
+
+      it("exits tree mode with h button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        // Enter tree mode
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+        await result.findByText("first child");
+
+        // Tree nodes should be visible
+        expect(result.getByText("first child")).toBeTruthy();
+
+        // Click h button to exit
+        const hButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "h",
+        ) as HTMLButtonElement;
+        expect(hButton).toBeTruthy();
+
+        hButton.click();
+        await awaitPendingCallbacks();
+
+        // Tree nodes should be hidden
+        expect(result.queryByText("first child")).toBeNull();
+
+        // LifeLog should be selected again
+        const log1 = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log1?.className).toContain(styles.lifeLogTree.selected);
+      });
     });
   });
 });

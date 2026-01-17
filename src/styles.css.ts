@@ -1,5 +1,7 @@
 import { style, globalStyle } from "@vanilla-extract/css";
 
+const MOBILE_BREAKPOINT = "768px";
+
 // from https://www.nordtheme.com/docs/colors-and-palettes
 const nord = [
   "#2E3440",
@@ -26,6 +28,11 @@ export const styles = {
       height: "100%",
       overflow: "auto",
       padding: "1rem",
+      "@media": {
+        [`(max-width: ${MOBILE_BREAKPOINT})`]: {
+          paddingBottom: "5rem",
+        },
+      },
     }),
     list: style({
       listStyle: "none",
@@ -34,6 +41,11 @@ export const styles = {
       display: "flex",
       flexDirection: "column",
       gap: "0.75rem",
+      "@media": {
+        [`(max-width: ${MOBILE_BREAKPOINT})`]: {
+          flexDirection: "column-reverse",
+        },
+      },
     }),
     listItem: style({
       borderRadius: "0.5rem",
@@ -93,6 +105,47 @@ export const styles = {
       margin: 0,
       fontFamily: "inherit",
       minHeight: "1.5em",
+    }),
+  },
+  mobileToolbar: {
+    container: style({
+      position: "fixed",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: nord[1],
+      borderTop: `1px solid ${nord[2]}`,
+      padding: "0.5rem",
+      paddingBottom: "calc(0.5rem + env(keyboard-inset-height, 0px))",
+      display: "none",
+      justifyContent: "center",
+      gap: "0.25rem",
+      zIndex: 1000,
+      "@media": {
+        [`(max-width: ${MOBILE_BREAKPOINT})`]: {
+          display: "flex",
+        },
+      },
+    }),
+    buttonGroup: style({
+      display: "flex",
+      gap: "0.25rem",
+      flexWrap: "wrap",
+      justifyContent: "center",
+    }),
+    button: style({
+      padding: "0.5rem 0.75rem",
+      backgroundColor: nord[2],
+      border: `1px solid ${nord[3]}`,
+      borderRadius: "0.25rem",
+      color: nord[5],
+      fontSize: "0.875rem",
+      fontWeight: 500,
+      cursor: "pointer",
+      minWidth: "2.5rem",
+      ":active": {
+        backgroundColor: nord[3],
+      },
     }),
   },
 };

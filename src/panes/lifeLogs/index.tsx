@@ -5,6 +5,8 @@ import { createMemo, createSignal } from "solid-js";
 
 import { DateNow, TimestampNow } from "@/date";
 import { LifeLogTree } from "@/panes/lifeLogs/LifeLogTree";
+import { MobileToolbar } from "@/panes/lifeLogs/MobileToolbar";
+import { ActionsProvider } from "@/panes/lifeLogs/actionsContext";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { useRangeFromFocus } from "@/panes/lifeLogs/useRangeFromFocus";
 import { getCollection, useFirestoreService } from "@/services/firebase/firestore";
@@ -34,9 +36,12 @@ export function LifeLogs(props: LifeLogsProps = {}) {
   });
 
   return (
-    <ScrollContainer class={styles.lifeLogs.container}>
-      <TimeRangedLifeLogs start={rangeStart$()} end={rangeEnd$()} />
-    </ScrollContainer>
+    <ActionsProvider>
+      <ScrollContainer class={styles.lifeLogs.container}>
+        <TimeRangedLifeLogs start={rangeStart$()} end={rangeEnd$()} />
+      </ScrollContainer>
+      <MobileToolbar />
+    </ActionsProvider>
   );
 }
 

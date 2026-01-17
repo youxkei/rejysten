@@ -139,9 +139,14 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                   await props.onKeyDown(e, inputRef, () => setBlurSavePrevented(true));
                 }
               })}
-              onBlur={async () => {
+              onBlur={async (e) => {
                 if (blurSavePrevented()) {
                   setBlurSavePrevented(false);
+                  return;
+                }
+                // Skip blur handling if focus is moving to a toolbar button
+                const relatedTarget = e.relatedTarget as HTMLElement | null;
+                if (relatedTarget?.dataset.preventBlur !== undefined) {
                   return;
                 }
                 debouncedSaveChanges.clear();

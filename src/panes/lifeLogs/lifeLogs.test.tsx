@@ -1,7 +1,7 @@
 import { cleanup } from "@solidjs/testing-library";
 import { Timestamp } from "firebase/firestore";
 import { afterEach, describe, expect, vi } from "vitest";
-import { userEvent } from "vitest/browser";
+import { page, userEvent } from "vitest/browser";
 
 import { awaitPendingCallbacks } from "@/awaitableCallback";
 import { baseTime, setupLifeLogsTest } from "@/panes/lifeLogs/test";
@@ -21,7 +21,7 @@ afterEach(async () => {
   cleanup();
 });
 
-describe("<LifeLogs />", { timeout: 2000 }, () => {
+describe("<LifeLogs />", /* { timeout: 2000 }, */ () => {
   it("renders correctly", async ({ db, task }) => {
     const { result } = await setupLifeLogsTest(task.id, db);
 
@@ -1213,6 +1213,205 @@ describe("<LifeLogs />", { timeout: 2000 }, () => {
 
       // $log1 should be visible and selected
       expect(result.getByText("first lifelog")).toBeTruthy();
+    });
+  });
+
+  describe("MobileToolbar", () => {
+    describe("responsive visibility", () => {
+      it("is visible at mobile viewport (414px width)", async ({ db, task }) => {
+        await page.viewport(414, 896);
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        const toolbar = result.container.querySelector(`.${styles.mobileToolbar.container}`);
+        expect(toolbar).toBeTruthy();
+        const computedStyle = window.getComputedStyle(toolbar!);
+        expect(computedStyle.display).toBe("flex");
+      });
+
+      it("is hidden at desktop viewport (800px width)", async ({ db, task }) => {
+        await page.viewport(800, 600);
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        const toolbar = result.container.querySelector(`.${styles.mobileToolbar.container}`);
+        expect(toolbar).toBeTruthy();
+        const computedStyle = window.getComputedStyle(toolbar!);
+        expect(computedStyle.display).toBe("none");
+      });
+
+      it("becomes visible when resizing from desktop to mobile", async ({ db, task }) => {
+        await page.viewport(800, 600);
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        const toolbar = result.container.querySelector(`.${styles.mobileToolbar.container}`)!;
+
+        // Initially hidden
+        expect(window.getComputedStyle(toolbar).display).toBe("none");
+
+        // Resize to mobile
+        await page.viewport(414, 896);
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Now visible
+        expect(window.getComputedStyle(toolbar).display).toBe("flex");
+      });
+    });
+
+    describe("navigation buttons", () => {
+      it("navigates to next LifeLog with j button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        // Initial: $log1 is selected
+        const log1Initial = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log1Initial?.className).toContain(styles.lifeLogTree.selected);
+
+        // Click j button
+        const jButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "j",
+        ) as HTMLButtonElement;
+        expect(jButton).toBeTruthy();
+        expect(jButton.disabled).toBe(false);
+
+        jButton.click();
+        await awaitPendingCallbacks();
+
+        // $log2 should now be selected
+        const log2 = result.getByText("second lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log2?.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      it("navigates to previous LifeLog with k button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        // Navigate to $log2 first
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+
+        const log2Initial = result.getByText("second lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log2Initial?.className).toContain(styles.lifeLogTree.selected);
+
+        // Click k button
+        const kButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "k",
+        ) as HTMLButtonElement;
+        expect(kButton).toBeTruthy();
+
+        kButton.click();
+        await awaitPendingCallbacks();
+
+        // $log1 should now be selected
+        const log1 = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log1?.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      it("enters editing mode with i button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        // No input should exist initially
+        expect(result.container.querySelector("input")).toBeNull();
+
+        // Click i button
+        const iButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "i",
+        ) as HTMLButtonElement;
+        expect(iButton).toBeTruthy();
+
+        iButton.click();
+        await awaitPendingCallbacks();
+
+        // Input should now exist with text
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("first lifelog");
+      });
+
+      it("enters tree mode with l button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        // Tree nodes should not be visible initially
+        expect(result.queryByText("first child")).toBeNull();
+
+        // Click l button
+        const lButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "l",
+        ) as HTMLButtonElement;
+        expect(lButton).toBeTruthy();
+
+        lButton.click();
+        await awaitPendingCallbacks();
+
+        // Tree nodes should now be visible
+        await result.findByText("first child");
+        expect(result.getByText("first child")).toBeTruthy();
+      });
+    });
+
+    describe("editing toolbar", () => {
+      it("shows Tab and S-Tab buttons when editing", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        // Initially, Tab/S-Tab buttons should not exist
+        const tabButtonInitial = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "Tab",
+        );
+        expect(tabButtonInitial).toBeUndefined();
+
+        // Enter editing mode
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+
+        // Tab and S-Tab buttons should now exist
+        const tabButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "Tab",
+        );
+        const sTabButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "S-Tab",
+        );
+
+        expect(tabButton).toBeTruthy();
+        expect(sTabButton).toBeTruthy();
+      });
+
+      it("Tab and S-Tab buttons have data-prevent-blur attribute", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        // Enter editing mode
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+
+        const tabButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "Tab",
+        ) as HTMLButtonElement;
+        const sTabButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "S-Tab",
+        ) as HTMLButtonElement;
+
+        expect(tabButton.hasAttribute("data-prevent-blur")).toBe(true);
+        expect(sTabButton.hasAttribute("data-prevent-blur")).toBe(true);
+      });
+
+      it("cycles to next field with Tab button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        // Enter editing mode
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+
+        // Initial input is text field
+        const input1 = result.container.querySelector("input") as HTMLInputElement;
+        expect(input1.value).toBe("first lifelog");
+
+        // Click Tab button using userEvent
+        const tabButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "Tab",
+        ) as HTMLButtonElement;
+
+        await userEvent.click(tabButton);
+        await awaitPendingCallbacks();
+
+        // Input should now be startAt field
+        const input2 = result.container.querySelector("input") as HTMLInputElement;
+        expect(input2.value).toBe("20260110 103000");
+      });
     });
   });
 });
