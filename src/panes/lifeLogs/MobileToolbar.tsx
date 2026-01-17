@@ -1,29 +1,15 @@
 import { Show } from "solid-js";
 
-import {
-  cycleFieldNext,
-  cycleFieldPrev,
-  enterTree,
-  exitTree,
-  goToFirst,
-  goToLast,
-  navigateNext,
-  navigatePrev,
-  newLifeLog,
-  setEndAtNow,
-  setStartAtNow,
-  startEditing,
-  useActionsContext,
-} from "@/panes/lifeLogs/actions";
-import { createOnClickHandler } from "@/solid/event";
+import { useActions } from "@/panes/lifeLogs/actions";
+import { withOwner } from "@/solid/owner";
 import { styles } from "@/styles.css";
 
 export function MobileToolbar() {
-  const ctx = useActionsContext();
+  const actions = useActions();
 
   return (
     <div class={styles.mobileToolbar.container}>
-      <Show when={!ctx.isEditing$()} fallback={<EditingToolbar />}>
+      <Show when={!actions.context.isEditing} fallback={<EditingToolbar />}>
         <NavigationToolbar />
       </Show>
     </div>
@@ -31,68 +17,80 @@ export function MobileToolbar() {
 }
 
 function NavigationToolbar() {
-  const ctx = useActionsContext();
+  const actions = useActions();
 
   // Wrap action calls to preserve SolidJS context
-  const handleNavigatePrev = createOnClickHandler(() => {
-    navigatePrev();
+  const handleNavigatePrev = withOwner(() => {
+    actions.navigatePrev();
   });
-  const handleNavigateNext = createOnClickHandler(() => {
-    navigateNext();
+  const handleNavigateNext = withOwner(() => {
+    actions.navigateNext();
   });
-  const handleGoToFirst = createOnClickHandler(() => {
-    goToFirst();
+  const handleGoToFirst = withOwner(() => {
+    actions.goToFirst();
   });
-  const handleGoToLast = createOnClickHandler(() => {
-    goToLast();
+  const handleGoToLast = withOwner(() => {
+    actions.goToLast();
   });
-  const handleEnterTree = createOnClickHandler(() => enterTree());
-  const handleExitTree = createOnClickHandler(() => {
-    exitTree();
+  const handleEnterTree = withOwner(() => actions.enterTree());
+  const handleExitTree = withOwner(() => {
+    actions.exitTree();
   });
-  const handleNewLifeLog = createOnClickHandler(() => newLifeLog());
-  const handleSetStartAtNow = createOnClickHandler(() => setStartAtNow());
-  const handleSetEndAtNow = createOnClickHandler(() => setEndAtNow());
-  const handleStartEditing = createOnClickHandler(() => {
-    startEditing();
+  const handleNewLifeLog = withOwner(() => actions.newLifeLog());
+  const handleSetStartAtNow = withOwner(() => actions.setStartAtNow());
+  const handleSetEndAtNow = withOwner(() => actions.setEndAtNow());
+  const handleStartEditing = withOwner(() => {
+    actions.startEditing();
   });
 
   return (
     <div class={styles.mobileToolbar.buttonGroup}>
-      <button class={styles.mobileToolbar.button} onClick={handleNavigatePrev} disabled={!ctx.hasSelection$()}>
+      <button class={styles.mobileToolbar.button} onClick={handleNavigatePrev} disabled={!actions.context.hasSelection}>
         k
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleNavigateNext} disabled={!ctx.hasSelection$()}>
+      <button class={styles.mobileToolbar.button} onClick={handleNavigateNext} disabled={!actions.context.hasSelection}>
         j
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleGoToFirst} disabled={!ctx.hasSelection$()}>
+      <button class={styles.mobileToolbar.button} onClick={handleGoToFirst} disabled={!actions.context.hasSelection}>
         g
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleGoToLast} disabled={!ctx.hasSelection$()}>
+      <button class={styles.mobileToolbar.button} onClick={handleGoToLast} disabled={!actions.context.hasSelection}>
         G
       </button>
 
-      <Show when={!ctx.isLifeLogTreeFocused$()}>
-        <button class={styles.mobileToolbar.button} onClick={handleEnterTree} disabled={!ctx.isLifeLogSelected$()}>
+      <Show when={!actions.context.isLifeLogTreeFocused}>
+        <button
+          class={styles.mobileToolbar.button}
+          onClick={handleEnterTree}
+          disabled={!actions.context.isLifeLogSelected}
+        >
           l
         </button>
       </Show>
-      <Show when={ctx.isLifeLogTreeFocused$()}>
+      <Show when={actions.context.isLifeLogTreeFocused}>
         <button class={styles.mobileToolbar.button} onClick={handleExitTree}>
           h
         </button>
       </Show>
 
-      <button class={styles.mobileToolbar.button} onClick={handleNewLifeLog} disabled={!ctx.hasSelection$()}>
+      <button class={styles.mobileToolbar.button} onClick={handleNewLifeLog} disabled={!actions.context.hasSelection}>
         o
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleSetStartAtNow} disabled={!ctx.isLifeLogSelected$()}>
+      <button
+        class={styles.mobileToolbar.button}
+        onClick={handleSetStartAtNow}
+        disabled={!actions.context.isLifeLogSelected}
+      >
         s
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleSetEndAtNow} disabled={!ctx.isLifeLogSelected$()}>
+      <button
+        class={styles.mobileToolbar.button}
+        onClick={handleSetEndAtNow}
+        disabled={!actions.context.isLifeLogSelected}
+      >
         f
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleStartEditing} disabled={!ctx.hasSelection$()}>
+      <button class={styles.mobileToolbar.button} onClick={handleStartEditing} disabled={!actions.context.hasSelection}>
         i
       </button>
     </div>
@@ -100,18 +98,18 @@ function NavigationToolbar() {
 }
 
 function EditingToolbar() {
-  const ctx = useActionsContext();
+  const actions = useActions();
 
-  const handleCycleFieldPrev = createOnClickHandler(() => {
-    cycleFieldPrev();
+  const handleCycleFieldPrev = withOwner(() => {
+    actions.cycleFieldPrev();
   });
-  const handleCycleFieldNext = createOnClickHandler(() => {
-    cycleFieldNext();
+  const handleCycleFieldNext = withOwner(() => {
+    actions.cycleFieldNext();
   });
 
   return (
     <div class={styles.mobileToolbar.buttonGroup}>
-      <Show when={!ctx.isLifeLogTreeFocused$()}>
+      <Show when={!actions.context.isLifeLogTreeFocused}>
         <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleCycleFieldPrev}>
           S-Tab
         </button>

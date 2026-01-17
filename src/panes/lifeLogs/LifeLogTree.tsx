@@ -5,18 +5,7 @@ import { awaitable } from "@/awaitableCallback";
 import { EditableValue } from "@/components/EditableValue";
 import { ChildrenNodes } from "@/components/tree";
 import { LifeLogTreeNode } from "@/panes/lifeLogs/LifeLogTreeNode";
-import {
-  addSiblingNode,
-  enterTree,
-  exitTree,
-  goToFirst,
-  goToLast,
-  navigateNext,
-  navigatePrev,
-  setEndAtNow,
-  setStartAtNow,
-  useSetActionsContext,
-} from "@/panes/lifeLogs/actions";
+import { useActions } from "@/panes/lifeLogs/actions";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch, updateDoc } from "@/services/firebase/firestore/batch";
@@ -76,7 +65,7 @@ export function LifeLogTree(props: {
   const isLifeLogSelected$ = () => isSelected$() && selectedLifeLogNodeId$() === "";
   const isLifeLogTreeFocused$ = () => isSelected$() && selectedLifeLogNodeId$() !== "";
 
-  const setActionsContext = useSetActionsContext();
+  const actions = useActions();
 
   let lifeLogContainerRef: HTMLDivElement | undefined;
   createEffect(() => {
@@ -88,42 +77,42 @@ export function LifeLogTree(props: {
   // Update actions context when this LifeLog is selected
   createEffect(() => {
     if (isSelected$()) {
-      setActionsContext({
-        hasSelection: true,
-        isEditing: props.isEditing,
-        isLifeLogSelected: isLifeLogSelected$(),
-        isLifeLogTreeFocused: isLifeLogTreeFocused$(),
-        editingField: props.editingField,
-        id: props.id,
-        prevId: props.prevId,
-        nextId: props.nextId,
-        firstId: props.firstId,
-        lastId: props.lastId,
-        selectedNodeId: selectedLifeLogNodeId$(),
-        setIsEditing: props.setIsEditing,
-        setEditingField: props.setEditingField,
-        setSelectedNodeId: setSelectedLifeLogNodeId,
+      actions.updateContext((ctx) => {
+        ctx.hasSelection = true;
+        ctx.isEditing = props.isEditing;
+        ctx.isLifeLogSelected = isLifeLogSelected$();
+        ctx.isLifeLogTreeFocused = isLifeLogTreeFocused$();
+        ctx.editingField = props.editingField;
+        ctx.id = props.id;
+        ctx.prevId = props.prevId;
+        ctx.nextId = props.nextId;
+        ctx.firstId = props.firstId;
+        ctx.lastId = props.lastId;
+        ctx.selectedNodeId = selectedLifeLogNodeId$();
+        ctx.setIsEditing = props.setIsEditing;
+        ctx.setEditingField = props.setEditingField;
+        ctx.setSelectedNodeId = setSelectedLifeLogNodeId;
       });
     }
   });
 
   onCleanup(() => {
     if (isSelected$()) {
-      setActionsContext({
-        hasSelection: false,
-        isEditing: false,
-        isLifeLogSelected: false,
-        isLifeLogTreeFocused: false,
-        editingField: EditingField.Text,
-        id: "",
-        prevId: "",
-        nextId: "",
-        firstId: "",
-        lastId: "",
-        selectedNodeId: "",
-        setIsEditing: (_v: boolean) => undefined,
-        setEditingField: (_field: EditingField) => undefined,
-        setSelectedNodeId: (_id: string) => undefined,
+      actions.updateContext((ctx) => {
+        ctx.hasSelection = false;
+        ctx.isEditing = false;
+        ctx.isLifeLogSelected = false;
+        ctx.isLifeLogTreeFocused = false;
+        ctx.editingField = EditingField.Text;
+        ctx.id = "";
+        ctx.prevId = "";
+        ctx.nextId = "";
+        ctx.firstId = "";
+        ctx.lastId = "";
+        ctx.selectedNodeId = "";
+        ctx.setIsEditing = () => undefined;
+        ctx.setEditingField = () => undefined;
+        ctx.setSelectedNodeId = () => undefined;
       });
     }
   });
@@ -145,28 +134,28 @@ export function LifeLogTree(props: {
         case "KeyL": {
           if (shiftKey || isLifeLogTreeFocused$()) return;
           event.stopImmediatePropagation();
-          await enterTree();
+          await actions.enterTree();
           break;
         }
 
         case "KeyH": {
           if (shiftKey || isLifeLogSelected$()) return;
           event.stopImmediatePropagation();
-          exitTree();
+          actions.exitTree();
           break;
         }
 
         case "KeyJ": {
           if (shiftKey || isLifeLogTreeFocused$()) return;
           event.stopImmediatePropagation();
-          navigateNext();
+          actions.navigateNext();
           break;
         }
 
         case "KeyK": {
           if (shiftKey || isLifeLogTreeFocused$()) return;
           event.stopImmediatePropagation();
-          navigatePrev();
+          actions.navigatePrev();
           break;
         }
 
@@ -174,30 +163,30 @@ export function LifeLogTree(props: {
           if (isLifeLogTreeFocused$()) return; // Tree navigation handled in tree.tsx
           event.stopImmediatePropagation();
           if (shiftKey) {
-            goToLast();
+            actions.goToLast();
           } else {
-            goToFirst();
+            actions.goToFirst();
           }
           break;
         }
 
         case "KeyO": {
           event.stopImmediatePropagation();
-          await addSiblingNode(shiftKey);
+          await actions.addSiblingNode(shiftKey);
           break;
         }
 
         case "KeyS": {
           if (shiftKey || isLifeLogTreeFocused$()) return;
           event.stopImmediatePropagation();
-          await setStartAtNow();
+          await actions.setStartAtNow();
           break;
         }
 
         case "KeyF": {
           if (shiftKey || isLifeLogTreeFocused$()) return;
           event.stopImmediatePropagation();
-          await setEndAtNow();
+          await actions.setEndAtNow();
           break;
         }
       }

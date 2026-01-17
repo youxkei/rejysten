@@ -21,7 +21,7 @@ afterEach(async () => {
   cleanup();
 });
 
-describe("<LifeLogs />", /* { timeout: 2000 }, */ () => {
+describe("<LifeLogs />", () => {
   it("renders correctly", async ({ db, task }) => {
     const { result } = await setupLifeLogsTest(task.id, db);
 
