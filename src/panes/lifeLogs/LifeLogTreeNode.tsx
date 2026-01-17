@@ -41,6 +41,7 @@ export function LifeLogTreeNode(props: {
   const firestore = useFirestoreService();
   const lifeLogTreeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
 
+  // DEBUG
   async function onSaveNode(newText: string) {
     firestore.setClock(true);
     try {
@@ -234,6 +235,7 @@ export function LifeLogTreeNode(props: {
 
   return (
     <EditableValue
+      debugId={`treeNode-${props.node$().text}`}
       value={props.node$().text}
       toText={(text) => text}
       fromText={(text) => text}

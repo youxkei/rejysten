@@ -1,18 +1,27 @@
-import { doc, Timestamp } from "firebase/firestore";
+import { doc, type Timestamp } from "firebase/firestore";
 import { type Accessor, createEffect, createSignal, onCleanup, type Setter, Show, startTransition } from "solid-js";
-import { uuidv7 } from "uuidv7";
 
 import { awaitable } from "@/awaitableCallback";
 import { EditableValue } from "@/components/EditableValue";
 import { ChildrenNodes } from "@/components/tree";
-import { DateNow } from "@/date";
 import { LifeLogTreeNode } from "@/panes/lifeLogs/LifeLogTreeNode";
-import { type LifeLogActions, useActionsContext } from "@/panes/lifeLogs/actionsContext";
+import {
+  addSiblingNode,
+  enterTree,
+  exitTree,
+  goToFirst,
+  goToLast,
+  navigateNext,
+  navigatePrev,
+  setEndAtNow,
+  setStartAtNow,
+  useSetActionsContext,
+} from "@/panes/lifeLogs/actions";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
-import { runBatch, setDoc, updateDoc } from "@/services/firebase/firestore/batch";
+import { runBatch, updateDoc } from "@/services/firebase/firestore/batch";
 import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
-import { addNextSibling, addPrevSibling, addSingle, getFirstChildNode } from "@/services/firebase/firestore/treeNode";
+import { getFirstChildNode } from "@/services/firebase/firestore/treeNode";
 import { useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
 import { scrollWithOffset } from "@/solid/scroll";
@@ -67,6 +76,8 @@ export function LifeLogTree(props: {
   const isLifeLogSelected$ = () => isSelected$() && selectedLifeLogNodeId$() === "";
   const isLifeLogTreeFocused$ = () => isSelected$() && selectedLifeLogNodeId$() !== "";
 
+  const setActionsContext = useSetActionsContext();
+
   let lifeLogContainerRef: HTMLDivElement | undefined;
   createEffect(() => {
     if (isLifeLogSelected$() && lifeLogContainerRef) {
@@ -74,163 +85,45 @@ export function LifeLogTree(props: {
     }
   });
 
-  // Mobile toolbar actions context
-  const actionsContext = useActionsContext();
-
-  const actions: LifeLogActions = {
-    navigateNext: () => {
-      if (isLifeLogTreeFocused$() || props.nextId === "") return;
-      updateState((state) => {
-        state.panesLifeLogs.selectedLifeLogId = props.nextId;
-      });
-    },
-    navigatePrev: () => {
-      if (isLifeLogTreeFocused$() || props.prevId === "") return;
-      updateState((state) => {
-        state.panesLifeLogs.selectedLifeLogId = props.prevId;
-      });
-    },
-    goToFirst: () => {
-      if (isLifeLogTreeFocused$() || props.firstId === "" || props.id === props.firstId) return;
-      updateState((state) => {
-        state.panesLifeLogs.selectedLifeLogId = props.firstId;
-      });
-    },
-    goToLast: () => {
-      if (isLifeLogTreeFocused$() || props.lastId === "" || props.id === props.lastId) return;
-      updateState((state) => {
-        state.panesLifeLogs.selectedLifeLogId = props.lastId;
-      });
-    },
-    enterTree: async () => {
-      if (isLifeLogTreeFocused$()) return;
-
-      const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
-      if (!lifeLog) return;
-
-      const firstChildNode = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
-      let id = "";
-
-      firestore.setClock(true);
-      try {
-        if (firstChildNode) {
-          id = firstChildNode.id;
-        } else {
-          id = uuidv7();
-          await runBatch(firestore, (batch) => {
-            addSingle(firestore, batch, lifeLogTreeNodesCol, lifeLog.id, {
-              id,
-              text: "new",
-            });
-            return Promise.resolve();
-          });
-        }
-      } finally {
-        await startTransition(() => {
-          setSelectedLifeLogNodeId(id);
-          firestore.setClock(false);
-        });
-      }
-    },
-    exitTree: () => {
-      if (isLifeLogSelected$()) return;
-      setSelectedLifeLogNodeId("");
-    },
-    newLifeLog: async () => {
-      if (isLifeLogTreeFocused$()) return;
-
-      const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
-      if (!lifeLog) return;
-
-      const newLifeLogId = uuidv7();
-
-      firestore.setClock(true);
-      try {
-        await runBatch(firestore, (batch) => {
-          setDoc(firestore, batch, lifeLogsCol, {
-            id: newLifeLogId,
-            text: "",
-            startAt: lifeLog.endAt,
-            endAt: noneTimestamp,
-          });
-          return Promise.resolve();
-        });
-
-        await startTransition(() => {
-          updateState((state) => {
-            state.panesLifeLogs.selectedLifeLogId = newLifeLogId;
-            state.panesLifeLogs.selectedLifeLogNodeId = "";
-          });
-          props.setIsEditing(true);
-          props.setEditingField(EditingField.Text);
-          firestore.setClock(false);
-        });
-      } finally {
-        firestore.setClock(false);
-      }
-    },
-    setStartAtNow: async () => {
-      if (isLifeLogTreeFocused$()) return;
-
-      const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
-      if (!lifeLog || !lifeLog.startAt.isEqual(noneTimestamp)) return;
-
-      await saveStartAt(Timestamp.fromMillis(Math.floor(DateNow() / 1000) * 1000));
-    },
-    setEndAtNow: async () => {
-      if (isLifeLogTreeFocused$()) return;
-
-      const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
-      if (!lifeLog || !lifeLog.endAt.isEqual(noneTimestamp)) return;
-
-      await saveEndAt(Timestamp.fromMillis(Math.floor(DateNow() / 1000) * 1000));
-    },
-    startEditing: () => {
-      props.setIsEditing(true);
-      if (isLifeLogSelected$()) {
-        props.setEditingField(EditingField.Text);
-      }
-    },
-    cycleFieldNext: () => {
-      handleTabNavigation(false);
-    },
-    cycleFieldPrev: () => {
-      handleTabNavigation(true);
-    },
-  };
-
   // Update actions context when this LifeLog is selected
   createEffect(() => {
     if (isSelected$()) {
-      actionsContext.setActions(actions);
-      actionsContext.setState({
-        isEditing: props.isEditing,
-        isLifeLogSelected: isLifeLogSelected$(),
-        isLifeLogTreeFocused: isLifeLogTreeFocused$(),
+      setActionsContext({
         hasSelection: true,
-      });
-    }
-  });
-
-  // Update editing state in context
-  createEffect(() => {
-    if (isSelected$()) {
-      actionsContext.setState({
         isEditing: props.isEditing,
         isLifeLogSelected: isLifeLogSelected$(),
         isLifeLogTreeFocused: isLifeLogTreeFocused$(),
+        editingField: props.editingField,
+        id: props.id,
+        prevId: props.prevId,
+        nextId: props.nextId,
+        firstId: props.firstId,
+        lastId: props.lastId,
+        selectedNodeId: selectedLifeLogNodeId$(),
+        setIsEditing: props.setIsEditing,
+        setEditingField: props.setEditingField,
+        setSelectedNodeId: setSelectedLifeLogNodeId,
       });
     }
   });
 
   onCleanup(() => {
     if (isSelected$()) {
-      actionsContext.setActions(undefined);
-      actionsContext.setState({
+      setActionsContext({
         hasSelection: false,
         isEditing: false,
         isLifeLogSelected: false,
         isLifeLogTreeFocused: false,
+        editingField: EditingField.Text,
+        id: "",
+        prevId: "",
+        nextId: "",
+        firstId: "",
+        lastId: "",
+        selectedNodeId: "",
+        setIsEditing: (_v: boolean) => undefined,
+        setEditingField: (_field: EditingField) => undefined,
+        setSelectedNodeId: (_id: string) => undefined,
       });
     }
   });
@@ -251,184 +144,60 @@ export function LifeLogTree(props: {
       switch (event.code) {
         case "KeyL": {
           if (shiftKey || isLifeLogTreeFocused$()) return;
-
           event.stopImmediatePropagation();
-
-          const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
-          if (!lifeLog) return;
-
-          const firstChildNode = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
-          let id = "";
-
-          firestore.setClock(true);
-          try {
-            if (firstChildNode) {
-              id = firstChildNode.id;
-            } else {
-              id = uuidv7();
-              await runBatch(firestore, (batch) => {
-                addSingle(firestore, batch, lifeLogTreeNodesCol, lifeLog.id, {
-                  id,
-                  text: "new",
-                });
-
-                return Promise.resolve();
-              });
-            }
-          } finally {
-            await startTransition(() => {
-              setSelectedLifeLogNodeId(id);
-              firestore.setClock(false);
-            });
-          }
-
+          await enterTree();
           break;
         }
 
         case "KeyH": {
           if (shiftKey || isLifeLogSelected$()) return;
           event.stopImmediatePropagation();
-
-          setSelectedLifeLogNodeId("");
-
+          exitTree();
           break;
         }
 
         case "KeyJ": {
-          if (shiftKey || isLifeLogTreeFocused$() || props.nextId === "") return;
+          if (shiftKey || isLifeLogTreeFocused$()) return;
           event.stopImmediatePropagation();
-
-          updateState((state) => {
-            state.panesLifeLogs.selectedLifeLogId = props.nextId;
-          });
-
+          navigateNext();
           break;
         }
 
         case "KeyK": {
-          if (shiftKey || isLifeLogTreeFocused$() || props.prevId === "") return;
+          if (shiftKey || isLifeLogTreeFocused$()) return;
           event.stopImmediatePropagation();
-
-          updateState((state) => {
-            state.panesLifeLogs.selectedLifeLogId = props.prevId;
-          });
-
+          navigatePrev();
           break;
         }
 
         case "KeyG": {
           if (isLifeLogTreeFocused$()) return; // Tree navigation handled in tree.tsx
           event.stopImmediatePropagation();
-
           if (shiftKey) {
-            // G: move to the last LifeLog
-            if (props.lastId === "" || props.id === props.lastId) return;
-            updateState((state) => {
-              state.panesLifeLogs.selectedLifeLogId = props.lastId;
-            });
+            goToLast();
           } else {
-            // g: move to the first LifeLog
-            if (props.firstId === "" || props.id === props.firstId) return;
-            updateState((state) => {
-              state.panesLifeLogs.selectedLifeLogId = props.firstId;
-            });
+            goToFirst();
           }
-
           break;
         }
 
         case "KeyO": {
           event.stopImmediatePropagation();
-
-          if (isLifeLogTreeFocused$()) {
-            // Tree is focused: add sibling node
-            const node = await getDoc(firestore, lifeLogTreeNodesCol, selectedLifeLogNodeId$());
-            if (!node) return;
-
-            const newNodeId = uuidv7();
-
-            try {
-              firestore.setClock(true);
-              await runBatch(firestore, async (batch) => {
-                if (shiftKey) {
-                  // Shift+O: add above
-                  await addPrevSibling(firestore, batch, lifeLogTreeNodesCol, node, { id: newNodeId, text: "" });
-                } else {
-                  // o: add below
-                  await addNextSibling(firestore, batch, lifeLogTreeNodesCol, node, { id: newNodeId, text: "" });
-                }
-              });
-
-              await startTransition(() => {
-                setSelectedLifeLogNodeId(newNodeId);
-                props.setIsEditing(true);
-                firestore.setClock(false);
-              });
-            } finally {
-              firestore.setClock(false);
-            }
-          } else {
-            // LifeLog is focused: add new LifeLog
-            if (shiftKey) return;
-
-            const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
-            if (!lifeLog) return;
-
-            const newLifeLogId = uuidv7();
-
-            firestore.setClock(true);
-            try {
-              await runBatch(firestore, (batch) => {
-                setDoc(firestore, batch, lifeLogsCol, {
-                  id: newLifeLogId,
-                  text: "",
-                  startAt: lifeLog.endAt,
-                  endAt: noneTimestamp,
-                });
-
-                return Promise.resolve();
-              });
-
-              await startTransition(() => {
-                updateState((state) => {
-                  state.panesLifeLogs.selectedLifeLogId = newLifeLogId;
-                  state.panesLifeLogs.selectedLifeLogNodeId = "";
-                });
-
-                props.setIsEditing(true);
-                props.setEditingField(EditingField.Text);
-
-                firestore.setClock(false);
-              });
-            } finally {
-              firestore.setClock(false);
-            }
-          }
-
+          await addSiblingNode(shiftKey);
           break;
         }
 
         case "KeyS": {
           if (shiftKey || isLifeLogTreeFocused$()) return;
           event.stopImmediatePropagation();
-
-          const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
-          if (!lifeLog || !lifeLog.startAt.isEqual(noneTimestamp)) return;
-
-          await saveStartAt(Timestamp.fromMillis(Math.floor(DateNow() / 1000) * 1000));
-
+          await setStartAtNow();
           break;
         }
 
         case "KeyF": {
           if (shiftKey || isLifeLogTreeFocused$()) return;
           event.stopImmediatePropagation();
-
-          const lifeLog = await getDoc(firestore, lifeLogsCol, props.id);
-          if (!lifeLog || !lifeLog.endAt.isEqual(noneTimestamp)) return;
-
-          await saveEndAt(Timestamp.fromMillis(Math.floor(DateNow() / 1000) * 1000));
-
+          await setEndAtNow();
           break;
         }
       }

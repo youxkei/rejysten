@@ -6,7 +6,7 @@ import { createMemo, createSignal } from "solid-js";
 import { DateNow, TimestampNow } from "@/date";
 import { LifeLogTree } from "@/panes/lifeLogs/LifeLogTree";
 import { MobileToolbar } from "@/panes/lifeLogs/MobileToolbar";
-import { ActionsProvider } from "@/panes/lifeLogs/actionsContext";
+import { ActionsProvider } from "@/panes/lifeLogs/actions";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { useRangeFromFocus } from "@/panes/lifeLogs/useRangeFromFocus";
 import { getCollection, useFirestoreService } from "@/services/firebase/firestore";
@@ -14,11 +14,6 @@ import { createSubscribeAllSignal } from "@/services/firebase/firestore/subscrib
 import { ScrollContainer } from "@/solid/scroll";
 import { styles } from "@/styles.css";
 import { dayMs, noneTimestamp } from "@/timestamp";
-
-// Re-export for external use
-export { EditingField } from "./schema";
-export { LifeLogTree } from "./LifeLogTree";
-export { useRangeFromFocus } from "./useRangeFromFocus";
 
 export interface LifeLogsProps {
   rangeMs?: number;
