@@ -1257,21 +1257,21 @@ describe("<LifeLogs />", () => {
     });
 
     describe("navigation buttons", () => {
-      it("navigates to next LifeLog with ⬇️ button click", async ({ db, task }) => {
+      it("navigates to next LifeLog with ⬆️ button click", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         // Initial: $log1 is selected
         const log1Initial = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
         expect(log1Initial?.className).toContain(styles.lifeLogTree.selected);
 
-        // Click ⬇️ button
-        const downButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "⬇️",
+        // Click ⬆️ button
+        const upButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⬆️",
         ) as HTMLButtonElement;
-        expect(downButton).toBeTruthy();
-        expect(downButton.disabled).toBe(false);
+        expect(upButton).toBeTruthy();
+        expect(upButton.disabled).toBe(false);
 
-        downButton.click();
+        upButton.click();
         await awaitPendingCallbacks();
 
         // $log2 should now be selected
@@ -1279,7 +1279,7 @@ describe("<LifeLogs />", () => {
         expect(log2?.className).toContain(styles.lifeLogTree.selected);
       });
 
-      it("navigates to previous LifeLog with ⬆️ button click", async ({ db, task }) => {
+      it("navigates to previous LifeLog with ⬇️ button click", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         // Navigate to $log2 first
@@ -1289,13 +1289,13 @@ describe("<LifeLogs />", () => {
         const log2Initial = result.getByText("second lifelog").closest(`.${styles.lifeLogTree.container}`);
         expect(log2Initial?.className).toContain(styles.lifeLogTree.selected);
 
-        // Click ⬆️ button
-        const upButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "⬆️",
+        // Click ⬇️ button
+        const downButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⬇️",
         ) as HTMLButtonElement;
-        expect(upButton).toBeTruthy();
+        expect(downButton).toBeTruthy();
 
-        upButton.click();
+        downButton.click();
         await awaitPendingCallbacks();
 
         // $log1 should now be selected

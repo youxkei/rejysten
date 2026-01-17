@@ -46,16 +46,16 @@ function NavigationToolbar() {
   return (
     <div class={styles.mobileToolbar.buttonGroup}>
       <button class={styles.mobileToolbar.button} onClick={handleNavigatePrev} disabled={!actions.context.hasSelection}>
-        ⬆️
-      </button>
-      <button class={styles.mobileToolbar.button} onClick={handleNavigateNext} disabled={!actions.context.hasSelection}>
         ⬇️
       </button>
+      <button class={styles.mobileToolbar.button} onClick={handleNavigateNext} disabled={!actions.context.hasSelection}>
+        ⬆️
+      </button>
       <button class={styles.mobileToolbar.button} onClick={handleGoToFirst} disabled={!actions.context.hasSelection}>
-        ⏫
+        ⏬
       </button>
       <button class={styles.mobileToolbar.button} onClick={handleGoToLast} disabled={!actions.context.hasSelection}>
-        ⏬
+        ⏫
       </button>
 
       <Show when={!actions.context.isLifeLogTreeFocused}>
