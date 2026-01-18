@@ -76,6 +76,18 @@ function NavigationToolbar() {
   const handleStartEditing = withOwner(() => {
     actions.startEditing();
   });
+  const handleAddNodeAbove = withOwner(() => {
+    awaitable(actions.addSiblingNode)(true);
+  });
+  const handleAddNodeBelow = withOwner(() => {
+    awaitable(actions.addSiblingNode)(false);
+  });
+  const handleIndent = withOwner(() => {
+    awaitable(treeActions.indentNode)();
+  });
+  const handleDedent = withOwner(() => {
+    awaitable(treeActions.dedentNode)();
+  });
 
   return (
     <div class={styles.mobileToolbar.buttonGroup}>
@@ -123,27 +135,43 @@ function NavigationToolbar() {
         </button>
       </Show>
 
-      <button
-        class={styles.mobileToolbar.button}
-        onClick={handleNewLifeLog}
-        disabled={state.panesLifeLogs.selectedLifeLogId === ""}
-      >
-        ➕
-      </button>
-      <button
-        class={styles.mobileToolbar.button}
-        onClick={handleSetStartAtNow}
-        disabled={state.panesLifeLogs.selectedLifeLogId === "" || state.panesLifeLogs.selectedLifeLogNodeId !== ""}
-      >
-        ▶️
-      </button>
-      <button
-        class={styles.mobileToolbar.button}
-        onClick={handleSetEndAtNow}
-        disabled={state.panesLifeLogs.selectedLifeLogId === "" || state.panesLifeLogs.selectedLifeLogNodeId !== ""}
-      >
-        ⏹️
-      </button>
+      <Show when={!isTreeFocused()}>
+        <button
+          class={styles.mobileToolbar.button}
+          onClick={handleNewLifeLog}
+          disabled={state.panesLifeLogs.selectedLifeLogId === ""}
+        >
+          ➕
+        </button>
+        <button
+          class={styles.mobileToolbar.button}
+          onClick={handleSetStartAtNow}
+          disabled={state.panesLifeLogs.selectedLifeLogId === "" || state.panesLifeLogs.selectedLifeLogNodeId !== ""}
+        >
+          ▶️
+        </button>
+        <button
+          class={styles.mobileToolbar.button}
+          onClick={handleSetEndAtNow}
+          disabled={state.panesLifeLogs.selectedLifeLogId === "" || state.panesLifeLogs.selectedLifeLogNodeId !== ""}
+        >
+          ⏹️
+        </button>
+      </Show>
+      <Show when={isTreeFocused()}>
+        <button class={styles.mobileToolbar.button} onClick={handleAddNodeAbove}>
+          ⬆️➕
+        </button>
+        <button class={styles.mobileToolbar.button} onClick={handleAddNodeBelow}>
+          ⬇️➕
+        </button>
+        <button class={styles.mobileToolbar.button} onClick={handleIndent}>
+          ➡️
+        </button>
+        <button class={styles.mobileToolbar.button} onClick={handleDedent}>
+          ↩️
+        </button>
+      </Show>
       <button
         class={styles.mobileToolbar.button}
         onClick={handleStartEditing}

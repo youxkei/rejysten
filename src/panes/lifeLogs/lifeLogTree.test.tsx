@@ -21,7 +21,7 @@ afterEach(async () => {
   cleanup();
 });
 
-describe("<LifeLogTree />", /* { timeout: 2000 }, */ () => {
+describe("<LifeLogTree />", () => {
   it("can enter/exit tree mode with l/h keys", async ({ db, task }) => {
     const { result } = await setupLifeLogsTest(task.id, db);
 
@@ -1318,7 +1318,7 @@ describe("<LifeLogTree />", /* { timeout: 2000 }, */ () => {
         expect(exitTreeButton).toBeUndefined();
       });
 
-      it("shows ⬅️ button and hides ➡️ button when in tree mode", async ({ db, task }) => {
+      it("shows ⬅️ exitTree button and tree action buttons when in tree mode", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         // Enter tree mode
@@ -1326,16 +1326,23 @@ describe("<LifeLogTree />", /* { timeout: 2000 }, */ () => {
         await awaitPendingCallbacks();
         await result.findByText("first child");
 
-        // In tree mode - ⬅️ button should be visible, ➡️ hidden
-        const enterTreeButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "➡️",
-        );
-        const exitTreeButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "⬅️",
-        );
+        // Get all buttons
+        const buttons = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`));
+        const buttonTexts = buttons.map((btn) => btn.textContent);
 
-        expect(exitTreeButton).toBeTruthy();
-        expect(enterTreeButton).toBeUndefined();
+        // In tree mode - ⬅️ exitTree button should be visible
+        expect(buttonTexts).toContain("⬅️");
+
+        // Tree action buttons should be visible (indent ➡️, dedent ↩️, addNodeAbove ⬆️➕, addNodeBelow ⬇️➕)
+        expect(buttonTexts).toContain("➡️"); // indent
+        expect(buttonTexts).toContain("↩️"); // dedent
+        expect(buttonTexts).toContain("⬆️➕");
+        expect(buttonTexts).toContain("⬇️➕");
+
+        // LifeLog-specific buttons should be hidden
+        expect(buttonTexts).not.toContain("➕"); // newLifeLog
+        expect(buttonTexts).not.toContain("▶️"); // setStartAtNow
+        expect(buttonTexts).not.toContain("⏹️"); // setEndAtNow
       });
 
       it("exits tree mode with ⬅️ button click", async ({ db, task }) => {
@@ -1499,6 +1506,194 @@ describe("<LifeLogTree />", /* { timeout: 2000 }, */ () => {
         // $log1 should be selected
         const log1AfterExit = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
         expect(log1AfterExit?.className).toContain(styles.lifeLogTree.selected);
+      });
+    });
+
+    describe("tree action buttons in tree mode", () => {
+      it("adds node below with ⬇️➕ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // Enter tree mode
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Wait for tree nodes to render
+        await result.findByText("first child");
+
+        // Initial state: first child is selected
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+
+        // Click ⬇️➕ button to add node below
+        const addNodeBelowButton = Array.from(
+          result.container.querySelectorAll(`.${styles.mobileToolbar.button}`),
+        ).find((btn) => btn.textContent === "⬇️➕") as HTMLButtonElement;
+        expect(addNodeBelowButton).toBeTruthy();
+
+        await userEvent.click(addNodeBelowButton);
+        await awaitPendingCallbacks();
+
+        // Verify input appeared (editing mode)
+        const input = result.container.querySelector("input")!;
+        expect(input).toBeTruthy();
+
+        // Type text for the new node
+        input.focus();
+        await userEvent.keyboard("new node below");
+        await awaitPendingCallbacks();
+
+        // Press Escape to save and exit editing
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+
+        // Verify the new node is displayed
+        expect(result.getByText("new node below")).toBeTruthy();
+
+        // Verify the order: first child should come before new node below
+        const firstChildLi = result.getByText("first child").closest("li")!;
+        const newNodeLi = result.getByText("new node below").closest("li")!;
+        expect(firstChildLi.parentElement).toBe(newNodeLi.parentElement);
+        const children = Array.from(firstChildLi.parentElement!.children);
+        expect(children.indexOf(firstChildLi)).toBeLessThan(children.indexOf(newNodeLi));
+      });
+
+      it("adds node above with ⬆️➕ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // Enter tree mode
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Wait for tree nodes to render
+        await result.findByText("second child");
+
+        // Navigate to second child (j -> j -> j)
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+
+        expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
+
+        // Click ⬆️➕ button to add node above
+        const addNodeAboveButton = Array.from(
+          result.container.querySelectorAll(`.${styles.mobileToolbar.button}`),
+        ).find((btn) => btn.textContent === "⬆️➕") as HTMLButtonElement;
+        expect(addNodeAboveButton).toBeTruthy();
+
+        await userEvent.click(addNodeAboveButton);
+        await awaitPendingCallbacks();
+
+        // Verify input appeared (editing mode)
+        const input = result.container.querySelector("input")!;
+        expect(input).toBeTruthy();
+
+        // Type text for the new node
+        input.focus();
+        await userEvent.keyboard("new node above");
+        await awaitPendingCallbacks();
+
+        // Press Escape to save and exit editing
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+
+        // Verify the new node is displayed
+        expect(result.getByText("new node above")).toBeTruthy();
+
+        // Verify the order: new node above should come before second child
+        const newNodeLi = result.getByText("new node above").closest("li")!;
+        const secondChildLi = result.getByText("second child").closest("li")!;
+        expect(newNodeLi.parentElement).toBe(secondChildLi.parentElement);
+        const children = Array.from(newNodeLi.parentElement!.children);
+        expect(children.indexOf(newNodeLi)).toBeLessThan(children.indexOf(secondChildLi));
+      });
+
+      it("indents node with ➡️ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // Enter tree mode
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Wait for tree nodes to render
+        await result.findByText("first child");
+        await result.findByText("second child");
+
+        // Navigate to second child (j -> j -> j)
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+
+        expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
+
+        // Verify initial DOM structure: child1 and child2 are siblings
+        const child1Li = result.getByText("first child").closest("li")!;
+        const child2Li = result.getByText("second child").closest("li")!;
+        const parentUl = child1Li.parentElement!;
+        expect(child2Li.parentElement).toBe(parentUl);
+
+        // Click ➡️ button to indent
+        const indentButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "➡️",
+        ) as HTMLButtonElement;
+        expect(indentButton).toBeTruthy();
+
+        await userEvent.click(indentButton);
+        await awaitPendingCallbacks();
+
+        // Verify DOM structure after indent: child2 should be inside child1's subtree
+        const child1LiAfterIndent = result.getByText("first child").closest("li")!;
+        const child2LiAfterIndent = result.getByText("second child").closest("li")!;
+        expect(child1LiAfterIndent.contains(child2LiAfterIndent)).toBe(true);
+      });
+
+      it("dedents node with ↩️ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // Enter tree mode
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Wait for tree nodes to render
+        await result.findByText("first child");
+        await result.findByText("grandchild");
+
+        // Navigate to grandchild (j to move from first child to grandchild)
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+
+        expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+
+        // Verify initial DOM structure: grandchild is inside first child
+        const child1Li = result.getByText("first child").closest("li")!;
+        const grandchildLi = result.getByText("grandchild").closest("li")!;
+        expect(child1Li.contains(grandchildLi)).toBe(true);
+
+        // Click ↩️ dedent button
+        const dedentButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "↩️",
+        ) as HTMLButtonElement;
+        expect(dedentButton).toBeTruthy();
+
+        await userEvent.click(dedentButton);
+        await awaitPendingCallbacks();
+
+        // Verify DOM structure after dedent: grandchild should be sibling of first child
+        const child1LiAfterDedent = result.getByText("first child").closest("li")!;
+        const grandchildLiAfterDedent = result.getByText("grandchild").closest("li")!;
+        expect(child1LiAfterDedent.parentElement).toBe(grandchildLiAfterDedent.parentElement);
       });
     });
   });
