@@ -48,10 +48,9 @@ function createActions(context: ActionsContext): Actions {
       Object.entries(actionsCreator.panes).map(([key, creator]) => [key, creator(context)]),
     ) as unknown as PanesActions,
 
-    // components: Object.fromEntries(
-    //   Object.entries(actionsCreator.components).map(([key, creator]) => [key, creator(context)]),
-    // ) as unknown as ComponentnsActions,
-    components: {},
+    components: Object.fromEntries(
+      Object.entries(actionsCreator.components).map(([key, creator]) => [key, creator(context)]),
+    ) as unknown as ComponentnsActions,
   };
 }
 

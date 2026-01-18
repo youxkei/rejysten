@@ -5,6 +5,7 @@ import { uuidv7 } from "uuidv7";
 
 import { EditableValue } from "@/components/EditableValue";
 import { EditingField } from "@/panes/lifeLogs/schema";
+import { useActionsService } from "@/services/actions";
 import { type DocumentData, getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { getDoc } from "@/services/firebase/firestore";
 import { runBatch, updateDoc } from "@/services/firebase/firestore/batch";
@@ -23,7 +24,6 @@ export function LifeLogTreeNode(props: {
   lifeLogId: string;
   node$: Accessor<DocumentData<Schema["lifeLogTreeNodes"]>>;
   isSelected$: Accessor<boolean>;
-  handleTabIndent: (shiftKey: boolean) => Promise<void>;
   isEditing: boolean;
   setIsEditing: Setter<boolean>;
   setEditingField: (field: EditingField) => void;
@@ -39,9 +39,9 @@ export function LifeLogTreeNode(props: {
   setLifeLogCursorInfo: (info: { lifeLogId: string; cursorPosition: number } | undefined) => void;
 }) {
   const firestore = useFirestoreService();
+  const actionsService = useActionsService();
   const lifeLogTreeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
 
-  // DEBUG
   async function onSaveNode(newText: string) {
     firestore.setClock(true);
     try {
@@ -68,7 +68,11 @@ export function LifeLogTreeNode(props: {
 
       const cursorPosition = inputRef.selectionStart ?? 0;
       await onSaveNode(inputRef.value);
-      await props.handleTabIndent(event.shiftKey);
+      if (event.shiftKey) {
+        await actionsService.components.tree.dedentNode();
+      } else {
+        await actionsService.components.tree.indentNode();
+      }
       props.setTabCursorInfo({ nodeId: props.node$().id, cursorPosition });
       return;
     }

@@ -77,14 +77,24 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }) => {
   }
 
   function goToFirst() {
-    if (state.panesLifeLogs.selectedLifeLogNodeId !== "" || context.firstId === "" || state.panesLifeLogs.selectedLifeLogId === context.firstId) return;
+    if (
+      state.panesLifeLogs.selectedLifeLogNodeId !== "" ||
+      context.firstId === "" ||
+      state.panesLifeLogs.selectedLifeLogId === context.firstId
+    )
+      return;
     updateState((s) => {
       s.panesLifeLogs.selectedLifeLogId = context.firstId;
     });
   }
 
   function goToLast() {
-    if (state.panesLifeLogs.selectedLifeLogNodeId !== "" || context.lastId === "" || state.panesLifeLogs.selectedLifeLogId === context.lastId) return;
+    if (
+      state.panesLifeLogs.selectedLifeLogNodeId !== "" ||
+      context.lastId === "" ||
+      state.panesLifeLogs.selectedLifeLogId === context.lastId
+    )
+      return;
     updateState((s) => {
       s.panesLifeLogs.selectedLifeLogId = context.lastId;
     });

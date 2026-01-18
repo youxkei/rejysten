@@ -447,12 +447,11 @@ export function LifeLogTree(props: {
                 selectedId={selectedLifeLogNodeId$()}
                 setSelectedId={setSelectedLifeLogNodeId}
                 createNewNode={(newId, initialText) => ({ id: newId, text: initialText ?? "" })}
-                showNode={(node$, isSelected$, handleTabIndent) => (
+                showNode={(node$, isSelected$) => (
                   <LifeLogTreeNode
                     lifeLogId={props.id}
                     node$={node$}
                     isSelected$={isSelected$}
-                    handleTabIndent={handleTabIndent}
                     isEditing={props.isEditing}
                     setIsEditing={props.setIsEditing}
                     setEditingField={props.setEditingField}

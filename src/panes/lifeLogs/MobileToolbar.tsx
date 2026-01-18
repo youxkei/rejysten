@@ -53,21 +53,41 @@ function NavigationToolbar() {
 
   return (
     <div class={styles.mobileToolbar.buttonGroup}>
-      <button class={styles.mobileToolbar.button} onClick={handleNavigateNext} disabled={state.panesLifeLogs.selectedLifeLogId === ""}>
+      <button
+        class={styles.mobileToolbar.button}
+        onClick={handleNavigateNext}
+        disabled={state.panesLifeLogs.selectedLifeLogId === ""}
+      >
         ⬆️
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleNavigatePrev} disabled={state.panesLifeLogs.selectedLifeLogId === ""}>
+      <button
+        class={styles.mobileToolbar.button}
+        onClick={handleNavigatePrev}
+        disabled={state.panesLifeLogs.selectedLifeLogId === ""}
+      >
         ⬇️
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleGoToLast} disabled={state.panesLifeLogs.selectedLifeLogId === ""}>
+      <button
+        class={styles.mobileToolbar.button}
+        onClick={handleGoToLast}
+        disabled={state.panesLifeLogs.selectedLifeLogId === ""}
+      >
         ⏫
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleGoToFirst} disabled={state.panesLifeLogs.selectedLifeLogId === ""}>
+      <button
+        class={styles.mobileToolbar.button}
+        onClick={handleGoToFirst}
+        disabled={state.panesLifeLogs.selectedLifeLogId === ""}
+      >
         ⏬
       </button>
 
       <Show when={state.panesLifeLogs.selectedLifeLogNodeId === ""}>
-        <button class={styles.mobileToolbar.button} onClick={handleEnterTree} disabled={state.panesLifeLogs.selectedLifeLogId === "" || state.panesLifeLogs.selectedLifeLogNodeId !== ""}>
+        <button
+          class={styles.mobileToolbar.button}
+          onClick={handleEnterTree}
+          disabled={state.panesLifeLogs.selectedLifeLogId === "" || state.panesLifeLogs.selectedLifeLogNodeId !== ""}
+        >
           ➡️
         </button>
       </Show>
@@ -77,16 +97,32 @@ function NavigationToolbar() {
         </button>
       </Show>
 
-      <button class={styles.mobileToolbar.button} onClick={handleNewLifeLog} disabled={state.panesLifeLogs.selectedLifeLogId === ""}>
+      <button
+        class={styles.mobileToolbar.button}
+        onClick={handleNewLifeLog}
+        disabled={state.panesLifeLogs.selectedLifeLogId === ""}
+      >
         ➕
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleSetStartAtNow} disabled={state.panesLifeLogs.selectedLifeLogId === "" || state.panesLifeLogs.selectedLifeLogNodeId !== ""}>
+      <button
+        class={styles.mobileToolbar.button}
+        onClick={handleSetStartAtNow}
+        disabled={state.panesLifeLogs.selectedLifeLogId === "" || state.panesLifeLogs.selectedLifeLogNodeId !== ""}
+      >
         ▶️
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleSetEndAtNow} disabled={state.panesLifeLogs.selectedLifeLogId === "" || state.panesLifeLogs.selectedLifeLogNodeId !== ""}>
+      <button
+        class={styles.mobileToolbar.button}
+        onClick={handleSetEndAtNow}
+        disabled={state.panesLifeLogs.selectedLifeLogId === "" || state.panesLifeLogs.selectedLifeLogNodeId !== ""}
+      >
         ⏹️
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleStartEditing} disabled={state.panesLifeLogs.selectedLifeLogId === ""}>
+      <button
+        class={styles.mobileToolbar.button}
+        onClick={handleStartEditing}
+        disabled={state.panesLifeLogs.selectedLifeLogId === ""}
+      >
         ✏️
       </button>
     </div>

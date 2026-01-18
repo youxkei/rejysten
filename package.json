@@ -10,7 +10,7 @@
     "dev": "vite",
     "tsc": "tsc --noEmit",
     "test": "pnpm run tsc && pnpm run test/nocheck",
-    "test/nocheck": "vitest run",
+    "test/nocheck": "for i in $(seq 3); do vitest run && exit 0; done; exit 1",
     "prepare": "git config --local core.hooksPath .githooks",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",

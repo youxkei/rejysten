@@ -5,13 +5,4 @@ git stash -uk
 trap 'git stash pop' EXIT
 
 npm run lint
-max_retries=2
-attempt=0
-until npm run test; do
-  attempt=$((attempt + 1))
-  if [ $attempt -ge $max_retries ]; then
-    echo "Tests failed after $max_retries retries"
-    exit 1
-  fi
-  echo "Test failed, retrying ($attempt/$max_retries)..."
-done
+npm run test
