@@ -3,6 +3,7 @@ import { onMount, Suspense, type JSXElement, createSignal } from "solid-js";
 import { type Meta, type StoryObj } from "storybook-solidjs-vite";
 
 import { LifeLogs } from "@/panes/lifeLogs";
+import { ActionsServiceProvider } from "@/services/actions";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import {
   FirestoreServiceProvider,
@@ -45,7 +46,9 @@ function StorybookFirebaseWrapper(props: { children: JSXElement; showConfig?: bo
           <pre>{errors().join("\n")}</pre>
         </>
       )}
-      <FirestoreServiceProvider>{props.children}</FirestoreServiceProvider>
+      <FirestoreServiceProvider>
+        <ActionsServiceProvider>{props.children}</ActionsServiceProvider>
+      </FirestoreServiceProvider>
     </FirebaseServiceProvider>
   );
 }
