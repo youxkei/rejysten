@@ -1,21 +1,6 @@
 import { type Timestamp } from "firebase/firestore";
 
 import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
-import { initialState } from "@/services/store";
-
-declare module "@/services/store" {
-  interface State {
-    panesLifeLogs: {
-      selectedLifeLogId: string;
-      selectedLifeLogNodeId: string;
-    };
-  }
-}
-
-initialState.panesLifeLogs = {
-  selectedLifeLogId: "",
-  selectedLifeLogNodeId: "",
-};
 
 declare module "@/services/firebase/firestore/schema" {
   interface Schema {

@@ -1,6 +1,7 @@
 import { Show } from "solid-js";
 
 import { useActionsService } from "@/services/actions";
+import { useStoreService } from "@/services/store";
 import { withOwner } from "@/solid/owner";
 import { styles } from "@/styles.css";
 
@@ -27,6 +28,7 @@ function NavigationToolbar() {
     },
     panes: { lifeLogs: actions },
   } = useActionsService();
+  const { state } = useStoreService();
 
   // Wrap action calls to preserve SolidJS context
   const handleNavigatePrev = withOwner(() => {
@@ -54,16 +56,16 @@ function NavigationToolbar() {
 
   return (
     <div class={styles.mobileToolbar.buttonGroup}>
-      <button class={styles.mobileToolbar.button} onClick={handleNavigateNext} disabled={!context.hasSelection}>
+      <button class={styles.mobileToolbar.button} onClick={handleNavigateNext} disabled={state.panesLifeLogs.selectedLifeLogId === ""}>
         ⬆️
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleNavigatePrev} disabled={!context.hasSelection}>
+      <button class={styles.mobileToolbar.button} onClick={handleNavigatePrev} disabled={state.panesLifeLogs.selectedLifeLogId === ""}>
         ⬇️
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleGoToLast} disabled={!context.hasSelection}>
+      <button class={styles.mobileToolbar.button} onClick={handleGoToLast} disabled={state.panesLifeLogs.selectedLifeLogId === ""}>
         ⏫
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleGoToFirst} disabled={!context.hasSelection}>
+      <button class={styles.mobileToolbar.button} onClick={handleGoToFirst} disabled={state.panesLifeLogs.selectedLifeLogId === ""}>
         ⏬
       </button>
 
@@ -78,7 +80,7 @@ function NavigationToolbar() {
         </button>
       </Show>
 
-      <button class={styles.mobileToolbar.button} onClick={handleNewLifeLog} disabled={!context.hasSelection}>
+      <button class={styles.mobileToolbar.button} onClick={handleNewLifeLog} disabled={state.panesLifeLogs.selectedLifeLogId === ""}>
         ➕
       </button>
       <button class={styles.mobileToolbar.button} onClick={handleSetStartAtNow} disabled={!context.isLifeLogSelected}>
@@ -87,7 +89,7 @@ function NavigationToolbar() {
       <button class={styles.mobileToolbar.button} onClick={handleSetEndAtNow} disabled={!context.isLifeLogSelected}>
         ⏹️
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleStartEditing} disabled={!context.hasSelection}>
+      <button class={styles.mobileToolbar.button} onClick={handleStartEditing} disabled={state.panesLifeLogs.selectedLifeLogId === ""}>
         ✏️
       </button>
     </div>

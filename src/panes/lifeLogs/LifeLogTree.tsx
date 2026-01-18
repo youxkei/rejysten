@@ -82,7 +82,6 @@ export function LifeLogTree(props: {
   createEffect(() => {
     if (isSelected$()) {
       actions.updateContext((ctx) => {
-        ctx.panes.lifeLogs.hasSelection = true;
         ctx.panes.lifeLogs.isEditing = props.isEditing;
         ctx.panes.lifeLogs.isLifeLogSelected = isLifeLogSelected$();
         ctx.panes.lifeLogs.isLifeLogTreeFocused = isLifeLogTreeFocused$();
@@ -103,7 +102,6 @@ export function LifeLogTree(props: {
   onCleanup(() => {
     if (isSelected$()) {
       actions.updateContext((ctx) => {
-        ctx.panes.lifeLogs.hasSelection = false;
         ctx.panes.lifeLogs.isEditing = false;
         ctx.panes.lifeLogs.isLifeLogSelected = false;
         ctx.panes.lifeLogs.isLifeLogTreeFocused = false;

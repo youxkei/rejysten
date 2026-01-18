@@ -17,7 +17,6 @@ declare module "@/services/actions" {
       isEditing: boolean;
       isLifeLogSelected: boolean;
       isLifeLogTreeFocused: boolean;
-      hasSelection: boolean;
       editingField: EditingField;
       id: string;
       prevId: string;
@@ -56,7 +55,6 @@ initialActionsContext.panes.lifeLogs = {
   isEditing: false,
   isLifeLogSelected: false,
   isLifeLogTreeFocused: false,
-  hasSelection: false,
   editingField: EditingField.Text,
   id: "",
   prevId: "",
