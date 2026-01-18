@@ -1366,5 +1366,140 @@ describe("<LifeLogTree />", /* { timeout: 2000 }, */ () => {
         expect(log1?.className).toContain(styles.lifeLogTree.selected);
       });
     });
+
+    describe("navigation buttons in tree mode", () => {
+      it("navigates tree nodes with ⬆️/⬇️ buttons in tree mode", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // Enter tree mode with l key
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Wait for tree nodes to render
+        await result.findByText("first child");
+        await result.findByText("grandchild");
+
+        // Initial state: first child is selected
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+
+        // Click ⬇️ button to navigate down (first child → grandchild)
+        const downButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⬇️",
+        ) as HTMLButtonElement;
+        expect(downButton).toBeTruthy();
+
+        await userEvent.click(downButton);
+        await awaitPendingCallbacks();
+
+        // grandchild should now be selected
+        expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+
+        // Click ⬆️ button to navigate back up (grandchild → first child)
+        const upButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⬆️",
+        ) as HTMLButtonElement;
+        expect(upButton).toBeTruthy();
+
+        await userEvent.click(upButton);
+        await awaitPendingCallbacks();
+
+        // first child should be selected again
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      it("navigates to first/last tree node with ⏫/⏬ buttons in tree mode", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // Enter tree mode with l key
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Wait for tree nodes to render
+        // Tree structure: first child > grandchild > great-grandchild, second child, third child > third grandchild
+        await result.findByText("first child");
+        await result.findByText("third grandchild");
+
+        // Initial state: first child is selected
+        await waitFor(() => {
+          expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+        });
+
+        // Click ⏬ button to go to last node
+        const goToLastButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⏬",
+        ) as HTMLButtonElement;
+        expect(goToLastButton).toBeTruthy();
+
+        await userEvent.click(goToLastButton);
+        await awaitPendingCallbacks();
+
+        // third grandchild (actual last node in pre-order) should now be selected
+        await waitFor(() => {
+          expect(result.getByText("third grandchild").className).toContain(styles.lifeLogTree.selected);
+        });
+
+        // Click ⏫ button to go to first node
+        const goToFirstButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⏫",
+        ) as HTMLButtonElement;
+        expect(goToFirstButton).toBeTruthy();
+
+        await userEvent.click(goToFirstButton);
+        await awaitPendingCallbacks();
+
+        // first child should be selected again
+        await waitFor(() => {
+          expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+        });
+      });
+
+      it("navigation buttons switch between lifeLog and tree modes", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // Initial state: first lifeLog ($log1) is selected
+        const log1Initial = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log1Initial?.className).toContain(styles.lifeLogTree.selected);
+
+        // Enter tree mode with l key
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Wait for tree nodes to render
+        await result.findByText("first child");
+        await result.findByText("grandchild");
+
+        // first child should be selected
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+
+        // Click ⬇️ button to navigate within tree (first child → grandchild)
+        const downButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⬇️",
+        ) as HTMLButtonElement;
+        expect(downButton).toBeTruthy();
+
+        await userEvent.click(downButton);
+        await awaitPendingCallbacks();
+
+        // grandchild should be selected
+        expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+
+        // Exit tree mode with h key
+        await userEvent.keyboard("{h}");
+        await awaitPendingCallbacks();
+
+        // Tree nodes should be hidden
+        expect(result.queryByText("first child")).toBeNull();
+
+        // $log1 should be selected
+        const log1AfterExit = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log1AfterExit?.className).toContain(styles.lifeLogTree.selected);
+      });
+    });
   });
 });

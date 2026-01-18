@@ -1,5 +1,6 @@
 import { Show } from "solid-js";
 
+import { awaitable } from "@/awaitableCallback";
 import { useActionsService } from "@/services/actions";
 import { useStoreService } from "@/services/store";
 import { withOwner } from "@/solid/owner";
@@ -24,21 +25,46 @@ export function MobileToolbar() {
 function NavigationToolbar() {
   const {
     panes: { lifeLogs: actions },
+    components: { tree: treeActions },
   } = useActionsService();
   const { state } = useStoreService();
 
+  const isTreeFocused = () => state.panesLifeLogs.selectedLifeLogNodeId !== "";
+
   // Wrap action calls to preserve SolidJS context
+  // Note: In lifeLog mode, "prev" goes up visually (older entries), "next" goes down (newer entries)
+  // In tree mode, we map ⬇️ to navigateDown (next in pre-order) and ⬆️ to navigateUp (prev in pre-order)
   const handleNavigatePrev = withOwner(() => {
-    actions.navigatePrev();
+    if (isTreeFocused()) {
+      // ⬇️ button: go DOWN in tree (next node in pre-order traversal)
+      awaitable(treeActions.navigateDown)();
+    } else {
+      actions.navigatePrev();
+    }
   });
   const handleNavigateNext = withOwner(() => {
-    actions.navigateNext();
+    if (isTreeFocused()) {
+      // ⬆️ button: go UP in tree (previous node in pre-order traversal)
+      awaitable(treeActions.navigateUp)();
+    } else {
+      actions.navigateNext();
+    }
   });
   const handleGoToFirst = withOwner(() => {
-    actions.goToFirst();
+    if (isTreeFocused()) {
+      // ⏬ button: go to LAST node in tree (bottom of visual tree)
+      awaitable(treeActions.goToLast)();
+    } else {
+      actions.goToFirst();
+    }
   });
   const handleGoToLast = withOwner(() => {
-    actions.goToLast();
+    if (isTreeFocused()) {
+      // ⏫ button: go to FIRST node in tree (top of visual tree)
+      awaitable(treeActions.goToFirst)();
+    } else {
+      actions.goToLast();
+    }
   });
   const handleEnterTree = withOwner(() => actions.enterTree());
   const handleExitTree = withOwner(() => {
