@@ -1302,23 +1302,23 @@ describe("<LifeLogTree />", () => {
   });
 
   describe("MobileToolbar in tree mode", () => {
-    describe("➡️/⬅️ button visibility", () => {
-      it("shows ➡️ button and hides ⬅️ button when not in tree mode", async ({ db, task }) => {
+    describe("➡️/↩️ button visibility", () => {
+      it("shows ➡️ button and hides ↩️ button when not in tree mode", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
-        // Not in tree mode - ➡️ button should be visible, ⬅️ should be hidden
+        // Not in tree mode - ➡️ button should be visible, ↩️ should be hidden
         const enterTreeButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
           (btn) => btn.textContent === "➡️",
         );
         const exitTreeButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "⬅️",
+          (btn) => btn.textContent === "↩️",
         );
 
         expect(enterTreeButton).toBeTruthy();
         expect(exitTreeButton).toBeUndefined();
       });
 
-      it("shows ⬅️ exitTree button and tree action buttons when in tree mode", async ({ db, task }) => {
+      it("shows ↩️ exitTree button and tree action buttons when in tree mode", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         // Enter tree mode
@@ -1330,12 +1330,12 @@ describe("<LifeLogTree />", () => {
         const buttons = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`));
         const buttonTexts = buttons.map((btn) => btn.textContent);
 
-        // In tree mode - ⬅️ exitTree button should be visible
-        expect(buttonTexts).toContain("⬅️");
+        // In tree mode - ↩️ exitTree button should be visible
+        expect(buttonTexts).toContain("↩️"); // exitTree
 
-        // Tree action buttons should be visible (indent ➡️, dedent ↩️, addNodeAbove ⬆️➕, addNodeBelow ⬇️➕)
+        // Tree action buttons should be visible (indent ➡️, dedent ⬅️, addNodeAbove ⬆️➕, addNodeBelow ⬇️➕)
         expect(buttonTexts).toContain("➡️"); // indent
-        expect(buttonTexts).toContain("↩️"); // dedent
+        expect(buttonTexts).toContain("⬅️"); // dedent
         expect(buttonTexts).toContain("⬆️➕");
         expect(buttonTexts).toContain("⬇️➕");
 
@@ -1345,7 +1345,7 @@ describe("<LifeLogTree />", () => {
         expect(buttonTexts).not.toContain("⏹️"); // setEndAtNow
       });
 
-      it("exits tree mode with ⬅️ button click", async ({ db, task }) => {
+      it("exits tree mode with ↩️ button click", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         // Enter tree mode
@@ -1356,9 +1356,9 @@ describe("<LifeLogTree />", () => {
         // Tree nodes should be visible
         expect(result.getByText("first child")).toBeTruthy();
 
-        // Click ⬅️ button to exit
+        // Click first ↩️ button to exit (first one is exitTree)
         const exitTreeButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "⬅️",
+          (btn) => btn.textContent === "↩️",
         ) as HTMLButtonElement;
         expect(exitTreeButton).toBeTruthy();
 
@@ -1657,7 +1657,7 @@ describe("<LifeLogTree />", () => {
         expect(child1LiAfterIndent.contains(child2LiAfterIndent)).toBe(true);
       });
 
-      it("dedents node with ↩️ button click", async ({ db, task }) => {
+      it("dedents node with ⬅️ button click", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         await result.findByText("first lifelog");
@@ -1681,9 +1681,9 @@ describe("<LifeLogTree />", () => {
         const grandchildLi = result.getByText("grandchild").closest("li")!;
         expect(child1Li.contains(grandchildLi)).toBe(true);
 
-        // Click ↩️ dedent button
+        // Click ⬅️ dedent button
         const dedentButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "↩️",
+          (btn) => btn.textContent === "⬅️",
         ) as HTMLButtonElement;
         expect(dedentButton).toBeTruthy();
 

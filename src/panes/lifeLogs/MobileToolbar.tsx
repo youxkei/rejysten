@@ -131,7 +131,7 @@ function NavigationToolbar() {
       </Show>
       <Show when={state.panesLifeLogs.selectedLifeLogNodeId !== ""}>
         <button class={styles.mobileToolbar.button} onClick={handleExitTree}>
-          ⬅️
+          ↩️
         </button>
       </Show>
 
@@ -169,7 +169,7 @@ function NavigationToolbar() {
           ➡️
         </button>
         <button class={styles.mobileToolbar.button} onClick={handleDedent}>
-          ↩️
+          ⬅️
         </button>
       </Show>
       <button
