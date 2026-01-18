@@ -23,9 +23,6 @@ export function MobileToolbar() {
 
 function NavigationToolbar() {
   const {
-    context: {
-      panes: { lifeLogs: context },
-    },
     panes: { lifeLogs: actions },
   } = useActionsService();
   const { state } = useStoreService();
@@ -69,12 +66,12 @@ function NavigationToolbar() {
         ⏬
       </button>
 
-      <Show when={!context.isLifeLogTreeFocused}>
-        <button class={styles.mobileToolbar.button} onClick={handleEnterTree} disabled={!context.isLifeLogSelected}>
+      <Show when={state.panesLifeLogs.selectedLifeLogNodeId === ""}>
+        <button class={styles.mobileToolbar.button} onClick={handleEnterTree} disabled={state.panesLifeLogs.selectedLifeLogId === "" || state.panesLifeLogs.selectedLifeLogNodeId !== ""}>
           ➡️
         </button>
       </Show>
-      <Show when={context.isLifeLogTreeFocused}>
+      <Show when={state.panesLifeLogs.selectedLifeLogNodeId !== ""}>
         <button class={styles.mobileToolbar.button} onClick={handleExitTree}>
           ⬅️
         </button>
@@ -83,10 +80,10 @@ function NavigationToolbar() {
       <button class={styles.mobileToolbar.button} onClick={handleNewLifeLog} disabled={state.panesLifeLogs.selectedLifeLogId === ""}>
         ➕
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleSetStartAtNow} disabled={!context.isLifeLogSelected}>
+      <button class={styles.mobileToolbar.button} onClick={handleSetStartAtNow} disabled={state.panesLifeLogs.selectedLifeLogId === "" || state.panesLifeLogs.selectedLifeLogNodeId !== ""}>
         ▶️
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleSetEndAtNow} disabled={!context.isLifeLogSelected}>
+      <button class={styles.mobileToolbar.button} onClick={handleSetEndAtNow} disabled={state.panesLifeLogs.selectedLifeLogId === "" || state.panesLifeLogs.selectedLifeLogNodeId !== ""}>
         ⏹️
       </button>
       <button class={styles.mobileToolbar.button} onClick={handleStartEditing} disabled={state.panesLifeLogs.selectedLifeLogId === ""}>
@@ -98,11 +95,9 @@ function NavigationToolbar() {
 
 function EditingToolbar() {
   const {
-    context: {
-      panes: { lifeLogs: context },
-    },
     panes: { lifeLogs: actions },
   } = useActionsService();
+  const { state } = useStoreService();
 
   const handleCycleFieldPrev = withOwner(() => {
     actions.cycleFieldPrev();
@@ -113,7 +108,7 @@ function EditingToolbar() {
 
   return (
     <div class={styles.mobileToolbar.buttonGroup}>
-      <Show when={!context.isLifeLogTreeFocused}>
+      <Show when={state.panesLifeLogs.selectedLifeLogNodeId === ""}>
         <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleCycleFieldPrev}>
           ◀️
         </button>

@@ -83,18 +83,13 @@ export function LifeLogTree(props: {
     if (isSelected$()) {
       actions.updateContext((ctx) => {
         ctx.panes.lifeLogs.isEditing = props.isEditing;
-        ctx.panes.lifeLogs.isLifeLogSelected = isLifeLogSelected$();
-        ctx.panes.lifeLogs.isLifeLogTreeFocused = isLifeLogTreeFocused$();
         ctx.panes.lifeLogs.editingField = props.editingField;
-        ctx.panes.lifeLogs.id = props.id;
         ctx.panes.lifeLogs.prevId = props.prevId;
         ctx.panes.lifeLogs.nextId = props.nextId;
         ctx.panes.lifeLogs.firstId = props.firstId;
         ctx.panes.lifeLogs.lastId = props.lastId;
-        ctx.panes.lifeLogs.selectedNodeId = selectedLifeLogNodeId$();
         ctx.panes.lifeLogs.setIsEditing = props.setIsEditing;
         ctx.panes.lifeLogs.setEditingField = props.setEditingField;
-        ctx.panes.lifeLogs.setSelectedNodeId = setSelectedLifeLogNodeId;
       });
     }
   });
@@ -103,18 +98,13 @@ export function LifeLogTree(props: {
     if (isSelected$()) {
       actions.updateContext((ctx) => {
         ctx.panes.lifeLogs.isEditing = false;
-        ctx.panes.lifeLogs.isLifeLogSelected = false;
-        ctx.panes.lifeLogs.isLifeLogTreeFocused = false;
         ctx.panes.lifeLogs.editingField = EditingField.Text;
-        ctx.panes.lifeLogs.id = "";
         ctx.panes.lifeLogs.prevId = "";
         ctx.panes.lifeLogs.nextId = "";
         ctx.panes.lifeLogs.firstId = "";
         ctx.panes.lifeLogs.lastId = "";
-        ctx.panes.lifeLogs.selectedNodeId = "";
         ctx.panes.lifeLogs.setIsEditing = () => undefined;
         ctx.panes.lifeLogs.setEditingField = () => undefined;
-        ctx.panes.lifeLogs.setSelectedNodeId = () => undefined;
       });
     }
   });
