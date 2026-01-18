@@ -1,6 +1,6 @@
 import { Show } from "solid-js";
 
-import { useActions } from "@/panes/lifeLogs/actions";
+import { useActions } from "@/services/actions";
 import { withOwner } from "@/solid/owner";
 import { styles } from "@/styles.css";
 

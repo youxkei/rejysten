@@ -24,13 +24,12 @@ export interface ActionsContext {
   firstId: string;
   lastId: string;
   selectedNodeId: string;
+
   // Callbacks (set by LifeLogTree)
   setIsEditing: (v: boolean) => void;
   setEditingField: (field: EditingField) => void;
   setSelectedNodeId: (id: string) => void;
 }
-
-const noop = () => undefined;
 
 const initialActionsContext: ActionsContext = {
   isEditing: false,
@@ -44,9 +43,9 @@ const initialActionsContext: ActionsContext = {
   firstId: "",
   lastId: "",
   selectedNodeId: "",
-  setIsEditing: noop,
-  setEditingField: noop,
-  setSelectedNodeId: noop,
+  setIsEditing: () => undefined,
+  setEditingField: () => undefined,
+  setSelectedNodeId: () => undefined,
 };
 
 export interface Actions {
