@@ -22,7 +22,7 @@ export interface EditableValueProps<V> {
   editInputClassName?: string;
   debounceMs?: number;
   // Key down callback - receives event, input ref, and function to prevent blur save
-  onKeyDown?: (event: KeyboardEvent, inputRef: HTMLInputElement, preventBlurSave: () => void) => void | Promise<void>;
+  onKeyDown?: (event: KeyboardEvent, inputRef: HTMLInputElement, preventBlurSave: () => void) => void;
   // Initial cursor position when entering edit mode
   initialCursorPosition?: number;
   debugId?: string;
@@ -136,7 +136,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
 
                 // Delegate other keys to caller
                 if (props.onKeyDown && inputRef) {
-                  await props.onKeyDown(e, inputRef, () => setBlurSavePrevented(true));
+                  props.onKeyDown(e, inputRef, () => setBlurSavePrevented(true));
                 }
               })}
               onBlur={async (e) => {

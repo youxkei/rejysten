@@ -1,6 +1,6 @@
 - use pnpm instead of npm
 - when you `git commit`, first check `git diff` and `git diff --cached`
   - when pre-commit hook failed, try `pnpm run fix` first
-- use `pnpm test` to run test, `pnpm test -t "case title"` to run one case
+- use `pnpm test` to run all test cases, `pnpm test/case "case title"` to run one case
   - always consider to run cases one by one first
 - use `git restore` instead of `git checkout` to restore file content from commit

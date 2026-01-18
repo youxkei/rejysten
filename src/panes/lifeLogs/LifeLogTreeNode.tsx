@@ -3,6 +3,7 @@ import type { Schema } from "@/services/firebase/firestore/schema";
 import { type Accessor, type Setter, startTransition } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
+import { awaitable } from "@/awaitableCallback";
 import { EditableValue } from "@/components/EditableValue";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { useActionsService } from "@/services/actions";
@@ -259,7 +260,7 @@ export function LifeLogTreeNode(props: {
       className={styles.lifeLogTree.text}
       selectedClassName={styles.lifeLogTree.selected}
       editInputClassName={styles.lifeLogTree.editInput}
-      onKeyDown={handleKeyDown}
+      onKeyDown={awaitable(handleKeyDown)}
       initialCursorPosition={
         props.enterSplitNodeId$() === props.node$().id
           ? 0

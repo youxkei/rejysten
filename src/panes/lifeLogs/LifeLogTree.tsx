@@ -1,5 +1,5 @@
-import { doc, type Timestamp } from "firebase/firestore";
-import { type Accessor, createEffect, createSignal, onCleanup, type Setter, Show, startTransition } from "solid-js";
+import { doc } from "firebase/firestore";
+import { type Accessor, createEffect, createSignal, onCleanup, type Setter, Show } from "solid-js";
 
 import { awaitable } from "@/awaitableCallback";
 import { EditableValue } from "@/components/EditableValue";
@@ -7,15 +7,13 @@ import { ChildrenNodes } from "@/components/tree";
 import { LifeLogTreeNode } from "@/panes/lifeLogs/LifeLogTreeNode";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { useActionsService } from "@/services/actions";
-import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
-import { runBatch, updateDoc } from "@/services/firebase/firestore/batch";
+import { getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
-import { getFirstChildNode } from "@/services/firebase/firestore/treeNode";
 import { useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
 import { scrollWithOffset } from "@/solid/scroll";
 import { styles } from "@/styles.css";
-import { noneTimestamp, timestampToTimeText, timeTextToTimestamp } from "@/timestamp";
+import { timestampToTimeText, timeTextToTimestamp } from "@/timestamp";
 
 export function LifeLogTree(props: {
   id: string;
@@ -34,7 +32,6 @@ export function LifeLogTree(props: {
   const { state, updateState } = useStoreService();
 
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
-  const lifeLogTreeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
   const lifeLog$ = createSubscribeSignal(
     firestore,
     () => doc(lifeLogsCol, props.id),
@@ -90,6 +87,7 @@ export function LifeLogTree(props: {
         ctx.panes.lifeLogs.lastId = props.lastId;
         ctx.panes.lifeLogs.setIsEditing = props.setIsEditing;
         ctx.panes.lifeLogs.setEditingField = props.setEditingField;
+        ctx.panes.lifeLogs.setLifeLogCursorInfo = props.setLifeLogCursorInfo;
       });
     }
   });
@@ -105,6 +103,7 @@ export function LifeLogTree(props: {
         ctx.panes.lifeLogs.lastId = "";
         ctx.panes.lifeLogs.setIsEditing = () => undefined;
         ctx.panes.lifeLogs.setEditingField = () => undefined;
+        ctx.panes.lifeLogs.setLifeLogCursorInfo = () => undefined;
       });
     }
   });
@@ -185,72 +184,6 @@ export function LifeLogTree(props: {
     }),
   );
 
-  async function saveStartAt(newTimestamp: Timestamp) {
-    firestore.setClock(true);
-    try {
-      await runBatch(firestore, (batch) => {
-        updateDoc(firestore, batch, lifeLogsCol, {
-          id: props.id,
-          startAt: newTimestamp,
-        });
-        return Promise.resolve();
-      });
-    } finally {
-      await startTransition(() => {
-        firestore.setClock(false);
-      });
-    }
-  }
-
-  async function saveEndAt(newTimestamp: Timestamp) {
-    firestore.setClock(true);
-    try {
-      await runBatch(firestore, (batch) => {
-        updateDoc(firestore, batch, lifeLogsCol, {
-          id: props.id,
-          endAt: newTimestamp,
-        });
-        return Promise.resolve();
-      });
-    } finally {
-      await startTransition(() => {
-        firestore.setClock(false);
-      });
-    }
-  }
-
-  async function saveText(newText: string) {
-    firestore.setClock(true);
-    try {
-      await runBatch(firestore, (batch) => {
-        updateDoc(firestore, batch, lifeLogsCol, {
-          id: props.id,
-          text: newText,
-        });
-        return Promise.resolve();
-      });
-    } finally {
-      await startTransition(() => {
-        firestore.setClock(false);
-      });
-    }
-  }
-
-  function handleTabNavigation(shiftKey: boolean) {
-    const fields = [EditingField.Text, EditingField.StartAt, EditingField.EndAt];
-    const currentIndex = fields.indexOf(props.editingField);
-
-    if (shiftKey) {
-      // Shift+Tab: go to previous field
-      const nextIndex = currentIndex > 0 ? currentIndex - 1 : fields.length - 1;
-      props.setEditingField(fields[nextIndex]);
-    } else {
-      // Tab: go to next field
-      const nextIndex = currentIndex < fields.length - 1 ? currentIndex + 1 : 0;
-      props.setEditingField(fields[nextIndex]);
-    }
-  }
-
   return (
     <Show when={lifeLog$()}>
       {(lifeLog$) => (
@@ -264,7 +197,7 @@ export function LifeLogTree(props: {
               <EditableValue
                 debugId="startAt"
                 value={lifeLog$().startAt}
-                onSave={saveStartAt}
+                onSave={actions.saveStartAt}
                 isSelected={isLifeLogSelected$() && props.editingField == EditingField.StartAt}
                 isEditing={props.isEditing && props.editingField === EditingField.StartAt}
                 setIsEditing={(editing) => {
@@ -275,23 +208,27 @@ export function LifeLogTree(props: {
                 toEditText={(ts) => timestampToTimeText(ts, false) ?? ""}
                 fromText={timeTextToTimestamp}
                 editInputClassName={styles.lifeLogTree.editInput}
-                onKeyDown={async (event, inputRef, preventBlurSave) => {
+                onKeyDown={awaitable(async (event, inputRef, preventBlurSave) => {
                   if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
                     event.preventDefault();
                     preventBlurSave();
                     const newValue = timeTextToTimestamp(inputRef.value);
                     if (newValue !== undefined) {
-                      await saveStartAt(newValue);
+                      await actions.saveStartAt(newValue);
                     }
-                    handleTabNavigation(event.shiftKey);
+                    if (event.shiftKey) {
+                      actions.cycleFieldPrev();
+                    } else {
+                      actions.cycleFieldNext();
+                    }
                   }
-                }}
+                })}
               />
               <span>-</span>
               <EditableValue
                 debugId="endAt"
                 value={lifeLog$().endAt}
-                onSave={saveEndAt}
+                onSave={actions.saveEndAt}
                 isSelected={isLifeLogSelected$() && props.editingField == EditingField.EndAt}
                 isEditing={props.isEditing && props.editingField === EditingField.EndAt}
                 setIsEditing={(editing) => {
@@ -302,23 +239,27 @@ export function LifeLogTree(props: {
                 toEditText={(ts) => timestampToTimeText(ts, false) ?? ""}
                 fromText={timeTextToTimestamp}
                 editInputClassName={styles.lifeLogTree.editInput}
-                onKeyDown={async (event, inputRef, preventBlurSave) => {
+                onKeyDown={awaitable(async (event, inputRef, preventBlurSave) => {
                   if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
                     event.preventDefault();
                     preventBlurSave();
                     const newValue = timeTextToTimestamp(inputRef.value);
                     if (newValue !== undefined) {
-                      await saveEndAt(newValue);
+                      await actions.saveEndAt(newValue);
                     }
-                    handleTabNavigation(event.shiftKey);
+                    if (event.shiftKey) {
+                      actions.cycleFieldPrev();
+                    } else {
+                      actions.cycleFieldNext();
+                    }
                   }
-                }}
+                })}
               />
             </div>
             <EditableValue
               debugId="text"
               value={lifeLog$().text}
-              onSave={saveText}
+              onSave={actions.saveText}
               isSelected={isLifeLogSelected$() && props.editingField === EditingField.Text}
               isEditing={props.isEditing && props.editingField === EditingField.Text}
               setIsEditing={(editing) => {
@@ -334,108 +275,42 @@ export function LifeLogTree(props: {
                   ? props.lifeLogCursorInfo$()?.cursorPosition
                   : undefined
               }
-              onKeyDown={async (event, inputRef, preventBlurSave) => {
+              onKeyDown={awaitable(async (event, inputRef, preventBlurSave) => {
                 if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
                   event.preventDefault();
                   preventBlurSave();
-                  await saveText(inputRef.value);
-                  handleTabNavigation(event.shiftKey);
+                  await actions.saveText(inputRef.value);
+                  if (event.shiftKey) {
+                    actions.cycleFieldPrev();
+                  } else {
+                    actions.cycleFieldNext();
+                  }
+                  return;
                 }
 
-                // Backspace at position 0: delete empty LifeLog and move to previous
-                if (event.code === "Backspace" && inputRef.selectionStart === 0) {
-                  const lifeLog = lifeLog$();
-
-                  // Check conditions for deletion
-                  if (
-                    lifeLog.text !== "" ||
-                    !lifeLog.startAt.isEqual(noneTimestamp) ||
-                    !lifeLog.endAt.isEqual(noneTimestamp)
-                  ) {
-                    return; // Allow normal backspace
-                  }
-
-                  // Check for child tree nodes
-                  const hasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
-                  if (hasChildren) return;
-
-                  // Check if previous LifeLog exists
-                  if (props.prevId === "") return;
-
+                // Only intercept Backspace at position 0 when no text is selected
+                if (
+                  event.code === "Backspace" &&
+                  inputRef.selectionStart === 0 &&
+                  inputRef.selectionStart === inputRef.selectionEnd
+                ) {
                   event.preventDefault();
                   preventBlurSave();
-
-                  // Get previous LifeLog's text length for cursor position
-                  const prevLifeLog = await getDoc(firestore, lifeLogsCol, props.prevId);
-                  if (!prevLifeLog) return;
-
-                  const cursorPosition = prevLifeLog.text.length;
-
-                  // Delete current LifeLog and select previous
-                  firestore.setClock(true);
-                  try {
-                    await runBatch(firestore, (batch) => {
-                      batch.delete(doc(lifeLogsCol, props.id));
-                      return Promise.resolve();
-                    });
-
-                    props.setLifeLogCursorInfo({ lifeLogId: props.prevId, cursorPosition });
-                    await startTransition(() => {
-                      updateState((state) => {
-                        state.panesLifeLogs.selectedLifeLogId = props.prevId;
-                      });
-                      props.setIsEditing(true);
-                      firestore.setClock(false);
-                    });
-                  } catch {
-                    firestore.setClock(false);
-                  }
+                  await actions.deleteEmptyLifeLogToPrev();
+                  return;
                 }
 
-                // Delete at end: delete empty LifeLog and move to next
-                if (event.code === "Delete" && inputRef.selectionStart === inputRef.value.length) {
-                  const lifeLog = lifeLog$();
-
-                  // Check conditions for deletion
-                  if (
-                    lifeLog.text !== "" ||
-                    !lifeLog.startAt.isEqual(noneTimestamp) ||
-                    !lifeLog.endAt.isEqual(noneTimestamp)
-                  ) {
-                    return; // Allow normal delete
-                  }
-
-                  // Check for child tree nodes
-                  const hasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
-                  if (hasChildren) return;
-
-                  // Check if next LifeLog exists
-                  if (props.nextId === "") return;
-
+                // Only intercept Delete at end when no text is selected
+                if (
+                  event.code === "Delete" &&
+                  inputRef.selectionStart === inputRef.value.length &&
+                  inputRef.selectionStart === inputRef.selectionEnd
+                ) {
                   event.preventDefault();
                   preventBlurSave();
-
-                  // Delete current LifeLog and select next with cursor at start
-                  firestore.setClock(true);
-                  try {
-                    await runBatch(firestore, (batch) => {
-                      batch.delete(doc(lifeLogsCol, props.id));
-                      return Promise.resolve();
-                    });
-
-                    props.setLifeLogCursorInfo({ lifeLogId: props.nextId, cursorPosition: 0 });
-                    await startTransition(() => {
-                      updateState((state) => {
-                        state.panesLifeLogs.selectedLifeLogId = props.nextId;
-                      });
-                      props.setIsEditing(true);
-                      firestore.setClock(false);
-                    });
-                  } catch {
-                    firestore.setClock(false);
-                  }
+                  await actions.deleteEmptyLifeLogToNext();
                 }
-              }}
+              })}
             />
           </div>
           <Show when={isLifeLogTreeFocused$()}>
