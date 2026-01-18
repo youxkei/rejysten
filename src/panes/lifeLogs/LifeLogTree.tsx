@@ -6,7 +6,7 @@ import { EditableValue } from "@/components/EditableValue";
 import { ChildrenNodes } from "@/components/tree";
 import { LifeLogTreeNode } from "@/panes/lifeLogs/LifeLogTreeNode";
 import { EditingField } from "@/panes/lifeLogs/schema";
-import { useActions } from "@/services/actions";
+import { useActionsService } from "@/services/actions";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch, updateDoc } from "@/services/firebase/firestore/batch";
 import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
@@ -65,7 +65,11 @@ export function LifeLogTree(props: {
   const isLifeLogSelected$ = () => isSelected$() && selectedLifeLogNodeId$() === "";
   const isLifeLogTreeFocused$ = () => isSelected$() && selectedLifeLogNodeId$() !== "";
 
-  const actions = useActions();
+  const actionsService = useActionsService();
+  const actions = {
+    updateContext: actionsService.updateContext,
+    ...actionsService.panes.lifeLogs,
+  };
 
   let lifeLogContainerRef: HTMLDivElement | undefined;
   createEffect(() => {
@@ -78,20 +82,20 @@ export function LifeLogTree(props: {
   createEffect(() => {
     if (isSelected$()) {
       actions.updateContext((ctx) => {
-        ctx.hasSelection = true;
-        ctx.isEditing = props.isEditing;
-        ctx.isLifeLogSelected = isLifeLogSelected$();
-        ctx.isLifeLogTreeFocused = isLifeLogTreeFocused$();
-        ctx.editingField = props.editingField;
-        ctx.id = props.id;
-        ctx.prevId = props.prevId;
-        ctx.nextId = props.nextId;
-        ctx.firstId = props.firstId;
-        ctx.lastId = props.lastId;
-        ctx.selectedNodeId = selectedLifeLogNodeId$();
-        ctx.setIsEditing = props.setIsEditing;
-        ctx.setEditingField = props.setEditingField;
-        ctx.setSelectedNodeId = setSelectedLifeLogNodeId;
+        ctx.panes.lifeLogs.hasSelection = true;
+        ctx.panes.lifeLogs.isEditing = props.isEditing;
+        ctx.panes.lifeLogs.isLifeLogSelected = isLifeLogSelected$();
+        ctx.panes.lifeLogs.isLifeLogTreeFocused = isLifeLogTreeFocused$();
+        ctx.panes.lifeLogs.editingField = props.editingField;
+        ctx.panes.lifeLogs.id = props.id;
+        ctx.panes.lifeLogs.prevId = props.prevId;
+        ctx.panes.lifeLogs.nextId = props.nextId;
+        ctx.panes.lifeLogs.firstId = props.firstId;
+        ctx.panes.lifeLogs.lastId = props.lastId;
+        ctx.panes.lifeLogs.selectedNodeId = selectedLifeLogNodeId$();
+        ctx.panes.lifeLogs.setIsEditing = props.setIsEditing;
+        ctx.panes.lifeLogs.setEditingField = props.setEditingField;
+        ctx.panes.lifeLogs.setSelectedNodeId = setSelectedLifeLogNodeId;
       });
     }
   });
@@ -99,20 +103,20 @@ export function LifeLogTree(props: {
   onCleanup(() => {
     if (isSelected$()) {
       actions.updateContext((ctx) => {
-        ctx.hasSelection = false;
-        ctx.isEditing = false;
-        ctx.isLifeLogSelected = false;
-        ctx.isLifeLogTreeFocused = false;
-        ctx.editingField = EditingField.Text;
-        ctx.id = "";
-        ctx.prevId = "";
-        ctx.nextId = "";
-        ctx.firstId = "";
-        ctx.lastId = "";
-        ctx.selectedNodeId = "";
-        ctx.setIsEditing = () => undefined;
-        ctx.setEditingField = () => undefined;
-        ctx.setSelectedNodeId = () => undefined;
+        ctx.panes.lifeLogs.hasSelection = false;
+        ctx.panes.lifeLogs.isEditing = false;
+        ctx.panes.lifeLogs.isLifeLogSelected = false;
+        ctx.panes.lifeLogs.isLifeLogTreeFocused = false;
+        ctx.panes.lifeLogs.editingField = EditingField.Text;
+        ctx.panes.lifeLogs.id = "";
+        ctx.panes.lifeLogs.prevId = "";
+        ctx.panes.lifeLogs.nextId = "";
+        ctx.panes.lifeLogs.firstId = "";
+        ctx.panes.lifeLogs.lastId = "";
+        ctx.panes.lifeLogs.selectedNodeId = "";
+        ctx.panes.lifeLogs.setIsEditing = () => undefined;
+        ctx.panes.lifeLogs.setEditingField = () => undefined;
+        ctx.panes.lifeLogs.setSelectedNodeId = () => undefined;
       });
     }
   });

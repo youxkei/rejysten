@@ -3,7 +3,7 @@ import { doc, Timestamp, writeBatch } from "firebase/firestore";
 import { onMount, Suspense } from "solid-js";
 
 import { LifeLogs } from "@/panes/lifeLogs";
-import { ActionsProvider } from "@/services/actions";
+import { ActionsServiceProvider } from "@/services/actions";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import {
   FirestoreServiceProvider,
@@ -49,7 +49,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
         appName={testId}
       >
         <FirestoreServiceProvider emulatorPort={db.emulatorPort} useMemoryCache>
-          <ActionsProvider>
+          <ActionsServiceProvider>
             <Suspense fallback={<span>loading....</span>}>
               {(() => {
                 const firestore = useFirestoreService();
@@ -212,7 +212,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                 return <LifeLogs {...(options?.lifeLogsProps ?? {})} />;
               })()}
             </Suspense>
-          </ActionsProvider>
+          </ActionsServiceProvider>
         </FirestoreServiceProvider>
       </FirebaseServiceProvider>
     </StoreServiceProvider>

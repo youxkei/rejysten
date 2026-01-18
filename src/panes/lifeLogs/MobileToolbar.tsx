@@ -1,15 +1,19 @@
 import { Show } from "solid-js";
 
-import { useActions } from "@/services/actions";
+import { useActionsService } from "@/services/actions";
 import { withOwner } from "@/solid/owner";
 import { styles } from "@/styles.css";
 
 export function MobileToolbar() {
-  const actions = useActions();
+  const {
+    context: {
+      panes: { lifeLogs: context },
+    },
+  } = useActionsService();
 
   return (
     <div class={styles.mobileToolbar.container}>
-      <Show when={!actions.context.isEditing} fallback={<EditingToolbar />}>
+      <Show when={!context.isEditing} fallback={<EditingToolbar />}>
         <NavigationToolbar />
       </Show>
     </div>
@@ -17,7 +21,12 @@ export function MobileToolbar() {
 }
 
 function NavigationToolbar() {
-  const actions = useActions();
+  const {
+    context: {
+      panes: { lifeLogs: context },
+    },
+    panes: { lifeLogs: actions },
+  } = useActionsService();
 
   // Wrap action calls to preserve SolidJS context
   const handleNavigatePrev = withOwner(() => {
@@ -45,52 +54,40 @@ function NavigationToolbar() {
 
   return (
     <div class={styles.mobileToolbar.buttonGroup}>
-      <button class={styles.mobileToolbar.button} onClick={handleNavigateNext} disabled={!actions.context.hasSelection}>
+      <button class={styles.mobileToolbar.button} onClick={handleNavigateNext} disabled={!context.hasSelection}>
         ⬆️
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleNavigatePrev} disabled={!actions.context.hasSelection}>
+      <button class={styles.mobileToolbar.button} onClick={handleNavigatePrev} disabled={!context.hasSelection}>
         ⬇️
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleGoToLast} disabled={!actions.context.hasSelection}>
+      <button class={styles.mobileToolbar.button} onClick={handleGoToLast} disabled={!context.hasSelection}>
         ⏫
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleGoToFirst} disabled={!actions.context.hasSelection}>
+      <button class={styles.mobileToolbar.button} onClick={handleGoToFirst} disabled={!context.hasSelection}>
         ⏬
       </button>
 
-      <Show when={!actions.context.isLifeLogTreeFocused}>
-        <button
-          class={styles.mobileToolbar.button}
-          onClick={handleEnterTree}
-          disabled={!actions.context.isLifeLogSelected}
-        >
+      <Show when={!context.isLifeLogTreeFocused}>
+        <button class={styles.mobileToolbar.button} onClick={handleEnterTree} disabled={!context.isLifeLogSelected}>
           ➡️
         </button>
       </Show>
-      <Show when={actions.context.isLifeLogTreeFocused}>
+      <Show when={context.isLifeLogTreeFocused}>
         <button class={styles.mobileToolbar.button} onClick={handleExitTree}>
           ⬅️
         </button>
       </Show>
 
-      <button class={styles.mobileToolbar.button} onClick={handleNewLifeLog} disabled={!actions.context.hasSelection}>
+      <button class={styles.mobileToolbar.button} onClick={handleNewLifeLog} disabled={!context.hasSelection}>
         ➕
       </button>
-      <button
-        class={styles.mobileToolbar.button}
-        onClick={handleSetStartAtNow}
-        disabled={!actions.context.isLifeLogSelected}
-      >
+      <button class={styles.mobileToolbar.button} onClick={handleSetStartAtNow} disabled={!context.isLifeLogSelected}>
         ▶️
       </button>
-      <button
-        class={styles.mobileToolbar.button}
-        onClick={handleSetEndAtNow}
-        disabled={!actions.context.isLifeLogSelected}
-      >
+      <button class={styles.mobileToolbar.button} onClick={handleSetEndAtNow} disabled={!context.isLifeLogSelected}>
         ⏹️
       </button>
-      <button class={styles.mobileToolbar.button} onClick={handleStartEditing} disabled={!actions.context.hasSelection}>
+      <button class={styles.mobileToolbar.button} onClick={handleStartEditing} disabled={!context.hasSelection}>
         ✏️
       </button>
     </div>
@@ -98,7 +95,12 @@ function NavigationToolbar() {
 }
 
 function EditingToolbar() {
-  const actions = useActions();
+  const {
+    context: {
+      panes: { lifeLogs: context },
+    },
+    panes: { lifeLogs: actions },
+  } = useActionsService();
 
   const handleCycleFieldPrev = withOwner(() => {
     actions.cycleFieldPrev();
@@ -109,7 +111,7 @@ function EditingToolbar() {
 
   return (
     <div class={styles.mobileToolbar.buttonGroup}>
-      <Show when={!actions.context.isLifeLogTreeFocused}>
+      <Show when={!context.isLifeLogTreeFocused}>
         <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleCycleFieldPrev}>
           ◀️
         </button>
