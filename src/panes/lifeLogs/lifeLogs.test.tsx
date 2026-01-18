@@ -959,6 +959,157 @@ describe("<LifeLogs />", () => {
     expect(listItems.length).toBe(3);
   });
 
+  it("does not delete LifeLog with Backspace when pending text is not empty (unsaved)", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db);
+
+    // Wait for initial render
+    await result.findByText("first lifelog");
+    await result.findByText("third lifelog");
+
+    // Navigate to $log3 (last log) - press j twice
+    await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
+    await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
+
+    // $log3 has startAt=none, endAt=none, text="third lifelog"
+    // Press "i" to enter editing mode
+    await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
+
+    const input1 = result.container.querySelector("input")!;
+    expect(input1).toBeTruthy();
+    expect(input1.value).toBe("third lifelog");
+
+    // Clear the text to make it empty in Firestore
+    await userEvent.keyboard("{Control>}a{/Control}{Backspace}");
+    {
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      expect(input.value).toBe("");
+    }
+
+    // Save the change by exiting edit mode
+    await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
+    expect(result.container.querySelector("input")).toBeNull();
+
+    // Re-enter edit mode and type some new text (but don't save)
+    await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
+
+    const input2 = result.container.querySelector("input")!;
+    expect(input2).toBeTruthy();
+    expect(input2.value).toBe("");
+
+    // Type some text (this creates pending/unsaved text)
+    await userEvent.keyboard("unsaved text");
+    {
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      expect(input.value).toBe("unsaved text");
+    }
+
+    // Move cursor to beginning
+    await userEvent.keyboard("{Home}");
+
+    // Press Backspace - should NOT delete because pending text is not empty
+    await userEvent.keyboard("{Backspace}");
+    await awaitPendingCallbacks();
+
+    // Should still be on same lifelog with the unsaved text
+    {
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      expect(input).toBeTruthy();
+      expect(input.value).toBe("unsaved text");
+    }
+
+    // Exit editing mode
+    await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
+    expect(result.container.querySelector("input")).toBeNull();
+
+    // All lifelogs should still exist
+    const listItems = result.container.querySelectorAll("li");
+    expect(listItems.length).toBe(3);
+  });
+
+  it("does not delete LifeLog with Delete when pending text is not empty (unsaved)", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db);
+
+    // Wait for initial render
+    await result.findByText("first lifelog");
+    await result.findByText("third lifelog");
+
+    // Navigate to $log3 (last log) - press j twice
+    await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
+    await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
+
+    // Press "o" to create a new empty LifeLog after $log3
+    await userEvent.keyboard("{o}");
+    await awaitPendingCallbacks();
+
+    const listItems1 = result.container.querySelectorAll("li");
+    expect(listItems1.length).toBe(4);
+
+    // Exit edit mode to save the empty state
+    await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
+    expect(result.container.querySelector("input")).toBeNull();
+
+    // Navigate back to $log3
+    await userEvent.keyboard("{k}");
+    await awaitPendingCallbacks();
+
+    // Clear $log3's text and save
+    await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
+
+    await userEvent.keyboard("{Control>}a{/Control}{Delete}");
+    {
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      expect(input.value).toBe("");
+    }
+
+    await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
+
+    // Re-enter edit mode and type some new text (but don't save)
+    await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
+
+    const input2 = result.container.querySelector("input")!;
+    expect(input2).toBeTruthy();
+    expect(input2.value).toBe("");
+
+    // Type some text (this creates pending/unsaved text)
+    await userEvent.keyboard("unsaved text");
+    {
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      expect(input.value).toBe("unsaved text");
+    }
+
+    // Press Delete at end - should NOT delete because pending text is not empty
+    await userEvent.keyboard("{Delete}");
+    await awaitPendingCallbacks();
+
+    // Should still be on same lifelog with the unsaved text
+    {
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      expect(input).toBeTruthy();
+      expect(input.value).toBe("unsaved text");
+    }
+
+    // Exit editing mode
+    await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
+    expect(result.container.querySelector("input")).toBeNull();
+
+    // All lifelogs should still exist (4 total)
+    const listItems = result.container.querySelectorAll("li");
+    expect(listItems.length).toBe(4);
+  });
+
   describe("scroll", () => {
     // Vitest browser mode default iframe size: 414x896
     // Each LifeLog is approximately 100px height, so 15 LifeLogs will require scrolling

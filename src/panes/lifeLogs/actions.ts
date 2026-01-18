@@ -423,8 +423,8 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }) => {
     const lifeLog = await getDoc(firestore, lifeLogsCol, selectedLifeLogId);
     if (!lifeLog) return;
 
-    // Check conditions for deletion: text empty, timestamps = none
-    if (lifeLog.text !== "" || !lifeLog.startAt.isEqual(noneTimestamp) || !lifeLog.endAt.isEqual(noneTimestamp)) {
+    // Check conditions for deletion: pending text empty, timestamps = none
+    if ((context.pendingText ?? lifeLog.text) !== "" || !lifeLog.startAt.isEqual(noneTimestamp) || !lifeLog.endAt.isEqual(noneTimestamp)) {
       return;
     }
 
@@ -473,8 +473,8 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }) => {
     const lifeLog = await getDoc(firestore, lifeLogsCol, selectedLifeLogId);
     if (!lifeLog) return;
 
-    // Check conditions for deletion: text empty, timestamps = none
-    if (lifeLog.text !== "" || !lifeLog.startAt.isEqual(noneTimestamp) || !lifeLog.endAt.isEqual(noneTimestamp)) {
+    // Check conditions for deletion: pending text empty, timestamps = none
+    if ((context.pendingText ?? lifeLog.text) !== "" || !lifeLog.startAt.isEqual(noneTimestamp) || !lifeLog.endAt.isEqual(noneTimestamp)) {
       return;
     }
 
