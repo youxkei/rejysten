@@ -21,6 +21,11 @@ declare module "@/services/actions" {
       firstId: string;
       lastId: string;
 
+      // Pending values for save operations
+      pendingText: string | undefined;
+      pendingStartAt: Timestamp | undefined;
+      pendingEndAt: Timestamp | undefined;
+
       // Callbacks (set by LifeLogTree)
       setIsEditing: (v: boolean) => void;
       setEditingField: (field: EditingField) => void;
@@ -43,9 +48,9 @@ declare module "@/services/actions" {
       startEditing: () => void;
       cycleFieldNext: () => void;
       cycleFieldPrev: () => void;
-      saveText: (newText: string) => Promise<void>;
-      saveStartAt: (newTimestamp: Timestamp) => Promise<void>;
-      saveEndAt: (newTimestamp: Timestamp) => Promise<void>;
+      saveText: () => Promise<void>;
+      saveStartAt: () => Promise<void>;
+      saveEndAt: () => Promise<void>;
       deleteEmptyLifeLogToPrev: () => Promise<void>;
       deleteEmptyLifeLogToNext: () => Promise<void>;
     };
@@ -59,6 +64,9 @@ initialActionsContext.panes.lifeLogs = {
   nextId: "",
   firstId: "",
   lastId: "",
+  pendingText: undefined,
+  pendingStartAt: undefined,
+  pendingEndAt: undefined,
   setIsEditing: () => undefined,
   setEditingField: () => undefined,
   setLifeLogCursorInfo: () => undefined,
@@ -330,11 +338,14 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }) => {
   }
 
   // Save operations for editable fields
-  async function saveText(newText: string) {
+  async function saveText() {
     if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
 
     const selectedLifeLogId = state.panesLifeLogs.selectedLifeLogId;
     if (selectedLifeLogId === "") return;
+
+    const newText = context.pendingText;
+    if (newText === undefined) return;
 
     firestore.setClock(true);
     try {
@@ -352,11 +363,14 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }) => {
     }
   }
 
-  async function saveStartAt(newTimestamp: Timestamp) {
+  async function saveStartAt() {
     if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
 
     const selectedLifeLogId = state.panesLifeLogs.selectedLifeLogId;
     if (selectedLifeLogId === "") return;
+
+    const newTimestamp = context.pendingStartAt;
+    if (newTimestamp === undefined) return;
 
     firestore.setClock(true);
     try {
@@ -374,11 +388,14 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }) => {
     }
   }
 
-  async function saveEndAt(newTimestamp: Timestamp) {
+  async function saveEndAt() {
     if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
 
     const selectedLifeLogId = state.panesLifeLogs.selectedLifeLogId;
     if (selectedLifeLogId === "") return;
+
+    const newTimestamp = context.pendingEndAt;
+    if (newTimestamp === undefined) return;
 
     firestore.setClock(true);
     try {

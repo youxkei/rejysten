@@ -25,6 +25,8 @@ export interface EditableValueProps<V> {
   onKeyDown?: (event: KeyboardEvent, inputRef: HTMLInputElement, preventBlurSave: () => void) => void;
   // Initial cursor position when entering edit mode
   initialCursorPosition?: number;
+  // Callback when input text changes (called on every input)
+  onTextChange?: (text: string) => void;
   debugId?: string;
 }
 
@@ -72,6 +74,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
           onMount(() => {
             const initialText = (props.toEditText ?? props.toText)(props.value);
             setEditText(initialText);
+            props.onTextChange?.(initialText);
             if (inputRef) {
               inputRef.value = initialText;
               inputRef.focus();
@@ -119,6 +122,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                 const newText = e.currentTarget.value;
                 setEditText(newText);
                 debouncedSaveChanges(newText);
+                props.onTextChange?.(newText);
               }}
               onKeyDown={awaitable(async (e) => {
                 // Stop propagation of ALL key events so parent components (tree.tsx) don't see them

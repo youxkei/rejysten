@@ -208,14 +208,16 @@ export function LifeLogTree(props: {
                 toEditText={(ts) => timestampToTimeText(ts, false) ?? ""}
                 fromText={timeTextToTimestamp}
                 editInputClassName={styles.lifeLogTree.editInput}
-                onKeyDown={awaitable(async (event, inputRef, preventBlurSave) => {
+                onTextChange={(text) => {
+                  actions.updateContext((ctx) => {
+                    ctx.panes.lifeLogs.pendingStartAt = timeTextToTimestamp(text);
+                  });
+                }}
+                onKeyDown={awaitable(async (event, _inputRef, preventBlurSave) => {
                   if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
                     event.preventDefault();
                     preventBlurSave();
-                    const newValue = timeTextToTimestamp(inputRef.value);
-                    if (newValue !== undefined) {
-                      await actions.saveStartAt(newValue);
-                    }
+                    await actions.saveStartAt();
                     if (event.shiftKey) {
                       actions.cycleFieldPrev();
                     } else {
@@ -239,14 +241,16 @@ export function LifeLogTree(props: {
                 toEditText={(ts) => timestampToTimeText(ts, false) ?? ""}
                 fromText={timeTextToTimestamp}
                 editInputClassName={styles.lifeLogTree.editInput}
-                onKeyDown={awaitable(async (event, inputRef, preventBlurSave) => {
+                onTextChange={(text) => {
+                  actions.updateContext((ctx) => {
+                    ctx.panes.lifeLogs.pendingEndAt = timeTextToTimestamp(text);
+                  });
+                }}
+                onKeyDown={awaitable(async (event, _inputRef, preventBlurSave) => {
                   if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
                     event.preventDefault();
                     preventBlurSave();
-                    const newValue = timeTextToTimestamp(inputRef.value);
-                    if (newValue !== undefined) {
-                      await actions.saveEndAt(newValue);
-                    }
+                    await actions.saveEndAt();
                     if (event.shiftKey) {
                       actions.cycleFieldPrev();
                     } else {
@@ -275,11 +279,16 @@ export function LifeLogTree(props: {
                   ? props.lifeLogCursorInfo$()?.cursorPosition
                   : undefined
               }
+              onTextChange={(text) => {
+                actions.updateContext((ctx) => {
+                  ctx.panes.lifeLogs.pendingText = text;
+                });
+              }}
               onKeyDown={awaitable(async (event, inputRef, preventBlurSave) => {
                 if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
                   event.preventDefault();
                   preventBlurSave();
-                  await actions.saveText(inputRef.value);
+                  await actions.saveText();
                   if (event.shiftKey) {
                     actions.cycleFieldPrev();
                   } else {
