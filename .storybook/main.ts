@@ -7,4 +7,9 @@ export default {
   docs: {
     autodocs: false,
   },
+  viteFinal: (config) => {
+    config.server = config.server || {};
+    config.server.allowedHosts = true;
+    return config;
+  },
 } as StorybookConfig;
