@@ -450,6 +450,22 @@ describe("<LifeLogs />", () => {
     expect(result.getByText("new lifelog from o key")).toBeTruthy();
   });
 
+  it("can add first lifelog with o key when no lifelogs exist", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db, { skipDefaultLifeLogs: true });
+
+    // Verify no lifeLogs exist
+    const initialListItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+    expect(initialListItems.length).toBe(0);
+
+    // Press "o" to add the first lifelog
+    await userEvent.keyboard("{o}");
+    await awaitPendingCallbacks();
+
+    // New lifelog should be added
+    const listItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+    expect(listItems.length).toBe(1);
+  });
+
   // LifeLog deletion tests
   it("can delete empty LifeLog with Backspace and move cursor to previous LifeLog", async ({ db, task }) => {
     const { result } = await setupLifeLogsTest(task.id, db);

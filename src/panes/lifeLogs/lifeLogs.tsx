@@ -3,14 +3,17 @@ import equal from "fast-deep-equal";
 import { orderBy, query, Timestamp, where } from "firebase/firestore";
 import { createMemo, createSignal } from "solid-js";
 
+import { awaitable } from "@/awaitableCallback";
 import { DateNow, TimestampNow } from "@/date";
 import { LifeLogTree } from "@/panes/lifeLogs/LifeLogTree";
 import { MobileToolbar } from "@/panes/lifeLogs/MobileToolbar";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { useRangeFromFocus } from "@/panes/lifeLogs/useRangeFromFocus";
 import { useScrollFocus } from "@/panes/lifeLogs/useScrollFocus";
+import { useActionsService } from "@/services/actions";
 import { getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal } from "@/services/firebase/firestore/subscribe";
+import { addKeyDownEventListener } from "@/solid/event";
 import { ScrollContainer } from "@/solid/scroll";
 import { styles } from "@/styles.css";
 import { dayMs, noneTimestamp } from "@/timestamp";
@@ -43,6 +46,7 @@ export function LifeLogs(props: LifeLogsProps = {}) {
 export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp; scrollFocusDebounceMs?: number }) {
   const firestore = useFirestoreService();
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
+  const actions = useActionsService().panes.lifeLogs;
 
   const [editingField$, setEditingField] = createSignal<EditingField>(EditingField.Text);
   const [isEditing$, setIsEditing] = createSignal(false);
@@ -74,6 +78,20 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp; sc
     isEditing$,
     debounceMs: props.scrollFocusDebounceMs,
   });
+
+  // Handle "o" key when there are 0 lifeLogs
+  addKeyDownEventListener(
+    awaitable(async (event) => {
+      if (event.isComposing || event.ctrlKey) return;
+      if (lifeLogs$().length > 0) return;
+      if (event.code !== "KeyO") return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      await actions.createFirstLifeLog();
+    }),
+  );
 
   const lifeLogIdWithNeighborIds$ = createMemo(
     () => {

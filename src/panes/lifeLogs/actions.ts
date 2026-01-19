@@ -2,7 +2,7 @@ import { doc, Timestamp } from "firebase/firestore";
 import { startTransition } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
-import { DateNow } from "@/date";
+import { DateNow, TimestampNow } from "@/date";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { actionsCreator, initialActionsContext } from "@/services/actions";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
@@ -53,6 +53,7 @@ declare module "@/services/actions" {
       saveEndAt: () => Promise<void>;
       deleteEmptyLifeLogToPrev: () => Promise<void>;
       deleteEmptyLifeLogToNext: () => Promise<void>;
+      createFirstLifeLog: () => Promise<void>;
     };
   }
 }
@@ -516,6 +517,33 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }) => {
     }
   }
 
+  async function createFirstLifeLog() {
+    const newLifeLogId = uuidv7();
+
+    firestore.setClock(true);
+    try {
+      await runBatch(firestore, (batch) => {
+        setDoc(firestore, batch, lifeLogsCol, {
+          id: newLifeLogId,
+          text: "",
+          startAt: TimestampNow(),
+          endAt: noneTimestamp,
+        });
+        return Promise.resolve();
+      });
+
+      await startTransition(() => {
+        updateState((state) => {
+          state.panesLifeLogs.selectedLifeLogId = newLifeLogId;
+          state.panesLifeLogs.selectedLifeLogNodeId = "";
+        });
+        firestore.setClock(false);
+      });
+    } finally {
+      firestore.setClock(false);
+    }
+  }
+
   return {
     navigateNext,
     navigatePrev,
@@ -535,5 +563,6 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }) => {
     saveEndAt,
     deleteEmptyLifeLogToPrev,
     deleteEmptyLifeLogToNext,
+    createFirstLifeLog,
   };
 };

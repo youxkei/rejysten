@@ -31,6 +31,7 @@ export interface SetupLifeLogsTestOptions {
     daysAgo: number;
   }>;
   initialSelectedId?: string;
+  skipDefaultLifeLogs?: boolean;
 }
 
 export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, options?: SetupLifeLogsTestOptions) {
@@ -69,119 +70,121 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                       updatedAt: Timestamp.fromDate(baseTime),
                     });
 
-                    // First lifelog - with specific time
-                    const startTime1 = new Date(baseTime);
-                    startTime1.setHours(10, 30, 0, 0);
+                    if (!options?.skipDefaultLifeLogs) {
+                      // First lifelog - with specific time
+                      const startTime1 = new Date(baseTime);
+                      startTime1.setHours(10, 30, 0, 0);
 
-                    batch.set(doc(lifeLogs, "$log1"), {
-                      text: "first lifelog",
-                      startAt: Timestamp.fromDate(startTime1),
-                      endAt: noneTimestamp,
-                      createdAt: Timestamp.fromDate(baseTime),
-                      updatedAt: Timestamp.fromDate(baseTime),
-                    });
-
-                    // Second lifelog - later time
-                    const startTime2 = new Date(baseTime);
-                    startTime2.setHours(12, 0, 0, 0);
-
-                    batch.set(doc(lifeLogs, "$log2"), {
-                      text: "second lifelog",
-                      startAt: Timestamp.fromDate(startTime2),
-                      endAt: noneTimestamp,
-                      createdAt: Timestamp.fromDate(baseTime),
-                      updatedAt: Timestamp.fromDate(baseTime),
-                    });
-
-                    // Create three sibling tree nodes under $log1
-                    // child1 (has children), child2 (no children), child3 (has children)
-                    batch.set(doc(lifeLogTreeNodes, "child1"), {
-                      text: "first child",
-                      parentId: "$log1",
-                      order: "a0",
-                      createdAt: Timestamp.fromDate(baseTime),
-                      updatedAt: Timestamp.fromDate(baseTime),
-                    });
-
-                    batch.set(doc(lifeLogTreeNodes, "child2"), {
-                      text: "second child",
-                      parentId: "$log1",
-                      order: "a1",
-                      createdAt: Timestamp.fromDate(baseTime),
-                      updatedAt: Timestamp.fromDate(baseTime),
-                    });
-
-                    batch.set(doc(lifeLogTreeNodes, "child3"), {
-                      text: "third child",
-                      parentId: "$log1",
-                      order: "a2",
-                      createdAt: Timestamp.fromDate(baseTime),
-                      updatedAt: Timestamp.fromDate(baseTime),
-                    });
-
-                    // Create a grandchild node under child1 for deep navigation tests
-                    batch.set(doc(lifeLogTreeNodes, "grandchild1"), {
-                      text: "grandchild",
-                      parentId: "child1",
-                      order: "a0",
-                      createdAt: Timestamp.fromDate(baseTime),
-                      updatedAt: Timestamp.fromDate(baseTime),
-                    });
-
-                    // Create a great-grandchild node under grandchild1 for deeper navigation tests
-                    batch.set(doc(lifeLogTreeNodes, "greatGrandchild1"), {
-                      text: "great-grandchild",
-                      parentId: "grandchild1",
-                      order: "a0",
-                      createdAt: Timestamp.fromDate(baseTime),
-                      updatedAt: Timestamp.fromDate(baseTime),
-                    });
-
-                    // Create a grandchild node under child3 to give child3 children
-                    // This enables testing "Delete when next node has children"
-                    batch.set(doc(lifeLogTreeNodes, "grandchild3"), {
-                      text: "third grandchild",
-                      parentId: "child3",
-                      order: "a0",
-                      createdAt: Timestamp.fromDate(baseTime),
-                      updatedAt: Timestamp.fromDate(baseTime),
-                    });
-
-                    // Generate additional tree nodes for scroll testing
-                    const treeNodeCount = options?.treeNodeCount ?? 0;
-                    for (let i = 0; i < treeNodeCount; i++) {
-                      batch.set(doc(lifeLogTreeNodes, `scrollTestNode${i}`), {
-                        text: `scroll test node ${i}`,
-                        parentId: "$log1",
-                        order: `b${String(i).padStart(3, "0")}`,
-                        createdAt: Timestamp.fromDate(baseTime),
-                        updatedAt: Timestamp.fromDate(baseTime),
-                      });
-                    }
-
-                    // Third lifelog - with noneTimestamp startAt for S key test
-                    batch.set(doc(lifeLogs, "$log3"), {
-                      text: "third lifelog",
-                      startAt: noneTimestamp,
-                      endAt: noneTimestamp,
-                      createdAt: Timestamp.fromDate(baseTime),
-                      updatedAt: Timestamp.fromDate(baseTime),
-                    });
-
-                    // Generate additional LifeLogs for scroll testing
-                    const lifeLogCount = options?.lifeLogCount ?? 3;
-                    for (let i = 4; i <= lifeLogCount; i++) {
-                      const startTime = new Date(baseTime);
-                      // Use minutes to avoid exceeding 24 hours
-                      startTime.setHours(12, i, 0, 0);
-
-                      batch.set(doc(lifeLogs, `$log${i}`), {
-                        text: `lifelog ${i}`,
-                        startAt: Timestamp.fromDate(startTime),
+                      batch.set(doc(lifeLogs, "$log1"), {
+                        text: "first lifelog",
+                        startAt: Timestamp.fromDate(startTime1),
                         endAt: noneTimestamp,
                         createdAt: Timestamp.fromDate(baseTime),
                         updatedAt: Timestamp.fromDate(baseTime),
                       });
+
+                      // Second lifelog - later time
+                      const startTime2 = new Date(baseTime);
+                      startTime2.setHours(12, 0, 0, 0);
+
+                      batch.set(doc(lifeLogs, "$log2"), {
+                        text: "second lifelog",
+                        startAt: Timestamp.fromDate(startTime2),
+                        endAt: noneTimestamp,
+                        createdAt: Timestamp.fromDate(baseTime),
+                        updatedAt: Timestamp.fromDate(baseTime),
+                      });
+
+                      // Create three sibling tree nodes under $log1
+                      // child1 (has children), child2 (no children), child3 (has children)
+                      batch.set(doc(lifeLogTreeNodes, "child1"), {
+                        text: "first child",
+                        parentId: "$log1",
+                        order: "a0",
+                        createdAt: Timestamp.fromDate(baseTime),
+                        updatedAt: Timestamp.fromDate(baseTime),
+                      });
+
+                      batch.set(doc(lifeLogTreeNodes, "child2"), {
+                        text: "second child",
+                        parentId: "$log1",
+                        order: "a1",
+                        createdAt: Timestamp.fromDate(baseTime),
+                        updatedAt: Timestamp.fromDate(baseTime),
+                      });
+
+                      batch.set(doc(lifeLogTreeNodes, "child3"), {
+                        text: "third child",
+                        parentId: "$log1",
+                        order: "a2",
+                        createdAt: Timestamp.fromDate(baseTime),
+                        updatedAt: Timestamp.fromDate(baseTime),
+                      });
+
+                      // Create a grandchild node under child1 for deep navigation tests
+                      batch.set(doc(lifeLogTreeNodes, "grandchild1"), {
+                        text: "grandchild",
+                        parentId: "child1",
+                        order: "a0",
+                        createdAt: Timestamp.fromDate(baseTime),
+                        updatedAt: Timestamp.fromDate(baseTime),
+                      });
+
+                      // Create a great-grandchild node under grandchild1 for deeper navigation tests
+                      batch.set(doc(lifeLogTreeNodes, "greatGrandchild1"), {
+                        text: "great-grandchild",
+                        parentId: "grandchild1",
+                        order: "a0",
+                        createdAt: Timestamp.fromDate(baseTime),
+                        updatedAt: Timestamp.fromDate(baseTime),
+                      });
+
+                      // Create a grandchild node under child3 to give child3 children
+                      // This enables testing "Delete when next node has children"
+                      batch.set(doc(lifeLogTreeNodes, "grandchild3"), {
+                        text: "third grandchild",
+                        parentId: "child3",
+                        order: "a0",
+                        createdAt: Timestamp.fromDate(baseTime),
+                        updatedAt: Timestamp.fromDate(baseTime),
+                      });
+
+                      // Generate additional tree nodes for scroll testing
+                      const treeNodeCount = options?.treeNodeCount ?? 0;
+                      for (let i = 0; i < treeNodeCount; i++) {
+                        batch.set(doc(lifeLogTreeNodes, `scrollTestNode${i}`), {
+                          text: `scroll test node ${i}`,
+                          parentId: "$log1",
+                          order: `b${String(i).padStart(3, "0")}`,
+                          createdAt: Timestamp.fromDate(baseTime),
+                          updatedAt: Timestamp.fromDate(baseTime),
+                        });
+                      }
+
+                      // Third lifelog - with noneTimestamp startAt for S key test
+                      batch.set(doc(lifeLogs, "$log3"), {
+                        text: "third lifelog",
+                        startAt: noneTimestamp,
+                        endAt: noneTimestamp,
+                        createdAt: Timestamp.fromDate(baseTime),
+                        updatedAt: Timestamp.fromDate(baseTime),
+                      });
+
+                      // Generate additional LifeLogs for scroll testing
+                      const lifeLogCount = options?.lifeLogCount ?? 3;
+                      for (let i = 4; i <= lifeLogCount; i++) {
+                        const startTime = new Date(baseTime);
+                        // Use minutes to avoid exceeding 24 hours
+                        startTime.setHours(12, i, 0, 0);
+
+                        batch.set(doc(lifeLogs, `$log${i}`), {
+                          text: `lifelog ${i}`,
+                          startAt: Timestamp.fromDate(startTime),
+                          endAt: noneTimestamp,
+                          createdAt: Timestamp.fromDate(baseTime),
+                          updatedAt: Timestamp.fromDate(baseTime),
+                        });
+                      }
                     }
 
                     // Generate out-of-range LifeLogs for scroll window testing
@@ -201,11 +204,15 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
 
                     // Select the first LifeLog that exists in the query results
                     // When lifeLogCount > 3, earlier LifeLogs might be filtered out by the time-based query
-                    const initialSelectedId =
-                      options?.initialSelectedId ?? (lifeLogCount > 3 ? `$log${Math.min(lifeLogCount, 10)}` : "$log1");
-                    updateState((state) => {
-                      state.panesLifeLogs.selectedLifeLogId = initialSelectedId;
-                    });
+                    if (!options?.skipDefaultLifeLogs) {
+                      const lifeLogCount = options?.lifeLogCount ?? 3;
+                      const initialSelectedId =
+                        options?.initialSelectedId ??
+                        (lifeLogCount > 3 ? `$log${Math.min(lifeLogCount, 10)}` : "$log1");
+                      updateState((state) => {
+                        state.panesLifeLogs.selectedLifeLogId = initialSelectedId;
+                      });
+                    }
                   })().then(resolveReady, rejectReady);
                 });
 
@@ -221,7 +228,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
   await ready;
 
   // Wait for initial render - skip if we're testing with out-of-range LifeLogs that might slide the window
-  if (!options?.outOfRangeLifeLogs?.length) {
+  if (!options?.outOfRangeLifeLogs?.length && !options?.skipDefaultLifeLogs) {
     await result.findByText("first lifelog");
   }
 
