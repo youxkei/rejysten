@@ -1,18 +1,51 @@
-import { MultiProvider } from "@solid-primitives/context";
-import { render, Suspense } from "solid-js/web";
+import { createSignal, Show, Suspense } from "solid-js";
+import { render } from "solid-js/web";
 import { registerSW } from "virtual:pwa-register";
 
-import { StoreServiceProvider } from "@/services/store";
+import { LifeLogs } from "@/panes/lifeLogs";
+import { ActionsServiceProvider } from "@/services/actions";
+import { FirebaseServiceProvider } from "@/services/firebase";
+import { FirestoreServiceProvider } from "@/services/firebase/firestore";
+import { StoreServiceProvider, useStoreService } from "@/services/store";
 
 registerSW({ immediate: true });
 
 function App() {
   return (
-    <Suspense fallback={<p>loading</p>}>
-      <MultiProvider values={[StoreServiceProvider]}>
-        <p>Hello, world!</p>
-      </MultiProvider>
-    </Suspense>
+    <StoreServiceProvider>
+      {(() => {
+        const { state, updateState } = useStoreService();
+        const [inputConfigYAML, setInputConfigYAML] = createSignal(state.firebase.configYAML);
+        const [errors, setErrors] = createSignal<string[]>([]);
+
+        const applyConfig = () => {
+          updateState((s) => {
+            s.firebase.configYAML = inputConfigYAML();
+          });
+        };
+
+        return (
+          <>
+            <div>
+              <input onInput={(e) => setInputConfigYAML(e.currentTarget.value)} value={inputConfigYAML()} />
+            </div>
+            <button onClick={applyConfig}>Apply</button>
+            <pre>{errors().join("\n")}</pre>
+            <Show when={state.firebase.configYAML}>
+              <Suspense fallback={<p>loading</p>}>
+                <FirebaseServiceProvider configYAML={state.firebase.configYAML} setErrors={setErrors}>
+                  <FirestoreServiceProvider>
+                    <ActionsServiceProvider>
+                      <LifeLogs />
+                    </ActionsServiceProvider>
+                  </FirestoreServiceProvider>
+                </FirebaseServiceProvider>
+              </Suspense>
+            </Show>
+          </>
+        );
+      })()}
+    </StoreServiceProvider>
   );
 }
 

@@ -15,6 +15,7 @@ import * as s from "superstruct";
 
 import { ServiceNotAvailable } from "@/services/error";
 import { createSubscribeWithSignal } from "@/solid/subscribe";
+import "@/services/firebase/store";
 
 export type FirebaseService = {
   firebaseApp: FirebaseApp;

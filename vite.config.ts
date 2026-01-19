@@ -11,6 +11,7 @@ export default defineConfig({
   server: {
     // for firebase emulator
     port: 8081,
+    allowedHosts: true,
   },
   plugins: [
     solidPlugin({
