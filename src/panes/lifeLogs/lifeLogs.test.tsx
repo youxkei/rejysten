@@ -1110,6 +1110,81 @@ describe("<LifeLogs />", () => {
     expect(listItems.length).toBe(4);
   });
 
+  it("can focus LifeLog by clicking on it", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db);
+
+    await result.findByText("first lifelog");
+    await result.findByText("second lifelog");
+
+    // Initial state: $log1 is selected
+    const log1Initial = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+    expect(log1Initial?.className).toContain(styles.lifeLogTree.selected);
+
+    // Click on $log2's container
+    const log2Container = result.getByText("second lifelog").closest(`.${styles.lifeLogTree.container}`)!;
+    await userEvent.click(log2Container);
+    await awaitPendingCallbacks();
+
+    // $log2 should now be selected
+    expect(log2Container.className).toContain(styles.lifeLogTree.selected);
+
+    // $log1 should no longer be selected
+    const log1AfterClick = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+    expect(log1AfterClick?.className).not.toContain(styles.lifeLogTree.selected);
+  });
+
+  it("clicking LifeLog container exits tree mode", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db);
+
+    await result.findByText("first lifelog");
+
+    // Enter tree mode
+    await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
+
+    // Tree nodes should be visible
+    await result.findByText("first child");
+    expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+
+    // Click on LifeLog container (not on tree node)
+    const log1Container = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`)!;
+    await userEvent.click(log1Container);
+    await awaitPendingCallbacks();
+
+    // Tree mode should be exited (tree nodes no longer visible)
+    expect(result.queryByText("first child")).toBeNull();
+
+    // LifeLog should be selected
+    expect(log1Container.className).toContain(styles.lifeLogTree.selected);
+  });
+
+  it("clicking on input element does not change LifeLog focus", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db);
+
+    await result.findByText("first lifelog");
+
+    // Get the log1 container before entering edit mode
+    const log1Container = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`)!;
+    expect(log1Container.className).toContain(styles.lifeLogTree.selected);
+
+    // Enter editing mode
+    await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
+
+    const input = result.container.querySelector("input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+
+    // Click on the input
+    await userEvent.click(input);
+    await awaitPendingCallbacks();
+
+    // Should still be editing the same LifeLog (log1Container should still be selected)
+    expect(log1Container.className).toContain(styles.lifeLogTree.selected);
+
+    // Input should still be visible
+    expect(result.container.querySelector("input")).toBeTruthy();
+  });
+
   describe("scroll", () => {
     // Vitest browser mode default iframe size: 414x896
     // Each LifeLog is approximately 100px height, so 15 LifeLogs will require scrolling

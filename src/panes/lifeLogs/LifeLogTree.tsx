@@ -192,6 +192,15 @@ export function LifeLogTree(props: {
             ref={lifeLogContainerRef}
             class={styles.lifeLogTree.container}
             classList={{ [styles.lifeLogTree.selected]: isLifeLogSelected$() }}
+            onClick={(e) => {
+              // 編集中のinputをクリックした場合はフォーカス変更しない
+              if (e.target instanceof HTMLInputElement) return;
+
+              updateState((s) => {
+                s.panesLifeLogs.selectedLifeLogId = props.id;
+                s.panesLifeLogs.selectedLifeLogNodeId = "";
+              });
+            }}
           >
             <div class={styles.lifeLogTree.timeRange}>
               <EditableValue

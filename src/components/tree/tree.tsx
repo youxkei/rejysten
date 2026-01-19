@@ -153,7 +153,20 @@ export function Node<T extends TreeNode>(props: {
       {(node$) => {
         return (
           <>
-            <div ref={nodeRef}>{props.showNode(node$, isSelected$)}</div>
+            <div
+              ref={nodeRef}
+              onClick={(e) => {
+                // 編集中のinputをクリックした場合はフォーカス変更しない
+                if (e.target instanceof HTMLInputElement) return;
+
+                // 親のLifeLogコンテナのクリックイベントが発火しないようにする
+                e.stopPropagation();
+
+                props.setSelectedId(props.id);
+              }}
+            >
+              {props.showNode(node$, isSelected$)}
+            </div>
             <ChildrenNodes
               col={props.col}
               parentId={props.id}

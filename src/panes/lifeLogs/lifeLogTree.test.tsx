@@ -1200,6 +1200,64 @@ describe("<LifeLogTree />", () => {
     });
   });
 
+  it("can focus tree node by clicking on it", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db);
+
+    await result.findByText("first lifelog");
+
+    // Enter tree mode
+    await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
+
+    // Wait for tree nodes to render
+    await result.findByText("first child");
+    await result.findByText("grandchild");
+
+    // Initial state: first child is selected
+    expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+
+    // Click on grandchild
+    const grandchildElement = result.getByText("grandchild");
+    await userEvent.click(grandchildElement);
+    await awaitPendingCallbacks();
+
+    // grandchild should now be selected
+    expect(grandchildElement.className).toContain(styles.lifeLogTree.selected);
+
+    // first child should no longer be selected
+    expect(result.getByText("first child").className).not.toContain(styles.lifeLogTree.selected);
+  });
+
+  it("clicking on tree node input does not change focus", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db);
+
+    await result.findByText("first lifelog");
+
+    // Enter tree mode
+    await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
+
+    // Wait for tree nodes to render
+    await result.findByText("first child");
+
+    // Enter editing mode on first child
+    await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
+
+    const input = result.container.querySelector("input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+    expect(input.value).toBe("first child");
+
+    // Click on the input
+    await userEvent.click(input);
+    await awaitPendingCallbacks();
+
+    // Should still be editing the same node
+    const inputAfterClick = result.container.querySelector("input") as HTMLInputElement;
+    expect(inputAfterClick).toBeTruthy();
+    expect(inputAfterClick.value).toBe("first child");
+  });
+
   describe("scroll", () => {
     // Vitest browser mode default iframe size: 414x896
     // Each tree node is approximately 24px height, so 30 nodes will require scrolling
