@@ -8,6 +8,7 @@ import { LifeLogTree } from "@/panes/lifeLogs/LifeLogTree";
 import { MobileToolbar } from "@/panes/lifeLogs/MobileToolbar";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { useRangeFromFocus } from "@/panes/lifeLogs/useRangeFromFocus";
+import { useScrollFocus } from "@/panes/lifeLogs/useScrollFocus";
 import { getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal } from "@/services/firebase/firestore/subscribe";
 import { ScrollContainer } from "@/solid/scroll";
@@ -32,14 +33,14 @@ export function LifeLogs(props: LifeLogsProps = {}) {
   return (
     <>
       <ScrollContainer class={styles.lifeLogs.container}>
-        <TimeRangedLifeLogs start={rangeStart$()} end={rangeEnd$()} />
+        <TimeRangedLifeLogs start={rangeStart$()} end={rangeEnd$()} scrollFocusDebounceMs={props.debounceMs} />
       </ScrollContainer>
       <MobileToolbar />
     </>
   );
 }
 
-export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp }) {
+export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp; scrollFocusDebounceMs?: number }) {
   const firestore = useFirestoreService();
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
 
@@ -66,6 +67,13 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp }) 
   );
 
   const lifeLogs$ = rangeLifeLogs$;
+
+  // スクロール時のフォーカス移動
+  useScrollFocus({
+    lifeLogIds$: () => lifeLogs$().map((l) => l.id),
+    isEditing$,
+    debounceMs: props.scrollFocusDebounceMs,
+  });
 
   const lifeLogIdWithNeighborIds$ = createMemo(
     () => {

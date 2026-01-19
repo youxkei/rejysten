@@ -424,7 +424,11 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }) => {
     if (!lifeLog) return;
 
     // Check conditions for deletion: pending text empty, timestamps = none
-    if ((context.pendingText ?? lifeLog.text) !== "" || !lifeLog.startAt.isEqual(noneTimestamp) || !lifeLog.endAt.isEqual(noneTimestamp)) {
+    if (
+      (context.pendingText ?? lifeLog.text) !== "" ||
+      !lifeLog.startAt.isEqual(noneTimestamp) ||
+      !lifeLog.endAt.isEqual(noneTimestamp)
+    ) {
       return;
     }
 
@@ -474,7 +478,11 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }) => {
     if (!lifeLog) return;
 
     // Check conditions for deletion: pending text empty, timestamps = none
-    if ((context.pendingText ?? lifeLog.text) !== "" || !lifeLog.startAt.isEqual(noneTimestamp) || !lifeLog.endAt.isEqual(noneTimestamp)) {
+    if (
+      (context.pendingText ?? lifeLog.text) !== "" ||
+      !lifeLog.startAt.isEqual(noneTimestamp) ||
+      !lifeLog.endAt.isEqual(noneTimestamp)
+    ) {
       return;
     }
 
