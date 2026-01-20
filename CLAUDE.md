@@ -3,4 +3,5 @@
   - when pre-commit hook failed, try `pnpm run fix` first
 - use `pnpm test` to run all test cases, `pnpm test/case "case title"` to run one case
   - always consider to run cases one by one first
+  - pre-commit hook runs all tests, so they should all pass without any changes
 - use `git restore` instead of `git checkout` to restore file content from commit

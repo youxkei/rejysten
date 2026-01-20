@@ -18,38 +18,40 @@ export default {
   title: "panes/lifeLogs",
 } satisfies Meta;
 
-const firebaseConfig = `{ apiKey: "apiKey", authDomain: "authDomain", projectId: "demo", storageBucket: "", messagingSenderId: "", appId: "", measurementId: "" }`;
+const firebaseConfig = `{ apiKey: "apiKey", authDomain: "authDomain", projectId: "demo", storageBucket: "", messagingSenderId: "", appId: "", measurementId: "", projectNumber: "", version: "2" }`;
 
 function StorybookFirebaseWrapper(props: { children: JSXElement; showConfig?: boolean }) {
   const [configText, setConfigText] = createSignal(firebaseConfig);
   const [errors, setErrors] = createSignal<string[]>([]);
 
   return (
-    <FirebaseServiceProvider configYAML={configText()} setErrors={setErrors} appName="LifeLogsStory">
-      {props.showConfig !== false && (
-        <>
-          <div style={{ "margin-bottom": "20px" }}>
-            <label style={{ display: "block", "margin-bottom": "5px" }}>Firebase Configuration:</label>
-            <textarea
-              value={configText()}
-              onInput={(e) => setConfigText(e.currentTarget.value)}
-              style={{
-                width: "100%",
-                height: "50px",
-                "font-family": "monospace",
-                padding: "8px",
-                border: "1px solid #ccc",
-                "border-radius": "4px",
-              }}
-            />
-          </div>
-          <pre>{errors().join("\n")}</pre>
-        </>
-      )}
-      <FirestoreServiceProvider>
-        <ActionsServiceProvider>{props.children}</ActionsServiceProvider>
-      </FirestoreServiceProvider>
-    </FirebaseServiceProvider>
+    <>
+      <pre>{errors().join("\n")}</pre>
+      <FirebaseServiceProvider configYAML={configText()} setErrors={setErrors} appName="LifeLogsStory">
+        {props.showConfig !== false && (
+          <>
+            <div style={{ "margin-bottom": "20px" }}>
+              <label style={{ display: "block", "margin-bottom": "5px" }}>Firebase Configuration:</label>
+              <textarea
+                value={configText()}
+                onInput={(e) => setConfigText(e.currentTarget.value)}
+                style={{
+                  width: "100%",
+                  height: "50px",
+                  "font-family": "monospace",
+                  padding: "8px",
+                  border: "1px solid #ccc",
+                  "border-radius": "4px",
+                }}
+              />
+            </div>
+          </>
+        )}
+        <FirestoreServiceProvider>
+          <ActionsServiceProvider>{props.children}</ActionsServiceProvider>
+        </FirestoreServiceProvider>
+      </FirebaseServiceProvider>
+    </>
   );
 }
 
@@ -65,6 +67,7 @@ export const LifeLogsStory: StoryObj = {
               const batchVersion = getCollection(firestore, "batchVersion");
               const lifeLogs = getCollection(firestore, "lifeLogs");
               const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+              const ngrams = getCollection(firestore, "ngrams");
 
               const { updateState } = useStoreService();
 
@@ -78,6 +81,10 @@ export const LifeLogsStory: StoryObj = {
 
                   for (const lifeLogTreeNode of (await getDocs(lifeLogTreeNodes)).docs) {
                     batch.delete(lifeLogTreeNode.ref);
+                  }
+
+                  for (const ngram of (await getDocs(ngrams)).docs) {
+                    batch.delete(ngram.ref);
                   }
 
                   batch.set(doc(batchVersion, singletonDocumentId), {

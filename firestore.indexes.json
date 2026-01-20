@@ -15,6 +15,20 @@
       ]
     },
     {
+      "collectionGroup": "lifeLogTreeNodes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "parentId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "order",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "pocFirestoreIndexOrderItems",
       "queryScope": "COLLECTION",
       "fields": [

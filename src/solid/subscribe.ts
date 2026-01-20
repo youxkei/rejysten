@@ -57,7 +57,7 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
               // Clear setResource so data goes through mutateResource instead
               setResource = undefined;
               resolve(initialValue);
-            }, 40);
+            }, 200);
           }),
         ]);
       }

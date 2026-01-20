@@ -45,7 +45,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
   const result = render(() => (
     <StoreServiceProvider localStorageNamePostfix={testId}>
       <FirebaseServiceProvider
-        configYAML={`{ apiKey: "apiKey", authDomain: "authDomain", projectId: "demo", storageBucket: "", messagingSenderId: "", appId: "", measurementId: "" }`}
+        configYAML={`{ apiKey: "apiKey", authDomain: "authDomain", projectId: "demo", storageBucket: "", messagingSenderId: "", appId: "", measurementId: "", projectNumber: "", version: "2" }`}
         setErrors={() => undefined}
         appName={testId}
       >

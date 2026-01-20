@@ -33,6 +33,8 @@ const firebaseConfigSchema = s.object({
   messagingSenderId: s.string(),
   appId: s.string(),
   measurementId: s.string(),
+  projectNumber: s.string(),
+  version: s.string(),
 });
 
 export function FirebaseServiceProvider(props: {
