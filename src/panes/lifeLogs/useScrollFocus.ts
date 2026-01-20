@@ -2,6 +2,7 @@ import { debounce } from "@solid-primitives/scheduled";
 import { createEffect, onCleanup, type Accessor } from "solid-js";
 
 import { useStoreService } from "@/services/store";
+import { createIsMobile } from "@/solid/responsive";
 import { isElementVisible, useScrollContainer } from "@/solid/scroll";
 
 /**
@@ -15,6 +16,7 @@ export function useScrollFocus(props: {
 }) {
   const container$ = useScrollContainer();
   const { state, updateState } = useStoreService();
+  const isMobile$ = createIsMobile();
 
   const debouncedUpdateState = debounce((newTargetId: string, selectedNodeId: string) => {
     updateState((s) => {
@@ -50,8 +52,14 @@ export function useScrollFocus(props: {
     const ids = props.lifeLogIds$();
     let newTargetId: string | undefined;
 
-    if (visibility === "above") {
-      // フォーカスが上に消えた → 見えている一番上を探す
+    const isMobile = isMobile$();
+
+    // モバイルでは column-reverse により表示が逆なので、探索方向も逆にする
+    // デスクトップ: "above" → 順方向, "below" → 逆方向
+    // モバイル:     "above" → 逆方向, "below" → 順方向
+    const shouldIterateForward = isMobile ? visibility === "below" : visibility === "above";
+
+    if (shouldIterateForward) {
       for (const id of ids) {
         const el = document.getElementById(id);
         if (el && isElementVisible(container, el) === "visible") {
@@ -60,7 +68,6 @@ export function useScrollFocus(props: {
         }
       }
     } else {
-      // フォーカスが下に消えた → 見えている一番下を探す
       for (let i = ids.length - 1; i >= 0; i--) {
         const el = document.getElementById(ids[i]);
         if (el && isElementVisible(container, el) === "visible") {
