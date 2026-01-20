@@ -23,16 +23,35 @@ const nord = [
 ];
 
 export const styles = {
-  lifeLogs: {
-    container: style({
+  app: {
+    wrapper: style({
+      display: "flex",
+      flexDirection: "column",
       height: "100%",
+    }),
+    configRow: style({
+      display: "flex",
+      gap: "0.5rem",
+    }),
+    errors: style({
+      margin: "0.5rem 0",
+    }),
+    main: style({
+      flex: 1,
+      minHeight: 0,
+    }),
+  },
+  lifeLogs: {
+    wrapper: style({
+      display: "flex",
+      flexDirection: "column",
+      height: "100%",
+    }),
+    container: style({
+      flex: 1,
+      minHeight: 0,
       overflow: "auto",
       padding: "1rem",
-      "@media": {
-        [`(max-width: ${MOBILE_BREAKPOINT})`]: {
-          paddingBottom: "5rem",
-        },
-      },
     }),
     list: style({
       listStyle: "none",
@@ -109,10 +128,6 @@ export const styles = {
   },
   mobileToolbar: {
     container: style({
-      position: "fixed",
-      bottom: 0,
-      left: 0,
-      right: 0,
       backgroundColor: nord[1],
       borderTop: `1px solid ${nord[2]}`,
       padding: "0.5rem",
@@ -120,7 +135,6 @@ export const styles = {
       display: "none",
       justifyContent: "center",
       gap: "0.25rem",
-      zIndex: 1000,
       "@media": {
         [`(max-width: ${MOBILE_BREAKPOINT})`]: {
           display: "flex",

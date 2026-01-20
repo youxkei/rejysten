@@ -1346,9 +1346,10 @@ describe("<LifeLogs />", () => {
         await page.viewport(800, 600);
         const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
 
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
         const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height (default 100% inherits from parent which may be unconstrained)
-        container.style.height = "400px";
+        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
+        wrapper.style.height = "400px";
 
         // Navigate to first item with g key
         await userEvent.keyboard("{g}");
@@ -1383,9 +1384,10 @@ describe("<LifeLogs />", () => {
         await page.viewport(800, 600);
         const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
 
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
         const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height
-        container.style.height = "400px";
+        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
+        wrapper.style.height = "400px";
 
         // Navigate to last item with G key
         await userEvent.keyboard("{Shift>}{g}{/Shift}");
@@ -1417,9 +1419,10 @@ describe("<LifeLogs />", () => {
         await page.viewport(800, 600);
         const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
 
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
         const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height
-        container.style.height = "400px";
+        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
+        wrapper.style.height = "400px";
 
         // Navigate to first item with g key
         await userEvent.keyboard("{g}");
@@ -1457,9 +1460,10 @@ describe("<LifeLogs />", () => {
           lifeLogsProps: { debounceMs: 0 },
         });
 
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
         const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height
-        container.style.height = "400px";
+        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
+        wrapper.style.height = "400px";
 
         // Navigate to first item with g key
         await userEvent.keyboard("{g}");
@@ -1500,9 +1504,10 @@ describe("<LifeLogs />", () => {
         await page.viewport(414, 896);
         const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
 
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
         const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height
-        container.style.height = "400px";
+        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
+        wrapper.style.height = "400px";
 
         // On mobile with column-reverse, G (last item) appears at visual top
         await userEvent.keyboard("{Shift>}{g}{/Shift}");
@@ -1537,9 +1542,10 @@ describe("<LifeLogs />", () => {
         await page.viewport(414, 896);
         const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
 
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
         const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height
-        container.style.height = "400px";
+        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
+        wrapper.style.height = "400px";
 
         // On mobile with column-reverse, g (first item) appears at visual bottom
         await userEvent.keyboard("{g}");
@@ -1571,9 +1577,10 @@ describe("<LifeLogs />", () => {
         await page.viewport(414, 896);
         const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
 
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
         const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height
-        container.style.height = "400px";
+        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
+        wrapper.style.height = "400px";
 
         // Navigate to first item with g key
         await userEvent.keyboard("{g}");
@@ -1611,9 +1618,10 @@ describe("<LifeLogs />", () => {
           lifeLogsProps: { debounceMs: 0 },
         });
 
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
         const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height
-        container.style.height = "400px";
+        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
+        wrapper.style.height = "400px";
 
         // Navigate to first item with g key
         await userEvent.keyboard("{g}");

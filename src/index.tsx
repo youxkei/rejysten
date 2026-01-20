@@ -7,6 +7,7 @@ import { ActionsServiceProvider } from "@/services/actions";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import { FirestoreServiceProvider } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
+import { styles } from "@/styles.css";
 
 registerSW({ immediate: true });
 
@@ -25,24 +26,26 @@ function App() {
         };
 
         return (
-          <>
-            <div>
+          <div class={styles.app.wrapper}>
+            <div class={styles.app.configRow}>
               <input onInput={(e) => setInputConfigYAML(e.currentTarget.value)} value={inputConfigYAML()} />
+              <button onClick={applyConfig}>Apply</button>
             </div>
-            <button onClick={applyConfig}>Apply</button>
-            <pre>{errors().join("\n")}</pre>
+            <pre class={styles.app.errors}>{errors().join("\n")}</pre>
             <Show when={state.firebase.configYAML}>
-              <Suspense fallback={<p>loading</p>}>
-                <FirebaseServiceProvider configYAML={state.firebase.configYAML} setErrors={setErrors}>
-                  <FirestoreServiceProvider>
-                    <ActionsServiceProvider>
-                      <LifeLogs />
-                    </ActionsServiceProvider>
-                  </FirestoreServiceProvider>
-                </FirebaseServiceProvider>
-              </Suspense>
+              <div class={styles.app.main}>
+                <Suspense fallback={<p>loading</p>}>
+                  <FirebaseServiceProvider configYAML={state.firebase.configYAML} setErrors={setErrors}>
+                    <FirestoreServiceProvider>
+                      <ActionsServiceProvider>
+                        <LifeLogs />
+                      </ActionsServiceProvider>
+                    </FirestoreServiceProvider>
+                  </FirebaseServiceProvider>
+                </Suspense>
+              </div>
             </Show>
-          </>
+          </div>
         );
       })()}
     </StoreServiceProvider>

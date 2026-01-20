@@ -34,12 +34,12 @@ export function LifeLogs(props: LifeLogsProps = {}) {
   });
 
   return (
-    <>
+    <div class={styles.lifeLogs.wrapper}>
       <ScrollContainer class={styles.lifeLogs.container}>
         <TimeRangedLifeLogs start={rangeStart$()} end={rangeEnd$()} scrollFocusDebounceMs={props.debounceMs} />
       </ScrollContainer>
       <MobileToolbar />
-    </>
+    </div>
   );
 }
 
