@@ -727,29 +727,21 @@ describe("<LifeLog />", () => {
       expect(log2Element?.className).toContain(styles.lifeLogTree.selected);
     });
 
-    // Press "l" to create a tree node with text "new"
+    // Press "l" to create a tree node with empty text
     await userEvent.keyboard("{l}");
     await awaitPendingCallbacks();
     await waitFor(() => {
-      expect(result.getByText("new").className).toContain(styles.lifeLogTree.selected);
+      const selectedNode = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+      expect(selectedNode).toBeTruthy();
     });
 
-    // Press "a" to enter edit mode at end
-    await userEvent.keyboard("{a}");
+    // Press "i" to enter edit mode (empty node)
+    await userEvent.keyboard("{i}");
     await awaitPendingCallbacks();
     await waitFor(() => {
       const input = result.container.querySelector("input");
       expect(input).toBeTruthy();
-      expect((input as HTMLInputElement).value).toBe("new");
-    });
-
-    // Delete all text (Backspace 3 times: "new" -> "ne" -> "n" -> "")
-    await userEvent.keyboard("{Backspace}{Backspace}{Backspace}");
-    await awaitPendingCallbacks();
-    await waitFor(() => {
-      const input = result.container.querySelector("input") as HTMLInputElement;
-      expect(input.value).toBe("");
-      expect(input.selectionStart).toBe(0);
+      expect((input as HTMLInputElement).value).toBe("");
     });
 
     // Press Backspace to delete the empty node
@@ -764,8 +756,9 @@ describe("<LifeLog />", () => {
       expect(input.selectionStart).toBe("second lifelog".length);
     });
 
-    // Verify tree node is gone
-    expect(result.queryByText("new")).toBeNull();
+    // Verify tree node is gone (no tree children nodes container)
+    const log2Element = result.container.querySelector("#\\$log2");
+    expect(log2Element?.querySelector(`.${styles.lifeLogTree.childrenNodes}`)).toBeNull();
   });
 
   it("does not delete only node with Backspace if text is not empty", async ({ db, task }) => {
@@ -778,11 +771,28 @@ describe("<LifeLog />", () => {
     await userEvent.keyboard("{l}");
     await awaitPendingCallbacks();
     await waitFor(() => {
-      expect(result.getByText("new").className).toContain(styles.lifeLogTree.selected);
+      const selectedNode = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+      expect(selectedNode).toBeTruthy();
     });
 
-    // Press "i" to enter edit mode at beginning
+    // Press "i" to enter edit mode and type some text
     await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
+    await waitFor(() => {
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      expect(input).toBeTruthy();
+    });
+
+    // Type some text to make the node non-empty
+    await userEvent.keyboard("test");
+    await awaitPendingCallbacks();
+    await waitFor(() => {
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      expect(input.value).toBe("test");
+    });
+
+    // Move cursor to beginning
+    await userEvent.keyboard("{Home}");
     await awaitPendingCallbacks();
     await waitFor(() => {
       const input = result.container.querySelector("input") as HTMLInputElement;
@@ -798,7 +808,7 @@ describe("<LifeLog />", () => {
 
     // Verify: node still exists, text unchanged
     const input = result.container.querySelector("input") as HTMLInputElement;
-    expect(input.value).toBe("new");
+    expect(input.value).toBe("test");
 
     // Exit editing mode
     await userEvent.keyboard("{Escape}");

@@ -172,7 +172,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
         await runBatch(firestore, (batch) => {
           addSingle(firestore, batch, lifeLogTreeNodesCol, lifeLog.id, {
             id: nodeId,
-            text: "new",
+            text: "",
             lifeLogId: lifeLog.id,
           });
           return Promise.resolve();
