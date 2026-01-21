@@ -48,6 +48,7 @@ declare module "@/services/actions" {
       setEnterSplitNodeId: (id: string | undefined) => void;
       setTabCursorInfo: (info: { nodeId: string; cursorPosition: number } | undefined) => void;
       setMergeCursorInfo: (info: { nodeId: string; cursorPosition: number } | undefined) => void;
+      updateNodeInput: (text: string, cursorPosition: number) => void;
     };
   }
 
@@ -76,9 +77,8 @@ declare module "@/services/actions" {
       // Tree node actions
       saveTreeNode: () => Promise<void>;
       splitTreeNode: () => Promise<void>;
-      mergeTreeNodeWithAbove: () => Promise<boolean>;
-      mergeTreeNodeWithBelow: () => Promise<{ merged: boolean; mergedText?: string; cursorPosition?: number }>;
-      removeOnlyTreeNode: () => Promise<boolean>;
+      removeOrMergeNodeWithAbove: () => Promise<void>;
+      mergeTreeNodeWithBelow: () => Promise<void>;
       saveAndIndentTreeNode: () => Promise<void>;
       saveAndDedentTreeNode: () => Promise<void>;
     };
@@ -104,6 +104,7 @@ initialActionsContext.panes.lifeLogs = {
   setEnterSplitNodeId: () => undefined,
   setTabCursorInfo: () => undefined,
   setMergeCursorInfo: () => undefined,
+  updateNodeInput: () => undefined,
 };
 
 actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Actions) => {
@@ -659,23 +660,54 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     }
   }
 
-  async function mergeTreeNodeWithAbove(): Promise<boolean> {
+  async function removeOrMergeNodeWithAbove(): Promise<void> {
     const selectedNodeId = state.panesLifeLogs.selectedLifeLogNodeId;
     const lifeLogId = state.panesLifeLogs.selectedLifeLogId;
-    if (selectedNodeId === "" || lifeLogId === "") return false;
+    if (selectedNodeId === "" || lifeLogId === "") return;
 
     const node = await getDoc(firestore, lifeLogTreeNodesCol, selectedNodeId);
-    if (!node) return false;
+    if (!node) return;
 
     // Check if current node has children
     const currentHasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, node);
-    if (currentHasChildren) return false;
-
-    // Get above node
-    const aboveNode = await getAboveNode(firestore, lifeLogTreeNodesCol, node);
-    if (!aboveNode) return false;
+    if (currentHasChildren) return;
 
     const currentText = context.pendingNodeText ?? node.text;
+
+    // First, try to remove only empty node (exit to LifeLog)
+    if (
+      currentText === "" &&
+      node.parentId === lifeLogId &&
+      !(await getPrevNode(firestore, lifeLogTreeNodesCol, node)) &&
+      !(await getNextNode(firestore, lifeLogTreeNodesCol, node))
+    ) {
+      firestore.setClock(true);
+      try {
+        await runBatch(firestore, async (batch) => {
+          await remove(firestore, batch, lifeLogTreeNodesCol, node);
+        });
+
+        context.setLifeLogCursorInfo({ lifeLogId, cursorPosition: context.lifeLogTextLength });
+        const setEditingField = context.setEditingField;
+        const setIsEditing = context.setIsEditing;
+        await startTransition(() => {
+          setEditingField(EditingField.Text);
+          setIsEditing(true);
+          updateState((s) => {
+            s.panesLifeLogs.selectedLifeLogNodeId = "";
+          });
+          firestore.setClock(false);
+        });
+      } finally {
+        firestore.setClock(false);
+      }
+      return;
+    }
+
+    // Otherwise, try to merge with above node
+    const aboveNode = await getAboveNode(firestore, lifeLogTreeNodesCol, node);
+    if (!aboveNode) return;
+
     const mergedText = aboveNode.text + currentText;
     const cursorPosition = aboveNode.text.length;
 
@@ -690,11 +722,8 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
       });
 
       context.setMergeCursorInfo({ nodeId: aboveNode.id, cursorPosition });
-      // Save setIsEditing reference before updateState triggers onCleanup which resets it
       const setIsEditing = context.setIsEditing;
       await startTransition(() => {
-        // IMPORTANT: Call setIsEditing(true) BEFORE updateState, because updateState
-        // will trigger the old EditableValue to lose focus and call setIsEditing(false)
         setIsEditing(true);
         updateState((s) => {
           s.panesLifeLogs.selectedLifeLogNodeId = aboveNode.id;
@@ -704,28 +733,22 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     } finally {
       firestore.setClock(false);
     }
-
-    return true;
   }
 
-  async function mergeTreeNodeWithBelow(): Promise<{
-    merged: boolean;
-    mergedText?: string;
-    cursorPosition?: number;
-  }> {
+  async function mergeTreeNodeWithBelow(): Promise<void> {
     const selectedNodeId = state.panesLifeLogs.selectedLifeLogNodeId;
-    if (selectedNodeId === "") return { merged: false };
+    if (selectedNodeId === "") return;
 
     const node = await getDoc(firestore, lifeLogTreeNodesCol, selectedNodeId);
-    if (!node) return { merged: false };
+    if (!node) return;
 
     // Get below node
     const belowNode = await getBelowNode(firestore, lifeLogTreeNodesCol, node);
-    if (!belowNode) return { merged: false };
+    if (!belowNode) return;
 
     // Check if below node has children
     const belowHasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, belowNode);
-    if (belowHasChildren) return { merged: false };
+    if (belowHasChildren) return;
 
     const currentText = context.pendingNodeText ?? node.text;
     const cursorPosition = currentText.length;
@@ -741,64 +764,14 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
         await remove(firestore, batch, lifeLogTreeNodesCol, belowNode);
       });
 
+      context.updateNodeInput(mergedText, cursorPosition);
+
       await startTransition(() => {
         firestore.setClock(false);
       });
     } finally {
       firestore.setClock(false);
     }
-
-    return { merged: true, mergedText, cursorPosition };
-  }
-
-  async function removeOnlyTreeNode(): Promise<boolean> {
-    const selectedNodeId = state.panesLifeLogs.selectedLifeLogNodeId;
-    const lifeLogId = state.panesLifeLogs.selectedLifeLogId;
-    if (selectedNodeId === "" || lifeLogId === "") return false;
-
-    const node = await getDoc(firestore, lifeLogTreeNodesCol, selectedNodeId);
-    if (!node) return false;
-
-    const currentText = context.pendingNodeText ?? node.text;
-
-    // Check if this is the only empty node directly under the LifeLog
-    if (
-      currentText !== "" ||
-      node.parentId !== lifeLogId ||
-      (await getPrevNode(firestore, lifeLogTreeNodesCol, node)) ||
-      (await getNextNode(firestore, lifeLogTreeNodesCol, node))
-    ) {
-      return false;
-    }
-
-    // Check if node has children
-    const hasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, node);
-    if (hasChildren) return false;
-
-    firestore.setClock(true);
-    try {
-      await runBatch(firestore, async (batch) => {
-        await remove(firestore, batch, lifeLogTreeNodesCol, node);
-      });
-
-      context.setLifeLogCursorInfo({ lifeLogId, cursorPosition: context.lifeLogTextLength });
-      // Save setters before updateState triggers onCleanup which resets them
-      const setEditingField = context.setEditingField;
-      const setIsEditing = context.setIsEditing;
-      await startTransition(() => {
-        // IMPORTANT: Call setters BEFORE updateState
-        setEditingField(EditingField.Text);
-        setIsEditing(true);
-        updateState((s) => {
-          s.panesLifeLogs.selectedLifeLogNodeId = "";
-        });
-        firestore.setClock(false);
-      });
-    } finally {
-      firestore.setClock(false);
-    }
-
-    return true;
   }
 
   async function saveAndIndentTreeNode() {
@@ -843,9 +816,8 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     createFirstLifeLog,
     saveTreeNode,
     splitTreeNode,
-    mergeTreeNodeWithAbove,
+    removeOrMergeNodeWithAbove,
     mergeTreeNodeWithBelow,
-    removeOnlyTreeNode,
     saveAndIndentTreeNode,
     saveAndDedentTreeNode,
   };

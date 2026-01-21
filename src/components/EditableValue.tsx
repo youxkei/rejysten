@@ -29,6 +29,8 @@ export interface EditableValueProps<V> {
   onTextChange?: (text: string) => void;
   // Callback when selection/cursor position changes
   onSelectionChange?: (selectionStart: number) => void;
+  // Callback when input element becomes available (for direct manipulation)
+  onInputRef?: (inputRef: HTMLInputElement) => void;
   debugId?: string;
 }
 
@@ -78,6 +80,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
             setEditText(initialText);
             props.onTextChange?.(initialText);
             if (inputRef) {
+              props.onInputRef?.(inputRef);
               inputRef.value = initialText;
               inputRef.focus();
 

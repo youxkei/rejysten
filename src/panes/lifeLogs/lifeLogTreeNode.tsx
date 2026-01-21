@@ -47,35 +47,17 @@ export function LifeLogTreeNode(props: {
 
     // Handle Backspace at beginning of node
     if (event.code === "Backspace" && inputRef.selectionStart === 0) {
-      // IMPORTANT: Call event.preventDefault() and preventBlurSave() BEFORE any async operations
-      // because the blur event may fire during the async operation when the input loses focus
       event.preventDefault();
       preventBlurSave();
-
-      // First try to remove only empty tree node (exit to LifeLog)
-      const removed = await actions.removeOnlyTreeNode();
-      if (removed) {
-        return;
-      }
-
-      // Try to merge with above node
-      await actions.mergeTreeNodeWithAbove();
+      await actions.removeOrMergeNodeWithAbove();
       return;
     }
 
     // Handle Delete at end of node - merge with below node
     if (event.code === "Delete" && inputRef.selectionStart === inputRef.value.length) {
-      const result = await actions.mergeTreeNodeWithBelow();
-      if (result.merged) {
-        event.preventDefault();
-        preventBlurSave();
-
-        // Update input value directly since we're staying on the same node
-        inputRef.value = result.mergedText ?? "";
-        // Dispatch input event to update EditableValue's internal state
-        inputRef.dispatchEvent(new Event("input", { bubbles: true }));
-        inputRef.setSelectionRange(result.cursorPosition ?? 0, result.cursorPosition ?? 0);
-      }
+      event.preventDefault();
+      preventBlurSave();
+      await actions.mergeTreeNodeWithBelow();
       return;
     }
   }
@@ -86,10 +68,7 @@ export function LifeLogTreeNode(props: {
       value={props.node$().text}
       toText={(text) => text}
       fromText={(text) => text}
-      onSave={async (newText) => {
-        actionsService.updateContext((ctx) => {
-          ctx.panes.lifeLogs.pendingNodeText = newText;
-        });
+      onSave={async () => {
         await actions.saveTreeNode();
       }}
       isSelected={props.isSelected$()}
@@ -114,6 +93,15 @@ export function LifeLogTreeNode(props: {
       onSelectionChange={(selectionStart) => {
         actionsService.updateContext((ctx) => {
           ctx.panes.lifeLogs.nodeCursorPosition = selectionStart;
+        });
+      }}
+      onInputRef={(inputRef) => {
+        actionsService.updateContext((ctx) => {
+          ctx.panes.lifeLogs.updateNodeInput = (text, cursorPosition) => {
+            inputRef.value = text;
+            inputRef.dispatchEvent(new Event("input", { bubbles: true }));
+            inputRef.setSelectionRange(cursorPosition, cursorPosition);
+          };
         });
       }}
       initialCursorPosition={
