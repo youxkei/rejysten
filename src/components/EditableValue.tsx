@@ -27,6 +27,8 @@ export interface EditableValueProps<V> {
   initialCursorPosition?: number;
   // Callback when input text changes (called on every input)
   onTextChange?: (text: string) => void;
+  // Callback when selection/cursor position changes
+  onSelectionChange?: (selectionStart: number) => void;
   debugId?: string;
 }
 
@@ -93,7 +95,10 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
               if (cursorPos !== undefined) {
                 requestAnimationFrame(() => {
                   inputRef.setSelectionRange(cursorPos, cursorPos);
+                  props.onSelectionChange?.(cursorPos);
                 });
+              } else {
+                props.onSelectionChange?.(inputRef.selectionStart ?? 0);
               }
             }
           });
@@ -106,6 +111,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                 if (cursorPos !== undefined && inputRef) {
                   requestAnimationFrame(() => {
                     inputRef.setSelectionRange(cursorPos, cursorPos);
+                    props.onSelectionChange?.(cursorPos);
                   });
                 }
               },
@@ -123,8 +129,21 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                 setEditText(newText);
                 debouncedSaveChanges(newText);
                 props.onTextChange?.(newText);
+                props.onSelectionChange?.(e.currentTarget.selectionStart ?? 0);
+              }}
+              onKeyUp={(e) => {
+                props.onSelectionChange?.(e.currentTarget.selectionStart ?? 0);
+              }}
+              onClick={(e) => {
+                props.onSelectionChange?.(e.currentTarget.selectionStart ?? 0);
+              }}
+              onSelect={(e) => {
+                props.onSelectionChange?.(e.currentTarget.selectionStart ?? 0);
               }}
               onKeyDown={awaitable(async (e) => {
+                // Update selection position at the start of key handling
+                props.onSelectionChange?.(e.currentTarget.selectionStart ?? 0);
+
                 // Stop propagation of ALL key events so parent components (tree.tsx) don't see them
                 e.stopPropagation();
 

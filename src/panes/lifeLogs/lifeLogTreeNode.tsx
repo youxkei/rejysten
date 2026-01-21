@@ -23,19 +23,11 @@ export function LifeLogTreeNode(props: {
   const actionsService = useActionsService();
   const actions = actionsService.panes.lifeLogs;
 
-  function updateContext(inputRef: HTMLInputElement) {
-    actionsService.updateContext((ctx) => {
-      ctx.panes.lifeLogs.pendingNodeText = inputRef.value;
-      ctx.panes.lifeLogs.nodeCursorPosition = inputRef.selectionStart ?? 0;
-    });
-  }
-
   async function handleKeyDown(event: KeyboardEvent, inputRef: HTMLInputElement, preventBlurSave: () => void) {
     // Handle Tab (save + indent/dedent)
     if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
       event.preventDefault();
       preventBlurSave();
-      updateContext(inputRef);
 
       if (event.shiftKey) {
         await actions.saveAndDedentTreeNode();
@@ -49,7 +41,6 @@ export function LifeLogTreeNode(props: {
     if (event.code === "Enter" && !event.isComposing) {
       event.preventDefault();
       preventBlurSave();
-      updateContext(inputRef);
       await actions.splitTreeNode();
       return;
     }
@@ -60,7 +51,6 @@ export function LifeLogTreeNode(props: {
       // because the blur event may fire during the async operation when the input loses focus
       event.preventDefault();
       preventBlurSave();
-      updateContext(inputRef);
 
       // First try to remove only empty tree node (exit to LifeLog)
       const removed = await actions.removeOnlyTreeNode();
@@ -75,7 +65,6 @@ export function LifeLogTreeNode(props: {
 
     // Handle Delete at end of node - merge with below node
     if (event.code === "Delete" && inputRef.selectionStart === inputRef.value.length) {
-      updateContext(inputRef);
       const result = await actions.mergeTreeNodeWithBelow();
       if (result.merged) {
         event.preventDefault();
@@ -120,6 +109,11 @@ export function LifeLogTreeNode(props: {
       onTextChange={(text) => {
         actionsService.updateContext((ctx) => {
           ctx.panes.lifeLogs.pendingNodeText = text;
+        });
+      }}
+      onSelectionChange={(selectionStart) => {
+        actionsService.updateContext((ctx) => {
+          ctx.panes.lifeLogs.nodeCursorPosition = selectionStart;
         });
       }}
       initialCursorPosition={
