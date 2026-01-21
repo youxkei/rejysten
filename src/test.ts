@@ -1,4 +1,4 @@
-import { test } from "vitest";
+import { test, inject } from "vitest";
 
 const shortener = /^styles_styles_(.+)__\w{8}$/;
 
@@ -29,20 +29,23 @@ export function randomPosInt() {
   return Math.floor(Math.random() * 1024) + 1;
 }
 
-const TEST_SERVER_URL = "http://localhost:3333";
+function getTestServerUrl(): string {
+  const httpPort = inject("httpPort");
+  return `http://localhost:${httpPort}`;
+}
 
 export type DatabaseInfo = {
   emulatorPort: number;
 };
 
 export async function getEmulatorPort(): Promise<number> {
-  const res = await fetch(`${TEST_SERVER_URL}/emulator-port`);
+  const res = await fetch(`${getTestServerUrl()}/emulator-port`);
   const { emulatorPort } = await res.json();
   return emulatorPort;
 }
 
 async function clearDatabase(database: string = "(default)"): Promise<void> {
-  await fetch(`${TEST_SERVER_URL}/database?database=${database}`, { method: "DELETE" });
+  await fetch(`${getTestServerUrl()}/database?database=${database}`, { method: "DELETE" });
 }
 
 export const testWithDb = test.extend<{ db: DatabaseInfo }>({

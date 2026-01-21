@@ -5,3 +5,6 @@
   - always consider to run cases one by one first
   - pre-commit hook runs all tests, so they should all pass without any changes
 - use `git restore` instead of `git checkout` to restore file content from commit
+- use `pnpm tsc` for type check
+- if test fails, add `console.log` to debug first to investigate the problem
+  - use `createComputed` to trace the signal changes

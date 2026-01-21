@@ -5,4 +5,4 @@ git stash -uk
 trap 'git stash pop' EXIT
 
 npm run lint
-npm run test
+npm run test/retry

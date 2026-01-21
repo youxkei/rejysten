@@ -1,21 +1,19 @@
 import http from "http";
 import net from "net";
 import { spawn, type ChildProcess } from "child_process";
+import type { TestProject } from "vitest/node";
 
 const CONTAINER_PORT = 8080;
-const HTTP_PORT = 3333;
-const CONTAINER_NAME = "firebase-emulator-test";
 
 let server: http.Server | undefined;
 let emulatorProcess: ChildProcess | undefined;
 let emulatorPort: number;
+let httpPort: number;
+let containerName: string;
 
-async function isServerRunning(): Promise<boolean> {
-  try {
-    const res = await fetch(`http://localhost:${HTTP_PORT}/health`);
-    return res.ok;
-  } catch {
-    return false;
+declare module "vitest" {
+  export interface ProvidedContext {
+    httpPort: number;
   }
 }
 
@@ -50,18 +48,27 @@ async function clearDatabase(port: number, database: string = "(default)"): Prom
   });
 }
 
-export async function setup() {
-  // Check if server is already running from a previous setup call
-  if (await isServerRunning()) {
-    console.log(`[globalSetup] Server already running on port ${HTTP_PORT}, skipping setup`);
+export async function setup(project: TestProject) {
+  // Skip if already set up
+  if (httpPort) {
+    console.log(`[globalSetup] Already set up, skipping (HTTP port: ${httpPort})`);
+    project.provide("httpPort", httpPort);
     return;
   }
 
-  // 1. Find free port for emulator
+  // 1. Find free ports for HTTP server and emulator
+  httpPort = await findFreePort();
   emulatorPort = await findFreePort();
-  console.log(`[globalSetup] Using HTTP port: ${HTTP_PORT}, emulator port: ${emulatorPort}`);
+  containerName = `firebase-emulator-test-${httpPort}`;
 
-  // 2. Start HTTP server
+  console.log(
+    `[globalSetup] Using HTTP port: ${httpPort}, emulator port: ${emulatorPort}, container: ${containerName}`,
+  );
+
+  // 2. Provide HTTP port to tests
+  project.provide("httpPort", httpPort);
+
+  // 3. Start HTTP server
   server = http.createServer(async (req, res) => {
     res.setHeader("Content-Type", "application/json");
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -73,7 +80,7 @@ export async function setup() {
       return;
     }
 
-    const url = new URL(req.url ?? "/", `http://localhost:${HTTP_PORT}`);
+    const url = new URL(req.url ?? "/", `http://localhost:${httpPort}`);
 
     if (req.method === "GET" && url.pathname === "/emulator-port") {
       res.writeHead(200);
@@ -106,17 +113,17 @@ export async function setup() {
     res.end(JSON.stringify({ error: "Not found" }));
   });
 
-  server.listen(HTTP_PORT);
-  console.log(`[globalSetup] HTTP server listening on port ${HTTP_PORT}`);
+  server.listen(httpPort);
+  console.log(`[globalSetup] HTTP server listening on port ${httpPort}`);
 
-  // 3. Start podman emulator with port mapping
+  // 4. Start podman emulator with port mapping
   emulatorProcess = spawn(
     "podman",
     [
       "run",
       "--rm",
       "--name",
-      CONTAINER_NAME,
+      containerName,
       "-p",
       `${emulatorPort}:${CONTAINER_PORT}`,
       "-v",
@@ -153,7 +160,7 @@ export async function teardown() {
 
   if (emulatorProcess) {
     // Kill the container using podman kill
-    const killProcess = spawn("podman", ["kill", CONTAINER_NAME], {
+    const killProcess = spawn("podman", ["kill", containerName], {
       stdio: ["ignore", "pipe", "pipe"],
     });
 
