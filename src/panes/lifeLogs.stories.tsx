@@ -104,6 +104,7 @@ export const LifeLogsStory: StoryObj = {
 
                   batch.set(doc(lifeLogTreeNodes, "child1"), {
                     text: "child1",
+                    lifeLogId: "$log1",
                     parentId: "$log1",
                     order: "a0",
                     createdAt: Timestamp.fromDate(new Date()),
@@ -112,6 +113,7 @@ export const LifeLogsStory: StoryObj = {
 
                   batch.set(doc(lifeLogTreeNodes, "child2"), {
                     text: "child2",
+                    lifeLogId: "$log1",
                     parentId: "$log1",
                     order: "a1",
                     createdAt: Timestamp.fromDate(new Date()),
@@ -120,6 +122,7 @@ export const LifeLogsStory: StoryObj = {
 
                   batch.set(doc(lifeLogTreeNodes, "child3"), {
                     text: "child3",
+                    lifeLogId: "$log1",
                     parentId: "$log1",
                     order: "a2",
                     createdAt: Timestamp.fromDate(new Date()),
@@ -128,6 +131,7 @@ export const LifeLogsStory: StoryObj = {
 
                   batch.set(doc(lifeLogTreeNodes, "child4"), {
                     text: "child4",
+                    lifeLogId: "$log1",
                     parentId: "$log1",
                     order: "a3",
                     createdAt: Timestamp.fromDate(new Date()),
@@ -136,6 +140,7 @@ export const LifeLogsStory: StoryObj = {
 
                   batch.set(doc(lifeLogTreeNodes, "child5"), {
                     text: "child5",
+                    lifeLogId: "$log1",
                     parentId: "$log1",
                     order: "a4",
                     createdAt: Timestamp.fromDate(new Date()),
@@ -144,6 +149,7 @@ export const LifeLogsStory: StoryObj = {
 
                   batch.set(doc(lifeLogTreeNodes, "child6"), {
                     text: "child6",
+                    lifeLogId: "$log1",
                     parentId: "$log1",
                     order: "a5",
                     createdAt: Timestamp.fromDate(new Date()),
@@ -152,6 +158,7 @@ export const LifeLogsStory: StoryObj = {
 
                   batch.set(doc(lifeLogTreeNodes, "child1 of child1"), {
                     text: "child1 of child1",
+                    lifeLogId: "$log1",
                     parentId: "child1",
                     order: "a0",
                     createdAt: Timestamp.fromDate(new Date()),
@@ -222,6 +229,7 @@ export const LifeLogsFullscreen: StoryObj = {
 
                   batch.set(doc(lifeLogTreeNodes, "child1"), {
                     text: "child1",
+                    lifeLogId: "$log1",
                     parentId: "$log1",
                     order: "a0",
                     createdAt: Timestamp.fromDate(new Date()),
@@ -230,6 +238,7 @@ export const LifeLogsFullscreen: StoryObj = {
 
                   batch.set(doc(lifeLogTreeNodes, "child2"), {
                     text: "child2",
+                    lifeLogId: "$log1",
                     parentId: "$log1",
                     order: "a1",
                     createdAt: Timestamp.fromDate(new Date()),
@@ -238,6 +247,7 @@ export const LifeLogsFullscreen: StoryObj = {
 
                   batch.set(doc(lifeLogTreeNodes, "child3"), {
                     text: "child3",
+                    lifeLogId: "$log1",
                     parentId: "$log1",
                     order: "a2",
                     createdAt: Timestamp.fromDate(new Date()),
@@ -246,6 +256,7 @@ export const LifeLogsFullscreen: StoryObj = {
 
                   batch.set(doc(lifeLogTreeNodes, "child4"), {
                     text: "child4",
+                    lifeLogId: "$log1",
                     parentId: "$log1",
                     order: "a3",
                     createdAt: Timestamp.fromDate(new Date()),
@@ -254,6 +265,7 @@ export const LifeLogsFullscreen: StoryObj = {
 
                   batch.set(doc(lifeLogTreeNodes, "child5"), {
                     text: "child5",
+                    lifeLogId: "$log1",
                     parentId: "$log1",
                     order: "a4",
                     createdAt: Timestamp.fromDate(new Date()),
@@ -262,6 +274,7 @@ export const LifeLogsFullscreen: StoryObj = {
 
                   batch.set(doc(lifeLogTreeNodes, "child6"), {
                     text: "child6",
+                    lifeLogId: "$log1",
                     parentId: "$log1",
                     order: "a5",
                     createdAt: Timestamp.fromDate(new Date()),
@@ -270,6 +283,7 @@ export const LifeLogsFullscreen: StoryObj = {
 
                   batch.set(doc(lifeLogTreeNodes, "child1 of child1"), {
                     text: "child1 of child1",
+                    lifeLogId: "$log1",
                     parentId: "child1",
                     order: "a0",
                     createdAt: Timestamp.fromDate(new Date()),

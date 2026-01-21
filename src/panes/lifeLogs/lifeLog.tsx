@@ -350,7 +350,7 @@ export function LifeLog(props: {
                 rootParentId={props.id}
                 selectedId={selectedLifeLogNodeId$()}
                 setSelectedId={setSelectedLifeLogNodeId}
-                createNewNode={(newId, initialText) => ({ id: newId, text: initialText ?? "" })}
+                createNewNode={(newId, initialText) => ({ id: newId, text: initialText ?? "", lifeLogId: props.id })}
                 showNode={(node$, isSelected$) => (
                   <LifeLogTreeNode
                     node$={node$}

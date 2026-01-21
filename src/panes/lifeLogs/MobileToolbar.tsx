@@ -186,8 +186,29 @@ function NavigationToolbar() {
 function EditingToolbar() {
   const {
     panes: { lifeLogs: actions },
+    context: {
+      panes: { lifeLogs: context },
+    },
   } = useActionsService();
   const { state } = useStoreService();
+
+  const isTreeNodeEditing = () => state.panesLifeLogs.selectedLifeLogNodeId !== "";
+
+  // 編集終了ハンドラ
+  const handleExitEditing = withOwner(() => {
+    context.setIsEditing(false);
+  });
+
+  // Tree node editing handlers
+  const handleSplitTreeNode = withOwner(() => {
+    awaitable(actions.splitTreeNode)();
+  });
+  const handleRemoveOrMerge = withOwner(() => {
+    awaitable(actions.removeOrMergeNodeWithAbove)();
+  });
+  const handleMergeWithBelow = withOwner(() => {
+    awaitable(actions.mergeTreeNodeWithBelow)();
+  });
 
   const handleCycleFieldPrev = withOwner(() => {
     actions.cycleFieldPrev();
@@ -198,12 +219,31 @@ function EditingToolbar() {
 
   return (
     <div class={styles.mobileToolbar.buttonGroup}>
-      <Show when={state.panesLifeLogs.selectedLifeLogNodeId === ""}>
+      {/* 編集終了ボタン - 常に表示 */}
+      <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleExitEditing}>
+        ✅
+      </button>
+
+      <Show when={!isTreeNodeEditing()}>
+        {/* lifeLogフィールド切り替え */}
         <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleCycleFieldPrev}>
           ◀️
         </button>
         <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleCycleFieldNext}>
           ▶️
+        </button>
+      </Show>
+
+      <Show when={isTreeNodeEditing()}>
+        {/* Tree node編集ボタン */}
+        <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleSplitTreeNode}>
+          ⏎
+        </button>
+        <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleRemoveOrMerge}>
+          ⬆️🗑️
+        </button>
+        <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleMergeWithBelow}>
+          ⬇️🗑️
         </button>
       </Show>
     </div>

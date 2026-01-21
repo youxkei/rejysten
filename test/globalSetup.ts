@@ -59,7 +59,7 @@ export async function setup(project: TestProject) {
   // 1. Find free ports for HTTP server and emulator
   httpPort = await findFreePort();
   emulatorPort = await findFreePort();
-  containerName = `firebase-emulator-test-${httpPort}`;
+  containerName = `firebase-emulator-test-${crypto.randomUUID()}`;
 
   console.log(
     `[globalSetup] Using HTTP port: ${httpPort}, emulator port: ${emulatorPort}, container: ${containerName}`,

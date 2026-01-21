@@ -16,6 +16,7 @@ declare module "@/services/firebase/firestore/schema" {
 
     lifeLogTreeNodes: {
       text: string;
+      lifeLogId: string;
 
       parentId: string;
       order: string;

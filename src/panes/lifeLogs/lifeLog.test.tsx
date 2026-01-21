@@ -1754,5 +1754,275 @@ describe("<LifeLog />", () => {
         expect(child1LiAfterDedent.parentElement).toBe(grandchildLiAfterDedent.parentElement);
       });
     });
+
+    describe("editing toolbar in tree mode", () => {
+      it("exits editing mode with ✅ button click in tree mode", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // Enter tree mode
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Wait for tree nodes to render
+        await result.findByText("first child");
+
+        // Enter editing mode
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+
+        // Input should be visible
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("first child");
+
+        // Click ✅ button to exit editing
+        const exitButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "✅",
+        ) as HTMLButtonElement;
+        expect(exitButton).toBeTruthy();
+
+        await userEvent.click(exitButton);
+        await awaitPendingCallbacks();
+
+        // Input should no longer be visible (editing mode exited)
+        expect(result.container.querySelector("input")).toBeNull();
+
+        // Tree node should still be selected
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      it("splits tree node at cursor with ⏎ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // Enter tree mode
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Wait for tree nodes to render
+        await result.findByText("first child");
+
+        // Enter editing mode
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+
+        // Verify input appeared
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+
+        // Change text to "beforeafter" and set cursor position in the middle
+        input.focus();
+        await userEvent.keyboard("{Control>}a{/Control}beforeafter");
+        await awaitPendingCallbacks();
+
+        // Set cursor position at index 6 (between "before" and "after")
+        input.setSelectionRange(6, 6);
+
+        // Click ⏎ button to split the node
+        const splitButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⏎",
+        ) as HTMLButtonElement;
+        expect(splitButton).toBeTruthy();
+
+        await userEvent.click(splitButton);
+        await awaitPendingCallbacks();
+
+        // Wait for the split to complete - original node should have "before"
+        expect(result.getByText("before")).toBeTruthy();
+
+        // New node should have "after" and be selected with editing mode
+        await waitFor(() => {
+          const inputAfter = result.container.querySelector("input") as HTMLInputElement;
+          expect(inputAfter).toBeTruthy();
+          expect(inputAfter.value).toBe("after");
+          expect(inputAfter.selectionStart).toBe(0);
+        });
+
+        // Press Escape to exit editing mode
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+
+        // Verify both nodes are displayed
+        expect(result.getByText("before")).toBeTruthy();
+        expect(result.getByText("after")).toBeTruthy();
+
+        // Verify the order: "before" should come before "after"
+        const beforeLi = result.getByText("before").closest("li")!;
+        const afterLi = result.getByText("after").closest("li")!;
+        expect(beforeLi.parentElement).toBe(afterLi.parentElement);
+        const children = Array.from(beforeLi.parentElement!.children);
+        expect(children.indexOf(beforeLi)).toBeLessThan(children.indexOf(afterLi));
+      });
+
+      it("merges tree node with above with ⬆️🗑️ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // Enter tree mode
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Wait for tree nodes to render
+        await result.findByText("first child");
+        await result.findByText("second child");
+        await result.findByText("grandchild");
+        await result.findByText("great-grandchild");
+
+        // Navigate to second child (j -> j -> j: child1 -> grandchild -> great-grandchild -> child2)
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+        });
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+        });
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
+        });
+
+        // Enter editing mode with cursor at beginning
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+
+        // Wait for input to appear
+        await waitFor(() => {
+          const input = result.container.querySelector("input") as HTMLInputElement;
+          expect(input).toBeTruthy();
+          expect(input.value).toBe("second child");
+          expect(input.selectionStart).toBe(0);
+        });
+
+        // Click ⬆️🗑️ button to merge with above
+        const mergeAboveButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⬆️🗑️",
+        ) as HTMLButtonElement;
+        expect(mergeAboveButton).toBeTruthy();
+
+        await userEvent.click(mergeAboveButton);
+        await awaitPendingCallbacks();
+
+        // Wait for merge to complete
+        await waitFor(() => {
+          const input = result.container.querySelector("input") as HTMLInputElement;
+          expect(input).toBeTruthy();
+          // Merged text: "great-grandchild" + "second child" = "great-grandchildsecond child"
+          expect(input.value).toBe("great-grandchildsecond child");
+          // Cursor should be at the join point (length of "great-grandchild" = 16)
+          expect(input.selectionStart).toBe(16);
+        });
+
+        // Verify "second child" node is gone
+        await waitFor(() => {
+          expect(result.queryByText("second child")).toBeNull();
+        });
+
+        // Exit editing mode
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.container.querySelector("input")).toBeNull();
+        });
+
+        // Verify merged text is displayed
+        expect(result.getByText("great-grandchildsecond child")).toBeTruthy();
+      });
+
+      it("merges tree node with below with ⬇️🗑️ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // Reset state: exit tree mode first if we're already in it (from previous test state leak)
+        await userEvent.keyboard("{h}");
+        await awaitPendingCallbacks();
+
+        // Enter tree mode
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Wait for tree nodes to render
+        await result.findByText("first child");
+        await result.findByText("second child");
+        await result.findByText("grandchild");
+        await result.findByText("great-grandchild");
+
+        // Wait for initial selection
+        await waitFor(() => {
+          expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+        });
+
+        // Navigate to great-grandchild (j -> j: child1 -> grandchild -> great-grandchild)
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+        });
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+        });
+
+        // Enter editing mode with cursor at end
+        await userEvent.keyboard("{a}");
+        await awaitPendingCallbacks();
+
+        // Wait for input to appear
+        await waitFor(() => {
+          const input = result.container.querySelector("input") as HTMLInputElement;
+          expect(input).toBeTruthy();
+          expect(input.value).toBe("great-grandchild");
+          expect(input.selectionStart).toBe(16);
+        });
+
+        // Click ⬇️🗑️ button to merge with below
+        const mergeBelowButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⬇️🗑️",
+        ) as HTMLButtonElement;
+        expect(mergeBelowButton).toBeTruthy();
+
+        await userEvent.click(mergeBelowButton);
+        await awaitPendingCallbacks();
+
+        // Wait for merge to complete
+        await waitFor(() => {
+          const input = result.container.querySelector("input") as HTMLInputElement;
+          expect(input).toBeTruthy();
+          // Merged text: "great-grandchild" + "second child" = "great-grandchildsecond child"
+          expect(input.value).toBe("great-grandchildsecond child");
+          // Cursor should stay at original position (16)
+          expect(input.selectionStart).toBe(16);
+        });
+
+        // Verify "second child" node is gone
+        await waitFor(() => {
+          expect(result.queryByText("second child")).toBeNull();
+        });
+
+        // Exit editing mode using ✅ button (more appropriate for mobile button test)
+        const exitButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "✅",
+        ) as HTMLButtonElement;
+        expect(exitButton).toBeTruthy();
+
+        await userEvent.click(exitButton);
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.container.querySelector("input")).toBeNull();
+        });
+
+        // Verify merged text is displayed
+        expect(result.getByText("great-grandchildsecond child")).toBeTruthy();
+      });
+    });
   });
 });

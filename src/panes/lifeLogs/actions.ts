@@ -173,6 +173,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
           addSingle(firestore, batch, lifeLogTreeNodesCol, lifeLog.id, {
             id: nodeId,
             text: "new",
+            lifeLogId: lifeLog.id,
           });
           return Promise.resolve();
         });
@@ -243,9 +244,17 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
         firestore.setClock(true);
         await runBatch(firestore, async (batch) => {
           if (above) {
-            await addPrevSibling(firestore, batch, lifeLogTreeNodesCol, node, { id: newNodeId, text: "" });
+            await addPrevSibling(firestore, batch, lifeLogTreeNodesCol, node, {
+              id: newNodeId,
+              text: "",
+              lifeLogId: state.panesLifeLogs.selectedLifeLogId,
+            });
           } else {
-            await addNextSibling(firestore, batch, lifeLogTreeNodesCol, node, { id: newNodeId, text: "" });
+            await addNextSibling(firestore, batch, lifeLogTreeNodesCol, node, {
+              id: newNodeId,
+              text: "",
+              lifeLogId: state.panesLifeLogs.selectedLifeLogId,
+            });
           }
         });
 
@@ -642,6 +651,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
         await addNextSibling(firestore, batch, lifeLogTreeNodesCol, node, {
           id: newNodeId,
           text: afterCursor,
+          lifeLogId: state.panesLifeLogs.selectedLifeLogId,
         });
       });
 

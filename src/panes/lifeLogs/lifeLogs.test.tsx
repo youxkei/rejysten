@@ -1969,6 +1969,193 @@ describe("<LifeLogs />", () => {
         const input2 = result.container.querySelector("input") as HTMLInputElement;
         expect(input2.value).toBe("20260110 103000");
       });
+
+      it("exits editing mode with ✅ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        // Enter editing mode
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+
+        // Input should be visible
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("first lifelog");
+
+        // Click ✅ button to exit editing
+        const exitButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "✅",
+        ) as HTMLButtonElement;
+        expect(exitButton).toBeTruthy();
+
+        await userEvent.click(exitButton);
+        await awaitPendingCallbacks();
+
+        // Input should no longer be visible (editing mode exited)
+        expect(result.container.querySelector("input")).toBeNull();
+
+        // LifeLog should still be selected
+        const log1 = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log1?.className).toContain(styles.lifeLogTree.selected);
+      });
+    });
+
+    describe("lifeLog mode buttons", () => {
+      it("sets startAt to now with ▶️ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+        await result.findByText("third lifelog");
+
+        // Navigate to $log3 which has noneTimestamp startAt
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+
+        // Verify $log3 is selected (has N/A for startAt)
+        const log3 = result.getByText("third lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log3?.className).toContain(styles.lifeLogTree.selected);
+
+        // Initial N/A count is 4
+        expect(result.getAllByText("N/A").length).toBe(4);
+
+        // Click ▶️ (setStartAtNow) button
+        const setStartAtButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "▶️",
+        ) as HTMLButtonElement;
+        expect(setStartAtButton).toBeTruthy();
+
+        await userEvent.click(setStartAtButton);
+        await awaitPendingCallbacks();
+
+        // N/A count should decrease by 1
+        expect(result.getAllByText("N/A").length).toBe(3);
+
+        // Verify the time is displayed in the DOM
+        const timeRangeDiv = result.container.querySelector(`#\\$log3 .${styles.lifeLogTree.timeRange}`);
+        expect(timeRangeDiv?.textContent).toMatch(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/);
+      });
+
+      it("sets endAt to now with ⏹️ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // $log1 is already selected and has endAt = noneTimestamp
+        // Initial N/A count is 4
+        expect(result.getAllByText("N/A").length).toBe(4);
+
+        // Click ⏹️ (setEndAtNow) button
+        const setEndAtButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⏹️",
+        ) as HTMLButtonElement;
+        expect(setEndAtButton).toBeTruthy();
+
+        await userEvent.click(setEndAtButton);
+        await awaitPendingCallbacks();
+
+        // N/A count should decrease by 1
+        expect(result.getAllByText("N/A").length).toBe(3);
+
+        // Verify both times are displayed in the DOM for $log1
+        const log1TimeRange = result.container.querySelector(`#\\$log1 .${styles.lifeLogTree.timeRange}`);
+        const textContent = log1TimeRange?.textContent ?? "";
+        const timeMatches = textContent.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/g);
+        expect(timeMatches?.length).toBe(2);
+      });
+
+      it("creates new LifeLog with ➕ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // Initial count of lifelogs
+        const initialListItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+        expect(initialListItems.length).toBe(3);
+
+        // Click ➕ (newLifeLog) button
+        const newLifeLogButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "➕",
+        ) as HTMLButtonElement;
+        expect(newLifeLogButton).toBeTruthy();
+
+        await userEvent.click(newLifeLogButton);
+        await awaitPendingCallbacks();
+
+        // New lifelog should be added and editing mode should be active
+        const listItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+        expect(listItems.length).toBe(4);
+
+        // Verify that editing mode is active (input should be visible)
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+
+        // Type text for the new lifelog
+        input.focus();
+        await userEvent.keyboard("new lifelog from button");
+
+        // Press Escape to save and exit editing
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+
+        // Verify the new lifelog text is displayed
+        expect(result.getByText("new lifelog from button")).toBeTruthy();
+      });
+
+      it("navigates to first LifeLog with ⏬ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+        await result.findByText("third lifelog");
+
+        // Navigate to $log3 (last log)
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+
+        // Verify $log3 is selected
+        const log3 = result.getByText("third lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log3?.className).toContain(styles.lifeLogTree.selected);
+
+        // Click ⏬ (goToFirst) button
+        const goToFirstButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⏬",
+        ) as HTMLButtonElement;
+        expect(goToFirstButton).toBeTruthy();
+
+        await userEvent.click(goToFirstButton);
+        await awaitPendingCallbacks();
+
+        // $log1 should now be selected
+        const log1 = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log1?.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      it("navigates to last LifeLog with ⏫ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+        await result.findByText("third lifelog");
+
+        // $log1 is already selected (first log)
+        const log1Initial = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log1Initial?.className).toContain(styles.lifeLogTree.selected);
+
+        // Click ⏫ (goToLast) button
+        const goToLastButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⏫",
+        ) as HTMLButtonElement;
+        expect(goToLastButton).toBeTruthy();
+
+        await userEvent.click(goToLastButton);
+        await awaitPendingCallbacks();
+
+        // $log3 should now be selected
+        const log3 = result.getByText("third lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log3?.className).toContain(styles.lifeLogTree.selected);
+      });
     });
   });
 });

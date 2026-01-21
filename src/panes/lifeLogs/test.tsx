@@ -99,6 +99,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                       // child1 (has children), child2 (no children), child3 (has children)
                       batch.set(doc(lifeLogTreeNodes, "child1"), {
                         text: "first child",
+                        lifeLogId: "$log1",
                         parentId: "$log1",
                         order: "a0",
                         createdAt: Timestamp.fromDate(baseTime),
@@ -107,6 +108,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
 
                       batch.set(doc(lifeLogTreeNodes, "child2"), {
                         text: "second child",
+                        lifeLogId: "$log1",
                         parentId: "$log1",
                         order: "a1",
                         createdAt: Timestamp.fromDate(baseTime),
@@ -115,6 +117,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
 
                       batch.set(doc(lifeLogTreeNodes, "child3"), {
                         text: "third child",
+                        lifeLogId: "$log1",
                         parentId: "$log1",
                         order: "a2",
                         createdAt: Timestamp.fromDate(baseTime),
@@ -124,6 +127,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                       // Create a grandchild node under child1 for deep navigation tests
                       batch.set(doc(lifeLogTreeNodes, "grandchild1"), {
                         text: "grandchild",
+                        lifeLogId: "$log1",
                         parentId: "child1",
                         order: "a0",
                         createdAt: Timestamp.fromDate(baseTime),
@@ -133,6 +137,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                       // Create a great-grandchild node under grandchild1 for deeper navigation tests
                       batch.set(doc(lifeLogTreeNodes, "greatGrandchild1"), {
                         text: "great-grandchild",
+                        lifeLogId: "$log1",
                         parentId: "grandchild1",
                         order: "a0",
                         createdAt: Timestamp.fromDate(baseTime),
@@ -143,6 +148,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                       // This enables testing "Delete when next node has children"
                       batch.set(doc(lifeLogTreeNodes, "grandchild3"), {
                         text: "third grandchild",
+                        lifeLogId: "$log1",
                         parentId: "child3",
                         order: "a0",
                         createdAt: Timestamp.fromDate(baseTime),
@@ -154,6 +160,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                       for (let i = 0; i < treeNodeCount; i++) {
                         batch.set(doc(lifeLogTreeNodes, `scrollTestNode${i}`), {
                           text: `scroll test node ${i}`,
+                          lifeLogId: "$log1",
                           parentId: "$log1",
                           order: `b${String(i).padStart(3, "0")}`,
                           createdAt: Timestamp.fromDate(baseTime),
