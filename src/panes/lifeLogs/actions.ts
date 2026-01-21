@@ -4,10 +4,20 @@ import { uuidv7 } from "uuidv7";
 
 import { DateNow, TimestampNow } from "@/date";
 import { EditingField } from "@/panes/lifeLogs/schema";
-import { actionsCreator, initialActionsContext } from "@/services/actions";
+import { type Actions, actionsCreator, initialActionsContext } from "@/services/actions";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch, setDoc, updateDoc } from "@/services/firebase/firestore/batch";
-import { addNextSibling, addPrevSibling, addSingle, getFirstChildNode } from "@/services/firebase/firestore/treeNode";
+import {
+  addNextSibling,
+  addPrevSibling,
+  addSingle,
+  getAboveNode,
+  getBelowNode,
+  getFirstChildNode,
+  getNextNode,
+  getPrevNode,
+  remove,
+} from "@/services/firebase/firestore/treeNode";
 import { useStoreService } from "@/services/store";
 import { noneTimestamp } from "@/timestamp";
 
@@ -21,15 +31,23 @@ declare module "@/services/actions" {
       firstId: string;
       lastId: string;
 
-      // Pending values for save operations
+      // Pending values for save operations (LifeLog)
       pendingText: string | undefined;
       pendingStartAt: Timestamp | undefined;
       pendingEndAt: Timestamp | undefined;
 
-      // Callbacks (set by LifeLogTree)
+      // Tree node data (constantly updated)
+      lifeLogTextLength: number;
+      pendingNodeText: string | undefined;
+      nodeCursorPosition: number;
+
+      // Callbacks (set by LifeLog)
       setIsEditing: (v: boolean) => void;
       setEditingField: (field: EditingField) => void;
       setLifeLogCursorInfo: (info: { lifeLogId: string; cursorPosition: number } | undefined) => void;
+      setEnterSplitNodeId: (id: string | undefined) => void;
+      setTabCursorInfo: (info: { nodeId: string; cursorPosition: number } | undefined) => void;
+      setMergeCursorInfo: (info: { nodeId: string; cursorPosition: number } | undefined) => void;
     };
   }
 
@@ -54,6 +72,15 @@ declare module "@/services/actions" {
       deleteEmptyLifeLogToPrev: () => Promise<void>;
       deleteEmptyLifeLogToNext: () => Promise<void>;
       createFirstLifeLog: () => Promise<void>;
+
+      // Tree node actions
+      saveTreeNode: () => Promise<void>;
+      splitTreeNode: () => Promise<void>;
+      mergeTreeNodeWithAbove: () => Promise<boolean>;
+      mergeTreeNodeWithBelow: () => Promise<{ merged: boolean; mergedText?: string; cursorPosition?: number }>;
+      removeOnlyTreeNode: () => Promise<boolean>;
+      saveAndIndentTreeNode: () => Promise<void>;
+      saveAndDedentTreeNode: () => Promise<void>;
     };
   }
 }
@@ -68,12 +95,18 @@ initialActionsContext.panes.lifeLogs = {
   pendingText: undefined,
   pendingStartAt: undefined,
   pendingEndAt: undefined,
+  lifeLogTextLength: 0,
+  pendingNodeText: undefined,
+  nodeCursorPosition: 0,
   setIsEditing: () => undefined,
   setEditingField: () => undefined,
   setLifeLogCursorInfo: () => undefined,
+  setEnterSplitNodeId: () => undefined,
+  setTabCursorInfo: () => undefined,
+  setMergeCursorInfo: () => undefined,
 };
 
-actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }) => {
+actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Actions) => {
   const { state, updateState } = useStoreService();
   const firestore = useFirestoreService();
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
@@ -544,6 +577,250 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }) => {
     }
   }
 
+  // Tree node actions
+  const lifeLogTreeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+
+  async function saveTreeNode() {
+    const selectedNodeId = state.panesLifeLogs.selectedLifeLogNodeId;
+    if (selectedNodeId === "") return;
+
+    const newText = context.pendingNodeText;
+    if (newText === undefined) return;
+
+    firestore.setClock(true);
+    try {
+      await runBatch(firestore, (batch) => {
+        updateDoc(firestore, batch, lifeLogTreeNodesCol, {
+          id: selectedNodeId,
+          text: newText,
+        });
+        return Promise.resolve();
+      });
+    } finally {
+      await startTransition(() => {
+        firestore.setClock(false);
+      });
+    }
+  }
+
+  async function splitTreeNode() {
+    const selectedNodeId = state.panesLifeLogs.selectedLifeLogNodeId;
+    if (selectedNodeId === "") return;
+
+    const text = context.pendingNodeText ?? "";
+    const cursorPos = context.nodeCursorPosition;
+    const beforeCursor = text.slice(0, cursorPos);
+    const afterCursor = text.slice(cursorPos);
+
+    // Save current node with text before cursor
+    firestore.setClock(true);
+    try {
+      await runBatch(firestore, (batch) => {
+        updateDoc(firestore, batch, lifeLogTreeNodesCol, {
+          id: selectedNodeId,
+          text: beforeCursor,
+        });
+        return Promise.resolve();
+      });
+    } finally {
+      await startTransition(() => {
+        firestore.setClock(false);
+      });
+    }
+
+    // Create new sibling node with afterCursor
+    const node = await getDoc(firestore, lifeLogTreeNodesCol, selectedNodeId);
+    if (!node) return;
+
+    const newNodeId = uuidv7();
+    context.setEnterSplitNodeId(newNodeId);
+
+    firestore.setClock(true);
+    try {
+      await runBatch(firestore, async (batch) => {
+        await addNextSibling(firestore, batch, lifeLogTreeNodesCol, node, {
+          id: newNodeId,
+          text: afterCursor,
+        });
+      });
+
+      // Save setIsEditing reference before updateState triggers onCleanup which resets it
+      const setIsEditing = context.setIsEditing;
+      await startTransition(() => {
+        // IMPORTANT: Call setIsEditing(true) BEFORE updateState
+        setIsEditing(true);
+        updateState((s) => {
+          s.panesLifeLogs.selectedLifeLogNodeId = newNodeId;
+        });
+        firestore.setClock(false);
+      });
+    } finally {
+      firestore.setClock(false);
+    }
+  }
+
+  async function mergeTreeNodeWithAbove(): Promise<boolean> {
+    const selectedNodeId = state.panesLifeLogs.selectedLifeLogNodeId;
+    const lifeLogId = state.panesLifeLogs.selectedLifeLogId;
+    if (selectedNodeId === "" || lifeLogId === "") return false;
+
+    const node = await getDoc(firestore, lifeLogTreeNodesCol, selectedNodeId);
+    if (!node) return false;
+
+    // Check if current node has children
+    const currentHasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, node);
+    if (currentHasChildren) return false;
+
+    // Get above node
+    const aboveNode = await getAboveNode(firestore, lifeLogTreeNodesCol, node);
+    if (!aboveNode) return false;
+
+    const currentText = context.pendingNodeText ?? node.text;
+    const mergedText = aboveNode.text + currentText;
+    const cursorPosition = aboveNode.text.length;
+
+    firestore.setClock(true);
+    try {
+      await runBatch(firestore, async (batch) => {
+        updateDoc(firestore, batch, lifeLogTreeNodesCol, {
+          id: aboveNode.id,
+          text: mergedText,
+        });
+        await remove(firestore, batch, lifeLogTreeNodesCol, node);
+      });
+
+      context.setMergeCursorInfo({ nodeId: aboveNode.id, cursorPosition });
+      // Save setIsEditing reference before updateState triggers onCleanup which resets it
+      const setIsEditing = context.setIsEditing;
+      await startTransition(() => {
+        // IMPORTANT: Call setIsEditing(true) BEFORE updateState, because updateState
+        // will trigger the old EditableValue to lose focus and call setIsEditing(false)
+        setIsEditing(true);
+        updateState((s) => {
+          s.panesLifeLogs.selectedLifeLogNodeId = aboveNode.id;
+        });
+        firestore.setClock(false);
+      });
+    } finally {
+      firestore.setClock(false);
+    }
+
+    return true;
+  }
+
+  async function mergeTreeNodeWithBelow(): Promise<{
+    merged: boolean;
+    mergedText?: string;
+    cursorPosition?: number;
+  }> {
+    const selectedNodeId = state.panesLifeLogs.selectedLifeLogNodeId;
+    if (selectedNodeId === "") return { merged: false };
+
+    const node = await getDoc(firestore, lifeLogTreeNodesCol, selectedNodeId);
+    if (!node) return { merged: false };
+
+    // Get below node
+    const belowNode = await getBelowNode(firestore, lifeLogTreeNodesCol, node);
+    if (!belowNode) return { merged: false };
+
+    // Check if below node has children
+    const belowHasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, belowNode);
+    if (belowHasChildren) return { merged: false };
+
+    const currentText = context.pendingNodeText ?? node.text;
+    const cursorPosition = currentText.length;
+    const mergedText = currentText + belowNode.text;
+
+    firestore.setClock(true);
+    try {
+      await runBatch(firestore, async (batch) => {
+        updateDoc(firestore, batch, lifeLogTreeNodesCol, {
+          id: node.id,
+          text: mergedText,
+        });
+        await remove(firestore, batch, lifeLogTreeNodesCol, belowNode);
+      });
+
+      await startTransition(() => {
+        firestore.setClock(false);
+      });
+    } finally {
+      firestore.setClock(false);
+    }
+
+    return { merged: true, mergedText, cursorPosition };
+  }
+
+  async function removeOnlyTreeNode(): Promise<boolean> {
+    const selectedNodeId = state.panesLifeLogs.selectedLifeLogNodeId;
+    const lifeLogId = state.panesLifeLogs.selectedLifeLogId;
+    if (selectedNodeId === "" || lifeLogId === "") return false;
+
+    const node = await getDoc(firestore, lifeLogTreeNodesCol, selectedNodeId);
+    if (!node) return false;
+
+    const currentText = context.pendingNodeText ?? node.text;
+
+    // Check if this is the only empty node directly under the LifeLog
+    if (
+      currentText !== "" ||
+      node.parentId !== lifeLogId ||
+      (await getPrevNode(firestore, lifeLogTreeNodesCol, node)) ||
+      (await getNextNode(firestore, lifeLogTreeNodesCol, node))
+    ) {
+      return false;
+    }
+
+    // Check if node has children
+    const hasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, node);
+    if (hasChildren) return false;
+
+    firestore.setClock(true);
+    try {
+      await runBatch(firestore, async (batch) => {
+        await remove(firestore, batch, lifeLogTreeNodesCol, node);
+      });
+
+      context.setLifeLogCursorInfo({ lifeLogId, cursorPosition: context.lifeLogTextLength });
+      // Save setters before updateState triggers onCleanup which resets them
+      const setEditingField = context.setEditingField;
+      const setIsEditing = context.setIsEditing;
+      await startTransition(() => {
+        // IMPORTANT: Call setters BEFORE updateState
+        setEditingField(EditingField.Text);
+        setIsEditing(true);
+        updateState((s) => {
+          s.panesLifeLogs.selectedLifeLogNodeId = "";
+        });
+        firestore.setClock(false);
+      });
+    } finally {
+      firestore.setClock(false);
+    }
+
+    return true;
+  }
+
+  async function saveAndIndentTreeNode() {
+    const cursorPosition = context.nodeCursorPosition;
+    const selectedNodeId = state.panesLifeLogs.selectedLifeLogNodeId;
+    if (selectedNodeId === "") return;
+
+    await saveTreeNode();
+    await actions.components.tree.indentNode();
+    context.setTabCursorInfo({ nodeId: selectedNodeId, cursorPosition });
+  }
+
+  async function saveAndDedentTreeNode() {
+    const cursorPosition = context.nodeCursorPosition;
+    const selectedNodeId = state.panesLifeLogs.selectedLifeLogNodeId;
+    if (selectedNodeId === "") return;
+
+    await saveTreeNode();
+    await actions.components.tree.dedentNode();
+    context.setTabCursorInfo({ nodeId: selectedNodeId, cursorPosition });
+  }
+
   return {
     navigateNext,
     navigatePrev,
@@ -564,5 +841,12 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }) => {
     deleteEmptyLifeLogToPrev,
     deleteEmptyLifeLogToNext,
     createFirstLifeLog,
+    saveTreeNode,
+    splitTreeNode,
+    mergeTreeNodeWithAbove,
+    mergeTreeNodeWithBelow,
+    removeOnlyTreeNode,
+    saveAndIndentTreeNode,
+    saveAndDedentTreeNode,
   };
 };

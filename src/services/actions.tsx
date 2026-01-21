@@ -3,7 +3,7 @@ import { createStore, produce } from "solid-js/store";
 import { createContextProvider } from "@/solid/context";
 
 type ActionsToActionsCreator<T extends object> = {
-  [K in keyof T]: (context: ActionsContext) => T[K];
+  [K in keyof T]: (context: ActionsContext, actions: Actions) => T[K];
 };
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- intended for module augmentation
@@ -43,15 +43,25 @@ export interface Actions {
 }
 
 function createActions(context: ActionsContext): Actions {
-  return {
-    panes: Object.fromEntries(
-      Object.entries(actionsCreator.panes).map(([key, creator]) => [key, creator(context)]),
-    ) as unknown as PanesActions,
-
-    components: Object.fromEntries(
-      Object.entries(actionsCreator.components).map(([key, creator]) => [key, creator(context)]),
-    ) as unknown as ComponentnsActions,
+  const actions: Actions = {
+    panes: {} as PanesActions,
+    components: {} as ComponentnsActions,
   };
+
+  // Populate actions - creators can reference other actions via the actions parameter
+  Object.assign(
+    actions.panes,
+    Object.fromEntries(Object.entries(actionsCreator.panes).map(([key, creator]) => [key, creator(context, actions)])),
+  );
+
+  Object.assign(
+    actions.components,
+    Object.fromEntries(
+      Object.entries(actionsCreator.components).map(([key, creator]) => [key, creator(context, actions)]),
+    ),
+  );
+
+  return actions;
 }
 
 export const [ActionsServiceProvider, useActionsService] = createContextProvider("ActionsService", () => {

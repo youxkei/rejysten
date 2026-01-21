@@ -5,8 +5,8 @@ import { createMemo, createSignal } from "solid-js";
 
 import { awaitable } from "@/awaitableCallback";
 import { DateNow, TimestampNow } from "@/date";
-import { LifeLogTree } from "@/panes/lifeLogs/LifeLogTree";
 import { MobileToolbar } from "@/panes/lifeLogs/MobileToolbar";
+import { LifeLog } from "@/panes/lifeLogs/lifeLog";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { useRangeFromFocus } from "@/panes/lifeLogs/useRangeFromFocus";
 import { useScrollFocus } from "@/panes/lifeLogs/useScrollFocus";
@@ -132,7 +132,7 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp; sc
       <Key each={lifeLogIdWithNeighborIds$()} by={(item) => item.id}>
         {(lifeLogWithNeighborIds) => (
           <li id={lifeLogWithNeighborIds().id} class={styles.lifeLogs.listItem}>
-            <LifeLogTree
+            <LifeLog
               id={lifeLogWithNeighborIds().id}
               prevId={lifeLogWithNeighborIds().prevId}
               nextId={lifeLogWithNeighborIds().nextId}

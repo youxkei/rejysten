@@ -4,7 +4,7 @@ import { type Accessor, createEffect, createSignal, onCleanup, type Setter, Show
 import { awaitable } from "@/awaitableCallback";
 import { EditableValue } from "@/components/EditableValue";
 import { ChildrenNodes } from "@/components/tree";
-import { LifeLogTreeNode } from "@/panes/lifeLogs/LifeLogTreeNode";
+import { LifeLogTreeNode } from "@/panes/lifeLogs/lifeLogTreeNode";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { useActionsService } from "@/services/actions";
 import { getCollection, useFirestoreService } from "@/services/firebase/firestore";
@@ -15,7 +15,7 @@ import { scrollWithOffset } from "@/solid/scroll";
 import { styles } from "@/styles.css";
 import { timestampToTimeText, timeTextToTimestamp } from "@/timestamp";
 
-export function LifeLogTree(props: {
+export function LifeLog(props: {
   id: string;
   prevId: string;
   nextId: string;
@@ -88,6 +88,12 @@ export function LifeLogTree(props: {
         ctx.panes.lifeLogs.setIsEditing = props.setIsEditing;
         ctx.panes.lifeLogs.setEditingField = props.setEditingField;
         ctx.panes.lifeLogs.setLifeLogCursorInfo = props.setLifeLogCursorInfo;
+        // Tree node setters
+        ctx.panes.lifeLogs.setEnterSplitNodeId = setEnterSplitNodeId;
+        ctx.panes.lifeLogs.setTabCursorInfo = setTabCursorInfo;
+        ctx.panes.lifeLogs.setMergeCursorInfo = setMergeCursorInfo;
+        // LifeLog text length for cursor positioning when exiting tree
+        ctx.panes.lifeLogs.lifeLogTextLength = lifeLog$()?.text.length ?? 0;
       });
     }
   });
@@ -104,6 +110,11 @@ export function LifeLogTree(props: {
         ctx.panes.lifeLogs.setIsEditing = () => undefined;
         ctx.panes.lifeLogs.setEditingField = () => undefined;
         ctx.panes.lifeLogs.setLifeLogCursorInfo = () => undefined;
+        // Tree node setters
+        ctx.panes.lifeLogs.setEnterSplitNodeId = () => undefined;
+        ctx.panes.lifeLogs.setTabCursorInfo = () => undefined;
+        ctx.panes.lifeLogs.setMergeCursorInfo = () => undefined;
+        ctx.panes.lifeLogs.lifeLogTextLength = 0;
       });
     }
   });
@@ -342,22 +353,16 @@ export function LifeLogTree(props: {
                 createNewNode={(newId, initialText) => ({ id: newId, text: initialText ?? "" })}
                 showNode={(node$, isSelected$) => (
                   <LifeLogTreeNode
-                    lifeLogId={props.id}
                     node$={node$}
                     isSelected$={isSelected$}
                     isEditing={props.isEditing}
                     setIsEditing={props.setIsEditing}
-                    setEditingField={props.setEditingField}
-                    selectedLifeLogNodeId$={selectedLifeLogNodeId$}
-                    setSelectedLifeLogNodeId={setSelectedLifeLogNodeId}
                     enterSplitNodeId$={enterSplitNodeId$}
                     setEnterSplitNodeId={setEnterSplitNodeId}
                     tabCursorInfo$={tabCursorInfo$}
                     setTabCursorInfo={setTabCursorInfo}
                     mergeCursorInfo$={mergeCursorInfo$}
                     setMergeCursorInfo={setMergeCursorInfo}
-                    lifeLogText={lifeLog$().text}
-                    setLifeLogCursorInfo={props.setLifeLogCursorInfo}
                   />
                 )}
               />

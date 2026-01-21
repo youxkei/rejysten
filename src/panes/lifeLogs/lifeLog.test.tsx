@@ -21,7 +21,7 @@ afterEach(async () => {
   cleanup();
 });
 
-describe("<LifeLogTree />", () => {
+describe("<LifeLog />", () => {
   it("can enter/exit tree mode with l/h keys", async ({ db, task }) => {
     const { result } = await setupLifeLogsTest(task.id, db);
 

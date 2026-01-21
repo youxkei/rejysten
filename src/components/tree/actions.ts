@@ -43,7 +43,7 @@ initialActionsContext.components.tree = {
   setSelectedId: () => undefined,
 };
 
-actionsCreator.components.tree = ({ components: { tree: context } }) => {
+actionsCreator.components.tree = ({ components: { tree: context } }, _actions) => {
   const firestore = useFirestoreService();
 
   async function navigateDown() {
