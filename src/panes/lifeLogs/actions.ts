@@ -361,10 +361,12 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
 
   // Editing
   function startEditing() {
-    context.setIsEditing(true);
-    if (state.panesLifeLogs.selectedLifeLogId !== "" && state.panesLifeLogs.selectedLifeLogNodeId === "") {
+    const lifeLogId = state.panesLifeLogs.selectedLifeLogId;
+    if (lifeLogId !== "" && state.panesLifeLogs.selectedLifeLogNodeId === "") {
+      context.setLifeLogCursorInfo({ lifeLogId, cursorPosition: context.lifeLogTextLength });
       context.setEditingField(EditingField.Text);
     }
+    context.setIsEditing(true);
   }
 
   function cycleFieldNext() {

@@ -1491,6 +1491,43 @@ describe("<LifeLog />", () => {
         });
       });
 
+      it("enters editing mode with ✏️ button click in tree mode", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // Enter tree mode
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Wait for tree nodes to render
+        await result.findByText("first child");
+
+        // Initial state: first child is selected
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+
+        // No input should exist initially
+        expect(result.container.querySelector("input")).toBeNull();
+
+        // Click ✏️ button to start editing
+        const editButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "✏️",
+        ) as HTMLButtonElement;
+        expect(editButton).toBeTruthy();
+
+        await userEvent.click(editButton);
+        await awaitPendingCallbacks();
+
+        // Input should now exist with tree node text
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("first child");
+
+        // Exit editing mode
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+      });
+
     });
 
     describe("tree action buttons in tree mode", () => {

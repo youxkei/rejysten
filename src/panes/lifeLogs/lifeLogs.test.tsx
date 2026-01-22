@@ -1813,7 +1813,7 @@ describe("<LifeLogs />", () => {
     });
 
     describe("navigation buttons", () => {
-      it("enters editing mode with ✏️ button click", async ({ db, task }) => {
+      it("enters editing mode with ✏️ button click and cursor at end", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         // No input should exist initially
@@ -1832,6 +1832,10 @@ describe("<LifeLogs />", () => {
         const input = result.container.querySelector("input") as HTMLInputElement;
         expect(input).toBeTruthy();
         expect(input.value).toBe("first lifelog");
+
+        // Cursor should be at the end of the text
+        expect(input.selectionStart).toBe("first lifelog".length);
+        expect(input.selectionEnd).toBe("first lifelog".length);
       });
 
       it("enters tree mode with ➡️ button click", async ({ db, task }) => {
