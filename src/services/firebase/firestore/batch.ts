@@ -11,7 +11,6 @@ import { uuidv7 } from "uuidv7";
 import {
   type DocumentData,
   getCollection,
-  getSingletonDoc,
   singletonDocumentId,
   type FirestoreService,
   type Timestamps,
@@ -71,7 +70,7 @@ export async function runBatch(
     const batch = writeBatch(firestore);
 
     const newBatchVersion = uuidv7();
-    const batchVersionDoc = await getSingletonDoc(service, batchVersionCol);
+    const batchVersionDoc = service.batchVersion$();
     if (batchVersionDoc) {
       updateSingletonDoc(service, batch, batchVersionCol, {
         prevVersion: batchVersionDoc.version,

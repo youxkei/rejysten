@@ -24,6 +24,7 @@ import { type Accessor, createContext, createSignal, type JSXElement, onCleanup,
 import { ServiceNotAvailable } from "@/services/error";
 import { type FirebaseService, useFirebaseService } from "@/services/firebase";
 import { type Schema } from "@/services/firebase/firestore/schema";
+import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { type StoreService, useStoreService } from "@/services/store";
 
 export type FirestoreService = {
@@ -36,6 +37,7 @@ export type FirestoreService = {
   clock$: Accessor<boolean>;
   setClock: (clock: boolean) => void;
   resolve: (() => void) | undefined;
+  batchVersion$: Accessor<DocumentData<Schema["batchVersion"]> | undefined>;
 };
 
 const context = createContext<FirestoreService>();
@@ -88,7 +90,17 @@ export function FirestoreServiceProvider(props: {
     setClockOriginal(clock);
   };
 
-  const service: FirestoreService = { services: { firebase, store }, firestore, clock$, setClock, resolve: undefined };
+  const service: FirestoreService = {
+    services: { firebase, store },
+    firestore,
+    clock$,
+    setClock,
+    resolve: undefined,
+    batchVersion$: () => undefined,
+  };
+
+  const batchVersionCol = collection(firestore, "batchVersion") as CollectionReference<Schema["batchVersion"]>;
+  service.batchVersion$ = createSubscribeSignal(service, () => doc(batchVersionCol, singletonDocumentId));
 
   const unsubscribe = onSnapshotsInSync(firestore, () => {
     service.resolve?.();
