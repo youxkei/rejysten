@@ -31,25 +31,6 @@ function NavigationToolbar() {
 
   const isTreeFocused = () => state.panesLifeLogs.selectedLifeLogNodeId !== "";
 
-  // Wrap action calls to preserve SolidJS context
-  // Note: In lifeLog mode, "prev" goes up visually (older entries), "next" goes down (newer entries)
-  // In tree mode, we map ⬇️ to navigateDown (next in pre-order) and ⬆️ to navigateUp (prev in pre-order)
-  const handleNavigatePrev = withOwner(() => {
-    if (isTreeFocused()) {
-      // ⬇️ button: go DOWN in tree (next node in pre-order traversal)
-      awaitable(treeActions.navigateDown)();
-    } else {
-      actions.navigatePrev();
-    }
-  });
-  const handleNavigateNext = withOwner(() => {
-    if (isTreeFocused()) {
-      // ⬆️ button: go UP in tree (previous node in pre-order traversal)
-      awaitable(treeActions.navigateUp)();
-    } else {
-      actions.navigateNext();
-    }
-  });
   const handleGoToFirst = withOwner(() => {
     if (isTreeFocused()) {
       // ⏬ button: go to LAST node in tree (bottom of visual tree)
@@ -91,20 +72,6 @@ function NavigationToolbar() {
 
   return (
     <div class={styles.mobileToolbar.buttonGroup}>
-      <button
-        class={styles.mobileToolbar.button}
-        onClick={handleNavigateNext}
-        disabled={state.panesLifeLogs.selectedLifeLogId === ""}
-      >
-        ⬆️
-      </button>
-      <button
-        class={styles.mobileToolbar.button}
-        onClick={handleNavigatePrev}
-        disabled={state.panesLifeLogs.selectedLifeLogId === ""}
-      >
-        ⬇️
-      </button>
       <button
         class={styles.mobileToolbar.button}
         onClick={handleGoToLast}
@@ -219,11 +186,6 @@ function EditingToolbar() {
 
   return (
     <div class={styles.mobileToolbar.buttonGroup}>
-      {/* 編集終了ボタン - 常に表示 */}
-      <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleExitEditing}>
-        ✅
-      </button>
-
       <Show when={!isTreeNodeEditing()}>
         {/* lifeLogフィールド切り替え */}
         <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleCycleFieldPrev}>
@@ -246,6 +208,11 @@ function EditingToolbar() {
           ⬇️🗑️
         </button>
       </Show>
+
+      {/* 編集終了ボタン - 右端に配置 */}
+      <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleExitEditing}>
+        ✅
+      </button>
     </div>
   );
 }

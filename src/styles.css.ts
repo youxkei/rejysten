@@ -1,6 +1,6 @@
 import { style, globalStyle } from "@vanilla-extract/css";
 
-const MOBILE_BREAKPOINT = "768px";
+export const MOBILE_BREAKPOINT = 1024;
 
 // from https://www.nordtheme.com/docs/colors-and-palettes
 const nord = [
@@ -61,7 +61,7 @@ export const styles = {
       flexDirection: "column",
       gap: "0.75rem",
       "@media": {
-        [`(max-width: ${MOBILE_BREAKPOINT})`]: {
+        [`(max-width: ${MOBILE_BREAKPOINT}px)`]: {
           flexDirection: "column-reverse",
         },
       },
@@ -131,12 +131,11 @@ export const styles = {
       backgroundColor: nord[1],
       borderTop: `1px solid ${nord[2]}`,
       padding: "0.5rem",
-      paddingBottom: "calc(0.5rem + env(keyboard-inset-height, 0px))",
       display: "none",
-      justifyContent: "center",
+      justifyContent: "flex-end",
       gap: "0.25rem",
       "@media": {
-        [`(max-width: ${MOBILE_BREAKPOINT})`]: {
+        [`(max-width: ${MOBILE_BREAKPOINT}px)`]: {
           display: "flex",
         },
       },
@@ -144,8 +143,8 @@ export const styles = {
     buttonGroup: style({
       display: "flex",
       gap: "0.25rem",
-      flexWrap: "wrap",
-      justifyContent: "center",
+      flexWrap: "nowrap",
+      justifyContent: "flex-end",
     }),
     button: style({
       padding: "0.5rem 0.75rem",

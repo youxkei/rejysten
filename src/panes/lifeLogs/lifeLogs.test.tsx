@@ -1343,7 +1343,7 @@ describe("<LifeLogs />", () => {
     describe("scroll focus", () => {
       // Use desktop viewport for these tests (mobile uses column-reverse which changes scroll behavior)
       it("moves focus to topmost visible LifeLog when focused LifeLog scrolls out above", async ({ db, task }) => {
-        await page.viewport(800, 600);
+        await page.viewport(1200, 600);
         const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
 
         const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
@@ -1381,7 +1381,7 @@ describe("<LifeLogs />", () => {
       });
 
       it("moves focus to bottommost visible LifeLog when focused LifeLog scrolls out below", async ({ db, task }) => {
-        await page.viewport(800, 600);
+        await page.viewport(1200, 600);
         const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
 
         const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
@@ -1416,7 +1416,7 @@ describe("<LifeLogs />", () => {
       });
 
       it("does not move focus when editing", async ({ db, task }) => {
-        await page.viewport(800, 600);
+        await page.viewport(1200, 600);
         const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
 
         const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
@@ -1453,7 +1453,7 @@ describe("<LifeLogs />", () => {
       });
 
       it("exits tree and moves focus to visible LifeLog when scrolling in tree mode", async ({ db, task }) => {
-        await page.viewport(800, 600);
+        await page.viewport(1200, 600);
         const { result } = await setupLifeLogsTest(task.id, db, {
           lifeLogCount: 15,
           treeNodeCount: 5,
@@ -1785,7 +1785,7 @@ describe("<LifeLogs />", () => {
       });
 
       it("is hidden at desktop viewport (800px width)", async ({ db, task }) => {
-        await page.viewport(800, 600);
+        await page.viewport(1200, 600);
         const { result } = await setupLifeLogsTest(task.id, db);
 
         const toolbar = result.container.querySelector(`.${styles.mobileToolbar.container}`);
@@ -1795,7 +1795,7 @@ describe("<LifeLogs />", () => {
       });
 
       it("becomes visible when resizing from desktop to mobile", async ({ db, task }) => {
-        await page.viewport(800, 600);
+        await page.viewport(1200, 600);
         const { result } = await setupLifeLogsTest(task.id, db);
 
         const toolbar = result.container.querySelector(`.${styles.mobileToolbar.container}`)!;
@@ -1813,52 +1813,6 @@ describe("<LifeLogs />", () => {
     });
 
     describe("navigation buttons", () => {
-      it("navigates to next LifeLog with ⬆️ button click", async ({ db, task }) => {
-        const { result } = await setupLifeLogsTest(task.id, db);
-
-        // Initial: $log1 is selected
-        const log1Initial = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
-        expect(log1Initial?.className).toContain(styles.lifeLogTree.selected);
-
-        // Click ⬆️ button
-        const upButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "⬆️",
-        ) as HTMLButtonElement;
-        expect(upButton).toBeTruthy();
-        expect(upButton.disabled).toBe(false);
-
-        upButton.click();
-        await awaitPendingCallbacks();
-
-        // $log2 should now be selected
-        const log2 = result.getByText("second lifelog").closest(`.${styles.lifeLogTree.container}`);
-        expect(log2?.className).toContain(styles.lifeLogTree.selected);
-      });
-
-      it("navigates to previous LifeLog with ⬇️ button click", async ({ db, task }) => {
-        const { result } = await setupLifeLogsTest(task.id, db);
-
-        // Navigate to $log2 first
-        await userEvent.keyboard("{j}");
-        await awaitPendingCallbacks();
-
-        const log2Initial = result.getByText("second lifelog").closest(`.${styles.lifeLogTree.container}`);
-        expect(log2Initial?.className).toContain(styles.lifeLogTree.selected);
-
-        // Click ⬇️ button
-        const downButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "⬇️",
-        ) as HTMLButtonElement;
-        expect(downButton).toBeTruthy();
-
-        downButton.click();
-        await awaitPendingCallbacks();
-
-        // $log1 should now be selected
-        const log1 = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
-        expect(log1?.className).toContain(styles.lifeLogTree.selected);
-      });
-
       it("enters editing mode with ✏️ button click", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 

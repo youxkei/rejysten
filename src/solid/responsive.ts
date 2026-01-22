@@ -1,6 +1,6 @@
 import { createSignal, onCleanup, type Accessor } from "solid-js";
 
-export const MOBILE_BREAKPOINT = 768;
+import { MOBILE_BREAKPOINT } from "@/styles.css";
 
 export function createIsMobile(): Accessor<boolean> {
   const mediaQuery = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`);
