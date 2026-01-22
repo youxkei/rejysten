@@ -1956,6 +1956,80 @@ describe("<LifeLogs />", () => {
         const log1 = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
         expect(log1?.className).toContain(styles.lifeLogTree.selected);
       });
+
+      it("saves edited text when exiting with ✅ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        // Enter editing mode with 'a' key (cursor at end)
+        await userEvent.keyboard("{a}");
+        await awaitPendingCallbacks();
+
+        // Input should be visible
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("first lifelog");
+
+        // Type additional text
+        await userEvent.keyboard(" edited");
+        await awaitPendingCallbacks();
+
+        // Verify input has the edited text
+        expect(input.value).toBe("first lifelog edited");
+
+        // Click ✅ button to exit editing
+        const exitButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "✅",
+        ) as HTMLButtonElement;
+        expect(exitButton).toBeTruthy();
+
+        await userEvent.click(exitButton);
+        await awaitPendingCallbacks();
+
+        // Input should no longer be visible (editing mode exited)
+        expect(result.container.querySelector("input")).toBeNull();
+
+        // Edited text should be displayed (not old text)
+        expect(result.getByText("first lifelog edited")).toBeTruthy();
+        expect(result.queryByText(/^first lifelog$/)).toBeNull();
+      });
+
+      it("saves edited startAt when exiting with ✅ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        // Enter editing mode
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+
+        // Navigate to startAt field with Tab
+        await userEvent.keyboard("{Tab}");
+        await awaitPendingCallbacks();
+
+        // Input should now be startAt field
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("20260110 103000");
+
+        // Change the time (select all and type new value)
+        await userEvent.keyboard("{Control>}a{/Control}20260110 103005");
+        await awaitPendingCallbacks();
+
+        // Click ✅ button to exit editing
+        const exitButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "✅",
+        ) as HTMLButtonElement;
+        expect(exitButton).toBeTruthy();
+
+        await userEvent.click(exitButton);
+        await awaitPendingCallbacks();
+
+        // Input should no longer be visible (editing mode exited)
+        expect(result.container.querySelector("input")).toBeNull();
+
+        // New startAt should be displayed
+        expect(result.getByText("2026-01-10 10:30:05")).toBeTruthy();
+        // Old startAt should not be displayed
+        expect(result.queryByText("2026-01-10 10:30:00")).toBeNull();
+      });
     });
 
     describe("lifeLog mode buttons", () => {

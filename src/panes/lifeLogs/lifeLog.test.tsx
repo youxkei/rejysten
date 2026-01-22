@@ -1527,7 +1527,6 @@ describe("<LifeLog />", () => {
         await userEvent.keyboard("{Escape}");
         await awaitPendingCallbacks();
       });
-
     });
 
     describe("tree action buttons in tree mode", () => {
@@ -1754,6 +1753,51 @@ describe("<LifeLog />", () => {
 
         // Tree node should still be selected
         expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      it("saves edited tree node text when exiting with ✅ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // Enter tree mode
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Wait for tree nodes to render
+        await result.findByText("first child");
+
+        // Enter editing mode with 'a' key (cursor at end)
+        await userEvent.keyboard("{a}");
+        await awaitPendingCallbacks();
+
+        // Input should be visible
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("first child");
+
+        // Type additional text
+        await userEvent.keyboard(" edited");
+        await awaitPendingCallbacks();
+
+        // Verify input has the edited text
+        expect(input.value).toBe("first child edited");
+
+        // Click ✅ button to exit editing
+        const exitButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "✅",
+        ) as HTMLButtonElement;
+        expect(exitButton).toBeTruthy();
+
+        await userEvent.click(exitButton);
+        await awaitPendingCallbacks();
+
+        // Input should no longer be visible (editing mode exited)
+        expect(result.container.querySelector("input")).toBeNull();
+
+        // Edited text should be displayed (not old text)
+        expect(result.getByText("first child edited")).toBeTruthy();
+        expect(result.queryByText(/^first child$/)).toBeNull();
       });
 
       it("splits tree node at cursor with ⏎ button click", async ({ db, task }) => {

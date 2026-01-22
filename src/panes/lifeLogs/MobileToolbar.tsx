@@ -1,6 +1,7 @@
 import { Show } from "solid-js";
 
 import { awaitable } from "@/awaitableCallback";
+import { EditingField } from "@/panes/lifeLogs/schema";
 import { useActionsService } from "@/services/actions";
 import { useStoreService } from "@/services/store";
 import { withOwner } from "@/solid/owner";
@@ -163,7 +164,26 @@ function EditingToolbar() {
 
   // 編集終了ハンドラ
   const handleExitEditing = withOwner(() => {
-    context.setIsEditing(false);
+    awaitable(async () => {
+      if (state.panesLifeLogs.selectedLifeLogNodeId !== "") {
+        // Tree node editing
+        await actions.saveTreeNode();
+      } else {
+        // LifeLog editing - save based on current editing field
+        switch (context.editingField) {
+          case EditingField.Text:
+            await actions.saveText();
+            break;
+          case EditingField.StartAt:
+            await actions.saveStartAt();
+            break;
+          case EditingField.EndAt:
+            await actions.saveEndAt();
+            break;
+        }
+      }
+      context.setIsEditing(false);
+    })();
   });
 
   // Tree node editing handlers
