@@ -7,15 +7,23 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
 ) {
   let setResource: ((value: Value) => void) | undefined;
   let mutateResource: ((value: Value) => void) | undefined;
+  // Version counter to filter out stale updates from old subscribers
+  // When source$ changes, the version increments and old subscriber callbacks are ignored
+  let activeVersion = 0;
 
   const [signal$, setSignal] = createSignal<InitialValue | Value>(initialValue);
 
   const [resource$, { mutate }] = createResource<Value | InitialValue, Source>(
     source$,
     (source) => {
+      // Capture the current version for this fetcher instance
+      const version = ++activeVersion;
       let firstValue: { value: Value } | undefined;
 
       subscriber(source, (value) => {
+        // Ignore updates from stale subscribers (previous source$ values)
+        if (version !== activeVersion) return;
+
         if (!firstValue) {
           firstValue = { value };
         }
@@ -30,9 +38,8 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
         mutateResource?.(value);
       });
 
-      onCleanup(() => {
-        mutateResource = undefined;
-      });
+      // Note: We don't clear mutateResource in onCleanup anymore.
+      // The version check above handles filtering out stale updates.
 
       if (firstValue) {
         return Promise.resolve(firstValue.value);
@@ -57,7 +64,7 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
               // Clear setResource so data goes through mutateResource instead
               setResource = undefined;
               resolve(initialValue);
-            }, 200);
+            }, 50);
           }),
         ]);
       }
@@ -70,7 +77,7 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
   mutateResource = mutate;
 
   // for remote changes
-  createComputed(() => startTransition(() => setSignal(resource$)));
+  createComputed(() => startTransition(() => setSignal(() => resource$())));
 
   return signal$;
 }
