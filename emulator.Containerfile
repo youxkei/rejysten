@@ -9,7 +9,7 @@ RUN firebase setup:emulators:ui && firebase setup:emulators:firestore
 
 RUN echo '{"projects": {"default": "demo"}}' > /firebase/.firebaserc
 
-ENV JAVA_TOOL_OPTIONS "-Xms2g -Xmx8g -XX:+UseZGC"
+ENV JAVA_TOOL_OPTIONS "-Xms2g -Xmx4g -XX:+UseZGC"
 ENV GCLOUD_PROJECT_ID demo
 
 CMD firebase emulators:start --only firestore
