@@ -8,3 +8,4 @@
 - use `pnpm tsc` for type check
 - if test fails, add `console.log` to debug first to investigate the problem
   - use `createComputed` to trace the signal changes
+- for planning, always consider adding tests instead of manual testing
