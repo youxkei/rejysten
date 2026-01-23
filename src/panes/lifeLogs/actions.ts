@@ -161,7 +161,11 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     const lifeLog = await getDoc(firestore, lifeLogsCol, state.panesLifeLogs.selectedLifeLogId);
     if (!lifeLog) return;
 
-    const firstChildNode = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
+    // Skip query if we know there are no tree nodes
+    let firstChildNode;
+    if (lifeLog.hasTreeNodes !== false) {
+      firstChildNode = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
+    }
     let nodeId = "";
 
     firestore.setClock(true);
@@ -175,6 +179,11 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
             id: nodeId,
             text: "",
             lifeLogId: lifeLog.id,
+          });
+          // Set hasTreeNodes to true when creating a node
+          updateDoc(firestore, batch, lifeLogsCol, {
+            id: lifeLog.id,
+            hasTreeNodes: true,
           });
           return Promise.resolve();
         });
@@ -479,10 +488,17 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
       return;
     }
 
-    // Check for child tree nodes
-    const lifeLogTreeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const hasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
-    if (hasChildren) return;
+    // Check for child tree nodes using the flag
+    if (lifeLog.hasTreeNodes === true) {
+      return; // Has tree nodes, cannot delete
+    }
+    if (lifeLog.hasTreeNodes === undefined) {
+      // Existing data without flag - need to query
+      const lifeLogTreeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+      const hasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
+      if (hasChildren) return;
+    }
+    // hasTreeNodes === false: no tree nodes, proceed with deletion
 
     // Get previous LifeLog's text length for cursor position
     const prevLifeLog = await getDoc(firestore, lifeLogsCol, context.prevId);
@@ -534,10 +550,17 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
       return;
     }
 
-    // Check for child tree nodes
-    const lifeLogTreeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const hasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
-    if (hasChildren) return;
+    // Check for child tree nodes using the flag
+    if (lifeLog.hasTreeNodes === true) {
+      return; // Has tree nodes, cannot delete
+    }
+    if (lifeLog.hasTreeNodes === undefined) {
+      // Existing data without flag - need to query
+      const lifeLogTreeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+      const hasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
+      if (hasChildren) return;
+    }
+    // hasTreeNodes === false: no tree nodes, proceed with deletion
 
     // Delete current LifeLog and select next with cursor at start
     firestore.setClock(true);
@@ -700,6 +723,11 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
       try {
         await runBatch(firestore, async (batch) => {
           await remove(firestore, batch, lifeLogTreeNodesCol, node);
+          // Set hasTreeNodes to false when removing the last node
+          updateDoc(firestore, batch, lifeLogsCol, {
+            id: lifeLogId,
+            hasTreeNodes: false,
+          });
         });
 
         context.setLifeLogCursorInfo({ lifeLogId, cursorPosition: context.lifeLogTextLength });

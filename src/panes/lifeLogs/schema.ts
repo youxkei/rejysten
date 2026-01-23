@@ -6,6 +6,7 @@ declare module "@/services/firebase/firestore/schema" {
   interface Schema {
     lifeLogs: {
       text: string;
+      hasTreeNodes?: boolean;
 
       startAt: Timestamp;
       endAt: Timestamp;
