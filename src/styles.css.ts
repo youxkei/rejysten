@@ -71,7 +71,6 @@ export const styles = {
       backgroundColor: nord[1],
       border: `1px solid ${nord[2]}`,
       padding: "1rem",
-      transition: "all 0.2s ease",
       ":hover": {
         borderColor: nord[3],
         boxShadow: `0 2px 8px ${nord[0]}66`,
@@ -87,7 +86,6 @@ export const styles = {
     container: style({
       padding: "0.75rem",
       borderRadius: "0.25rem",
-      transition: "all 0.2s ease",
       cursor: "pointer",
       ":hover": {
         backgroundColor: `${nord[2]}44`,
@@ -97,7 +95,7 @@ export const styles = {
       display: "flex",
       gap: "0.5rem",
       fontSize: "0.875rem",
-      color: nord[3],
+      color: nord[4],
       marginBottom: "0.5rem",
       fontWeight: 500,
     }),
