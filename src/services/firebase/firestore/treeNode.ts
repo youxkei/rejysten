@@ -10,6 +10,7 @@ import {
   getDocs,
 } from "@/services/firebase/firestore";
 import { setDoc, updateDoc } from "@/services/firebase/firestore/batch";
+import { deleteNgram } from "@/services/firebase/firestore/ngram";
 
 export type TreeNode = {
   parentId: string;
@@ -334,4 +335,5 @@ export async function remove<T extends TreeNode>(
   }
 
   batch.delete(doc(col, node.id));
+  deleteNgram(service, batch, col, node.id);
 }

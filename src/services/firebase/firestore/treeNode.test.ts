@@ -10,6 +10,7 @@ import { generateKeyBetween } from "fractional-indexing";
 import { describe, it, vi, beforeAll, afterAll } from "vitest";
 
 import { type FirestoreService, type DocumentData } from "@/services/firebase/firestore";
+import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
 import {
   createTestFirestoreService,
   setDocs,
@@ -782,6 +783,36 @@ describe.concurrent("treeNode", () => {
           }),
         )
         .rejects.toThrowError("cannot delete node with children");
+    });
+
+    it("removes ngram when node is deleted and collection is ngram-enabled", async (ctx) => {
+      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const ngramsCol = collection(firestore, "ngrams");
+
+      // Enable ngram for this collection
+      collectionNgramConfig[ctx.task.id] = true;
+
+      // Create node with ngram using addSingle
+      await runTestBatch(async (batch) => {
+        addSingle(service, batch, col, "parent", { id: "toRemove", text: "test ngram text" });
+      });
+
+      // Verify ngram exists
+      const ngramBefore = await getDocFromFirebase(doc(ngramsCol, `toRemove${ctx.task.id}`));
+      ctx.expect(ngramBefore.exists()).toBe(true);
+
+      // Remove node
+      const nodeToRemove = await getDoc(col, "toRemove");
+      await runTestBatch(async (batch) => {
+        await remove(service, batch, col, nodeToRemove);
+      });
+
+      // Verify both node and ngram are deleted
+      const removedNode = await getDoc(col, "toRemove").catch(() => undefined);
+      ctx.expect(removedNode).toBeUndefined();
+
+      const ngramAfter = await getDocFromFirebase(doc(ngramsCol, `toRemove${ctx.task.id}`));
+      ctx.expect(ngramAfter.exists()).toBe(false);
     });
   });
 });

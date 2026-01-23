@@ -7,6 +7,7 @@ import { EditingField } from "@/panes/lifeLogs/schema";
 import { type Actions, actionsCreator, initialActionsContext } from "@/services/actions";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch, setDoc, updateDoc } from "@/services/firebase/firestore/batch";
+import { deleteNgram } from "@/services/firebase/firestore/ngram";
 import {
   addNextSibling,
   addPrevSibling,
@@ -494,6 +495,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     try {
       await runBatch(firestore, (batch) => {
         batch.delete(doc(lifeLogsCol, selectedLifeLogId));
+        deleteNgram(firestore, batch, lifeLogsCol, selectedLifeLogId);
         return Promise.resolve();
       });
 
@@ -542,6 +544,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     try {
       await runBatch(firestore, (batch) => {
         batch.delete(doc(lifeLogsCol, selectedLifeLogId));
+        deleteNgram(firestore, batch, lifeLogsCol, selectedLifeLogId);
         return Promise.resolve();
       });
 
