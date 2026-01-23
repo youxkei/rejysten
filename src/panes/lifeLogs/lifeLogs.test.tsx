@@ -1,12 +1,12 @@
 import { cleanup } from "@solidjs/testing-library";
 import { Timestamp } from "firebase/firestore";
-import { afterEach, describe, expect, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 
 import { awaitPendingCallbacks } from "@/awaitableCallback";
 import { baseTime, setupLifeLogsTest } from "@/panes/lifeLogs/test";
 import { styles } from "@/styles.css";
-import { testWithDb as it } from "@/test";
+import { acquireEmulator, releaseEmulator, testWithDb as it } from "@/test";
 
 vi.mock(import("@/date"), async () => {
   return {
@@ -14,6 +14,14 @@ vi.mock(import("@/date"), async () => {
     DateNow: () => baseTime.getTime(),
     TimestampNow: () => Timestamp.fromDate(baseTime),
   };
+});
+
+beforeAll(async () => {
+  await acquireEmulator();
+});
+
+afterAll(async () => {
+  await releaseEmulator();
 });
 
 afterEach(async () => {

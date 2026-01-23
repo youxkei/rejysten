@@ -7,7 +7,7 @@ import {
   doc,
 } from "firebase/firestore";
 import { generateKeyBetween } from "fractional-indexing";
-import { describe, it, vi, beforeAll } from "vitest";
+import { describe, it, vi, beforeAll, afterAll } from "vitest";
 
 import { type FirestoreService, type DocumentData } from "@/services/firebase/firestore";
 import {
@@ -35,16 +35,21 @@ import {
   getBottomNodeExclusive,
   addSingle,
 } from "@/services/firebase/firestore/treeNode";
-import { getEmulatorPort } from "@/test";
+import { acquireEmulator, releaseEmulator, getEmulatorPort } from "@/test";
 
 let service: FirestoreService;
 let firestore: Firestore;
 
 beforeAll(async () => {
+  await acquireEmulator();
   const emulatorPort = await getEmulatorPort();
   const result = createTestFirestoreService(emulatorPort, "treeNode-test");
   service = result as FirestoreService;
   firestore = result.firestore;
+});
+
+afterAll(async () => {
+  await releaseEmulator();
 });
 
 async function getDoc<T extends object>(col: CollectionReference<T>, id: string): Promise<DocumentData<T>> {

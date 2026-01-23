@@ -1,5 +1,10 @@
 import { test, inject } from "vitest";
 
+declare global {
+  // eslint-disable-next-line no-var
+  var __testEmulatorPort__: number | undefined;
+}
+
 const shortener = /^styles_styles_(.+)__\w{8}$/;
 
 export function shortenClassName(root: HTMLElement) {
@@ -34,18 +39,43 @@ function getTestServerUrl(): string {
   return `http://localhost:${httpPort}`;
 }
 
+export async function acquireEmulator(): Promise<void> {
+  const res = await fetch(`${getTestServerUrl()}/emulator/acquire`, {
+    method: "POST",
+  });
+  const { emulatorPort } = await res.json();
+  globalThis.__testEmulatorPort__ = emulatorPort;
+}
+
+export async function releaseEmulator(): Promise<void> {
+  const port = globalThis.__testEmulatorPort__;
+  if (port === undefined) return;
+
+  await fetch(`${getTestServerUrl()}/emulator/release`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ port }),
+  });
+  globalThis.__testEmulatorPort__ = undefined;
+}
+
 export type DatabaseInfo = {
   emulatorPort: number;
 };
 
 export async function getEmulatorPort(): Promise<number> {
-  const res = await fetch(`${getTestServerUrl()}/emulator-port`);
-  const { emulatorPort } = await res.json();
-  return emulatorPort;
+  const port = globalThis.__testEmulatorPort__;
+  if (port === undefined) {
+    throw new Error("Emulator port not available. Call acquireEmulator() first.");
+  }
+  return port;
 }
 
 async function clearDatabase(database: string = "(default)"): Promise<void> {
-  await fetch(`${getTestServerUrl()}/database?database=${database}`, { method: "DELETE" });
+  const emulatorPort = await getEmulatorPort();
+  await fetch(`http://localhost:${emulatorPort}/emulator/v1/projects/demo/databases/${database}/documents`, {
+    method: "DELETE",
+  });
 }
 
 export const testWithDb = test.extend<{ db: DatabaseInfo }>({

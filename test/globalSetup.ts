@@ -6,10 +6,15 @@ import type { TestProject } from "vitest/node";
 const CONTAINER_PORT = 8080;
 
 let server: http.Server | undefined;
-let emulatorProcess: ChildProcess | undefined;
-let emulatorPort: number;
 let httpPort: number;
-let containerName: string;
+
+interface EmulatorInstance {
+  port: number;
+  containerName: string;
+  process: ChildProcess;
+}
+
+const activeEmulators = new Map<number, EmulatorInstance>();
 
 declare module "vitest" {
   export interface ProvidedContext {
@@ -42,82 +47,13 @@ async function waitForEmulator(port: number, maxAttempts = 30): Promise<void> {
   throw new Error(`Emulator did not start within ${maxAttempts} seconds`);
 }
 
-async function clearDatabase(port: number, database: string = "(default)"): Promise<void> {
-  await fetch(`http://localhost:${port}/emulator/v1/projects/demo/databases/${database}/documents`, {
-    method: "DELETE",
-  });
-}
+async function startEmulator(): Promise<EmulatorInstance> {
+  const port = await findFreePort();
+  const containerName = `firebase-emulator-test-${crypto.randomUUID()}`;
 
-export async function setup(project: TestProject) {
-  // Skip if already set up
-  if (httpPort) {
-    console.log(`[globalSetup] Already set up, skipping (HTTP port: ${httpPort})`);
-    project.provide("httpPort", httpPort);
-    return;
-  }
+  console.log(`[globalSetup] Starting emulator on port ${port}, container: ${containerName}`);
 
-  // 1. Find free ports for HTTP server and emulator
-  httpPort = await findFreePort();
-  emulatorPort = await findFreePort();
-  containerName = `firebase-emulator-test-${crypto.randomUUID()}`;
-
-  console.log(
-    `[globalSetup] Using HTTP port: ${httpPort}, emulator port: ${emulatorPort}, container: ${containerName}`,
-  );
-
-  // 2. Provide HTTP port to tests
-  project.provide("httpPort", httpPort);
-
-  // 3. Start HTTP server
-  server = http.createServer(async (req, res) => {
-    res.setHeader("Content-Type", "application/json");
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, DELETE, OPTIONS");
-
-    if (req.method === "OPTIONS") {
-      res.writeHead(200);
-      res.end();
-      return;
-    }
-
-    const url = new URL(req.url ?? "/", `http://localhost:${httpPort}`);
-
-    if (req.method === "GET" && url.pathname === "/emulator-port") {
-      res.writeHead(200);
-      res.end(JSON.stringify({ emulatorPort }));
-      return;
-    }
-
-    if (req.method === "DELETE" && url.pathname === "/database") {
-      // Clear the database
-      const database = url.searchParams.get("database") ?? "(default)";
-      try {
-        await clearDatabase(emulatorPort, database);
-        res.writeHead(200);
-        res.end(JSON.stringify({ success: true }));
-      } catch (e) {
-        console.error(`[globalSetup] Failed to clear database:`, e);
-        res.writeHead(500);
-        res.end(JSON.stringify({ error: "Failed to clear database" }));
-      }
-      return;
-    }
-
-    if (req.method === "GET" && url.pathname === "/health") {
-      res.writeHead(200);
-      res.end(JSON.stringify({ status: "ok", emulatorPort }));
-      return;
-    }
-
-    res.writeHead(404);
-    res.end(JSON.stringify({ error: "Not found" }));
-  });
-
-  server.listen(httpPort);
-  console.log(`[globalSetup] HTTP server listening on port ${httpPort}`);
-
-  // 4. Start podman emulator with port mapping
-  emulatorProcess = spawn(
+  const emulatorProcess = spawn(
     "podman",
     [
       "run",
@@ -125,7 +61,7 @@ export async function setup(project: TestProject) {
       "--name",
       containerName,
       "-p",
-      `${emulatorPort}:${CONTAINER_PORT}`,
+      `${port}:${CONTAINER_PORT}`,
       "-v",
       `${process.cwd()}/firebase.local.json:/firebase/firebase.json`,
       "-v",
@@ -138,17 +74,127 @@ export async function setup(project: TestProject) {
   );
 
   emulatorProcess.stdout?.on("data", (data) => {
-    console.log(`[emulator] ${data.toString().trim()}`);
+    console.log(`[emulator:${port}] ${data.toString().trim()}`);
   });
 
   emulatorProcess.stderr?.on("data", (data) => {
-    console.error(`[emulator] ${data.toString().trim()}`);
+    console.error(`[emulator:${port}] ${data.toString().trim()}`);
   });
 
-  // 5. Wait for emulator to be ready
-  console.log(`[globalSetup] Waiting for emulator to be ready...`);
-  await waitForEmulator(emulatorPort);
-  console.log(`[globalSetup] Emulator is ready`);
+  console.log(`[globalSetup] Waiting for emulator on port ${port} to be ready...`);
+  await waitForEmulator(port);
+  console.log(`[globalSetup] Emulator on port ${port} is ready`);
+
+  const instance: EmulatorInstance = { port, containerName, process: emulatorProcess };
+  activeEmulators.set(port, instance);
+
+  return instance;
+}
+
+async function stopEmulator(port: number): Promise<void> {
+  const instance = activeEmulators.get(port);
+  if (!instance) {
+    console.warn(`[globalSetup] No emulator found for port ${port}`);
+    return;
+  }
+
+  console.log(`[globalSetup] Stopping emulator on port ${port}, container: ${instance.containerName}`);
+
+  const rmProcess = spawn("podman", ["rm", "-f", instance.containerName], {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  await new Promise<void>((resolve) => {
+    rmProcess.on("close", () => resolve());
+  });
+
+  activeEmulators.delete(port);
+  console.log(`[globalSetup] Emulator on port ${port} stopped`);
+}
+
+function readRequestBody(req: http.IncomingMessage): Promise<string> {
+  return new Promise((resolve) => {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+    req.on("end", () => {
+      resolve(body);
+    });
+  });
+}
+
+export async function setup(project: TestProject) {
+  // Skip if already set up
+  if (httpPort) {
+    console.log(`[globalSetup] Already set up, skipping (HTTP port: ${httpPort})`);
+    project.provide("httpPort", httpPort);
+    return;
+  }
+
+  // 1. Find free port for HTTP server
+  httpPort = await findFreePort();
+
+  console.log(`[globalSetup] Using HTTP port: ${httpPort}`);
+
+  // 2. Provide HTTP port to tests
+  project.provide("httpPort", httpPort);
+
+  // 3. Start HTTP server
+  server = http.createServer(async (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+    if (req.method === "OPTIONS") {
+      res.writeHead(200);
+      res.end();
+      return;
+    }
+
+    const url = new URL(req.url ?? "/", `http://localhost:${httpPort}`);
+
+    if (req.method === "POST" && url.pathname === "/emulator/acquire") {
+      try {
+        const instance = await startEmulator();
+        res.writeHead(200);
+        res.end(JSON.stringify({ emulatorPort: instance.port }));
+      } catch (e) {
+        console.error(`[globalSetup] Failed to start emulator:`, e);
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: "Failed to start emulator" }));
+      }
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/emulator/release") {
+      try {
+        const body = await readRequestBody(req);
+        const { port } = JSON.parse(body);
+        await stopEmulator(port);
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        console.error(`[globalSetup] Failed to stop emulator:`, e);
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: "Failed to stop emulator" }));
+      }
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/health") {
+      res.writeHead(200);
+      res.end(JSON.stringify({ status: "ok", activeEmulators: activeEmulators.size }));
+      return;
+    }
+
+    res.writeHead(404);
+    res.end(JSON.stringify({ error: "Not found" }));
+  });
+
+  server.listen(httpPort);
+  console.log(`[globalSetup] HTTP server listening on port ${httpPort}`);
 }
 
 export async function teardown() {
@@ -158,15 +204,9 @@ export async function teardown() {
     server.close();
   }
 
-  if (emulatorProcess) {
-    // Kill the container using podman kill
-    const killProcess = spawn("podman", ["kill", containerName], {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-
-    await new Promise<void>((resolve) => {
-      killProcess.on("close", () => resolve());
-    });
+  // Stop all active emulators
+  for (const [port] of activeEmulators) {
+    await stopEmulator(port);
   }
 
   console.log(`[globalSetup] Shutdown complete`);

@@ -6,7 +6,7 @@ import {
   getDoc as getDocOriginal,
   doc,
 } from "firebase/firestore";
-import { describe, it, vi, beforeAll } from "vitest";
+import { describe, it, vi, beforeAll, afterAll } from "vitest";
 
 import { singletonDocumentId, type Timestamps, type FirestoreService } from "@/services/firebase/firestore";
 import { updateDoc, updateSingletonDoc, setDoc, setSingletonDoc } from "@/services/firebase/firestore/batch";
@@ -16,7 +16,7 @@ import {
   timestampForServerTimestamp,
   timestampForCreatedAt,
 } from "@/services/firebase/firestore/test";
-import { getEmulatorPort } from "@/test";
+import { acquireEmulator, releaseEmulator, getEmulatorPort } from "@/test";
 
 type TestDoc = Timestamps & { text: string; value: number };
 
@@ -24,10 +24,15 @@ let service: FirestoreService;
 let firestore: Firestore;
 
 beforeAll(async () => {
+  await acquireEmulator();
   const emulatorPort = await getEmulatorPort();
   const result = createTestFirestoreService(emulatorPort, "batch-test");
   service = result as FirestoreService;
   firestore = result.firestore;
+});
+
+afterAll(async () => {
+  await releaseEmulator();
 });
 
 describe("batch", () => {
