@@ -31,6 +31,8 @@ export interface EditableValueProps<V> {
   onSelectionChange?: (selectionStart: number) => void;
   // Callback when input element becomes available (for direct manipulation)
   onInputRef?: (inputRef: HTMLInputElement) => void;
+  // Callback to receive the preventBlurSave function
+  onPreventBlurSave?: (fn: () => void) => void;
   debugId?: string;
 }
 
@@ -79,6 +81,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
             const initialText = (props.toEditText ?? props.toText)(props.value);
             setEditText(initialText);
             props.onTextChange?.(initialText);
+            props.onPreventBlurSave?.(() => setBlurSavePrevented(true));
             if (inputRef) {
               props.onInputRef?.(inputRef);
               inputRef.value = initialText;
@@ -165,14 +168,9 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                   props.onKeyDown(e, inputRef, () => setBlurSavePrevented(true));
                 }
               })}
-              onBlur={async (e) => {
+              onBlur={async () => {
                 if (blurSavePrevented()) {
                   setBlurSavePrevented(false);
-                  return;
-                }
-                // Skip blur handling if focus is moving to a toolbar button
-                const relatedTarget = e.relatedTarget as HTMLElement | null;
-                if (relatedTarget?.dataset.preventBlur !== undefined) {
                   return;
                 }
                 debouncedSaveChanges.clear();

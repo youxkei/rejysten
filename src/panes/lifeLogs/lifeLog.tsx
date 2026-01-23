@@ -245,6 +245,11 @@ export function LifeLog(props: {
                     }
                   }
                 })}
+                onPreventBlurSave={(fn) => {
+                  actions.updateContext((ctx) => {
+                    ctx.panes.lifeLogs.preventBlurSave = fn;
+                  });
+                }}
               />
               <span>-</span>
               <EditableValue
@@ -278,6 +283,11 @@ export function LifeLog(props: {
                     }
                   }
                 })}
+                onPreventBlurSave={(fn) => {
+                  actions.updateContext((ctx) => {
+                    ctx.panes.lifeLogs.preventBlurSave = fn;
+                  });
+                }}
               />
             </div>
             <EditableValue
@@ -340,6 +350,11 @@ export function LifeLog(props: {
                   await actions.deleteEmptyLifeLogToNext();
                 }
               })}
+              onPreventBlurSave={(fn) => {
+                actions.updateContext((ctx) => {
+                  ctx.panes.lifeLogs.preventBlurSave = fn;
+                });
+              }}
             />
           </div>
           <Show when={isLifeLogTreeFocused$()}>

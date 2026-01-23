@@ -1894,24 +1894,6 @@ describe("<LifeLogs />", () => {
         expect(prevFieldButton).toBeTruthy();
       });
 
-      it("▶️ and ◀️ buttons have data-prevent-blur attribute", async ({ db, task }) => {
-        const { result } = await setupLifeLogsTest(task.id, db);
-
-        // Enter editing mode
-        await userEvent.keyboard("{i}");
-        await awaitPendingCallbacks();
-
-        const nextFieldButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "▶️",
-        ) as HTMLButtonElement;
-        const prevFieldButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "◀️",
-        ) as HTMLButtonElement;
-
-        expect(nextFieldButton.hasAttribute("data-prevent-blur")).toBe(true);
-        expect(prevFieldButton.hasAttribute("data-prevent-blur")).toBe(true);
-      });
-
       it("cycles to next field with ▶️ button click", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 

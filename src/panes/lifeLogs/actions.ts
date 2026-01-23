@@ -50,6 +50,7 @@ declare module "@/services/actions" {
       setTabCursorInfo: (info: { nodeId: string; cursorPosition: number } | undefined) => void;
       setMergeCursorInfo: (info: { nodeId: string; cursorPosition: number } | undefined) => void;
       updateNodeInput: (text: string, cursorPosition: number) => void;
+      preventBlurSave: () => void;
     };
   }
 
@@ -106,6 +107,7 @@ initialActionsContext.panes.lifeLogs = {
   setTabCursorInfo: () => undefined,
   setMergeCursorInfo: () => undefined,
   updateNodeInput: () => undefined,
+  preventBlurSave: () => undefined,
 };
 
 actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Actions) => {

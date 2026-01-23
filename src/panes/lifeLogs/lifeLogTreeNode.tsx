@@ -104,6 +104,11 @@ export function LifeLogTreeNode(props: {
           };
         });
       }}
+      onPreventBlurSave={(fn) => {
+        actionsService.updateContext((ctx) => {
+          ctx.panes.lifeLogs.preventBlurSave = fn;
+        });
+      }}
       initialCursorPosition={
         props.enterSplitNodeId$() === props.node$().id
           ? 0

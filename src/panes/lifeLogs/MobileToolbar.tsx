@@ -186,21 +186,35 @@ function EditingToolbar() {
     })();
   });
 
+  // Prevent blur by stopping mousedown default behavior
+  const preventBlur = (e: MouseEvent) => {
+    e.preventDefault();
+  };
+
   // Tree node editing handlers
   const handleSplitTreeNode = withOwner(() => {
+    context.preventBlurSave();
     awaitable(actions.splitTreeNode)();
   });
   const handleRemoveOrMerge = withOwner(() => {
+    // Only allow removal/merge when cursor is at beginning (like Backspace)
+    if (context.nodeCursorPosition !== 0) return;
+    context.preventBlurSave();
     awaitable(actions.removeOrMergeNodeWithAbove)();
   });
   const handleMergeWithBelow = withOwner(() => {
+    // Only allow merge when cursor is at end (like Delete key)
+    if (context.nodeCursorPosition !== (context.pendingNodeText?.length ?? 0)) return;
+    context.preventBlurSave();
     awaitable(actions.mergeTreeNodeWithBelow)();
   });
 
   const handleCycleFieldPrev = withOwner(() => {
+    context.preventBlurSave();
     actions.cycleFieldPrev();
   });
   const handleCycleFieldNext = withOwner(() => {
+    context.preventBlurSave();
     actions.cycleFieldNext();
   });
 
@@ -208,29 +222,29 @@ function EditingToolbar() {
     <div class={styles.mobileToolbar.buttonGroup}>
       <Show when={!isTreeNodeEditing()}>
         {/* lifeLogフィールド切り替え */}
-        <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleCycleFieldPrev}>
+        <button class={styles.mobileToolbar.button} onMouseDown={preventBlur} onClick={handleCycleFieldPrev}>
           ◀️
         </button>
-        <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleCycleFieldNext}>
+        <button class={styles.mobileToolbar.button} onMouseDown={preventBlur} onClick={handleCycleFieldNext}>
           ▶️
         </button>
       </Show>
 
       <Show when={isTreeNodeEditing()}>
         {/* Tree node編集ボタン */}
-        <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleSplitTreeNode}>
+        <button class={styles.mobileToolbar.button} onMouseDown={preventBlur} onClick={handleSplitTreeNode}>
           ⏎
         </button>
-        <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleRemoveOrMerge}>
+        <button class={styles.mobileToolbar.button} onMouseDown={preventBlur} onClick={handleRemoveOrMerge}>
           ⬆️🗑️
         </button>
-        <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleMergeWithBelow}>
+        <button class={styles.mobileToolbar.button} onMouseDown={preventBlur} onClick={handleMergeWithBelow}>
           ⬇️🗑️
         </button>
       </Show>
 
       {/* 編集終了ボタン - 右端に配置 */}
-      <button class={styles.mobileToolbar.button} data-prevent-blur onClick={handleExitEditing}>
+      <button class={styles.mobileToolbar.button} onMouseDown={preventBlur} onClick={handleExitEditing}>
         ✅
       </button>
     </div>
