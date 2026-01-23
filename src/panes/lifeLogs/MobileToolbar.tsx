@@ -133,11 +133,11 @@ function NavigationToolbar() {
         <button class={styles.mobileToolbar.button} onClick={handleAddNodeBelow}>
           ⬇️➕
         </button>
-        <button class={styles.mobileToolbar.button} onClick={handleIndent}>
-          ➡️
-        </button>
         <button class={styles.mobileToolbar.button} onClick={handleDedent}>
           ⬅️
+        </button>
+        <button class={styles.mobileToolbar.button} onClick={handleIndent}>
+          ➡️
         </button>
       </Show>
       <button
@@ -218,6 +218,15 @@ function EditingToolbar() {
     actions.cycleFieldNext();
   });
 
+  const handleIndent = withOwner(() => {
+    context.preventBlurSave();
+    awaitable(actions.saveAndIndentTreeNode)();
+  });
+  const handleDedent = withOwner(() => {
+    context.preventBlurSave();
+    awaitable(actions.saveAndDedentTreeNode)();
+  });
+
   return (
     <div class={styles.mobileToolbar.buttonGroup}>
       <Show when={!isTreeNodeEditing()}>
@@ -240,6 +249,12 @@ function EditingToolbar() {
         </button>
         <button class={styles.mobileToolbar.button} onMouseDown={preventBlur} onClick={handleMergeWithBelow}>
           ⬇️🗑️
+        </button>
+        <button class={styles.mobileToolbar.button} onMouseDown={preventBlur} onClick={handleDedent}>
+          ⬅️
+        </button>
+        <button class={styles.mobileToolbar.button} onMouseDown={preventBlur} onClick={handleIndent}>
+          ➡️
         </button>
       </Show>
 

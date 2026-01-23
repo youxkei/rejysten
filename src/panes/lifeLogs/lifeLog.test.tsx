@@ -2038,6 +2038,300 @@ describe("<LifeLog />", () => {
         // Verify merged text is displayed
         expect(result.getByText("great-grandchildsecond child")).toBeTruthy();
       });
+
+      it("does not merge with above when cursor is not at beginning with ⬆️🗑️ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // Enter tree mode
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Wait for tree nodes to render
+        await result.findByText("first child");
+        await result.findByText("second child");
+        await result.findByText("grandchild");
+        await result.findByText("great-grandchild");
+
+        // Navigate to second child (j -> j -> j: child1 -> grandchild -> great-grandchild -> child2)
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+        });
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+        });
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
+        });
+
+        // Enter editing mode with cursor at end (using 'a')
+        await userEvent.keyboard("{a}");
+        await awaitPendingCallbacks();
+
+        // Wait for input to appear
+        const input = await waitFor(() => {
+          const inp = result.container.querySelector("input") as HTMLInputElement;
+          expect(inp).toBeTruthy();
+          expect(inp.value).toBe("second child");
+          return inp;
+        });
+
+        // Move cursor to middle position (not at beginning)
+        input.setSelectionRange(6, 6);
+        expect(input.selectionStart).toBe(6);
+
+        // Click ⬆️🗑️ button - should NOT merge since cursor is not at beginning
+        const mergeAboveButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⬆️🗑️",
+        ) as HTMLButtonElement;
+        expect(mergeAboveButton).toBeTruthy();
+
+        await userEvent.click(mergeAboveButton);
+        await awaitPendingCallbacks();
+
+        // Wait a bit to ensure no async merge happens
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Verify: no merge happened - text should be unchanged
+        const inputAfter = result.container.querySelector("input") as HTMLInputElement;
+        expect(inputAfter).toBeTruthy();
+        expect(inputAfter.value).toBe("second child");
+
+        // Verify editing mode is maintained (input still exists)
+        expect(result.container.querySelector("input")).toBeTruthy();
+
+        // Verify focus is maintained on the input
+        expect(document.activeElement).toBe(inputAfter);
+
+        // Verify great-grandchild still exists (no merge)
+        expect(result.queryByText("great-grandchild")).toBeTruthy();
+
+        // Exit editing mode
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+      });
+
+      it("does not merge with below when cursor is not at end with ⬇️🗑️ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // Enter tree mode
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Wait for tree nodes to render
+        await result.findByText("first child");
+        await result.findByText("second child");
+        await result.findByText("grandchild");
+        await result.findByText("great-grandchild");
+
+        // Wait for initial selection
+        await waitFor(() => {
+          expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+        });
+
+        // Navigate to great-grandchild (j -> j: child1 -> grandchild -> great-grandchild)
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+        });
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+        });
+
+        // Enter editing mode with cursor at beginning (using 'i')
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+
+        // Wait for input to appear
+        const input = await waitFor(() => {
+          const inp = result.container.querySelector("input") as HTMLInputElement;
+          expect(inp).toBeTruthy();
+          expect(inp.value).toBe("great-grandchild");
+          return inp;
+        });
+
+        // Move cursor to middle position (not at end)
+        input.setSelectionRange(6, 6);
+        expect(input.selectionStart).toBe(6);
+
+        // Click ⬇️🗑️ button - should NOT merge since cursor is not at end
+        const mergeBelowButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⬇️🗑️",
+        ) as HTMLButtonElement;
+        expect(mergeBelowButton).toBeTruthy();
+
+        await userEvent.click(mergeBelowButton);
+        await awaitPendingCallbacks();
+
+        // Wait a bit to ensure no async merge happens
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Verify: no merge happened - text should be unchanged
+        const inputAfter = result.container.querySelector("input") as HTMLInputElement;
+        expect(inputAfter).toBeTruthy();
+        expect(inputAfter.value).toBe("great-grandchild");
+
+        // Verify editing mode is maintained (input still exists)
+        expect(result.container.querySelector("input")).toBeTruthy();
+
+        // Verify focus is maintained on the input
+        expect(document.activeElement).toBe(inputAfter);
+
+        // Verify second child still exists (no merge)
+        expect(result.queryByText("second child")).toBeTruthy();
+
+        // Exit editing mode
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+      });
+
+      it("indents node with ➡️ button click during editing and preserves cursor position", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+        await result.findByText("first lifelog");
+
+        // Reset state: exit tree mode first if we're already in it (from previous test state leak)
+        await userEvent.keyboard("{h}");
+        await awaitPendingCallbacks();
+
+        // Enter tree mode
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+        await result.findByText("first child");
+        await result.findByText("second child");
+
+        // Wait for initial selection
+        await waitFor(() => {
+          expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+        });
+
+        // Navigate to second child (j -> j -> j: child1 -> grandchild -> great-grandchild -> child2)
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+        });
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+        });
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
+        });
+
+        // Verify initial DOM BEFORE editing: child2 is sibling of child1
+        const child1LiBefore = result.getByText("first child").closest("li")!;
+        const child2LiBefore = result.getByText("second child").closest("li")!;
+        expect(child2LiBefore.parentElement).toBe(child1LiBefore.parentElement);
+
+        // Enter editing mode
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("second child");
+
+        // Set cursor to middle position (e.g., position 6 = "second| child")
+        input.setSelectionRange(6, 6);
+        expect(input.selectionStart).toBe(6);
+
+        // Click ➡️ indent button
+        const indentButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "➡️",
+        ) as HTMLButtonElement;
+        expect(indentButton).toBeTruthy();
+
+        await userEvent.click(indentButton);
+        await awaitPendingCallbacks();
+
+        // Verify still in editing mode with cursor position preserved and indent happened
+        await waitFor(() => {
+          const inputAfter = result.container.querySelector("input") as HTMLInputElement;
+          expect(inputAfter).toBeTruthy();
+          expect(inputAfter.value).toBe("second child");
+          expect(inputAfter.selectionStart).toBe(6); // cursor position preserved
+
+          // Verify indent: input's li should now be inside child1's li
+          const child1LiAfter = result.getByText("first child").closest("li")!;
+          const inputLi = inputAfter.closest("li")!;
+          expect(child1LiAfter.contains(inputLi)).toBe(true);
+        });
+      });
+
+      it("dedents node with ⬅️ button click during editing and preserves cursor position", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+        await result.findByText("first lifelog");
+
+        // Reset state: exit tree mode first if we're already in it (from previous test state leak)
+        await userEvent.keyboard("{h}");
+        await awaitPendingCallbacks();
+
+        // Enter tree mode
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+        await result.findByText("grandchild");
+
+        // Navigate to grandchild
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+        });
+
+        // Verify initial DOM BEFORE editing: grandchild is inside child1
+        const child1LiBefore = result.getByText("first child").closest("li")!;
+        const grandchildLiBefore = result.getByText("grandchild").closest("li")!;
+        expect(child1LiBefore.contains(grandchildLiBefore)).toBe(true);
+
+        // Enter editing mode
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("grandchild");
+
+        // Set cursor to middle position (e.g., position 5 = "grand|child")
+        input.setSelectionRange(5, 5);
+        expect(input.selectionStart).toBe(5);
+
+        // Click ⬅️ dedent button
+        const dedentButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⬅️",
+        ) as HTMLButtonElement;
+        expect(dedentButton).toBeTruthy();
+
+        await userEvent.click(dedentButton);
+        await awaitPendingCallbacks();
+
+        // Verify still in editing mode with cursor position preserved and dedent happened
+        await waitFor(() => {
+          const inputAfter = result.container.querySelector("input") as HTMLInputElement;
+          expect(inputAfter).toBeTruthy();
+          expect(inputAfter.value).toBe("grandchild");
+          expect(inputAfter.selectionStart).toBe(5); // cursor position preserved
+
+          // Verify dedent: input's li should now be sibling of child1's li
+          const child1LiAfter = result.getByText("first child").closest("li")!;
+          const inputLi = inputAfter.closest("li")!;
+          expect(child1LiAfter.parentElement).toBe(inputLi.parentElement);
+        });
+      });
     });
   });
 });
