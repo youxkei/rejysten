@@ -96,6 +96,7 @@ export const LifeLogsStory: StoryObj = {
 
                   batch.set(doc(lifeLogs, "$log1"), {
                     text: "lifelog1",
+                    hasTreeNodes: true,
                     startAt: noneTimestamp,
                     endAt: noneTimestamp,
                     createdAt: Timestamp.fromDate(new Date()),
@@ -221,6 +222,7 @@ export const LifeLogsFullscreen: StoryObj = {
 
                   batch.set(doc(lifeLogs, "$log1"), {
                     text: "lifelog1",
+                    hasTreeNodes: true,
                     startAt: noneTimestamp,
                     endAt: noneTimestamp,
                     createdAt: Timestamp.fromDate(new Date()),

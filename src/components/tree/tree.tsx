@@ -30,6 +30,14 @@ export function ChildrenNodes<T extends TreeNode>(props: {
   );
   const childrenIds$ = createMemo(() => childrenNodes$().map((childNode) => childNode.id), [], { equals });
 
+  // "__FIRST__" が選択された場合、最初の子ノードのIDに解決する
+  createEffect(() => {
+    const ids = childrenIds$();
+    if (props.selectedId === "__FIRST__" && ids.length > 0) {
+      props.setSelectedId(ids[0]);
+    }
+  });
+
   return (
     <ul>
       <For each={childrenIds$()}>

@@ -39,12 +39,7 @@ export function setNgram<T>(
   });
 }
 
-export function deleteNgram<T>(
-  service: FirestoreService,
-  batch: WriteBatch,
-  col: CollectionReference<T>,
-  id: string,
-) {
+export function deleteNgram<T>(service: FirestoreService, batch: WriteBatch, col: CollectionReference<T>, id: string) {
   if (!collectionNgramConfig[col.id]) return;
 
   const colId = col.id;

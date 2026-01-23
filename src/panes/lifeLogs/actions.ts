@@ -161,40 +161,39 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     const lifeLog = await getDoc(firestore, lifeLogsCol, state.panesLifeLogs.selectedLifeLogId);
     if (!lifeLog) return;
 
-    // Skip query if we know there are no tree nodes
-    let firstChildNode;
-    if (lifeLog.hasTreeNodes !== false) {
-      firstChildNode = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
-    }
-    let nodeId = "";
-
-    firestore.setClock(true);
-    try {
-      if (firstChildNode) {
-        nodeId = firstChildNode.id;
-      } else {
-        nodeId = uuidv7();
+    if (lifeLog.hasTreeNodes) {
+      // ツリーノードが存在する場合は "__FIRST__" をセット
+      // ChildrenNodes がロード時に実際のIDに解決する
+      await startTransition(() => {
+        updateState((s) => {
+          s.panesLifeLogs.selectedLifeLogNodeId = "__FIRST__";
+        });
+      });
+    } else {
+      // hasTreeNodes === false: 新規ノード作成
+      const nodeId = uuidv7();
+      firestore.setClock(true);
+      try {
         await runBatch(firestore, (batch) => {
           addSingle(firestore, batch, lifeLogTreeNodesCol, lifeLog.id, {
             id: nodeId,
             text: "",
             lifeLogId: lifeLog.id,
           });
-          // Set hasTreeNodes to true when creating a node
           updateDoc(firestore, batch, lifeLogsCol, {
             id: lifeLog.id,
             hasTreeNodes: true,
           });
           return Promise.resolve();
         });
-      }
-    } finally {
-      await startTransition(() => {
-        updateState((s) => {
-          s.panesLifeLogs.selectedLifeLogNodeId = nodeId;
+      } finally {
+        await startTransition(() => {
+          updateState((s) => {
+            s.panesLifeLogs.selectedLifeLogNodeId = nodeId;
+          });
+          firestore.setClock(false);
         });
-        firestore.setClock(false);
-      });
+      }
     }
   }
 
@@ -220,6 +219,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
         setDoc(firestore, batch, lifeLogsCol, {
           id: newLifeLogId,
           text: "",
+          hasTreeNodes: false,
           startAt: lifeLog.endAt,
           endAt: noneTimestamp,
         });
@@ -293,6 +293,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
           setDoc(firestore, batch, lifeLogsCol, {
             id: newLifeLogId,
             text: "",
+            hasTreeNodes: false,
             startAt: lifeLog.endAt,
             endAt: noneTimestamp,
           });
@@ -489,16 +490,9 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     }
 
     // Check for child tree nodes using the flag
-    if (lifeLog.hasTreeNodes === true) {
+    if (lifeLog.hasTreeNodes) {
       return; // Has tree nodes, cannot delete
     }
-    if (lifeLog.hasTreeNodes === undefined) {
-      // Existing data without flag - need to query
-      const lifeLogTreeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-      const hasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
-      if (hasChildren) return;
-    }
-    // hasTreeNodes === false: no tree nodes, proceed with deletion
 
     // Get previous LifeLog's text length for cursor position
     const prevLifeLog = await getDoc(firestore, lifeLogsCol, context.prevId);
@@ -551,16 +545,9 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     }
 
     // Check for child tree nodes using the flag
-    if (lifeLog.hasTreeNodes === true) {
+    if (lifeLog.hasTreeNodes) {
       return; // Has tree nodes, cannot delete
     }
-    if (lifeLog.hasTreeNodes === undefined) {
-      // Existing data without flag - need to query
-      const lifeLogTreeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-      const hasChildren = await getFirstChildNode(firestore, lifeLogTreeNodesCol, lifeLog);
-      if (hasChildren) return;
-    }
-    // hasTreeNodes === false: no tree nodes, proceed with deletion
 
     // Delete current LifeLog and select next with cursor at start
     firestore.setClock(true);
@@ -597,6 +584,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
         setDoc(firestore, batch, lifeLogsCol, {
           id: newLifeLogId,
           text: "",
+          hasTreeNodes: false,
           startAt: TimestampNow(),
           endAt: noneTimestamp,
         });

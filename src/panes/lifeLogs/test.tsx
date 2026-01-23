@@ -77,6 +77,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
 
                       batch.set(doc(lifeLogs, "$log1"), {
                         text: "first lifelog",
+                        hasTreeNodes: true,
                         startAt: Timestamp.fromDate(startTime1),
                         endAt: noneTimestamp,
                         createdAt: Timestamp.fromDate(baseTime),
@@ -89,6 +90,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
 
                       batch.set(doc(lifeLogs, "$log2"), {
                         text: "second lifelog",
+                        hasTreeNodes: false,
                         startAt: Timestamp.fromDate(startTime2),
                         endAt: noneTimestamp,
                         createdAt: Timestamp.fromDate(baseTime),
@@ -171,6 +173,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                       // Third lifelog - with noneTimestamp startAt for S key test
                       batch.set(doc(lifeLogs, "$log3"), {
                         text: "third lifelog",
+                        hasTreeNodes: false,
                         startAt: noneTimestamp,
                         endAt: noneTimestamp,
                         createdAt: Timestamp.fromDate(baseTime),
@@ -186,6 +189,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
 
                         batch.set(doc(lifeLogs, `$log${i}`), {
                           text: `lifelog ${i}`,
+                          hasTreeNodes: false,
                           startAt: Timestamp.fromDate(startTime),
                           endAt: noneTimestamp,
                           createdAt: Timestamp.fromDate(baseTime),
@@ -200,6 +204,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                       const startTime = new Date(baseTime.getTime() - outOfRange.daysAgo * dayMs);
                       batch.set(doc(lifeLogs, outOfRange.id), {
                         text: outOfRange.text,
+                        hasTreeNodes: false,
                         startAt: Timestamp.fromDate(startTime),
                         endAt: noneTimestamp,
                         createdAt: Timestamp.fromDate(baseTime),
