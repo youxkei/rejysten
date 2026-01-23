@@ -94,7 +94,7 @@ function NavigationToolbar() {
           onClick={handleEnterTree}
           disabled={state.panesLifeLogs.selectedLifeLogId === "" || state.panesLifeLogs.selectedLifeLogNodeId !== ""}
         >
-          ➡️
+          ↪️
         </button>
       </Show>
       <Show when={state.panesLifeLogs.selectedLifeLogNodeId !== ""}>

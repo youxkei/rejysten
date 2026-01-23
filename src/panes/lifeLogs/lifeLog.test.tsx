@@ -1378,13 +1378,13 @@ describe("<LifeLog />", () => {
   });
 
   describe("MobileToolbar in tree mode", () => {
-    describe("➡️/↩️ button visibility", () => {
-      it("shows ➡️ button and hides ↩️ button when not in tree mode", async ({ db, task }) => {
+    describe("↪️/↩️ button visibility", () => {
+      it("shows ↪️ button and hides ↩️ button when not in tree mode", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
-        // Not in tree mode - ➡️ button should be visible, ↩️ should be hidden
+        // Not in tree mode - ↪️ button should be visible, ↩️ should be hidden
         const enterTreeButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "➡️",
+          (btn) => btn.textContent === "↪️",
         );
         const exitTreeButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
           (btn) => btn.textContent === "↩️",

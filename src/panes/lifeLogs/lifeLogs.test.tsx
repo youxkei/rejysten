@@ -1846,15 +1846,15 @@ describe("<LifeLogs />", () => {
         expect(input.selectionEnd).toBe("first lifelog".length);
       });
 
-      it("enters tree mode with ➡️ button click", async ({ db, task }) => {
+      it("enters tree mode with ↪️ button click", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         // Tree nodes should not be visible initially
         expect(result.queryByText("first child")).toBeNull();
 
-        // Click ➡️ button
+        // Click ↪️ button
         const enterTreeButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "➡️",
+          (btn) => btn.textContent === "↪️",
         ) as HTMLButtonElement;
         expect(enterTreeButton).toBeTruthy();
 
