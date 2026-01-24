@@ -29,6 +29,7 @@ export interface SetupLifeLogsTestOptions {
     id: string;
     text: string;
     daysAgo: number;
+    endDaysAgo?: number;
   }>;
   initialSelectedId?: string;
   skipDefaultLifeLogs?: boolean;
@@ -202,11 +203,15 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                     const outOfRangeLifeLogs = options?.outOfRangeLifeLogs ?? [];
                     for (const outOfRange of outOfRangeLifeLogs) {
                       const startTime = new Date(baseTime.getTime() - outOfRange.daysAgo * dayMs);
+                      const endTime =
+                        outOfRange.endDaysAgo !== undefined
+                          ? Timestamp.fromDate(new Date(baseTime.getTime() - outOfRange.endDaysAgo * dayMs))
+                          : noneTimestamp;
                       batch.set(doc(lifeLogs, outOfRange.id), {
                         text: outOfRange.text,
                         hasTreeNodes: false,
                         startAt: Timestamp.fromDate(startTime),
-                        endAt: noneTimestamp,
+                        endAt: endTime,
                         createdAt: Timestamp.fromDate(baseTime),
                         updatedAt: Timestamp.fromDate(baseTime),
                       });

@@ -41,7 +41,7 @@ describe("<LifeLogs />", () => {
     const secondElement = await result.findByText("second lifelog");
     expect(secondElement).toBeTruthy();
 
-    // Test: lifelogs are rendered in correct order (by startAt)
+    // Test: lifelogs are rendered in correct order (by endAt)
     const listItems = result.container.querySelectorAll("li");
     const firstIndex = Array.from(listItems).findIndex((li) => li.textContent?.includes("first lifelog"));
     const secondIndex = Array.from(listItems).findIndex((li) => li.textContent?.includes("second lifelog"));
@@ -758,8 +758,9 @@ describe("<LifeLogs />", () => {
     await userEvent.keyboard("{f}");
     await awaitPendingCallbacks();
 
+    // After setting endAt on $log2, it moves to index 0 (sorted by endAt first)
     const listItems2 = result.container.querySelectorAll("li");
-    const item2 = listItems2[1];
+    const item2 = listItems2[0];
     expect(item2.textContent).not.toContain("N/A");
 
     // Press "o" to add a new empty LifeLog
@@ -777,9 +778,9 @@ describe("<LifeLogs />", () => {
     await userEvent.keyboard("{f}");
     await awaitPendingCallbacks();
 
-    // endAt should now be set
+    // endAt should now be set, newLog moves to index 1 (sorted by endAt after $log2)
     const listItems4 = result.container.querySelectorAll("li");
-    const newLog = listItems4[2];
+    const newLog = listItems4[1];
     // Should now have no N/A (both startAt and endAt are set)
     expect(newLog.textContent).not.toContain("N/A");
 
@@ -1702,9 +1703,9 @@ describe("<LifeLogs />", () => {
 
   describe("scroll window (time range)", () => {
     it("slides window to show out-of-range LifeLog when selected", async ({ db, task }) => {
-      // Create an out-of-range LifeLog (14 days ago, outside the default 7-day range)
+      // Create an out-of-range LifeLog (endAt 14 days ago, outside the default 7-day range)
       const { result } = await setupLifeLogsTest(task.id, db, {
-        outOfRangeLifeLogs: [{ id: "$oldLog", text: "old lifelog", daysAgo: 14 }],
+        outOfRangeLifeLogs: [{ id: "$oldLog", text: "old lifelog", daysAgo: 15, endDaysAgo: 14 }],
         lifeLogsProps: { debounceMs: 0 }, // Disable debounce for immediate effect
         initialSelectedId: "$oldLog", // Select the out-of-range LifeLog
       });
@@ -1718,7 +1719,7 @@ describe("<LifeLogs />", () => {
       expect(oldLogElement).toBeTruthy();
     });
 
-    it("does not slide window when selecting LifeLog with noneTimestamp startAt", async ({ db, task }) => {
+    it("does not slide window when selecting LifeLog with noneTimestamp endAt", async ({ db, task }) => {
       const { result } = await setupLifeLogsTest(task.id, db, {
         lifeLogsProps: { debounceMs: 0 }, // Disable debounce for immediate effect
       });
@@ -1727,7 +1728,7 @@ describe("<LifeLogs />", () => {
       await result.findByText("first lifelog");
       await result.findByText("second lifelog");
 
-      // Navigate to $log3 which has noneTimestamp startAt
+      // Navigate to $log3 which has noneTimestamp endAt
       // $log1 is selected, press "j" twice to get to $log3
       await userEvent.keyboard("{j}");
       await awaitPendingCallbacks();
@@ -1744,25 +1745,25 @@ describe("<LifeLogs />", () => {
     });
 
     it("slides window when navigating with k key to show previously hidden LifeLogs", async ({ db, task }) => {
-      // Create LifeLogs at different time points:
-      // - $nearPast: 3 days ago (within initial 7-day range)
-      // - $farPast: 9 days ago (outside initial 7-day range, but within range after sliding to $nearPast)
+      // Create LifeLogs at different time points (based on endAt for the new query):
+      // - $nearPast: endAt 3 days ago (within initial 7-day range)
+      // - $farPast: endAt 9 days ago (outside initial 7-day range, but within range after sliding to $nearPast)
       const { result } = await setupLifeLogsTest(task.id, db, {
         outOfRangeLifeLogs: [
-          { id: "$nearPast", text: "near past lifelog", daysAgo: 3 },
-          { id: "$farPast", text: "far past lifelog", daysAgo: 9 },
+          { id: "$nearPast", text: "near past lifelog", daysAgo: 4, endDaysAgo: 3 },
+          { id: "$farPast", text: "far past lifelog", daysAgo: 10, endDaysAgo: 9 },
         ],
         lifeLogsProps: { debounceMs: 0 },
       });
 
-      // $nearPast should be visible (within 7-day range)
+      // $nearPast should be visible (endAt within 7-day range)
       await result.findByText("near past lifelog");
 
-      // $farPast should NOT be visible initially (9 days ago, outside 7-day range)
+      // $farPast should NOT be visible initially (endAt 9 days ago, outside 7-day range)
       expect(result.queryByText("far past lifelog")).toBeNull();
 
       // Navigate with k key to $nearPast (going backwards in time from $log1)
-      // Order by startAt: $farPast (9d ago) -> $nearPast (3d ago) -> $log1 (day 0) -> $log2 -> $log3
+      // Order by endAt: $farPast (endAt 9d ago) -> $nearPast (endAt 3d ago) -> $log1 (endAt none) -> $log2 -> $log3
       await userEvent.keyboard("{k}");
       await awaitPendingCallbacks();
 
@@ -1771,24 +1772,24 @@ describe("<LifeLogs />", () => {
       await awaitPendingCallbacks();
 
       // After sliding to $nearPast, the window should now include $farPast
-      // $nearPast is 3 days ago, so new range is (3-7)=10 days ago to (3+7)=4 days in future
-      // $farPast (9 days ago) is now within this range
+      // $nearPast's endAt is 3 days ago, so new range is (3-7)=10 days ago to (3+7)=4 days in future
+      // $farPast (endAt 9 days ago) is now within this range
       const farPastElement = await result.findByText("far past lifelog");
       expect(farPastElement).toBeTruthy();
     });
 
     it("slides window when navigating with j key to show previously hidden LifeLogs", async ({ db, task }) => {
-      // Create LifeLogs at different time points:
-      // - $nearPast: 9 days ago (outside initial 7-day range)
-      // - $farPast: 3 days ago (within initial 7-day range, will be selected first)
-      // Start from $farPast and navigate forward with j key
+      // Create LifeLogs at different time points (based on endAt for the new query):
+      // - $farPast: endAt 9 days ago (outside initial 7-day range, visible after sliding to $nearPast)
+      // - $nearPast: endAt 3 days ago (within initial 7-day range, will be selected first)
+      // Start from $nearPast and navigate forward with j key
       const { result } = await setupLifeLogsTest(task.id, db, {
         outOfRangeLifeLogs: [
-          { id: "$farPast", text: "far past lifelog", daysAgo: 9 },
-          { id: "$nearPast", text: "near past lifelog", daysAgo: 3 },
+          { id: "$farPast", text: "far past lifelog", daysAgo: 10, endDaysAgo: 9 },
+          { id: "$nearPast", text: "near past lifelog", daysAgo: 4, endDaysAgo: 3 },
         ],
         lifeLogsProps: { debounceMs: 0 },
-        initialSelectedId: "$nearPast", // Start from $nearPast (3 days ago)
+        initialSelectedId: "$nearPast", // Start from $nearPast (endAt 3 days ago)
       });
 
       // Wait for initial window slide to $nearPast
@@ -1800,7 +1801,7 @@ describe("<LifeLogs />", () => {
       await result.findByText("near past lifelog");
 
       // Now navigate forward with j key to $log1
-      // Order by startAt: $farPast (9d ago) -> $nearPast (3d ago) -> $log1 (day 0) -> $log2 -> $log3
+      // Order by endAt: $farPast (endAt 9d ago) -> $nearPast (endAt 3d ago) -> $log1 (endAt none) -> $log2 -> $log3
       await userEvent.keyboard("{j}");
       await awaitPendingCallbacks();
 
@@ -1808,8 +1809,8 @@ describe("<LifeLogs />", () => {
       await new Promise((r) => setTimeout(r, 50));
       await awaitPendingCallbacks();
 
-      // After sliding to $log1, $farPast should be outside the range (9 days ago from day 0)
-      // New range is day -7 to day +7, so $farPast (day -9) is outside
+      // After sliding to $log1, $farPast should be outside the range (endAt 9 days ago from day 0)
+      // New range is day -7 to day +7, so $farPast (endAt day -9) is outside
       expect(result.queryByText("far past lifelog")).toBeNull();
 
       // $log1 should be visible and selected

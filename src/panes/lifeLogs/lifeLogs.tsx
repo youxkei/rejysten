@@ -73,10 +73,10 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp; sc
     () =>
       query(
         lifeLogsCol,
-        where("startAt", ">=", props.start),
-        where("startAt", "<=", props.end.valueOf() <= TimestampNow().valueOf() ? props.end : noneTimestamp),
-        orderBy("startAt"),
+        where("endAt", ">=", props.start),
+        where("endAt", "<=", props.end.valueOf() <= TimestampNow().valueOf() ? props.end : noneTimestamp),
         orderBy("endAt"),
+        orderBy("startAt"),
       ),
     () => `toplevel life logs (range)`,
   );
