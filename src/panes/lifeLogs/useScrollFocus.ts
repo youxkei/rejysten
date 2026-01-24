@@ -3,7 +3,7 @@ import { createEffect, onCleanup, type Accessor } from "solid-js";
 
 import { useStoreService } from "@/services/store";
 import { createIsMobile } from "@/solid/responsive";
-import { isElementVisible, useScrollContainer } from "@/solid/scroll";
+import { isElementFullyVisible, isElementVisible, useScrollContainer } from "@/solid/scroll";
 
 /**
  * スクロール時にフォーカス中のLifeLogが見えなくなったら、見えているLifeLogにフォーカスを移動するフック
@@ -59,22 +59,39 @@ export function useScrollFocus(props: {
     // モバイル:     "above" → 逆方向, "below" → 順方向
     const shouldIterateForward = isMobile ? visibility === "below" : visibility === "above";
 
+    // 二段階の探索: まず完全に見えている要素を探し、なければ部分的に見えている要素を探す
+    // 完全に見えている要素を選べば scrollWithOffset が発火しないため、不要なスクロールを防げる
+    let partiallyVisibleId: string | undefined;
+
     if (shouldIterateForward) {
       for (const id of ids) {
         const el = document.getElementById(id);
         if (el && isElementVisible(container, el) === "visible") {
-          newTargetId = id;
-          break;
+          if (isElementFullyVisible(container, el)) {
+            newTargetId = id;
+            break;
+          } else if (!partiallyVisibleId) {
+            partiallyVisibleId = id;
+          }
         }
       }
     } else {
       for (let i = ids.length - 1; i >= 0; i--) {
         const el = document.getElementById(ids[i]);
         if (el && isElementVisible(container, el) === "visible") {
-          newTargetId = ids[i];
-          break;
+          if (isElementFullyVisible(container, el)) {
+            newTargetId = ids[i];
+            break;
+          } else if (!partiallyVisibleId) {
+            partiallyVisibleId = ids[i];
+          }
         }
       }
+    }
+
+    // 完全に見えている要素がなければ、部分的に見えている要素にフォールバック
+    if (!newTargetId && partiallyVisibleId) {
+      newTargetId = partiallyVisibleId;
     }
 
     if (newTargetId && newTargetId !== selectedId) {

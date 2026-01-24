@@ -1660,6 +1660,43 @@ describe("<LifeLogs />", () => {
         const childrenNodesAfter = result.container.querySelector(`.${styles.lifeLogTree.childrenNodes}`);
         expect(childrenNodesAfter).toBeNull();
       });
+
+      it("does not cause unwanted scroll when moving focus to fully visible LifeLog", async ({ db, task }) => {
+        await page.viewport(1200, 600);
+        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
+        wrapper.style.height = "400px";
+
+        // Navigate to first item with g key
+        await userEvent.keyboard("{g}");
+        await awaitPendingCallbacks();
+
+        // Scroll down to move the first LifeLog out of view
+        container.scrollTop = 800;
+        // Wait for scroll event and focus change
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Record the scroll position after focus change
+        const scrollAfterFocusChange = container.scrollTop;
+
+        // Wait a bit more to catch any unwanted scroll
+        await new Promise((r) => setTimeout(r, 100));
+        await awaitPendingCallbacks();
+
+        // The scroll position should not have changed (no unwanted scroll)
+        expect(container.scrollTop).toBe(scrollAfterFocusChange);
+
+        // Verify focus actually moved to a visible element
+        const newSelected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+        expect(newSelected).toBeTruthy();
+        const containerRect = container.getBoundingClientRect();
+        const newSelectedRect = newSelected!.getBoundingClientRect();
+        expect(newSelectedRect.top).toBeGreaterThanOrEqual(containerRect.top);
+        expect(newSelectedRect.bottom).toBeLessThanOrEqual(containerRect.bottom);
+      });
     });
   });
 
