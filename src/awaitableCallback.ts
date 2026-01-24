@@ -8,9 +8,23 @@ export async function awaitPendingCallbacks() {
 
 export function awaitable<Args extends unknown[]>(callback: (...args: Args) => Promise<void>): (...args: Args) => void {
   return (...args: Args) => {
-    const promise = callback(...args).catch((e: unknown) => {
-      console.error("Error in awaitable callback:", e);
-    });
+    const currentPending = [...pendingCallbacks];
+
+    let promise: Promise<void>;
+    if (currentPending.length > 0) {
+      // Wait for pending callbacks before executing
+      promise = Promise.all(currentPending)
+        .then(() => callback(...args))
+        .catch((e: unknown) => {
+          console.error("Error in awaitable callback:", e);
+        });
+    } else {
+      // No pending callbacks - execute directly (synchronously starts the callback)
+      promise = callback(...args).catch((e: unknown) => {
+        console.error("Error in awaitable callback:", e);
+      });
+    }
+
     pendingCallbacks.push(promise);
     void promise.finally(() => {
       const index = pendingCallbacks.indexOf(promise);

@@ -48,13 +48,21 @@ function NavigationToolbar() {
       actions.goToLast();
     }
   });
-  const handleEnterTree = withOwner(() => actions.enterTree());
+  const handleEnterTree = withOwner(() => {
+    awaitable(actions.enterTree)();
+  });
   const handleExitTree = withOwner(() => {
     actions.exitTree();
   });
-  const handleNewLifeLog = withOwner(() => actions.newLifeLog());
-  const handleSetStartAtNow = withOwner(() => actions.setStartAtNow());
-  const handleSetEndAtNow = withOwner(() => actions.setEndAtNow());
+  const handleNewLifeLog = withOwner(() => {
+    awaitable(actions.newLifeLog)();
+  });
+  const handleSetStartAtNow = withOwner(() => {
+    awaitable(actions.setStartAtNow)();
+  });
+  const handleSetEndAtNow = withOwner(() => {
+    awaitable(actions.setEndAtNow)();
+  });
   const handleStartEditing = withOwner(() => {
     actions.startEditing();
   });
