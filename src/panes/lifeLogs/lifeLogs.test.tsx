@@ -49,7 +49,7 @@ describe("<LifeLogs />", () => {
 
     // Test: endAt is noneTimestamp, so it should show "N/A"
     const naElements = result.getAllByText("N/A");
-    expect(naElements.length).toBe(4); // $log1 and $log2 have noneTimestamp endAt, $log3 has both startAt and endAt as noneTimestamp
+    expect(naElements.length).toBe(6); // $log1 and $log2 have noneTimestamp endAt, $log3 and $log4 have both startAt and endAt as noneTimestamp
 
     // Test: time is displayed correctly (format: YYYY-MM-DD HH:MM:SS)
     expect(result.getByText("2026-01-10 10:30:00")).toBeTruthy();
@@ -179,9 +179,9 @@ describe("<LifeLogs />", () => {
     // Verify endAt was set (should now show the new time instead of N/A)
     expect(result.getByText("2026-01-10 11:00:00")).toBeTruthy();
 
-    // Verify N/A count decreased (was 4, now 3: $log2 endAt, $log3 startAt, $log3 endAt)
+    // Verify N/A count decreased (was 6, now 5: $log2 endAt, $log3 startAt, $log3 endAt, $log4 startAt, $log4 endAt)
     const naElements = result.getAllByText("N/A");
-    expect(naElements.length).toBe(3);
+    expect(naElements.length).toBe(5);
   });
 
   it("can edit startAt with various digit formats", async ({ db, task }) => {
@@ -323,17 +323,17 @@ describe("<LifeLogs />", () => {
     await userEvent.keyboard("{j}");
     await awaitPendingCallbacks();
 
-    // Verify $log3 has N/A for startAt (initial state has 4 N/A: $log1 endAt, $log2 endAt, $log3 startAt, $log3 endAt)
-    expect(result.getAllByText("N/A").length).toBe(4);
+    // Verify $log3 has N/A for startAt (initial state has 6 N/A: $log1 endAt, $log2 endAt, $log3 startAt, $log3 endAt, $log4 startAt, $log4 endAt)
+    expect(result.getAllByText("N/A").length).toBe(6);
 
     // Press "S" to set current time on startAt
     const start = performance.now();
     await userEvent.keyboard("{s}");
     await awaitPendingCallbacks();
 
-    // Verify DOM was updated - N/A count should decrease by 1 (now only 3: $log1 endAt, $log2 endAt, $log3 endAt)
+    // Verify DOM was updated - N/A count should decrease by 1 (now only 5: $log1 endAt, $log2 endAt, $log3 endAt, $log4 startAt, $log4 endAt)
     const naElements = result.getAllByText("N/A");
-    expect(naElements.length).toBe(3);
+    expect(naElements.length).toBe(5);
 
     // Verify the time is displayed in the DOM (should show current date-time format)
     const timeRangeDiv = result.container.querySelector(`#\\$log3 .${styles.lifeLogTree.timeRange}`);
@@ -356,10 +356,10 @@ describe("<LifeLogs />", () => {
     await awaitPendingCallbacks();
 
     // Verify DOM was updated - N/A count should decrease by 1
-    // Initial: 4 N/A ($log1 endAt, $log2 endAt, $log3 startAt, $log3 endAt)
-    // After: 3 N/A ($log2 endAt, $log3 startAt, $log3 endAt)
+    // Initial: 6 N/A ($log1 endAt, $log2 endAt, $log3 startAt, $log3 endAt, $log4 startAt, $log4 endAt)
+    // After: 5 N/A ($log2 endAt, $log3 startAt, $log3 endAt, $log4 startAt, $log4 endAt)
     const naElements = result.getAllByText("N/A");
-    expect(naElements.length).toBe(3);
+    expect(naElements.length).toBe(5);
 
     // Verify DOM was updated - $log1's time range should now have two time values
     const log1TimeRange = result.container.querySelector(`#\\$log1 .${styles.lifeLogTree.timeRange}`);
@@ -426,7 +426,7 @@ describe("<LifeLogs />", () => {
 
     // Initial count of lifelogs
     const initialListItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
-    expect(initialListItems.length).toBe(3);
+    expect(initialListItems.length).toBe(4);
 
     // Press "o" to add a new lifelog
     const start = performance.now();
@@ -435,7 +435,7 @@ describe("<LifeLogs />", () => {
 
     // New lifelog should be added and editing mode should be active
     const listItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
-    expect(listItems.length).toBe(4);
+    expect(listItems.length).toBe(5);
 
     // Verify that editing mode is active (input should be visible)
     const input = result.container.querySelector("input")!;
@@ -472,6 +472,52 @@ describe("<LifeLogs />", () => {
     // New lifelog should be added
     const listItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
     expect(listItems.length).toBe(1);
+  });
+
+  it("sets startAt to current time when adding lifelog from parent with noneTimestamp endAt", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db);
+
+    await result.findByText("first lifelog");
+    await result.findByText("third lifelog");
+
+    // Navigate to $log3 which has endAt=noneTimestamp
+    await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
+    await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
+
+    // Verify $log3 is selected
+    const log3 = result.getByText("third lifelog").closest(`.${styles.lifeLogTree.container}`);
+    expect(log3?.className).toContain(styles.lifeLogTree.selected);
+
+    // Initial N/A count: 6 ($log1 endAt, $log2 endAt, $log3 startAt, $log3 endAt, $log4 startAt, $log4 endAt)
+    expect(result.getAllByText("N/A").length).toBe(6);
+
+    // Press "o" to add a new lifelog
+    // Since $log3's endAt is noneTimestamp, the new lifelog's startAt should be set to current time (baseTime = 2026-01-10 12:00:00)
+    await userEvent.keyboard("{o}");
+    await awaitPendingCallbacks();
+
+    // Exit editing mode to see the time
+    await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
+
+    // N/A count should still be 6 (new lifelog has startAt=current time, endAt=noneTimestamp)
+    // Lost: nothing (new log's startAt is set to current time, not N/A)
+    // Gained: +1 (new log's endAt is noneTimestamp)
+    // Net: 6 + 1 = 7
+    expect(result.getAllByText("N/A").length).toBe(7);
+
+    // Verify the new lifelog's startAt is displayed as 2026-01-10 12:00:00 (baseTime, which is mocked as TimestampNow)
+    // The new lifelog should have this time displayed in its time range
+    const allTimeRanges = result.container.querySelectorAll(`.${styles.lifeLogTree.timeRange}`);
+    // Count how many time ranges contain "2026-01-10 12:00:00"
+    // $log2 has startAt=2026-01-10 12:00:00, and the new lifelog should also have it
+    const timeRangesWithBaseTime = Array.from(allTimeRanges).filter((tr) =>
+      tr.textContent?.includes("2026-01-10 12:00:00"),
+    );
+    // Should be 2: $log2's startAt and new lifelog's startAt
+    expect(timeRangesWithBaseTime.length).toBe(2);
   });
 
   // LifeLog deletion tests
@@ -529,7 +575,7 @@ describe("<LifeLogs />", () => {
     // Verify deletion and cursor move to $log2 (previous log)
     {
       const listItems = result.container.querySelectorAll("li");
-      expect(listItems.length).toBe(2);
+      expect(listItems.length).toBe(3); // $log1, $log2, $log4 remain
     }
 
     {
@@ -550,10 +596,12 @@ describe("<LifeLogs />", () => {
     const { result } = await setupLifeLogsTest(task.id, db);
 
     // Wait for initial render
+    // Initial order: $log1 (10:30), $log2 (12:00), $log3 (none), $log4 (none)
     await result.findByText("first lifelog");
     await result.findByText("third lifelog");
+    await result.findByText("fourth lifelog");
 
-    // Navigate to $log3 (last log) - press j twice
+    // Navigate to $log3 - press j twice
     await userEvent.keyboard("{j}");
     await awaitPendingCallbacks();
     await userEvent.keyboard("{j}");
@@ -562,27 +610,29 @@ describe("<LifeLogs />", () => {
     const listItems1 = result.container.querySelectorAll("li");
     const item1 = listItems1[2];
     expect(item1.querySelector(`.${styles.lifeLogTree.selected}`)).toBeTruthy();
+    expect(item1.textContent).toContain("third lifelog");
 
-    // Press "o" to create a new empty LifeLog after $log3
-    // This new log will have startAt=none (from $log3's endAt)
-    // Since both have startAt=none, they sort by document ID (uuidv7 is time-ordered)
+    // Press "o" to create a new empty LifeLog
+    // Since $log3's endAt is noneTimestamp, new log gets startAt=baseTime (current time)
+    // New log sorts after $log2 (same startAt=baseTime, but later uuidv7)
+    // Order becomes: $log1 (10:30), $log2 (12:00), new log (12:00), $log3 (none), $log4 (none)
     await userEvent.keyboard("{o}");
     await awaitPendingCallbacks();
 
     const listItems2 = result.container.querySelectorAll("li");
-    expect(listItems2.length).toBe(4);
+    expect(listItems2.length).toBe(5);
 
     await userEvent.keyboard("{Escape}");
     await awaitPendingCallbacks();
     expect(result.container.querySelector("input")).toBeNull();
 
-    // Navigate back to $log3 (press k once)
-    await userEvent.keyboard("{k}");
+    // Navigate to $log3 (press j once, since new log is at index 2, $log3 is at index 3)
+    await userEvent.keyboard("{j}");
     await awaitPendingCallbacks();
 
     const listItems3 = result.container.querySelectorAll("li");
-    // Should be on $log3 now
-    const item2 = listItems3[2];
+    // Should be on $log3 now (index 3)
+    const item2 = listItems3[3];
     expect(item2.querySelector(`.${styles.lifeLogTree.selected}`)).toBeTruthy();
     expect(item2.textContent).toContain("third lifelog");
 
@@ -615,23 +665,23 @@ describe("<LifeLogs />", () => {
     expect(input2.value).toBe("");
 
     // Since text is empty, position 0 = end, so Delete should work
-    // Press Delete at end of text - should delete and move to next empty LifeLog
+    // Press Delete at end of text - should delete and move to next LifeLog ($log4)
     await userEvent.keyboard("{Delete}");
     await awaitPendingCallbacks();
 
-    // Verify deletion - should now have 3 items
+    // Verify deletion - should now have 4 items
     {
       const listItems = result.container.querySelectorAll("li");
-      expect(listItems.length).toBe(3);
+      expect(listItems.length).toBe(4);
     }
 
-    // Verify we're in editing mode on the next LifeLog (the one we created with 'o')
+    // Verify we're in editing mode on the next LifeLog ($log4)
     {
       const input = result.container.querySelector("input") as HTMLInputElement;
       expect(input).toBeTruthy();
-      expect(input.value).toBe("");
-      // Cursor should be at the start (position 0)
-      expect(input.selectionStart).toBe(0);
+      expect(input.value).toBe("fourth lifelog");
+      // Cursor is at the end because $log4 has non-empty text
+      expect(input.selectionStart).toBe(14);
     }
 
     // Exit editing mode
@@ -681,7 +731,7 @@ describe("<LifeLogs />", () => {
 
     // All lifelogs should still exist
     const listItems = result.container.querySelectorAll("li");
-    expect(listItems.length).toBe(3);
+    expect(listItems.length).toBe(4);
   });
 
   it("does not delete LifeLog with Backspace when startAt is set", async ({ db, task }) => {
@@ -737,7 +787,7 @@ describe("<LifeLogs />", () => {
 
     // All lifelogs should still exist
     const listItems = result.container.querySelectorAll("li");
-    expect(listItems.length).toBe(3);
+    expect(listItems.length).toBe(4);
   });
 
   it("does not delete LifeLog with Backspace when endAt is set", async ({ db, task }) => {
@@ -768,7 +818,7 @@ describe("<LifeLogs />", () => {
     await awaitPendingCallbacks();
 
     const listItems3 = result.container.querySelectorAll("li");
-    expect(listItems3.length).toBe(4);
+    expect(listItems3.length).toBe(5);
 
     await userEvent.keyboard("{Escape}");
     await awaitPendingCallbacks();
@@ -808,9 +858,9 @@ describe("<LifeLogs />", () => {
     await awaitPendingCallbacks();
     expect(result.container.querySelector("input")).toBeNull();
 
-    // All lifelogs should still exist
+    // All lifelogs should still exist (4 original + 1 created = 5)
     const listItems = result.container.querySelectorAll("li");
-    expect(listItems.length).toBe(4);
+    expect(listItems.length).toBe(5);
   });
 
   it("does not delete LifeLog with Backspace when it has child nodes", async ({ db, task }) => {
@@ -864,7 +914,7 @@ describe("<LifeLogs />", () => {
 
     // All lifelogs should still exist
     const listItems = result.container.querySelectorAll("li");
-    expect(listItems.length).toBe(3);
+    expect(listItems.length).toBe(4);
   });
 
   it("does not delete first LifeLog with Backspace (no previous)", async ({ db, task }) => {
@@ -918,7 +968,7 @@ describe("<LifeLogs />", () => {
 
     // All lifelogs should still exist
     const listItems = result.container.querySelectorAll("li");
-    expect(listItems.length).toBe(3);
+    expect(listItems.length).toBe(4);
   });
 
   it("does not delete last LifeLog with Delete (no next)", async ({ db, task }) => {
@@ -926,16 +976,18 @@ describe("<LifeLogs />", () => {
 
     // Wait for initial render
     await result.findByText("first lifelog");
-    await result.findByText("third lifelog");
+    await result.findByText("fourth lifelog");
 
-    // Navigate to $log3 (last LifeLog) - press j twice
+    // Navigate to $log4 (last LifeLog) - press j three times
+    await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
     await userEvent.keyboard("{j}");
     await awaitPendingCallbacks();
     await userEvent.keyboard("{j}");
     await awaitPendingCallbacks();
 
     const listItems1 = result.container.querySelectorAll("li");
-    const lastItem = listItems1[2];
+    const lastItem = listItems1[3];
     expect(lastItem.querySelector(`.${styles.lifeLogTree.selected}`)).toBeTruthy();
 
     // Press "i" to enter editing mode
@@ -944,7 +996,7 @@ describe("<LifeLogs />", () => {
 
     const input1 = result.container.querySelector("input")!;
     expect(input1).toBeTruthy();
-    expect(input1.value).toBe("third lifelog");
+    expect(input1.value).toBe("fourth lifelog");
 
     // Clear the text
     await userEvent.keyboard("{Control>}a{/Control}{Delete}");
@@ -981,7 +1033,7 @@ describe("<LifeLogs />", () => {
 
     // All lifelogs should still exist
     const listItems = result.container.querySelectorAll("li");
-    expect(listItems.length).toBe(3);
+    expect(listItems.length).toBe(4);
   });
 
   it("does not delete LifeLog with Backspace when pending text is not empty (unsaved)", async ({ db, task }) => {
@@ -1054,7 +1106,7 @@ describe("<LifeLogs />", () => {
 
     // All lifelogs should still exist
     const listItems = result.container.querySelectorAll("li");
-    expect(listItems.length).toBe(3);
+    expect(listItems.length).toBe(4);
   });
 
   it("does not delete LifeLog with Delete when pending text is not empty (unsaved)", async ({ db, task }) => {
@@ -1070,20 +1122,22 @@ describe("<LifeLogs />", () => {
     await userEvent.keyboard("{j}");
     await awaitPendingCallbacks();
 
-    // Press "o" to create a new empty LifeLog after $log3
+    // Press "o" to create a new empty LifeLog
+    // Since $log3's endAt is noneTimestamp, new log gets startAt=baseTime
+    // Order: $log1 (10:30), $log2 (12:00), new log (12:00), $log3 (none), $log4 (none)
     await userEvent.keyboard("{o}");
     await awaitPendingCallbacks();
 
     const listItems1 = result.container.querySelectorAll("li");
-    expect(listItems1.length).toBe(4);
+    expect(listItems1.length).toBe(5);
 
     // Exit edit mode to save the empty state
     await userEvent.keyboard("{Escape}");
     await awaitPendingCallbacks();
     expect(result.container.querySelector("input")).toBeNull();
 
-    // Navigate back to $log3
-    await userEvent.keyboard("{k}");
+    // Navigate to $log3 (press j since new log is above $log3)
+    await userEvent.keyboard("{j}");
     await awaitPendingCallbacks();
 
     // Clear $log3's text and save
@@ -1130,9 +1184,9 @@ describe("<LifeLogs />", () => {
     await awaitPendingCallbacks();
     expect(result.container.querySelector("input")).toBeNull();
 
-    // All lifelogs should still exist (4 total)
+    // All lifelogs should still exist (5 total: 4 original + 1 created)
     const listItems = result.container.querySelectorAll("li");
-    expect(listItems.length).toBe(4);
+    expect(listItems.length).toBe(5);
   });
 
   it("can focus LifeLog by clicking on it", async ({ db, task }) => {
@@ -2110,7 +2164,7 @@ describe("<LifeLogs />", () => {
 
         // Initial count of lifelogs
         const initialListItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
-        expect(initialListItems.length).toBe(3);
+        expect(initialListItems.length).toBe(4);
 
         // Click ➕ (newLifeLog) button
         const newLifeLogButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
@@ -2123,7 +2177,7 @@ describe("<LifeLogs />", () => {
 
         // New lifelog should be added and editing mode should be active
         const listItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
-        expect(listItems.length).toBe(4);
+        expect(listItems.length).toBe(5);
 
         // Verify that editing mode is active (input should be visible)
         const input = result.container.querySelector("input") as HTMLInputElement;
@@ -2139,6 +2193,53 @@ describe("<LifeLogs />", () => {
 
         // Verify the new lifelog text is displayed
         expect(result.getByText("new lifelog from button")).toBeTruthy();
+      });
+
+      it("sets startAt to current time when creating LifeLog with ➕ button from parent with noneTimestamp endAt", async ({
+        db,
+        task,
+      }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+        await result.findByText("third lifelog");
+
+        // Navigate to $log3 which has endAt=noneTimestamp
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+
+        // Verify $log3 is selected
+        const log3 = result.getByText("third lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log3?.className).toContain(styles.lifeLogTree.selected);
+
+        // Initial N/A count: 6
+        expect(result.getAllByText("N/A").length).toBe(6);
+
+        // Click ➕ (newLifeLog) button
+        const newLifeLogButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "➕",
+        ) as HTMLButtonElement;
+        expect(newLifeLogButton).toBeTruthy();
+
+        await userEvent.click(newLifeLogButton);
+        await awaitPendingCallbacks();
+
+        // Exit editing mode to see the time
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+
+        // N/A count should be 7 (new lifelog has startAt=current time, endAt=noneTimestamp)
+        expect(result.getAllByText("N/A").length).toBe(7);
+
+        // Verify the new lifelog's startAt is displayed as 2026-01-10 12:00:00
+        const allTimeRanges = result.container.querySelectorAll(`.${styles.lifeLogTree.timeRange}`);
+        const timeRangesWithBaseTime = Array.from(allTimeRanges).filter((tr) =>
+          tr.textContent?.includes("2026-01-10 12:00:00"),
+        );
+        // Should be 2: $log2's startAt and new lifelog's startAt
+        expect(timeRangesWithBaseTime.length).toBe(2);
       });
 
       it("navigates to first LifeLog with ⏬ button click", async ({ db, task }) => {
@@ -2190,9 +2291,9 @@ describe("<LifeLogs />", () => {
         await userEvent.click(goToLastButton);
         await awaitPendingCallbacks();
 
-        // $log3 should now be selected
-        const log3 = result.getByText("third lifelog").closest(`.${styles.lifeLogTree.container}`);
-        expect(log3?.className).toContain(styles.lifeLogTree.selected);
+        // $log4 should now be selected (last LifeLog)
+        const log4 = result.getByText("fourth lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log4?.className).toContain(styles.lifeLogTree.selected);
       });
     });
   });

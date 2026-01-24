@@ -222,7 +222,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
           id: newLifeLogId,
           text: "",
           hasTreeNodes: false,
-          startAt: lifeLog.endAt,
+          startAt: lifeLog.endAt.isEqual(noneTimestamp) ? TimestampNow() : lifeLog.endAt,
           endAt: noneTimestamp,
         });
         return Promise.resolve();
@@ -296,7 +296,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
             id: newLifeLogId,
             text: "",
             hasTreeNodes: false,
-            startAt: lifeLog.endAt,
+            startAt: lifeLog.endAt.isEqual(noneTimestamp) ? TimestampNow() : lifeLog.endAt,
             endAt: noneTimestamp,
           });
           return Promise.resolve();

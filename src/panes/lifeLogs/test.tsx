@@ -181,9 +181,20 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                         updatedAt: Timestamp.fromDate(baseTime),
                       });
 
+                      // Fourth lifelog - deletable LifeLog after $log3 for Delete key test
+                      // Sorts after $log3 because "$log4" > "$log3" and both have startAt=none
+                      batch.set(doc(lifeLogs, "$log4"), {
+                        text: "fourth lifelog",
+                        hasTreeNodes: false,
+                        startAt: noneTimestamp,
+                        endAt: noneTimestamp,
+                        createdAt: Timestamp.fromDate(baseTime),
+                        updatedAt: Timestamp.fromDate(baseTime),
+                      });
+
                       // Generate additional LifeLogs for scroll testing
-                      const lifeLogCount = options?.lifeLogCount ?? 3;
-                      for (let i = 4; i <= lifeLogCount; i++) {
+                      const lifeLogCount = options?.lifeLogCount ?? 4;
+                      for (let i = 5; i <= lifeLogCount; i++) {
                         const startTime = new Date(baseTime);
                         // Use minutes to avoid exceeding 24 hours
                         startTime.setHours(12, i, 0, 0);
