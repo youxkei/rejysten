@@ -1963,12 +1963,17 @@ describe("<LifeLogs />", () => {
       it("shows ▶️ and ◀️ buttons when editing", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
-        // Initially, ▶️/◀️ buttons should not exist in navigation mode
+        // Initially, ▶️ button exists in navigation mode (for setStartAtNow), but ◀️ does not
         const nextFieldButtonInitial = Array.from(
           result.container.querySelectorAll(`.${styles.mobileToolbar.button}`),
         ).filter((btn) => btn.textContent === "▶️");
-        // In navigation mode, no ▶️ button exists (📝▶️ exists for startAt editing)
-        expect(nextFieldButtonInitial.length).toBe(0);
+        // In navigation mode, one ▶️ button exists (for setStartAtNow)
+        expect(nextFieldButtonInitial.length).toBe(1);
+        const prevFieldButtonInitial = Array.from(
+          result.container.querySelectorAll(`.${styles.mobileToolbar.button}`),
+        ).filter((btn) => btn.textContent === "◀️");
+        // In navigation mode, no ◀️ button exists
+        expect(prevFieldButtonInitial.length).toBe(0);
 
         // Enter editing mode
         await userEvent.keyboard("{i}");
@@ -2294,6 +2299,55 @@ describe("<LifeLogs />", () => {
         // $log4 should now be selected (last LifeLog)
         const log4 = result.getByText("fourth lifelog").closest(`.${styles.lifeLogTree.container}`);
         expect(log4?.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      it("sets startAt to current time with ▶️ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+        await result.findByText("third lifelog");
+
+        // Navigate to $log3 which has noneTimestamp startAt
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+
+        // Verify $log3 has N/A for startAt
+        expect(result.getAllByText("N/A").length).toBe(6);
+
+        // Click ▶️ button to set current time on startAt
+        const startButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "▶️",
+        ) as HTMLButtonElement;
+        expect(startButton).toBeTruthy();
+
+        await userEvent.click(startButton);
+        await awaitPendingCallbacks();
+
+        // Verify N/A count decreased
+        expect(result.getAllByText("N/A").length).toBe(5);
+      });
+
+      it("sets endAt to current time with ⏹️ button click", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // $log1 has endAt = noneTimestamp
+        expect(result.getAllByText("N/A").length).toBe(6);
+
+        // Click ⏹️ button to set current time on endAt
+        const stopButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⏹️",
+        ) as HTMLButtonElement;
+        expect(stopButton).toBeTruthy();
+
+        await userEvent.click(stopButton);
+        await awaitPendingCallbacks();
+
+        // Verify N/A count decreased
+        expect(result.getAllByText("N/A").length).toBe(5);
       });
     });
   });

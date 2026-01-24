@@ -57,6 +57,12 @@ function NavigationToolbar() {
   const handleNewLifeLog = withOwner(() => {
     awaitable(actions.newLifeLog)();
   });
+  const handleSetStartAtNow = withOwner(() => {
+    awaitable(actions.setStartAtNow)();
+  });
+  const handleSetEndAtNow = withOwner(() => {
+    awaitable(actions.setEndAtNow)();
+  });
   const handleStartEditingStartAt = withOwner(() => {
     actions.startEditing(EditingField.StartAt);
   });
@@ -118,6 +124,20 @@ function NavigationToolbar() {
           disabled={state.panesLifeLogs.selectedLifeLogId === ""}
         >
           ➕
+        </button>
+        <button
+          class={styles.mobileToolbar.button}
+          onClick={handleSetStartAtNow}
+          disabled={state.panesLifeLogs.selectedLifeLogId === ""}
+        >
+          ▶️
+        </button>
+        <button
+          class={styles.mobileToolbar.button}
+          onClick={handleSetEndAtNow}
+          disabled={state.panesLifeLogs.selectedLifeLogId === ""}
+        >
+          ⏹️
         </button>
         <button
           class={styles.mobileToolbar.button}
