@@ -2030,9 +2030,9 @@ describe("<LifeLogs />", () => {
 
         // $log1 is already selected and has startAt = 2026-01-10 10:30:00
         // Click 📝▶️ button to start editing startAt
-        const editStartAtButton = Array.from(
-          result.container.querySelectorAll(`.${styles.mobileToolbar.button}`),
-        ).find((btn) => btn.textContent === "📝▶️") as HTMLButtonElement;
+        const editStartAtButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "📝▶️",
+        ) as HTMLButtonElement;
         expect(editStartAtButton).toBeTruthy();
 
         await userEvent.click(editStartAtButton);

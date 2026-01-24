@@ -1,7 +1,18 @@
 import { Key } from "@solid-primitives/keyed";
 import equal from "fast-deep-equal";
 import { orderBy, query, Timestamp, where } from "firebase/firestore";
-import { createMemo, createSignal } from "solid-js";
+import { createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+
+interface VirtualKeyboard extends EventTarget {
+  overlaysContent: boolean;
+  boundingRect: DOMRect;
+}
+
+declare global {
+  interface Navigator {
+    virtualKeyboard?: VirtualKeyboard;
+  }
+}
 
 import { awaitable } from "@/awaitableCallback";
 import { DateNow, TimestampNow } from "@/date";
@@ -77,6 +88,38 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp; sc
     lifeLogIds$: () => lifeLogs$().map((l) => l.id),
     isEditing$,
     debounceMs: props.scrollFocusDebounceMs,
+  });
+
+  // 仮想キーボード表示時に編集中の要素をビューポート内にスクロール
+  const scrollFocusedElementIntoView = () => {
+    const focused = document.activeElement;
+    if (focused && focused instanceof HTMLElement) {
+      focused.scrollIntoView({ block: "center", behavior: "instant" });
+    }
+  };
+
+  createEffect(() => {
+    if (isEditing$()) {
+      // 編集開始時に、次のフレームでフォーカス要素をスクロール
+      requestAnimationFrame(() => {
+        scrollFocusedElementIntoView();
+      });
+    }
+  });
+
+  onMount(() => {
+    const vk = navigator.virtualKeyboard;
+    if (vk) {
+      const handleGeometryChange = () => {
+        if (isEditing$()) {
+          scrollFocusedElementIntoView();
+        }
+      };
+      vk.addEventListener("geometrychange", handleGeometryChange);
+      onCleanup(() => {
+        vk.removeEventListener("geometrychange", handleGeometryChange);
+      });
+    }
   });
 
   // Handle "o" key when there are 0 lifeLogs
