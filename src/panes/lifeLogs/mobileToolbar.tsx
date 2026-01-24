@@ -57,11 +57,11 @@ function NavigationToolbar() {
   const handleNewLifeLog = withOwner(() => {
     awaitable(actions.newLifeLog)();
   });
-  const handleSetStartAtNow = withOwner(() => {
-    awaitable(actions.setStartAtNow)();
+  const handleStartEditingStartAt = withOwner(() => {
+    actions.startEditing(EditingField.StartAt);
   });
-  const handleSetEndAtNow = withOwner(() => {
-    awaitable(actions.setEndAtNow)();
+  const handleStartEditingEndAt = withOwner(() => {
+    actions.startEditing(EditingField.EndAt);
   });
   const handleStartEditing = withOwner(() => {
     actions.startEditing();
@@ -121,17 +121,17 @@ function NavigationToolbar() {
         </button>
         <button
           class={styles.mobileToolbar.button}
-          onClick={handleSetStartAtNow}
+          onClick={handleStartEditingStartAt}
           disabled={state.panesLifeLogs.selectedLifeLogId === "" || state.panesLifeLogs.selectedLifeLogNodeId !== ""}
         >
-          ▶️
+          📝▶️
         </button>
         <button
           class={styles.mobileToolbar.button}
-          onClick={handleSetEndAtNow}
+          onClick={handleStartEditingEndAt}
           disabled={state.panesLifeLogs.selectedLifeLogId === "" || state.panesLifeLogs.selectedLifeLogNodeId !== ""}
         >
-          ⏹️
+          📝⏹️
         </button>
       </Show>
       <Show when={isTreeFocused()}>

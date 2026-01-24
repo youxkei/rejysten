@@ -66,7 +66,7 @@ declare module "@/services/actions" {
       addSiblingNode: (above: boolean) => Promise<void>;
       setStartAtNow: () => Promise<void>;
       setEndAtNow: () => Promise<void>;
-      startEditing: () => void;
+      startEditing: (field?: EditingField) => void;
       cycleFieldNext: () => void;
       cycleFieldPrev: () => void;
       saveText: () => Promise<void>;
@@ -373,11 +373,11 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
   }
 
   // Editing
-  function startEditing() {
+  function startEditing(field?: EditingField) {
     const lifeLogId = state.panesLifeLogs.selectedLifeLogId;
     if (lifeLogId !== "" && state.panesLifeLogs.selectedLifeLogNodeId === "") {
       context.setLifeLogCursorInfo({ lifeLogId, cursorPosition: context.lifeLogTextLength });
-      context.setEditingField(EditingField.Text);
+      context.setEditingField(field ?? EditingField.Text);
     }
     context.setIsEditing(true);
   }

@@ -1871,12 +1871,12 @@ describe("<LifeLogs />", () => {
       it("shows ▶️ and ◀️ buttons when editing", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
-        // Initially, ▶️/◀️ buttons should not exist (only ▶️ for setStartAtNow exists in navigation mode)
+        // Initially, ▶️/◀️ buttons should not exist in navigation mode
         const nextFieldButtonInitial = Array.from(
           result.container.querySelectorAll(`.${styles.mobileToolbar.button}`),
         ).filter((btn) => btn.textContent === "▶️");
-        // In navigation mode, only one ▶️ button exists (setStartAtNow)
-        expect(nextFieldButtonInitial.length).toBe(1);
+        // In navigation mode, no ▶️ button exists (📝▶️ exists for startAt editing)
+        expect(nextFieldButtonInitial.length).toBe(0);
 
         // Enter editing mode
         await userEvent.keyboard("{i}");
@@ -2023,68 +2023,46 @@ describe("<LifeLogs />", () => {
     });
 
     describe("lifeLog mode buttons", () => {
-      it("sets startAt to now with ▶️ button click", async ({ db, task }) => {
+      it("enters startAt editing mode with 📝▶️ button click", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         await result.findByText("first lifelog");
-        await result.findByText("third lifelog");
 
-        // Navigate to $log3 which has noneTimestamp startAt
-        await userEvent.keyboard("{j}");
-        await awaitPendingCallbacks();
-        await userEvent.keyboard("{j}");
-        await awaitPendingCallbacks();
+        // $log1 is already selected and has startAt = 2026-01-10 10:30:00
+        // Click 📝▶️ button to start editing startAt
+        const editStartAtButton = Array.from(
+          result.container.querySelectorAll(`.${styles.mobileToolbar.button}`),
+        ).find((btn) => btn.textContent === "📝▶️") as HTMLButtonElement;
+        expect(editStartAtButton).toBeTruthy();
 
-        // Verify $log3 is selected (has N/A for startAt)
-        const log3 = result.getByText("third lifelog").closest(`.${styles.lifeLogTree.container}`);
-        expect(log3?.className).toContain(styles.lifeLogTree.selected);
-
-        // Initial N/A count is 4
-        expect(result.getAllByText("N/A").length).toBe(4);
-
-        // Click ▶️ (setStartAtNow) button
-        const setStartAtButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "▶️",
-        ) as HTMLButtonElement;
-        expect(setStartAtButton).toBeTruthy();
-
-        await userEvent.click(setStartAtButton);
+        await userEvent.click(editStartAtButton);
         await awaitPendingCallbacks();
 
-        // N/A count should decrease by 1
-        expect(result.getAllByText("N/A").length).toBe(3);
-
-        // Verify the time is displayed in the DOM
-        const timeRangeDiv = result.container.querySelector(`#\\$log3 .${styles.lifeLogTree.timeRange}`);
-        expect(timeRangeDiv?.textContent).toMatch(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/);
+        // Verify editing mode is active with startAt field
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("20260110 103000"); // startAt in edit format
       });
 
-      it("sets endAt to now with ⏹️ button click", async ({ db, task }) => {
+      it("enters endAt editing mode with 📝⏹️ button click", async ({ db, task }) => {
         const { result } = await setupLifeLogsTest(task.id, db);
 
         await result.findByText("first lifelog");
 
         // $log1 is already selected and has endAt = noneTimestamp
-        // Initial N/A count is 4
-        expect(result.getAllByText("N/A").length).toBe(4);
-
-        // Click ⏹️ (setEndAtNow) button
-        const setEndAtButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
-          (btn) => btn.textContent === "⏹️",
+        // Click 📝⏹️ button to start editing endAt
+        const editEndAtButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "📝⏹️",
         ) as HTMLButtonElement;
-        expect(setEndAtButton).toBeTruthy();
+        expect(editEndAtButton).toBeTruthy();
 
-        await userEvent.click(setEndAtButton);
+        await userEvent.click(editEndAtButton);
         await awaitPendingCallbacks();
 
-        // N/A count should decrease by 1
-        expect(result.getAllByText("N/A").length).toBe(3);
-
-        // Verify both times are displayed in the DOM for $log1
-        const log1TimeRange = result.container.querySelector(`#\\$log1 .${styles.lifeLogTree.timeRange}`);
-        const textContent = log1TimeRange?.textContent ?? "";
-        const timeMatches = textContent.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/g);
-        expect(timeMatches?.length).toBe(2);
+        // Verify editing mode is active with endAt field
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe(""); // noneTimestamp shows as empty in edit mode
       });
 
       it("creates new LifeLog with ➕ button click", async ({ db, task }) => {
