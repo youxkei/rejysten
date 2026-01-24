@@ -5,11 +5,11 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "startAt",
+          "fieldPath": "endAt",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "endAt",
+          "fieldPath": "startAt",
           "order": "ASCENDING"
         }
       ]
@@ -24,20 +24,6 @@
         },
         {
           "fieldPath": "order",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "pocFirestoreIndexOrderItems",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "startAt",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "endAt",
           "order": "ASCENDING"
         }
       ]
