@@ -5,8 +5,8 @@ import { createMemo, createSignal } from "solid-js";
 
 import { awaitable } from "@/awaitableCallback";
 import { DateNow, TimestampNow } from "@/date";
-import { MobileToolbar } from "@/panes/lifeLogs/MobileToolbar";
 import { LifeLog } from "@/panes/lifeLogs/lifeLog";
+import { MobileToolbar } from "@/panes/lifeLogs/mobileToolbar";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { useRangeFromFocus } from "@/panes/lifeLogs/useRangeFromFocus";
 import { useScrollFocus } from "@/panes/lifeLogs/useScrollFocus";

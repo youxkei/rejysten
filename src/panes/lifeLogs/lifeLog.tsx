@@ -2,7 +2,7 @@ import { doc } from "firebase/firestore";
 import { type Accessor, createEffect, createSignal, onCleanup, type Setter, Show } from "solid-js";
 
 import { awaitable } from "@/awaitableCallback";
-import { EditableValue } from "@/components/EditableValue";
+import { EditableValue } from "@/components/editableValue";
 import { ChildrenNodes } from "@/components/tree";
 import { LifeLogTreeNode } from "@/panes/lifeLogs/lifeLogTreeNode";
 import { EditingField } from "@/panes/lifeLogs/schema";

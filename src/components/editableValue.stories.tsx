@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 import { type Meta, type StoryObj } from "storybook-solidjs-vite";
 
-import { EditableValue } from "@/components/EditableValue";
+import { EditableValue } from "@/components/editableValue";
 
 export default {
   title: "Components/EditableValue",

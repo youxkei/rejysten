@@ -3,7 +3,7 @@ import type { Schema } from "@/services/firebase/firestore/schema";
 import { type Accessor, type Setter } from "solid-js";
 
 import { awaitable } from "@/awaitableCallback";
-import { EditableValue } from "@/components/EditableValue";
+import { EditableValue } from "@/components/editableValue";
 import { useActionsService } from "@/services/actions";
 import { type DocumentData } from "@/services/firebase/firestore";
 import { styles } from "@/styles.css";
