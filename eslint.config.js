@@ -6,6 +6,7 @@ import importlint from "eslint-plugin-import";
 import noRelativeImportPaths from "eslint-plugin-no-relative-import-paths";
 import unusedImports from "eslint-plugin-unused-imports";
 
+/** @satisfies {import("typescript-eslint").ConfigWithExtends} */
 const config = {
   plugins: {
     "@typescript-eslint": tseslint.plugin,
@@ -83,6 +84,7 @@ export default tseslint.config(
       "@typescript-eslint/no-non-null-assertion": "off",
       "@typescript-eslint/no-empty-function": "off",
       "@typescript-eslint/require-await": "off",
+      "@typescript-eslint/no-unnecessary-condition": "off",
     },
   },
 );
