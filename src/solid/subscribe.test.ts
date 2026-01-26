@@ -4,7 +4,7 @@ import { describe, it, expect } from "vitest";
 import { createSubscribeWithResource } from "@/solid/subscribe";
 
 describe("createSubscribeWithResource", () => {
-  it("should update value when data arrives before timeout", async () => {
+  it("should update value when data arrives synchronously", async () => {
     const result = await new Promise<string>((resolve) => {
       createRoot((dispose) => {
         const [source$] = createSignal<string | undefined>("initial");
@@ -29,7 +29,7 @@ describe("createSubscribeWithResource", () => {
     expect(result).toBe("data for initial");
   });
 
-  it("should update value when data arrives after timeout", async () => {
+  it("should update value when data arrives asynchronously", async () => {
     const result = await new Promise<string>((resolve) => {
       createRoot((dispose) => {
         const [source$] = createSignal<string | undefined>("initial");
@@ -48,9 +48,8 @@ describe("createSubscribeWithResource", () => {
         // Initially should be initial value
         expect(signal$()).toBe("initial value");
 
-        // Wait longer than the timeout (1ms)
+        // Deliver data asynchronously
         setTimeout(() => {
-          // Now call setValue after timeout has fired
           setValue?.(`delayed data`);
 
           // Give time for value to propagate
@@ -65,7 +64,7 @@ describe("createSubscribeWithResource", () => {
     expect(result).toBe("delayed data");
   });
 
-  it("should update value when source$ changes and data arrives after timeout", async () => {
+  it("should update value when source$ changes and data arrives asynchronously", async () => {
     // This test verifies that when source$ changes, late-arriving data is still delivered
     // via mutateResource (which uses a version check to filter stale updates)
     const result = await new Promise<{ firstValue: string; secondValue: string }>((resolve) => {
@@ -94,11 +93,10 @@ describe("createSubscribeWithResource", () => {
             // Change source$ - this increments the version counter
             setSource("second");
 
-            // Wait longer than the timeout (1ms) before delivering second data
+            // Deliver second data asynchronously
             setTimeout(() => {
               // At this point:
               // - Version has incremented (old subscriber's updates are ignored)
-              // - Timeout has fired (setResource = undefined)
               // - Data arrives now and should be delivered via mutateResource
               setValue?.(`data for second`);
 
