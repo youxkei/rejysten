@@ -62,6 +62,11 @@ export function useScrollFocus(props: {
     const isAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 1;
 
     if (isAtTop || isAtBottom) {
+      // ツリーフォーカス中はPCでは下端、モバイルでは上端をスキップ
+      if (selectedNodeId !== "") {
+        if (isMobile ? isAtTop : isAtBottom) return;
+      }
+
       let edgeId: string;
       if (isAtTop) {
         edgeId = isMobile ? ids[ids.length - 1] : ids[0];

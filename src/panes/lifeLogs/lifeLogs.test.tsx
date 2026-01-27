@@ -1610,6 +1610,76 @@ describe("<LifeLogs />", () => {
         const afterWaitId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
         expect(afterWaitId).toBe(secondId);
       });
+
+      it("does not move focus to edge when tree is focused at bottom edge", async ({ db, task }) => {
+        await page.viewport(1200, 600);
+        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+        wrapper.style.height = "400px";
+
+        // Navigate to a non-last item
+        await userEvent.keyboard("{k}{k}{k}{k}{k}");
+        await awaitPendingCallbacks();
+
+        const selectedBefore = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(selectedBefore).toBeTruthy();
+
+        // Enter tree mode with l
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Scroll to bottom edge
+        container.scrollTop = container.scrollHeight - container.clientHeight;
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Exit tree mode with h
+        await userEvent.keyboard("{h}");
+        await awaitPendingCallbacks();
+
+        // Focus should NOT have moved (edge detection was skipped during tree focus)
+        const selectedAfter = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(selectedAfter).toBe(selectedBefore);
+      });
+
+      it("moves focus to edge when tree is focused at top edge", async ({ db, task }) => {
+        await page.viewport(1200, 600);
+        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+        wrapper.style.height = "400px";
+
+        // Navigate to first item to learn its id
+        await userEvent.keyboard("{g}");
+        await awaitPendingCallbacks();
+        const firstId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+
+        // Navigate away from first item
+        await userEvent.keyboard("{j}{j}{j}{j}{j}");
+        await awaitPendingCallbacks();
+
+        const midId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(midId).not.toBe(firstId);
+
+        // Enter tree mode with l
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Scroll to intermediate position to consume programmatic scroll skip
+        // (entering tree mode changes selectedNodeId but may not trigger scroll)
+        container.scrollTop = Math.floor((container.scrollHeight - container.clientHeight) / 2);
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Scroll to top edge
+        container.scrollTop = 0;
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Edge detection should have fired and moved focus to first item (exits tree mode)
+        const newId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(newId).toBe(firstId);
+      });
     });
 
     describe("mobile (column-reverse)", () => {
@@ -1704,6 +1774,76 @@ describe("<LifeLogs />", () => {
         await new Promise((r) => setTimeout(r, 50));
 
         // Focus should have moved to the first LifeLog (visual bottom edge in column-reverse)
+        const newId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(newId).toBe(firstId);
+      });
+
+      it("does not move focus to edge when tree is focused at top edge (mobile)", async ({ db, task }) => {
+        await page.viewport(414, 896);
+        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+        wrapper.style.height = "400px";
+
+        // Navigate to a non-last item (not at visual top in column-reverse)
+        await userEvent.keyboard("{k}{k}{k}{k}{k}");
+        await awaitPendingCallbacks();
+
+        const selectedBefore = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(selectedBefore).toBeTruthy();
+
+        // Enter tree mode with l
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Scroll to top edge (scrollTop=0 = visual top in column-reverse)
+        container.scrollTop = 0;
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Exit tree mode with h
+        await userEvent.keyboard("{h}");
+        await awaitPendingCallbacks();
+
+        // Focus should NOT have moved (mobile skips top edge during tree focus)
+        const selectedAfter = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(selectedAfter).toBe(selectedBefore);
+      });
+
+      it("moves focus to edge when tree is focused at bottom edge (mobile)", async ({ db, task }) => {
+        await page.viewport(414, 896);
+        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+        wrapper.style.height = "400px";
+
+        // Navigate to first item to learn its id (visual bottom in column-reverse)
+        await userEvent.keyboard("{g}");
+        await awaitPendingCallbacks();
+        const firstId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+
+        // Navigate away from first item
+        await userEvent.keyboard("{j}{j}{j}{j}{j}");
+        await awaitPendingCallbacks();
+
+        const midId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(midId).not.toBe(firstId);
+
+        // Enter tree mode with l
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        // Scroll to intermediate position to consume programmatic scroll skip
+        // (entering tree mode changes selectedNodeId but may not trigger scroll on mobile)
+        container.scrollTop = Math.floor((container.scrollHeight - container.clientHeight) / 2);
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Scroll to bottom edge (scrollTop=max = visual bottom in column-reverse)
+        container.scrollTop = container.scrollHeight - container.clientHeight;
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Edge detection should have fired and moved focus to first item (exits tree mode)
         const newId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
         expect(newId).toBe(firstId);
       });

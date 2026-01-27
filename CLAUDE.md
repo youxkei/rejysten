@@ -1,4 +1,5 @@
 - use pnpm instead of npm
+- use `git <subcomand>` naturally
 - when you `git commit`, first check `git diff` and `git diff --cached`
   - when pre-commit hook failed, try `pnpm run fix` first
 - use `pnpm test` to run all test cases, `pnpm test/case "case title"` to run one case
