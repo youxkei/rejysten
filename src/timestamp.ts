@@ -4,7 +4,8 @@ import { NewDate } from "@/date";
 
 export const noneTimestamp = Timestamp.fromDate(new Date("3000-12-31T23:59:59Z"));
 
-export const dayMs = 24 * 60 * 60 * 1000;
+export const hourMs = 60 * 60 * 1000;
+export const dayMs = 24 * hourMs;
 
 export function timestampToTimeText(ts: Timestamp, withSeparator = true) {
   if (ts.isEqual(noneTimestamp)) return undefined;

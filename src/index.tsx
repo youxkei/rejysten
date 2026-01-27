@@ -8,9 +8,18 @@ import { FirebaseServiceProvider } from "@/services/firebase";
 import { FirestoreServiceProvider } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
 import { styles } from "@/styles.css";
-import { dayMs } from "@/timestamp";
+import { hourMs, dayMs } from "@/timestamp";
 
-registerSW({ immediate: true });
+registerSW({
+  immediate: true,
+  onRegistered(r) {
+    if (r) {
+      setInterval(() => {
+        void r.update();
+      }, hourMs);
+    }
+  },
+});
 
 function App() {
   return (
