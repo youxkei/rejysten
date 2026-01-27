@@ -42,6 +42,29 @@ export function useScrollFocus(props: {
     const targetId = selectedId;
     if (!targetId) return;
 
+    const ids = props.lifeLogIds$();
+    if (ids.length === 0) return;
+
+    const isMobile = isMobile$();
+
+    // スクロールが端に達した場合、端のLifeLogにフォーカスを移動する
+    const isAtTop = container.scrollTop <= 1;
+    const isAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 1;
+
+    if (isAtTop || isAtBottom) {
+      let edgeId: string;
+      if (isAtTop) {
+        edgeId = isMobile ? ids[ids.length - 1] : ids[0];
+      } else {
+        edgeId = isMobile ? ids[0] : ids[ids.length - 1];
+      }
+
+      if (edgeId !== targetId) {
+        debouncedUpdateState(edgeId, selectedNodeId);
+      }
+      return;
+    }
+
     const selectedElement = document.getElementById(targetId);
     if (!selectedElement) return;
 
@@ -49,10 +72,7 @@ export function useScrollFocus(props: {
     if (visibility === "visible") return;
 
     // フォーカスが見えなくなった場合、見えているLifeLogを探す
-    const ids = props.lifeLogIds$();
     let newTargetId: string | undefined;
-
-    const isMobile = isMobile$();
 
     // モバイルでは column-reverse により表示が逆なので、探索方向も逆にする
     // デスクトップ: "above" → 順方向, "below" → 逆方向

@@ -1557,6 +1557,65 @@ describe("<LifeLogs />", () => {
         const childrenNodesAfter = result.container.querySelector(`.${styles.lifeLogTree.childrenNodes}`);
         expect(childrenNodesAfter).toBeNull();
       });
+
+      it("focuses first LifeLog when scrolled to top edge", async ({ db, task }) => {
+        await page.viewport(1200, 600);
+        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+        wrapper.style.height = "400px";
+
+        // Navigate to first item to learn its id
+        await userEvent.keyboard("{g}");
+        await awaitPendingCallbacks();
+        const firstId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+
+        // Navigate down to move away from first item and cause scroll
+        await userEvent.keyboard("{j}{j}{j}{j}{j}");
+        await awaitPendingCallbacks();
+
+        const midId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(midId).not.toBe(firstId);
+        expect(container.scrollTop).toBeGreaterThan(0);
+
+        // Scroll to top edge
+        container.scrollTop = 0;
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Focus should have moved to the first LifeLog (edge item)
+        const newId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(newId).toBe(firstId);
+      });
+
+      it("focuses last LifeLog when scrolled to bottom edge", async ({ db, task }) => {
+        await page.viewport(1200, 600);
+        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+        wrapper.style.height = "400px";
+
+        // Navigate to last item to learn its id
+        await userEvent.keyboard("{Shift>}{g}{/Shift}");
+        await awaitPendingCallbacks();
+        const lastId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+
+        // Navigate up to move away from last item
+        await userEvent.keyboard("{k}{k}{k}{k}{k}");
+        await awaitPendingCallbacks();
+
+        const midId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(midId).not.toBe(lastId);
+
+        // Scroll to bottom edge
+        container.scrollTop = container.scrollHeight - container.clientHeight;
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Focus should have moved to the last LifeLog (edge item)
+        const newId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(newId).toBe(lastId);
+      });
     });
 
     describe("mobile (column-reverse)", () => {
@@ -1751,6 +1810,64 @@ describe("<LifeLogs />", () => {
         const newSelectedRect = newSelected!.getBoundingClientRect();
         expect(newSelectedRect.top).toBeGreaterThanOrEqual(containerRect.top);
         expect(newSelectedRect.bottom).toBeLessThanOrEqual(containerRect.bottom);
+      });
+
+      it("focuses last LifeLog when scrolled to top edge (mobile)", async ({ db, task }) => {
+        await page.viewport(414, 896);
+        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+        wrapper.style.height = "400px";
+
+        // Navigate to last item to learn its id (visual top in column-reverse)
+        await userEvent.keyboard("{Shift>}{g}{/Shift}");
+        await awaitPendingCallbacks();
+        const lastId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+
+        // Navigate down (k in mobile moves visually down = backward in ids)
+        await userEvent.keyboard("{k}{k}{k}{k}{k}");
+        await awaitPendingCallbacks();
+
+        const midId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(midId).not.toBe(lastId);
+
+        // Scroll to top edge (scrollTop=0 = visual top in column-reverse)
+        container.scrollTop = 0;
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Focus should have moved to the last LifeLog (visual top edge in column-reverse)
+        const newId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(newId).toBe(lastId);
+      });
+
+      it("focuses first LifeLog when scrolled to bottom edge (mobile)", async ({ db, task }) => {
+        await page.viewport(414, 896);
+        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+        wrapper.style.height = "400px";
+
+        // Navigate to first item to learn its id (visual bottom in column-reverse)
+        await userEvent.keyboard("{g}");
+        await awaitPendingCallbacks();
+        const firstId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+
+        // Navigate up (j in mobile moves visually up = forward in ids)
+        await userEvent.keyboard("{j}{j}{j}{j}{j}");
+        await awaitPendingCallbacks();
+
+        const midId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(midId).not.toBe(firstId);
+
+        // Scroll to bottom edge (scrollTop=max = visual bottom in column-reverse)
+        container.scrollTop = container.scrollHeight - container.clientHeight;
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Focus should have moved to the first LifeLog (visual bottom edge in column-reverse)
+        const newId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(newId).toBe(firstId);
       });
     });
   });
