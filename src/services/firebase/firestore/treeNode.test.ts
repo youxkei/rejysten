@@ -10,6 +10,7 @@ import { generateKeyBetween } from "fractional-indexing";
 import { describe, it, vi, beforeAll, afterAll } from "vitest";
 
 import { type FirestoreService, type DocumentData } from "@/services/firebase/firestore";
+import { Batch } from "@/services/firebase/firestore/batch";
 import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
 import {
   createTestFirestoreService,
@@ -60,8 +61,8 @@ async function getDoc<T extends object>(col: CollectionReference<T>, id: string)
   return { ...data, id: snap.id } as DocumentData<T>;
 }
 
-async function runTestBatch(fn: (batch: ReturnType<typeof writeBatch>) => Promise<void>) {
-  const batch = writeBatch(firestore);
+async function runTestBatch(fn: (batch: Batch) => Promise<void>) {
+  const batch = new Batch(service, writeBatch(firestore));
   await fn(batch);
   await batch.commit();
 }

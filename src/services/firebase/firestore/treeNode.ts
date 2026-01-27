@@ -1,4 +1,4 @@
-import { type CollectionReference, type WriteBatch, doc, limit, orderBy, query, where } from "firebase/firestore";
+import { type CollectionReference, limit, orderBy, query, where } from "firebase/firestore";
 import { generateKeyBetween } from "fractional-indexing";
 
 import { ErrorWithFields } from "@/error";
@@ -9,8 +9,7 @@ import {
   getDoc,
   getDocs,
 } from "@/services/firebase/firestore";
-import { setDoc, updateDoc } from "@/services/firebase/firestore/batch";
-import { deleteNgram } from "@/services/firebase/firestore/ngram";
+import { type Batch } from "@/services/firebase/firestore/batch";
 
 export type TreeNode = {
   parentId: string;
@@ -181,7 +180,7 @@ export async function getBelowNode<T extends TreeNode>(
 
 export function addSingle<T extends TreeNode>(
   service: FirestoreService,
-  batch: WriteBatch,
+  batch: Batch,
   col: CollectionReference<T>,
   parentId: string,
   newNode: Omit<DocumentData<T>, keyof TreeNode>,
@@ -192,7 +191,7 @@ export function addSingle<T extends TreeNode>(
 
   const order = generateKeyBetween(null, null);
 
-  setDoc(service, batch, col, {
+  batch.set(col, {
     ...(newNode as Omit<DocumentData<T>, keyof Timestamps>),
     parentId,
     order,
@@ -201,7 +200,7 @@ export function addSingle<T extends TreeNode>(
 
 export async function addPrevSibling<T extends TreeNode>(
   service: FirestoreService,
-  batch: WriteBatch,
+  batch: Batch,
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
   newNode: Omit<DocumentData<T>, keyof TreeNode>,
@@ -213,7 +212,7 @@ export async function addPrevSibling<T extends TreeNode>(
   const prevNode = await getPrevNode(service, col, baseNode);
   const newOrder = generateKeyBetween(prevNode?.order ?? null, baseNode.order);
 
-  setDoc(service, batch, col, {
+  batch.set(col, {
     ...(newNode as Omit<DocumentData<T>, keyof Timestamps>),
     parentId: baseNode.parentId,
     order: newOrder,
@@ -222,7 +221,7 @@ export async function addPrevSibling<T extends TreeNode>(
 
 export async function addNextSibling<T extends TreeNode>(
   service: FirestoreService,
-  batch: WriteBatch,
+  batch: Batch,
   col: CollectionReference<T>,
   baseNode: DocumentData<T>,
   newNode: Omit<DocumentData<T>, keyof TreeNode>,
@@ -234,7 +233,7 @@ export async function addNextSibling<T extends TreeNode>(
   const nextNode = await getNextNode(service, col, baseNode);
   const newOrder = generateKeyBetween(baseNode.order, nextNode?.order ?? null);
 
-  setDoc(service, batch, col, {
+  batch.set(col, {
     ...(newNode as Omit<DocumentData<T>, keyof Timestamps>),
     parentId: baseNode.parentId,
     order: newOrder,
@@ -243,7 +242,7 @@ export async function addNextSibling<T extends TreeNode>(
 
 export async function indent<T extends TreeNode>(
   service: FirestoreService,
-  batch: WriteBatch,
+  batch: Batch,
   col: CollectionReference<T>,
   node: DocumentData<T>,
 ): Promise<void> {
@@ -255,7 +254,7 @@ export async function indent<T extends TreeNode>(
   const lastChildOfPrevNode = await getLastChildNode(service, col, prevNode);
   const newOrder = generateKeyBetween(lastChildOfPrevNode?.order ?? null, null);
 
-  updateDoc<TreeNode>(service, batch, col, {
+  batch.update<TreeNode>(col, {
     id: node.id,
     parentId: prevNode.id,
     order: newOrder,
@@ -264,7 +263,7 @@ export async function indent<T extends TreeNode>(
 
 export async function dedent<T extends TreeNode>(
   service: FirestoreService,
-  batch: WriteBatch,
+  batch: Batch,
   col: CollectionReference<T>,
   node: DocumentData<T>,
 ): Promise<void> {
@@ -276,7 +275,7 @@ export async function dedent<T extends TreeNode>(
   const nextOfParent = await getNextNode(service, col, parentNode);
   const newOrder = generateKeyBetween(parentNode.order, nextOfParent?.order ?? null);
 
-  updateDoc<TreeNode>(service, batch, col, {
+  batch.update<TreeNode>(col, {
     id: node.id,
     parentId: parentNode.parentId,
     order: newOrder,
@@ -285,7 +284,7 @@ export async function dedent<T extends TreeNode>(
 
 export async function movePrev<T extends TreeNode>(
   service: FirestoreService,
-  batch: WriteBatch,
+  batch: Batch,
   col: CollectionReference<T>,
   node: DocumentData<T>,
 ): Promise<void> {
@@ -297,7 +296,7 @@ export async function movePrev<T extends TreeNode>(
   const prevPrevNode = await getPrevNode(service, col, prevNode);
   const newOrder = generateKeyBetween(prevPrevNode?.order ?? null, prevNode.order);
 
-  updateDoc<TreeNode>(service, batch, col, {
+  batch.update<TreeNode>(col, {
     id: node.id,
     order: newOrder,
   });
@@ -305,7 +304,7 @@ export async function movePrev<T extends TreeNode>(
 
 export async function moveNext<T extends TreeNode>(
   service: FirestoreService,
-  batch: WriteBatch,
+  batch: Batch,
   col: CollectionReference<T>,
   node: DocumentData<T>,
 ): Promise<void> {
@@ -317,7 +316,7 @@ export async function moveNext<T extends TreeNode>(
   const nextNextNode = await getNextNode(service, col, nextNode);
   const newOrder = generateKeyBetween(nextNode.order, nextNextNode?.order ?? null);
 
-  updateDoc<TreeNode>(service, batch, col, {
+  batch.update<TreeNode>(col, {
     id: node.id,
     order: newOrder,
   });
@@ -325,7 +324,7 @@ export async function moveNext<T extends TreeNode>(
 
 export async function remove<T extends TreeNode>(
   service: FirestoreService,
-  batch: WriteBatch,
+  batch: Batch,
   col: CollectionReference<T>,
   node: DocumentData<T>,
 ): Promise<void> {
@@ -334,6 +333,5 @@ export async function remove<T extends TreeNode>(
     throw new ErrorWithFields("cannot delete node with children", { node, firstChildNode });
   }
 
-  batch.delete(doc(col, node.id));
-  deleteNgram(service, batch, col, node.id);
+  batch.delete(col, node.id);
 }

@@ -16,7 +16,7 @@ import {
   type Timestamps,
 } from "@/services/firebase/firestore";
 import { TransactionAborted } from "@/services/firebase/firestore/error";
-import { setNgram } from "@/services/firebase/firestore/ngram";
+import { deleteNgram, setNgram } from "@/services/firebase/firestore/ngram";
 import { initialState } from "@/services/store";
 
 declare module "@/services/store" {
@@ -43,9 +43,84 @@ declare module "@/services/firebase/firestore/schema" {
   }
 }
 
+export class Batch {
+  private readonly service: FirestoreService;
+  private readonly writeBatch: WriteBatch;
+
+  constructor(service: FirestoreService, writeBatch: WriteBatch) {
+    this.service = service;
+    this.writeBatch = writeBatch;
+  }
+
+  commit(): Promise<void> {
+    return this.writeBatch.commit();
+  }
+
+  update<T extends Timestamps>(
+    col: CollectionReference<T>,
+    newDocData: DocumentData<Omit<Partial<T>, keyof Timestamps>>,
+  ) {
+    const { id, ...newDocDataContent } = newDocData;
+
+    this.writeBatch.update(doc(col, id), {
+      ...newDocDataContent,
+      updatedAt: serverTimestamp(),
+    });
+
+    if ("text" in newDocDataContent && typeof newDocDataContent.text === "string") {
+      setNgram(this.service, this.writeBatch, col, id, newDocDataContent.text);
+    }
+  }
+
+  updateSingleton<T extends Timestamps>(
+    col: CollectionReference<T>,
+    newDocData: Omit<Partial<T>, keyof Timestamps>,
+  ) {
+    this.update(col, {
+      id: singletonDocumentId,
+      ...newDocData,
+    });
+  }
+
+  delete<T extends Timestamps>(
+    col: CollectionReference<T>,
+    id: string,
+  ) {
+    this.writeBatch.delete(doc(col, id));
+    deleteNgram(this.service, this.writeBatch, col, id);
+  }
+
+  set<T extends Timestamps>(
+    col: CollectionReference<T>,
+    newDocData: Omit<DocumentData<T>, keyof Timestamps>,
+  ) {
+    const { id, ...newDocDataContent } = newDocData;
+
+    this.writeBatch.set(doc(col, id), {
+      ...newDocDataContent,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    } as unknown);
+
+    if ("text" in newDocDataContent && typeof newDocDataContent.text === "string") {
+      setNgram(this.service, this.writeBatch, col, id, newDocDataContent.text);
+    }
+  }
+
+  setSingleton<T extends Timestamps>(
+    col: CollectionReference<T>,
+    newDocData: Omit<T, keyof Timestamps>,
+  ) {
+    this.set(col, {
+      ...(newDocData as Omit<DocumentData<T>, keyof Timestamps>),
+      id: singletonDocumentId,
+    });
+  }
+}
+
 export async function runBatch(
   service: FirestoreService,
-  updateFunction: (batch: WriteBatch) => Promise<void>,
+  updateFunction: (batch: Batch) => Promise<void>,
 ): Promise<void> {
   const {
     services: {
@@ -67,17 +142,17 @@ export async function runBatch(
       state.servicesFirestoreBatch.lock = true;
     });
 
-    const batch = writeBatch(firestore);
+    const batch = new Batch(service, writeBatch(firestore));
 
     const newBatchVersion = uuidv7();
     const batchVersionDoc = service.batchVersion$();
     if (batchVersionDoc) {
-      updateSingletonDoc(service, batch, batchVersionCol, {
+      batch.updateSingleton(batchVersionCol, {
         prevVersion: batchVersionDoc.version,
         version: newBatchVersion,
       });
     } else {
-      setSingletonDoc(service, batch, batchVersionCol, {
+      batch.setSingleton(batchVersionCol, {
         prevVersion: "",
         version: newBatchVersion,
       });
@@ -104,65 +179,4 @@ export async function runBatch(
 
     console.timeStamp("batch end");
   }
-}
-
-export function updateDoc<T extends Timestamps>(
-  service: FirestoreService,
-  batch: WriteBatch,
-  col: CollectionReference<T>,
-  newDocData: DocumentData<Omit<Partial<T>, keyof Timestamps>>,
-) {
-  const { id, ...newDocDataContent } = newDocData;
-
-  batch.update(doc(col, id), {
-    ...newDocDataContent,
-    updatedAt: serverTimestamp(),
-  });
-
-  if ("text" in newDocDataContent && typeof newDocDataContent.text === "string") {
-    setNgram(service, batch, col, id, newDocDataContent.text);
-  }
-}
-
-export function updateSingletonDoc<T extends Timestamps>(
-  service: FirestoreService,
-  batch: WriteBatch,
-  col: CollectionReference<T>,
-  newDocData: Omit<Partial<T>, keyof Timestamps>,
-) {
-  updateDoc(service, batch, col, {
-    id: singletonDocumentId,
-    ...newDocData,
-  });
-}
-
-export function setDoc<T extends Timestamps>(
-  service: FirestoreService,
-  batch: WriteBatch,
-  col: CollectionReference<T>,
-  newDocData: Omit<DocumentData<T>, keyof Timestamps>,
-) {
-  const { id, ...newDocDataContent } = newDocData;
-
-  batch.set(doc(col, id), {
-    ...newDocDataContent,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  } as unknown);
-
-  if ("text" in newDocDataContent && typeof newDocDataContent.text === "string") {
-    setNgram(service, batch, col, id, newDocDataContent.text);
-  }
-}
-
-export function setSingletonDoc<T extends Timestamps>(
-  service: FirestoreService,
-  batch: WriteBatch,
-  col: CollectionReference<T>,
-  newDocData: Omit<T, keyof Timestamps>,
-) {
-  setDoc(service, batch, col, {
-    ...(newDocData as Omit<DocumentData<T>, keyof Timestamps>),
-    id: singletonDocumentId,
-  });
 }

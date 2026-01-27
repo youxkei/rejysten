@@ -1,4 +1,4 @@
-import { doc, Timestamp } from "firebase/firestore";
+import { Timestamp } from "firebase/firestore";
 import { startTransition } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
@@ -6,8 +6,7 @@ import { DateNow, TimestampNow } from "@/date";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { type Actions, actionsCreator, initialActionsContext } from "@/services/actions";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
-import { runBatch, setDoc, updateDoc } from "@/services/firebase/firestore/batch";
-import { deleteNgram } from "@/services/firebase/firestore/ngram";
+import { runBatch } from "@/services/firebase/firestore/batch";
 import {
   addNextSibling,
   addPrevSibling,
@@ -182,7 +181,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
             text: "",
             lifeLogId: lifeLog.id,
           });
-          updateDoc(firestore, batch, lifeLogsCol, {
+          batch.update(lifeLogsCol, {
             id: lifeLog.id,
             hasTreeNodes: true,
           });
@@ -218,7 +217,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     firestore.setClock(true);
     try {
       await runBatch(firestore, (batch) => {
-        setDoc(firestore, batch, lifeLogsCol, {
+        batch.set(lifeLogsCol, {
           id: newLifeLogId,
           text: "",
           hasTreeNodes: false,
@@ -292,7 +291,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
       firestore.setClock(true);
       try {
         await runBatch(firestore, (batch) => {
-          setDoc(firestore, batch, lifeLogsCol, {
+          batch.set(lifeLogsCol, {
             id: newLifeLogId,
             text: "",
             hasTreeNodes: false,
@@ -333,7 +332,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     firestore.setClock(true);
     try {
       await runBatch(firestore, (batch) => {
-        updateDoc(firestore, batch, lifeLogsCol, {
+        batch.update(lifeLogsCol, {
           id: selectedLifeLogId,
           startAt: newTimestamp,
         });
@@ -359,7 +358,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     firestore.setClock(true);
     try {
       await runBatch(firestore, (batch) => {
-        updateDoc(firestore, batch, lifeLogsCol, {
+        batch.update(lifeLogsCol, {
           id: selectedLifeLogId,
           endAt: newTimestamp,
         });
@@ -409,7 +408,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     firestore.setClock(true);
     try {
       await runBatch(firestore, (batch) => {
-        updateDoc(firestore, batch, lifeLogsCol, {
+        batch.update(lifeLogsCol, {
           id: selectedLifeLogId,
           text: newText,
         });
@@ -434,7 +433,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     firestore.setClock(true);
     try {
       await runBatch(firestore, (batch) => {
-        updateDoc(firestore, batch, lifeLogsCol, {
+        batch.update(lifeLogsCol, {
           id: selectedLifeLogId,
           startAt: newTimestamp,
         });
@@ -459,7 +458,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     firestore.setClock(true);
     try {
       await runBatch(firestore, (batch) => {
-        updateDoc(firestore, batch, lifeLogsCol, {
+        batch.update(lifeLogsCol, {
           id: selectedLifeLogId,
           endAt: newTimestamp,
         });
@@ -506,8 +505,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     firestore.setClock(true);
     try {
       await runBatch(firestore, (batch) => {
-        batch.delete(doc(lifeLogsCol, selectedLifeLogId));
-        deleteNgram(firestore, batch, lifeLogsCol, selectedLifeLogId);
+        batch.delete(lifeLogsCol, selectedLifeLogId);
         return Promise.resolve();
       });
 
@@ -555,8 +553,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     firestore.setClock(true);
     try {
       await runBatch(firestore, (batch) => {
-        batch.delete(doc(lifeLogsCol, selectedLifeLogId));
-        deleteNgram(firestore, batch, lifeLogsCol, selectedLifeLogId);
+        batch.delete(lifeLogsCol, selectedLifeLogId);
         return Promise.resolve();
       });
 
@@ -583,7 +580,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     firestore.setClock(true);
     try {
       await runBatch(firestore, (batch) => {
-        setDoc(firestore, batch, lifeLogsCol, {
+        batch.set(lifeLogsCol, {
           id: newLifeLogId,
           text: "",
           hasTreeNodes: false,
@@ -618,7 +615,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     firestore.setClock(true);
     try {
       await runBatch(firestore, (batch) => {
-        updateDoc(firestore, batch, lifeLogTreeNodesCol, {
+        batch.update(lifeLogTreeNodesCol, {
           id: selectedNodeId,
           text: newText,
         });
@@ -644,7 +641,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     firestore.setClock(true);
     try {
       await runBatch(firestore, (batch) => {
-        updateDoc(firestore, batch, lifeLogTreeNodesCol, {
+        batch.update(lifeLogTreeNodesCol, {
           id: selectedNodeId,
           text: beforeCursor,
         });
@@ -714,7 +711,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
         await runBatch(firestore, async (batch) => {
           await remove(firestore, batch, lifeLogTreeNodesCol, node);
           // Set hasTreeNodes to false when removing the last node
-          updateDoc(firestore, batch, lifeLogsCol, {
+          batch.update(lifeLogsCol, {
             id: lifeLogId,
             hasTreeNodes: false,
           });
@@ -747,7 +744,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     firestore.setClock(true);
     try {
       await runBatch(firestore, async (batch) => {
-        updateDoc(firestore, batch, lifeLogTreeNodesCol, {
+        batch.update(lifeLogTreeNodesCol, {
           id: aboveNode.id,
           text: mergedText,
         });
@@ -790,7 +787,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     firestore.setClock(true);
     try {
       await runBatch(firestore, async (batch) => {
-        updateDoc(firestore, batch, lifeLogTreeNodesCol, {
+        batch.update(lifeLogTreeNodesCol, {
           id: node.id,
           text: mergedText,
         });

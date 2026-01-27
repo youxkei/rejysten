@@ -9,7 +9,7 @@ import {
 import { describe, it, vi, beforeAll, afterAll } from "vitest";
 
 import { singletonDocumentId, type Timestamps, type FirestoreService } from "@/services/firebase/firestore";
-import { updateDoc, updateSingletonDoc, setDoc, setSingletonDoc } from "@/services/firebase/firestore/batch";
+import { Batch } from "@/services/firebase/firestore/batch";
 import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
 import {
   createTestFirestoreService,
@@ -51,26 +51,26 @@ describe("batch", () => {
       const tid = `${test.task.id}_${now.getTime()}`;
 
       const col = collection(firestore, tid) as CollectionReference<TestDoc>;
-      const batch = writeBatch(firestore);
+      const setupBatch = writeBatch(firestore);
 
       // First create a document
       const docRef = doc(col, "testDoc");
-      batch.set(docRef, {
+      setupBatch.set(docRef, {
         text: "initial text",
         value: 1,
         createdAt: timestampForCreatedAt,
         updatedAt: timestampForCreatedAt,
       });
-      await batch.commit();
+      await setupBatch.commit();
 
       // Update the document
-      const updateBatch = writeBatch(firestore);
-      updateDoc(service, updateBatch, col, {
+      const batch = new Batch(service, writeBatch(firestore));
+      batch.update(col, {
         id: "testDoc",
         text: "updated text",
         value: 2,
       });
-      await updateBatch.commit();
+      await batch.commit();
 
       const updatedDoc = await getDocOriginal(doc(col, "testDoc"));
       test.expect(updatedDoc.data()).toEqual({
@@ -91,26 +91,26 @@ describe("batch", () => {
       // Enable ngram for this collection
       collectionNgramConfig[tid] = true;
 
-      const batch = writeBatch(firestore);
+      const setupBatch = writeBatch(firestore);
 
       // First create a document
       const docRef = doc(col, "testDoc");
-      batch.set(docRef, {
+      setupBatch.set(docRef, {
         text: "initial text",
         value: 1,
         createdAt: timestampForCreatedAt,
         updatedAt: timestampForCreatedAt,
       });
-      await batch.commit();
+      await setupBatch.commit();
 
       // Update the document
-      const updateBatch = writeBatch(firestore);
-      updateDoc(service, updateBatch, col, {
+      const batch = new Batch(service, writeBatch(firestore));
+      batch.update(col, {
         id: "testDoc",
         text: "hello world",
         value: 2,
       });
-      await updateBatch.commit();
+      await batch.commit();
 
       const ngramDoc = await getDocOriginal(doc(ngramsCol, `testDoc${tid}`));
       test.expect(ngramDoc.exists()).toBe(true);
@@ -124,25 +124,25 @@ describe("batch", () => {
       const tid = `${test.task.id}_${now.getTime()}`;
 
       const col = collection(firestore, tid) as CollectionReference<TestDoc>;
-      const batch = writeBatch(firestore);
+      const setupBatch = writeBatch(firestore);
 
       // First create a document
       const docRef = doc(col, "testDoc");
-      batch.set(docRef, {
+      setupBatch.set(docRef, {
         text: "initial text",
         value: 1,
         createdAt: timestampForCreatedAt,
         updatedAt: timestampForCreatedAt,
       });
-      await batch.commit();
+      await setupBatch.commit();
 
       // Update only the value field
-      const updateBatch = writeBatch(firestore);
-      updateDoc(service, updateBatch, col, {
+      const batch = new Batch(service, writeBatch(firestore));
+      batch.update(col, {
         id: "testDoc",
         value: 99,
       });
-      await updateBatch.commit();
+      await batch.commit();
 
       const updatedDoc = await getDocOriginal(doc(col, "testDoc"));
       test.expect(updatedDoc.data()).toEqual({
@@ -160,25 +160,25 @@ describe("batch", () => {
       const tid = `${test.task.id}_${now.getTime()}`;
 
       const col = collection(firestore, tid) as CollectionReference<TestDoc>;
-      const batch = writeBatch(firestore);
+      const setupBatch = writeBatch(firestore);
 
       // First create a singleton document
       const docRef = doc(col, singletonDocumentId);
-      batch.set(docRef, {
+      setupBatch.set(docRef, {
         text: "singleton text",
         value: 10,
         createdAt: timestampForCreatedAt,
         updatedAt: timestampForCreatedAt,
       });
-      await batch.commit();
+      await setupBatch.commit();
 
       // Update the singleton document
-      const updateBatch = writeBatch(firestore);
-      updateSingletonDoc(service, updateBatch, col, {
+      const batch = new Batch(service, writeBatch(firestore));
+      batch.updateSingleton(col, {
         text: "updated singleton",
         value: 20,
       });
-      await updateBatch.commit();
+      await batch.commit();
 
       const updatedDoc = await getDocOriginal(doc(col, singletonDocumentId));
       test.expect(updatedDoc.data()).toEqual({
@@ -196,9 +196,9 @@ describe("batch", () => {
       const tid = `${test.task.id}_${now.getTime()}`;
 
       const col = collection(firestore, tid) as CollectionReference<TestDoc>;
-      const batch = writeBatch(firestore);
+      const batch = new Batch(service, writeBatch(firestore));
 
-      setDoc(service, batch, col, {
+      batch.set(col, {
         id: "newDoc",
         text: "new document",
         value: 42,
@@ -224,8 +224,8 @@ describe("batch", () => {
       // Enable ngram for this collection
       collectionNgramConfig[tid] = true;
 
-      const batch = writeBatch(firestore);
-      setDoc(service, batch, col, {
+      const batch = new Batch(service, writeBatch(firestore));
+      batch.set(col, {
         id: "newDoc",
         text: "hello ngram",
         value: 42,
@@ -257,8 +257,8 @@ describe("batch", () => {
       await batch1.commit();
 
       // Set (overwrite) the document
-      const batch2 = writeBatch(firestore);
-      setDoc(service, batch2, col, {
+      const batch2 = new Batch(service, writeBatch(firestore));
+      batch2.set(col, {
         id: "existingDoc",
         text: "new text",
         value: 999,
@@ -281,9 +281,9 @@ describe("batch", () => {
       const tid = `${test.task.id}_${now.getTime()}`;
 
       const col = collection(firestore, tid) as CollectionReference<TestDoc>;
-      const batch = writeBatch(firestore);
+      const batch = new Batch(service, writeBatch(firestore));
 
-      setSingletonDoc(service, batch, col, {
+      batch.setSingleton(col, {
         text: "singleton content",
         value: 100,
       });
@@ -308,8 +308,8 @@ describe("batch", () => {
       // Enable ngram for this collection
       collectionNgramConfig[tid] = true;
 
-      const batch = writeBatch(firestore);
-      setSingletonDoc(service, batch, col, {
+      const batch = new Batch(service, writeBatch(firestore));
+      batch.setSingleton(col, {
         text: "singleton ngram text",
         value: 200,
       });
