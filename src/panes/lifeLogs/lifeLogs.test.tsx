@@ -1405,79 +1405,6 @@ describe("<LifeLogs />", () => {
 
     describe("scroll focus", () => {
       // Use desktop viewport for these tests (mobile uses column-reverse which changes scroll behavior)
-      it("moves focus to topmost visible LifeLog when focused LifeLog scrolls out above", async ({ db, task }) => {
-        await page.viewport(1200, 600);
-        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
-
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
-        wrapper.style.height = "400px";
-
-        // Navigate to first item with g key
-        await userEvent.keyboard("{g}");
-        await awaitPendingCallbacks();
-
-        const initialSelected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        expect(initialSelected).toBeTruthy();
-        const initialId = initialSelected?.closest("li")?.id;
-
-        // Scroll down programmatically to make focused LifeLog go above the visible area
-        container.scrollTop = 800;
-        // Wait for scroll to be applied
-        await new Promise((r) => setTimeout(r, 50));
-
-        // Verify scroll actually happened
-        expect(container.scrollTop, "scroll should have happened").toBeGreaterThan(100);
-
-        // Focus should have moved to a visible LifeLog (not the initial one)
-        const newSelected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        expect(newSelected).toBeTruthy();
-        const newId = newSelected?.closest("li")?.id;
-        expect(newId).not.toBe(initialId);
-
-        // The new selected element should be visible
-        const containerRect = container.getBoundingClientRect();
-        const newSelectedRect = newSelected!.getBoundingClientRect();
-        expect(newSelectedRect.top).toBeGreaterThanOrEqual(containerRect.top);
-        expect(newSelectedRect.bottom).toBeLessThanOrEqual(containerRect.bottom);
-      });
-
-      it("moves focus to bottommost visible LifeLog when focused LifeLog scrolls out below", async ({ db, task }) => {
-        await page.viewport(1200, 600);
-        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
-
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
-        wrapper.style.height = "400px";
-
-        // Navigate to last item with G key
-        await userEvent.keyboard("{Shift>}{g}{/Shift}");
-        await awaitPendingCallbacks();
-
-        const initialSelected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        expect(initialSelected).toBeTruthy();
-        const initialId = initialSelected?.closest("li")?.id;
-
-        // Scroll up programmatically to make focused LifeLog go below the visible area
-        container.scrollTop = 0;
-        // Wait for scroll to be applied
-        await new Promise((r) => setTimeout(r, 50));
-
-        // Focus should have moved to a visible LifeLog (not the initial one)
-        const newSelected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        expect(newSelected).toBeTruthy();
-        const newId = newSelected?.closest("li")?.id;
-        expect(newId).not.toBe(initialId);
-
-        // The new selected element should be visible
-        const containerRect = container.getBoundingClientRect();
-        const newSelectedRect = newSelected!.getBoundingClientRect();
-        expect(newSelectedRect.top).toBeGreaterThanOrEqual(containerRect.top);
-        expect(newSelectedRect.bottom).toBeLessThanOrEqual(containerRect.bottom);
-      });
-
       it("does not move focus when editing", async ({ db, task }) => {
         await page.viewport(1200, 600);
         const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
@@ -1513,49 +1440,6 @@ describe("<LifeLogs />", () => {
 
         // Input should still be present
         expect(result.container.querySelector("input")).toBeTruthy();
-      });
-
-      it("exits tree and moves focus to visible LifeLog when scrolling in tree mode", async ({ db, task }) => {
-        await page.viewport(1200, 600);
-        const { result } = await setupLifeLogsTest(task.id, db, {
-          lifeLogCount: 15,
-          treeNodeCount: 5,
-          lifeLogsProps: { debounceMs: 0 },
-        });
-
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
-        wrapper.style.height = "400px";
-
-        // Navigate to first item with g key
-        await userEvent.keyboard("{g}");
-        await awaitPendingCallbacks();
-
-        // Enter tree mode with l key
-        await userEvent.keyboard("{l}");
-        await awaitPendingCallbacks();
-
-        // Verify tree mode is active (childrenNodes should be visible)
-        const childrenNodes = result.container.querySelector(`.${styles.lifeLogTree.childrenNodes}`);
-        expect(childrenNodes).toBeTruthy();
-
-        const selectedBefore = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        const selectedIdBefore = selectedBefore?.closest("li")?.id;
-
-        // Scroll down programmatically to make focused LifeLog go above the visible area
-        container.scrollTop = 800;
-        // Wait for scroll to be applied
-        await new Promise((r) => setTimeout(r, 50));
-
-        // Focus should have moved to a visible LifeLog
-        const selectedAfter = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        const selectedIdAfter = selectedAfter?.closest("li")?.id;
-        expect(selectedIdAfter).not.toBe(selectedIdBefore);
-
-        // Tree mode should be exited (childrenNodes should no longer be visible)
-        const childrenNodesAfter = result.container.querySelector(`.${styles.lifeLogTree.childrenNodes}`);
-        expect(childrenNodesAfter).toBeNull();
       });
 
       it("focuses first LifeLog when scrolled to top edge", async ({ db, task }) => {
@@ -1616,85 +1500,81 @@ describe("<LifeLogs />", () => {
         const newId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
         expect(newId).toBe(lastId);
       });
-    });
 
-    describe("mobile (column-reverse)", () => {
-      it("moves focus to topmost visible LifeLog when focused LifeLog scrolls out above (mobile)", async ({
-        db,
-        task,
-      }) => {
-        await page.viewport(414, 896);
+      it("does not move focus back to edge after pressing k at bottom edge", async ({ db, task }) => {
+        await page.viewport(1200, 600);
         const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
 
         const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
         const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
         wrapper.style.height = "400px";
 
-        // On mobile with column-reverse, G (last item) appears at visual top
+        // Navigate to last item
         await userEvent.keyboard("{Shift>}{g}{/Shift}");
         await awaitPendingCallbacks();
 
-        const initialSelected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        expect(initialSelected).toBeTruthy();
-        const initialId = initialSelected?.closest("li")?.id;
+        // Navigate away and back to bottom to trigger edge detection
+        await userEvent.keyboard("{k}{k}{k}{k}{k}");
+        await awaitPendingCallbacks();
 
-        // On mobile, scrolling down (increasing scrollTop) moves visual content up,
-        // so the visually top element goes above visible area
-        container.scrollTop = 800;
+        // Scroll to bottom edge to trigger edge detection → focuses last item
+        container.scrollTop = container.scrollHeight - container.clientHeight;
         await new Promise((r) => setTimeout(r, 50));
 
-        // Focus should have moved to a visible LifeLog (not the initial one)
-        const newSelected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        expect(newSelected).toBeTruthy();
-        const newId = newSelected?.closest("li")?.id;
-        expect(newId).not.toBe(initialId);
+        const lastId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
 
-        // The new selected element should be visible
-        const containerRect = container.getBoundingClientRect();
-        const newSelectedRect = newSelected!.getBoundingClientRect();
-        expect(newSelectedRect.top).toBeGreaterThanOrEqual(containerRect.top);
-        expect(newSelectedRect.bottom).toBeLessThanOrEqual(containerRect.bottom);
+        // Press k to go to second-to-last
+        await userEvent.keyboard("{k}");
+        await awaitPendingCallbacks();
+
+        const secondToLastId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(secondToLastId).not.toBe(lastId);
+
+        // Wait to ensure edge detection does NOT snap focus back to last item
+        await new Promise((r) => setTimeout(r, 50));
+
+        const afterWaitId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(afterWaitId).toBe(secondToLastId);
       });
 
-      it("moves focus to bottommost visible LifeLog when focused LifeLog scrolls out below (mobile)", async ({
-        db,
-        task,
-      }) => {
-        await page.viewport(414, 896);
+      it("does not move focus back to edge after pressing j at top edge", async ({ db, task }) => {
+        await page.viewport(1200, 600);
         const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
 
         const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
         const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
         wrapper.style.height = "400px";
 
-        // On mobile with column-reverse, g (first item) appears at visual bottom
+        // Navigate to first item
         await userEvent.keyboard("{g}");
         await awaitPendingCallbacks();
 
-        const initialSelected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        expect(initialSelected).toBeTruthy();
-        const initialId = initialSelected?.closest("li")?.id;
+        // Navigate away and back to top to trigger edge detection
+        await userEvent.keyboard("{j}{j}{j}{j}{j}");
+        await awaitPendingCallbacks();
 
-        // On mobile, scrolling up (scrollTop = 0) moves visual content down,
-        // so the visually bottom element goes below visible area
+        // Scroll to top edge to trigger edge detection → focuses first item
         container.scrollTop = 0;
         await new Promise((r) => setTimeout(r, 50));
 
-        // Focus should have moved to a visible LifeLog (not the initial one)
-        const newSelected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        expect(newSelected).toBeTruthy();
-        const newId = newSelected?.closest("li")?.id;
-        expect(newId).not.toBe(initialId);
+        const firstId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
 
-        // The new selected element should be visible
-        const containerRect = container.getBoundingClientRect();
-        const newSelectedRect = newSelected!.getBoundingClientRect();
-        expect(newSelectedRect.top).toBeGreaterThanOrEqual(containerRect.top);
-        expect(newSelectedRect.bottom).toBeLessThanOrEqual(containerRect.bottom);
+        // Press j to go to second item
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+
+        const secondId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(secondId).not.toBe(firstId);
+
+        // Wait to ensure edge detection does NOT snap focus back to first item
+        await new Promise((r) => setTimeout(r, 50));
+
+        const afterWaitId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(afterWaitId).toBe(secondId);
       });
+    });
 
+    describe("mobile (column-reverse)", () => {
       it("does not move focus when editing (mobile)", async ({ db, task }) => {
         await page.viewport(414, 896);
         const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
@@ -1730,86 +1610,6 @@ describe("<LifeLogs />", () => {
 
         // Input should still be present
         expect(result.container.querySelector("input")).toBeTruthy();
-      });
-
-      it("exits tree and moves focus to visible LifeLog when scrolling in tree mode (mobile)", async ({ db, task }) => {
-        await page.viewport(414, 896);
-        const { result } = await setupLifeLogsTest(task.id, db, {
-          lifeLogCount: 15,
-          treeNodeCount: 5,
-          lifeLogsProps: { debounceMs: 0 },
-        });
-
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
-        wrapper.style.height = "400px";
-
-        // Navigate to first item with g key
-        await userEvent.keyboard("{g}");
-        await awaitPendingCallbacks();
-
-        // Enter tree mode with l key
-        await userEvent.keyboard("{l}");
-        await awaitPendingCallbacks();
-
-        // Verify tree mode is active (childrenNodes should be visible)
-        const childrenNodes = result.container.querySelector(`.${styles.lifeLogTree.childrenNodes}`);
-        expect(childrenNodes).toBeTruthy();
-
-        const selectedBefore = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        const selectedIdBefore = selectedBefore?.closest("li")?.id;
-
-        // Scroll down programmatically to make focused LifeLog go above the visible area
-        container.scrollTop = 800;
-        // Wait for scroll to be applied
-        await new Promise((r) => setTimeout(r, 50));
-
-        // Focus should have moved to a visible LifeLog
-        const selectedAfter = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        const selectedIdAfter = selectedAfter?.closest("li")?.id;
-        expect(selectedIdAfter).not.toBe(selectedIdBefore);
-
-        // Tree mode should be exited (childrenNodes should no longer be visible)
-        const childrenNodesAfter = result.container.querySelector(`.${styles.lifeLogTree.childrenNodes}`);
-        expect(childrenNodesAfter).toBeNull();
-      });
-
-      it("does not cause unwanted scroll when moving focus to fully visible LifeLog", async ({ db, task }) => {
-        await page.viewport(1200, 600);
-        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
-
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
-        wrapper.style.height = "400px";
-
-        // Navigate to first item with g key
-        await userEvent.keyboard("{g}");
-        await awaitPendingCallbacks();
-
-        // Scroll down to move the first LifeLog out of view
-        container.scrollTop = 800;
-        // Wait for scroll event and focus change
-        await new Promise((r) => setTimeout(r, 50));
-
-        // Record the scroll position after focus change
-        const scrollAfterFocusChange = container.scrollTop;
-
-        // Wait a bit more to catch any unwanted scroll
-        await new Promise((r) => setTimeout(r, 100));
-        await awaitPendingCallbacks();
-
-        // The scroll position should not have changed (no unwanted scroll)
-        expect(container.scrollTop).toBe(scrollAfterFocusChange);
-
-        // Verify focus actually moved to a visible element
-        const newSelected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        expect(newSelected).toBeTruthy();
-        const containerRect = container.getBoundingClientRect();
-        const newSelectedRect = newSelected!.getBoundingClientRect();
-        expect(newSelectedRect.top).toBeGreaterThanOrEqual(containerRect.top);
-        expect(newSelectedRect.bottom).toBeLessThanOrEqual(containerRect.bottom);
       });
 
       it("focuses last LifeLog when scrolled to top edge (mobile)", async ({ db, task }) => {
