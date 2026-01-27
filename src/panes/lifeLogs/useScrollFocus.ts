@@ -20,6 +20,7 @@ export function useScrollFocus(props: {
   const isMobile$ = createIsMobile();
 
   let lastSelectedId: string | undefined;
+  let lastSelectedNodeId: string | undefined;
 
   const debouncedUpdateState = debounce((newTargetId: string, selectedNodeId: string) => {
     updateState((s) => {
@@ -44,9 +45,10 @@ export function useScrollFocus(props: {
     const targetId = selectedId;
     if (!targetId) return;
 
-    // キーボードナビゲーションによるプログラム的スクロールではスキップする
-    if (targetId !== lastSelectedId) {
+    // プログラム的スクロール（キーボードナビゲーション、ツリー脱出など）ではスキップする
+    if (targetId !== lastSelectedId || selectedNodeId !== lastSelectedNodeId) {
       lastSelectedId = targetId;
+      lastSelectedNodeId = selectedNodeId;
       return;
     }
 

@@ -1537,6 +1537,44 @@ describe("<LifeLogs />", () => {
         expect(afterWaitId).toBe(secondToLastId);
       });
 
+      it("does not move focus to edge after exiting tree with h at bottom edge", async ({ db, task }) => {
+        await page.viewport(1200, 600);
+        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+
+        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+        wrapper.style.height = "400px";
+
+        // Navigate to last item
+        await userEvent.keyboard("{Shift>}{g}{/Shift}");
+        await awaitPendingCallbacks();
+
+        // Navigate up a few items
+        await userEvent.keyboard("{k}{k}{k}{k}{k}");
+        await awaitPendingCallbacks();
+
+        // Scroll to bottom edge to trigger edge detection → focuses last item
+        container.scrollTop = container.scrollHeight - container.clientHeight;
+        await new Promise((r) => setTimeout(r, 50));
+
+        const selectedId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(selectedId).toBeTruthy();
+
+        // Enter tree mode with l, then immediately exit with h
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+
+        await userEvent.keyboard("{h}");
+        await awaitPendingCallbacks();
+
+        // Wait to ensure edge detection does NOT move focus
+        await new Promise((r) => setTimeout(r, 50));
+
+        // After exiting tree mode, selected class is visible again
+        const afterExitId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+        expect(afterExitId).toBe(selectedId);
+      });
+
       it("does not move focus back to edge after pressing j at top edge", async ({ db, task }) => {
         await page.viewport(1200, 600);
         const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
