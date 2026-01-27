@@ -52,6 +52,7 @@ export default defineConfig({
     retry: 3,
     bail: 1,
     testTimeout: 2_000,
+    hookTimeout: 60_000,
   },
   resolve: {
     conditions: ["development|production", "browser"],

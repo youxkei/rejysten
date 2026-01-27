@@ -73,10 +73,6 @@ async function startEmulator(): Promise<EmulatorInstance> {
     },
   );
 
-  emulatorProcess.stdout?.on("data", (data) => {
-    console.log(`[emulator:${port}] ${data.toString().trim()}`);
-  });
-
   emulatorProcess.stderr?.on("data", (data) => {
     console.error(`[emulator:${port}] ${data.toString().trim()}`);
   });
