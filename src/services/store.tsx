@@ -3,6 +3,7 @@ import { type JSXElement, useContext, createContext } from "solid-js";
 import { createStore, produce } from "solid-js/store";
 
 import { ServiceNotAvailable } from "@/services/error";
+import { migrateState, serializeState } from "@/services/store/migration";
 
 const localStorageName = "rejysten.service.store.state";
 
@@ -22,6 +23,8 @@ export function StoreServiceProvider(props: { localStorageNamePostfix?: string; 
   const [state, setState] = makePersisted(createStore<State>(structuredClone(initialState)), {
     storage: window.localStorage,
     name: localStorageName + (props.localStorageNamePostfix ?? ""),
+    serialize: serializeState,
+    deserialize: migrateState,
   });
 
   function updateState(updater: (state: State) => void) {
