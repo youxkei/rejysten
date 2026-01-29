@@ -159,6 +159,71 @@ export const styles = {
       },
     }),
   },
+  search: {
+    wrapper: style({
+      display: "flex",
+      flexDirection: "column",
+      height: "100%",
+    }),
+    inputContainer: style({
+      padding: "1rem",
+      borderBottom: `1px solid ${nord[2]}`,
+    }),
+    input: style({
+      width: "100%",
+      padding: "0.75rem",
+      backgroundColor: nord[1],
+      border: `1px solid ${nord[2]}`,
+      borderRadius: "0.25rem",
+      color: nord[4],
+      fontSize: "1rem",
+      fontFamily: "inherit",
+      outline: "none",
+      ":focus": {
+        borderColor: nord[9],
+      },
+    }),
+    resultsContainer: style({
+      flex: 1,
+      minHeight: 0,
+      overflow: "auto",
+      padding: "1rem",
+    }),
+    resultsList: style({
+      listStyle: "none",
+      padding: 0,
+      margin: 0,
+      display: "flex",
+      flexDirection: "column",
+      gap: "0.5rem",
+    }),
+    result: style({
+      display: "flex",
+      flexDirection: "column",
+      gap: "0.25rem",
+      padding: "0.75rem",
+      backgroundColor: nord[1],
+      borderRadius: "0.25rem",
+      cursor: "pointer",
+      ":hover": {
+        backgroundColor: `${nord[2]}44`,
+      },
+    }),
+    resultSelected: style({
+      backgroundColor: nord[2],
+      boxShadow: `0 0 0 2px ${nord[9]}`,
+    }),
+    resultCollection: style({
+      fontSize: "0.75rem",
+      color: nord[3],
+      textTransform: "uppercase",
+    }),
+    resultText: style({
+      fontSize: "1rem",
+      lineHeight: 1.5,
+      color: nord[4],
+    }),
+  },
 };
 
 globalStyle("body", {

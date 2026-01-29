@@ -3,10 +3,12 @@ import { render } from "solid-js/web";
 import { registerSW } from "virtual:pwa-register";
 
 import { LifeLogs } from "@/panes/lifeLogs";
-import { ActionsServiceProvider } from "@/services/actions";
+import { Search } from "@/panes/search";
+import { ActionsServiceProvider, useActionsService } from "@/services/actions";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import { FirestoreServiceProvider } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
+import { addKeyDownEventListener } from "@/solid/event";
 import { styles } from "@/styles.css";
 import { hourMs, dayMs } from "@/timestamp";
 
@@ -20,6 +22,30 @@ registerSW({
     }
   },
 });
+
+function MainContent() {
+  const { state } = useStoreService();
+  const actions = useActionsService().panes.search;
+
+  // "/" key handler to open search (when not editing)
+  addKeyDownEventListener((event) => {
+    if (event.isComposing || event.ctrlKey) return;
+    if (state.panesSearch.isActive) return;
+    if (document.activeElement instanceof HTMLInputElement) return;
+    if (document.activeElement instanceof HTMLTextAreaElement) return;
+
+    if (event.code === "Slash") {
+      event.preventDefault();
+      actions.openSearch();
+    }
+  });
+
+  return (
+    <Show when={state.panesSearch.isActive} fallback={<LifeLogs rangeMs={1 * dayMs} />}>
+      <Search />
+    </Show>
+  );
+}
 
 function App() {
   return (
@@ -48,7 +74,7 @@ function App() {
                   <FirebaseServiceProvider configYAML={state.firebase.configYAML} setErrors={setErrors}>
                     <FirestoreServiceProvider>
                       <ActionsServiceProvider>
-                        <LifeLogs rangeMs={1 * dayMs} />
+                        <MainContent />
                       </ActionsServiceProvider>
                     </FirestoreServiceProvider>
                   </FirebaseServiceProvider>

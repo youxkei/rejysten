@@ -72,28 +72,19 @@ export class Batch {
     }
   }
 
-  updateSingleton<T extends Timestamps>(
-    col: CollectionReference<T>,
-    newDocData: Omit<Partial<T>, keyof Timestamps>,
-  ) {
+  updateSingleton<T extends Timestamps>(col: CollectionReference<T>, newDocData: Omit<Partial<T>, keyof Timestamps>) {
     this.update(col, {
       id: singletonDocumentId,
       ...newDocData,
     });
   }
 
-  delete<T extends Timestamps>(
-    col: CollectionReference<T>,
-    id: string,
-  ) {
+  delete<T extends Timestamps>(col: CollectionReference<T>, id: string) {
     this.writeBatch.delete(doc(col, id));
     deleteNgram(this.service, this.writeBatch, col, id);
   }
 
-  set<T extends Timestamps>(
-    col: CollectionReference<T>,
-    newDocData: Omit<DocumentData<T>, keyof Timestamps>,
-  ) {
+  set<T extends Timestamps>(col: CollectionReference<T>, newDocData: Omit<DocumentData<T>, keyof Timestamps>) {
     const { id, ...newDocDataContent } = newDocData;
 
     this.writeBatch.set(doc(col, id), {
@@ -107,10 +98,7 @@ export class Batch {
     }
   }
 
-  setSingleton<T extends Timestamps>(
-    col: CollectionReference<T>,
-    newDocData: Omit<T, keyof Timestamps>,
-  ) {
+  setSingleton<T extends Timestamps>(col: CollectionReference<T>, newDocData: Omit<T, keyof Timestamps>) {
     this.set(col, {
       ...(newDocData as Omit<DocumentData<T>, keyof Timestamps>),
       id: singletonDocumentId,
