@@ -1,6 +1,7 @@
 import { type CollectionReference } from "firebase/firestore";
 import { startTransition } from "solid-js";
 
+import { awaitable } from "@/awaitableCallback";
 import { actionsCreator, initialActionsContext } from "@/services/actions";
 import { getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
@@ -26,12 +27,12 @@ declare module "@/services/actions" {
 
   interface ComponentnsActions {
     tree: {
-      navigateDown: () => Promise<void>;
-      navigateUp: () => Promise<void>;
-      goToFirst: () => Promise<void>;
-      goToLast: () => Promise<void>;
-      indentNode: () => Promise<void>;
-      dedentNode: () => Promise<void>;
+      navigateDown: () => void;
+      navigateUp: () => void;
+      goToFirst: () => void;
+      goToLast: () => void;
+      indentNode: () => void;
+      dedentNode: () => void;
     };
   }
 }
@@ -133,11 +134,11 @@ actionsCreator.components.tree = ({ components: { tree: context } }, _actions) =
   }
 
   return {
-    navigateDown,
-    navigateUp,
-    goToFirst,
-    goToLast,
-    indentNode,
-    dedentNode,
+    navigateDown: awaitable(navigateDown),
+    navigateUp: awaitable(navigateUp),
+    goToFirst: awaitable(goToFirst),
+    goToLast: awaitable(goToLast),
+    indentNode: awaitable(indentNode),
+    dedentNode: awaitable(dedentNode),
   };
 };

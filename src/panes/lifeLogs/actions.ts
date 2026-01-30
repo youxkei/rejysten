@@ -2,6 +2,7 @@ import { Timestamp } from "firebase/firestore";
 import { startTransition } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
+import { awaitable } from "@/awaitableCallback";
 import { DateNow, TimestampNow } from "@/date";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { type Actions, actionsCreator, initialActionsContext } from "@/services/actions";
@@ -59,29 +60,29 @@ declare module "@/services/actions" {
       navigatePrev: () => void;
       goToFirst: () => void;
       goToLast: () => void;
-      enterTree: () => Promise<void>;
+      enterTree: () => void;
       exitTree: () => void;
-      newLifeLog: () => Promise<void>;
-      addSiblingNode: (above: boolean) => Promise<void>;
-      setStartAtNow: () => Promise<void>;
-      setEndAtNow: () => Promise<void>;
+      newLifeLog: () => void;
+      addSiblingNode: (above: boolean) => void;
+      setStartAtNow: () => void;
+      setEndAtNow: () => void;
       startEditing: (field?: EditingField) => void;
       cycleFieldNext: () => void;
       cycleFieldPrev: () => void;
-      saveText: () => Promise<void>;
-      saveStartAt: () => Promise<void>;
-      saveEndAt: () => Promise<void>;
-      deleteEmptyLifeLogToPrev: () => Promise<void>;
-      deleteEmptyLifeLogToNext: () => Promise<void>;
-      createFirstLifeLog: () => Promise<void>;
+      saveText: () => void;
+      saveStartAt: () => void;
+      saveEndAt: () => void;
+      deleteEmptyLifeLogToPrev: () => void;
+      deleteEmptyLifeLogToNext: () => void;
+      createFirstLifeLog: () => void;
 
       // Tree node actions
-      saveTreeNode: () => Promise<void>;
-      splitTreeNode: () => Promise<void>;
-      removeOrMergeNodeWithAbove: () => Promise<void>;
-      mergeTreeNodeWithBelow: () => Promise<void>;
-      saveAndIndentTreeNode: () => Promise<void>;
-      saveAndDedentTreeNode: () => Promise<void>;
+      saveTreeNode: () => void;
+      splitTreeNode: () => void;
+      removeOrMergeNodeWithAbove: () => void;
+      mergeTreeNodeWithBelow: () => void;
+      saveAndIndentTreeNode: () => void;
+      saveAndDedentTreeNode: () => void;
     };
   }
 }
@@ -810,7 +811,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     if (selectedNodeId === "") return;
 
     await saveTreeNode();
-    await actions.components.tree.indentNode();
+    actions.components.tree.indentNode();
     context.setTabCursorInfo({ nodeId: selectedNodeId, cursorPosition });
   }
 
@@ -820,7 +821,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     if (selectedNodeId === "") return;
 
     await saveTreeNode();
-    await actions.components.tree.dedentNode();
+    actions.components.tree.dedentNode();
     context.setTabCursorInfo({ nodeId: selectedNodeId, cursorPosition });
   }
 
@@ -829,26 +830,26 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     navigatePrev,
     goToFirst,
     goToLast,
-    enterTree,
+    enterTree: awaitable(enterTree),
     exitTree,
-    newLifeLog,
-    addSiblingNode,
-    setStartAtNow,
-    setEndAtNow,
+    newLifeLog: awaitable(newLifeLog),
+    addSiblingNode: awaitable(addSiblingNode),
+    setStartAtNow: awaitable(setStartAtNow),
+    setEndAtNow: awaitable(setEndAtNow),
     startEditing,
     cycleFieldNext,
     cycleFieldPrev,
-    saveText,
-    saveStartAt,
-    saveEndAt,
-    deleteEmptyLifeLogToPrev,
-    deleteEmptyLifeLogToNext,
-    createFirstLifeLog,
-    saveTreeNode,
-    splitTreeNode,
-    removeOrMergeNodeWithAbove,
-    mergeTreeNodeWithBelow,
-    saveAndIndentTreeNode,
-    saveAndDedentTreeNode,
+    saveText: awaitable(saveText),
+    saveStartAt: awaitable(saveStartAt),
+    saveEndAt: awaitable(saveEndAt),
+    deleteEmptyLifeLogToPrev: awaitable(deleteEmptyLifeLogToPrev),
+    deleteEmptyLifeLogToNext: awaitable(deleteEmptyLifeLogToNext),
+    createFirstLifeLog: awaitable(createFirstLifeLog),
+    saveTreeNode: awaitable(saveTreeNode),
+    splitTreeNode: awaitable(splitTreeNode),
+    removeOrMergeNodeWithAbove: awaitable(removeOrMergeNodeWithAbove),
+    mergeTreeNodeWithBelow: awaitable(mergeTreeNodeWithBelow),
+    saveAndIndentTreeNode: awaitable(saveAndIndentTreeNode),
+    saveAndDedentTreeNode: awaitable(saveAndDedentTreeNode),
   };
 };

@@ -2,7 +2,6 @@ import type { Schema } from "@/services/firebase/firestore/schema";
 
 import { type Accessor, type Setter } from "solid-js";
 
-import { awaitable } from "@/awaitableCallback";
 import { EditableValue } from "@/components/editableValue";
 import { useActionsService } from "@/services/actions";
 import { type DocumentData } from "@/services/firebase/firestore";
@@ -23,16 +22,16 @@ export function LifeLogTreeNode(props: {
   const actionsService = useActionsService();
   const actions = actionsService.panes.lifeLogs;
 
-  async function handleKeyDown(event: KeyboardEvent, inputRef: HTMLInputElement, preventBlurSave: () => void) {
+  function handleKeyDown(event: KeyboardEvent, inputRef: HTMLInputElement, preventBlurSave: () => void) {
     // Handle Tab (save + indent/dedent)
     if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
       event.preventDefault();
       preventBlurSave();
 
       if (event.shiftKey) {
-        await actions.saveAndDedentTreeNode();
+        actions.saveAndDedentTreeNode();
       } else {
-        await actions.saveAndIndentTreeNode();
+        actions.saveAndIndentTreeNode();
       }
       return;
     }
@@ -41,7 +40,7 @@ export function LifeLogTreeNode(props: {
     if (event.code === "Enter" && !event.isComposing) {
       event.preventDefault();
       preventBlurSave();
-      await actions.splitTreeNode();
+      actions.splitTreeNode();
       return;
     }
 
@@ -49,7 +48,7 @@ export function LifeLogTreeNode(props: {
     if (event.code === "Backspace" && inputRef.selectionStart === 0) {
       event.preventDefault();
       preventBlurSave();
-      await actions.removeOrMergeNodeWithAbove();
+      actions.removeOrMergeNodeWithAbove();
       return;
     }
 
@@ -57,7 +56,7 @@ export function LifeLogTreeNode(props: {
     if (event.code === "Delete" && inputRef.selectionStart === inputRef.value.length) {
       event.preventDefault();
       preventBlurSave();
-      await actions.mergeTreeNodeWithBelow();
+      actions.mergeTreeNodeWithBelow();
       return;
     }
   }
@@ -68,9 +67,7 @@ export function LifeLogTreeNode(props: {
       value={props.node$().text}
       toText={(text) => text}
       fromText={(text) => text}
-      onSave={async () => {
-        await actions.saveTreeNode();
-      }}
+      onSave={actions.saveTreeNode}
       isSelected={props.isSelected$()}
       isEditing={props.isEditing}
       setIsEditing={(editing) => {
@@ -84,7 +81,7 @@ export function LifeLogTreeNode(props: {
       className={styles.lifeLogTree.text}
       selectedClassName={styles.lifeLogTree.selected}
       editInputClassName={styles.lifeLogTree.editInput}
-      onKeyDown={awaitable(handleKeyDown)}
+      onKeyDown={handleKeyDown}
       onTextChange={(text) => {
         actionsService.updateContext((ctx) => {
           ctx.panes.lifeLogs.pendingNodeText = text;

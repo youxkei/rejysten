@@ -2,7 +2,9 @@
 - use `git <subcomand>` naturally
 - when you `git commit`, first check `git diff` and `git diff --cached`
   - ignore previous output and always run these commands fresh before committing
+  - NEVER use `--no-verify` to skip pre-commit hooks
   - when pre-commit hook failed, try `pnpm run fix` first
+  - if pre-commit hook fails due to flaky tests, retry the commit
 - use `pnpm test` to run all test cases, `pnpm test/case "case title"` to run one case
   - always consider to run cases one by one first
   - pre-commit hook runs all tests, so they should all pass without any changes

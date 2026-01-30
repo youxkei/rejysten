@@ -4,7 +4,6 @@ import equals from "fast-deep-equal";
 import { type CollectionReference, doc, orderBy, query, where } from "firebase/firestore";
 import { type Accessor, createEffect, createMemo, For, type JSXElement, onCleanup, Show } from "solid-js";
 
-import { awaitable } from "@/awaitableCallback";
 import { useActionsService } from "@/services/actions";
 import { type DocumentData, useFirestoreService } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
@@ -108,53 +107,51 @@ export function Node<T extends TreeNode>(props: {
     }
   });
 
-  addKeyDownEventListener(
-    awaitable(async (event) => {
-      if (event.isComposing || event.ctrlKey || !isSelected$()) return;
+  addKeyDownEventListener((event) => {
+    if (event.isComposing || event.ctrlKey || !isSelected$()) return;
 
-      const { shiftKey } = event;
-      const actions = actionsService.components.tree;
+    const { shiftKey } = event;
+    const actions = actionsService.components.tree;
 
-      switch (event.code) {
-        case "KeyJ": {
-          if (shiftKey) return;
-          event.stopImmediatePropagation();
-          await actions.navigateDown();
-          break;
-        }
-
-        case "KeyK": {
-          if (shiftKey) return;
-          event.stopImmediatePropagation();
-          await actions.navigateUp();
-          break;
-        }
-
-        case "KeyG": {
-          event.stopImmediatePropagation();
-          if (shiftKey) {
-            await actions.goToLast();
-          } else {
-            await actions.goToFirst();
-          }
-          break;
-        }
-
-        case "Tab": {
-          event.preventDefault();
-          event.stopPropagation();
-          event.stopImmediatePropagation();
-
-          if (shiftKey) {
-            await actions.dedentNode();
-          } else {
-            await actions.indentNode();
-          }
-          break;
-        }
+    switch (event.code) {
+      case "KeyJ": {
+        if (shiftKey) return;
+        event.stopImmediatePropagation();
+        actions.navigateDown();
+        break;
       }
-    }),
-  );
+
+      case "KeyK": {
+        if (shiftKey) return;
+        event.stopImmediatePropagation();
+        actions.navigateUp();
+        break;
+      }
+
+      case "KeyG": {
+        event.stopImmediatePropagation();
+        if (shiftKey) {
+          actions.goToLast();
+        } else {
+          actions.goToFirst();
+        }
+        break;
+      }
+
+      case "Tab": {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
+        if (shiftKey) {
+          actions.dedentNode();
+        } else {
+          actions.indentNode();
+        }
+        break;
+      }
+    }
+  });
 
   return (
     <Show when={node$()}>

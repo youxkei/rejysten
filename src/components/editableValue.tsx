@@ -1,12 +1,11 @@
 import { debounce } from "@solid-primitives/scheduled";
 import { createEffect, createSignal, on, Show, type JSX, onMount } from "solid-js";
 
-import { awaitable } from "@/awaitableCallback";
 import { addKeyDownEventListener } from "@/solid/event";
 
 export interface EditableValueProps<V> {
   value: V;
-  onSave: (newValue: V) => Promise<void>;
+  onSave: (newValue: V) => void;
   isSelected: boolean;
   isEditing: boolean;
   setIsEditing: (isEditing: boolean) => void;
@@ -41,10 +40,10 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
   const [blurSavePrevented, setBlurSavePrevented] = createSignal(false);
   const [editTrigger, setEditTrigger] = createSignal<"i" | "a" | undefined>(undefined);
 
-  async function saveChanges(text: string) {
+  function saveChanges(text: string) {
     const newValue = props.fromText(text);
     if (newValue !== undefined && props.toText(newValue) !== props.toText(props.value)) {
-      await props.onSave(newValue);
+      props.onSave(newValue);
     }
   }
 
@@ -146,7 +145,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
               onSelect={(e) => {
                 props.onSelectionChange?.(e.currentTarget.selectionStart ?? 0);
               }}
-              onKeyDown={awaitable(async (e) => {
+              onKeyDown={(e) => {
                 // Update selection position at the start of key handling
                 props.onSelectionChange?.(e.currentTarget.selectionStart ?? 0);
 
@@ -157,7 +156,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                 if (e.code === "Escape") {
                   e.preventDefault();
                   debouncedSaveChanges.clear();
-                  await saveChanges(editText());
+                  saveChanges(editText());
                   props.setIsEditing(false);
                   setEditText("");
                   return;
@@ -167,14 +166,14 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                 if (props.onKeyDown && inputRef) {
                   props.onKeyDown(e, inputRef, () => setBlurSavePrevented(true));
                 }
-              })}
-              onBlur={async () => {
+              }}
+              onBlur={() => {
                 if (blurSavePrevented()) {
                   setBlurSavePrevented(false);
                   return;
                 }
                 debouncedSaveChanges.clear();
-                await saveChanges(editText());
+                saveChanges(editText());
                 props.setIsEditing(false);
                 setEditText("");
               }}

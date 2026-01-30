@@ -39,7 +39,7 @@ actionsCreator.panes.search = ({ panes: { search: context } }, _actions: Actions
   const { state, updateState } = useStoreService();
   const firestore = useFirestoreService();
 
-  const openSearch = awaitable(async () => {
+  async function openSearch() {
     await startTransition(() => {
       updateState((s) => {
         s.panesSearch.isActive = true;
@@ -51,9 +51,9 @@ actionsCreator.panes.search = ({ panes: { search: context } }, _actions: Actions
     requestAnimationFrame(() => {
       context.focusInput();
     });
-  });
+  }
 
-  const closeSearch = awaitable(async () => {
+  async function closeSearch() {
     await startTransition(() => {
       updateState((s) => {
         s.panesSearch.isActive = false;
@@ -61,9 +61,9 @@ actionsCreator.panes.search = ({ panes: { search: context } }, _actions: Actions
         s.panesSearch.selectedResultIndex = 0;
       });
     });
-  });
+  }
 
-  const navigateNext = awaitable(async () => {
+  async function navigateNext() {
     if (context.resultCount === 0) return;
     await startTransition(() => {
       updateState((s) => {
@@ -72,9 +72,9 @@ actionsCreator.panes.search = ({ panes: { search: context } }, _actions: Actions
         }
       });
     });
-  });
+  }
 
-  const navigatePrev = awaitable(async () => {
+  async function navigatePrev() {
     if (context.resultCount === 0) return;
     await startTransition(() => {
       updateState((s) => {
@@ -83,27 +83,27 @@ actionsCreator.panes.search = ({ panes: { search: context } }, _actions: Actions
         }
       });
     });
-  });
+  }
 
-  const goToFirst = awaitable(async () => {
+  async function goToFirst() {
     if (context.resultCount === 0) return;
     await startTransition(() => {
       updateState((s) => {
         s.panesSearch.selectedResultIndex = 0;
       });
     });
-  });
+  }
 
-  const goToLast = awaitable(async () => {
+  async function goToLast() {
     if (context.resultCount === 0) return;
     await startTransition(() => {
       updateState((s) => {
         s.panesSearch.selectedResultIndex = context.resultCount - 1;
       });
     });
-  });
+  }
 
-  const jumpToSelected = awaitable(async () => {
+  async function jumpToSelected() {
     if (context.resultCount === 0) return;
 
     const selectedIndex = state.panesSearch.selectedResultIndex;
@@ -142,15 +142,15 @@ actionsCreator.panes.search = ({ panes: { search: context } }, _actions: Actions
         });
       });
     }
-  });
+  }
 
   return {
-    openSearch,
-    closeSearch,
-    navigateNext,
-    navigatePrev,
-    goToFirst,
-    goToLast,
-    jumpToSelected,
+    openSearch: awaitable(openSearch),
+    closeSearch: awaitable(closeSearch),
+    navigateNext: awaitable(navigateNext),
+    navigatePrev: awaitable(navigatePrev),
+    goToFirst: awaitable(goToFirst),
+    goToLast: awaitable(goToLast),
+    jumpToSelected: awaitable(jumpToSelected),
   };
 };

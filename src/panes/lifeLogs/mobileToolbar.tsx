@@ -1,6 +1,5 @@
 import { Show } from "solid-js";
 
-import { awaitable } from "@/awaitableCallback";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { useActionsService } from "@/services/actions";
 import { useStoreService } from "@/services/store";
@@ -35,7 +34,7 @@ function NavigationToolbar() {
   const handleGoToFirst = withOwner(() => {
     if (isTreeFocused()) {
       // ⏬ button: go to LAST node in tree (bottom of visual tree)
-      awaitable(treeActions.goToLast)();
+      treeActions.goToLast();
     } else {
       actions.goToFirst();
     }
@@ -43,25 +42,25 @@ function NavigationToolbar() {
   const handleGoToLast = withOwner(() => {
     if (isTreeFocused()) {
       // ⏫ button: go to FIRST node in tree (top of visual tree)
-      awaitable(treeActions.goToFirst)();
+      treeActions.goToFirst();
     } else {
       actions.goToLast();
     }
   });
   const handleEnterTree = withOwner(() => {
-    awaitable(actions.enterTree)();
+    actions.enterTree();
   });
   const handleExitTree = withOwner(() => {
     actions.exitTree();
   });
   const handleNewLifeLog = withOwner(() => {
-    awaitable(actions.newLifeLog)();
+    actions.newLifeLog();
   });
   const handleSetStartAtNow = withOwner(() => {
-    awaitable(actions.setStartAtNow)();
+    actions.setStartAtNow();
   });
   const handleSetEndAtNow = withOwner(() => {
-    awaitable(actions.setEndAtNow)();
+    actions.setEndAtNow();
   });
   const handleStartEditingStartAt = withOwner(() => {
     actions.startEditing(EditingField.StartAt);
@@ -73,16 +72,16 @@ function NavigationToolbar() {
     actions.startEditing();
   });
   const handleAddNodeAbove = withOwner(() => {
-    awaitable(actions.addSiblingNode)(true);
+    actions.addSiblingNode(true);
   });
   const handleAddNodeBelow = withOwner(() => {
-    awaitable(actions.addSiblingNode)(false);
+    actions.addSiblingNode(false);
   });
   const handleIndent = withOwner(() => {
-    awaitable(treeActions.indentNode)();
+    treeActions.indentNode();
   });
   const handleDedent = withOwner(() => {
-    awaitable(treeActions.dedentNode)();
+    treeActions.dedentNode();
   });
 
   return (
@@ -192,26 +191,24 @@ function EditingToolbar() {
 
   // 編集終了ハンドラ
   const handleExitEditing = withOwner(() => {
-    awaitable(async () => {
-      if (state.panesLifeLogs.selectedLifeLogNodeId !== "") {
-        // Tree node editing
-        await actions.saveTreeNode();
-      } else {
-        // LifeLog editing - save based on current editing field
-        switch (context.editingField) {
-          case EditingField.Text:
-            await actions.saveText();
-            break;
-          case EditingField.StartAt:
-            await actions.saveStartAt();
-            break;
-          case EditingField.EndAt:
-            await actions.saveEndAt();
-            break;
-        }
+    if (state.panesLifeLogs.selectedLifeLogNodeId !== "") {
+      // Tree node editing
+      actions.saveTreeNode();
+    } else {
+      // LifeLog editing - save based on current editing field
+      switch (context.editingField) {
+        case EditingField.Text:
+          actions.saveText();
+          break;
+        case EditingField.StartAt:
+          actions.saveStartAt();
+          break;
+        case EditingField.EndAt:
+          actions.saveEndAt();
+          break;
       }
-      context.setIsEditing(false);
-    })();
+    }
+    context.setIsEditing(false);
   });
 
   // Prevent blur by stopping mousedown default behavior
@@ -222,19 +219,19 @@ function EditingToolbar() {
   // Tree node editing handlers
   const handleSplitTreeNode = withOwner(() => {
     context.preventBlurSave();
-    awaitable(actions.splitTreeNode)();
+    actions.splitTreeNode();
   });
   const handleRemoveOrMerge = withOwner(() => {
     // Only allow removal/merge when cursor is at beginning (like Backspace)
     if (context.nodeCursorPosition !== 0) return;
     context.preventBlurSave();
-    awaitable(actions.removeOrMergeNodeWithAbove)();
+    actions.removeOrMergeNodeWithAbove();
   });
   const handleMergeWithBelow = withOwner(() => {
     // Only allow merge when cursor is at end (like Delete key)
     if (context.nodeCursorPosition !== (context.pendingNodeText?.length ?? 0)) return;
     context.preventBlurSave();
-    awaitable(actions.mergeTreeNodeWithBelow)();
+    actions.mergeTreeNodeWithBelow();
   });
 
   const handleCycleFieldPrev = withOwner(() => {
@@ -248,11 +245,11 @@ function EditingToolbar() {
 
   const handleIndent = withOwner(() => {
     context.preventBlurSave();
-    awaitable(actions.saveAndIndentTreeNode)();
+    actions.saveAndIndentTreeNode();
   });
   const handleDedent = withOwner(() => {
     context.preventBlurSave();
-    awaitable(actions.saveAndDedentTreeNode)();
+    actions.saveAndDedentTreeNode();
   });
 
   return (

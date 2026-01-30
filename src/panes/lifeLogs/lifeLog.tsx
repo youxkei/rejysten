@@ -1,7 +1,6 @@
 import { doc } from "firebase/firestore";
 import { type Accessor, createEffect, createSignal, onCleanup, type Setter, Show } from "solid-js";
 
-import { awaitable } from "@/awaitableCallback";
 import { EditableValue } from "@/components/editableValue";
 import { ChildrenNodes } from "@/components/tree";
 import { LifeLogTreeNode } from "@/panes/lifeLogs/lifeLogTreeNode";
@@ -119,81 +118,79 @@ export function LifeLog(props: {
     }
   });
 
-  addKeyDownEventListener(
-    awaitable(async (event) => {
-      if (event.isComposing || event.ctrlKey || !isSelected$()) return;
+  addKeyDownEventListener((event) => {
+    if (event.isComposing || event.ctrlKey || !isSelected$()) return;
 
-      const { shiftKey } = event;
+    const { shiftKey } = event;
 
-      if (props.isEditing) {
-        // Don't call preventDefault during editing to allow backspace and other input keys to work
-        return;
+    if (props.isEditing) {
+      // Don't call preventDefault during editing to allow backspace and other input keys to work
+      return;
+    }
+
+    event.preventDefault();
+
+    switch (event.code) {
+      case "KeyL": {
+        if (shiftKey || isLifeLogTreeFocused$()) return;
+        event.stopImmediatePropagation();
+        actions.enterTree();
+        break;
       }
 
-      event.preventDefault();
-
-      switch (event.code) {
-        case "KeyL": {
-          if (shiftKey || isLifeLogTreeFocused$()) return;
-          event.stopImmediatePropagation();
-          await actions.enterTree();
-          break;
-        }
-
-        case "KeyH": {
-          if (shiftKey || isLifeLogSelected$()) return;
-          event.stopImmediatePropagation();
-          actions.exitTree();
-          break;
-        }
-
-        case "KeyJ": {
-          if (shiftKey || isLifeLogTreeFocused$()) return;
-          event.stopImmediatePropagation();
-          actions.navigateNext();
-          break;
-        }
-
-        case "KeyK": {
-          if (shiftKey || isLifeLogTreeFocused$()) return;
-          event.stopImmediatePropagation();
-          actions.navigatePrev();
-          break;
-        }
-
-        case "KeyG": {
-          if (isLifeLogTreeFocused$()) return; // Tree navigation handled in tree.tsx
-          event.stopImmediatePropagation();
-          if (shiftKey) {
-            actions.goToLast();
-          } else {
-            actions.goToFirst();
-          }
-          break;
-        }
-
-        case "KeyO": {
-          event.stopImmediatePropagation();
-          await actions.addSiblingNode(shiftKey);
-          break;
-        }
-
-        case "KeyS": {
-          if (shiftKey || isLifeLogTreeFocused$()) return;
-          event.stopImmediatePropagation();
-          await actions.setStartAtNow();
-          break;
-        }
-
-        case "KeyF": {
-          if (shiftKey || isLifeLogTreeFocused$()) return;
-          event.stopImmediatePropagation();
-          await actions.setEndAtNow();
-          break;
-        }
+      case "KeyH": {
+        if (shiftKey || isLifeLogSelected$()) return;
+        event.stopImmediatePropagation();
+        actions.exitTree();
+        break;
       }
-    }),
-  );
+
+      case "KeyJ": {
+        if (shiftKey || isLifeLogTreeFocused$()) return;
+        event.stopImmediatePropagation();
+        actions.navigateNext();
+        break;
+      }
+
+      case "KeyK": {
+        if (shiftKey || isLifeLogTreeFocused$()) return;
+        event.stopImmediatePropagation();
+        actions.navigatePrev();
+        break;
+      }
+
+      case "KeyG": {
+        if (isLifeLogTreeFocused$()) return; // Tree navigation handled in tree.tsx
+        event.stopImmediatePropagation();
+        if (shiftKey) {
+          actions.goToLast();
+        } else {
+          actions.goToFirst();
+        }
+        break;
+      }
+
+      case "KeyO": {
+        event.stopImmediatePropagation();
+        actions.addSiblingNode(shiftKey);
+        break;
+      }
+
+      case "KeyS": {
+        if (shiftKey || isLifeLogTreeFocused$()) return;
+        event.stopImmediatePropagation();
+        actions.setStartAtNow();
+        break;
+      }
+
+      case "KeyF": {
+        if (shiftKey || isLifeLogTreeFocused$()) return;
+        event.stopImmediatePropagation();
+        actions.setEndAtNow();
+        break;
+      }
+    }
+  });
 
   return (
     <Show when={lifeLog$()}>
@@ -233,18 +230,18 @@ export function LifeLog(props: {
                     ctx.panes.lifeLogs.pendingStartAt = timeTextToTimestamp(text);
                   });
                 }}
-                onKeyDown={awaitable(async (event, _inputRef, preventBlurSave) => {
+                onKeyDown={(event, _inputRef, preventBlurSave) => {
                   if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
                     event.preventDefault();
                     preventBlurSave();
-                    await actions.saveStartAt();
+                    actions.saveStartAt();
                     if (event.shiftKey) {
                       actions.cycleFieldPrev();
                     } else {
                       actions.cycleFieldNext();
                     }
                   }
-                })}
+                }}
                 onPreventBlurSave={(fn) => {
                   actions.updateContext((ctx) => {
                     ctx.panes.lifeLogs.preventBlurSave = fn;
@@ -271,18 +268,18 @@ export function LifeLog(props: {
                     ctx.panes.lifeLogs.pendingEndAt = timeTextToTimestamp(text);
                   });
                 }}
-                onKeyDown={awaitable(async (event, _inputRef, preventBlurSave) => {
+                onKeyDown={(event, _inputRef, preventBlurSave) => {
                   if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
                     event.preventDefault();
                     preventBlurSave();
-                    await actions.saveEndAt();
+                    actions.saveEndAt();
                     if (event.shiftKey) {
                       actions.cycleFieldPrev();
                     } else {
                       actions.cycleFieldNext();
                     }
                   }
-                })}
+                }}
                 onPreventBlurSave={(fn) => {
                   actions.updateContext((ctx) => {
                     ctx.panes.lifeLogs.preventBlurSave = fn;
@@ -314,11 +311,11 @@ export function LifeLog(props: {
                   ctx.panes.lifeLogs.pendingText = text;
                 });
               }}
-              onKeyDown={awaitable(async (event, inputRef, preventBlurSave) => {
+              onKeyDown={(event, inputRef, preventBlurSave) => {
                 if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
                   event.preventDefault();
                   preventBlurSave();
-                  await actions.saveText();
+                  actions.saveText();
                   if (event.shiftKey) {
                     actions.cycleFieldPrev();
                   } else {
@@ -335,7 +332,7 @@ export function LifeLog(props: {
                 ) {
                   event.preventDefault();
                   preventBlurSave();
-                  await actions.deleteEmptyLifeLogToPrev();
+                  actions.deleteEmptyLifeLogToPrev();
                   return;
                 }
 
@@ -347,9 +344,9 @@ export function LifeLog(props: {
                 ) {
                   event.preventDefault();
                   preventBlurSave();
-                  await actions.deleteEmptyLifeLogToNext();
+                  actions.deleteEmptyLifeLogToNext();
                 }
-              })}
+              }}
               onPreventBlurSave={(fn) => {
                 actions.updateContext((ctx) => {
                   ctx.panes.lifeLogs.preventBlurSave = fn;

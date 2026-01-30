@@ -14,7 +14,6 @@ declare global {
   }
 }
 
-import { awaitable } from "@/awaitableCallback";
 import { DateNow, TimestampNow } from "@/date";
 import { LifeLog } from "@/panes/lifeLogs/lifeLog";
 import { MobileToolbar } from "@/panes/lifeLogs/mobileToolbar";
@@ -123,18 +122,16 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp; sc
   });
 
   // Handle "o" key when there are 0 lifeLogs
-  addKeyDownEventListener(
-    awaitable(async (event) => {
-      if (event.isComposing || event.ctrlKey) return;
-      if (lifeLogs$().length > 0) return;
-      if (event.code !== "KeyO") return;
+  addKeyDownEventListener((event) => {
+    if (event.isComposing || event.ctrlKey) return;
+    if (lifeLogs$().length > 0) return;
+    if (event.code !== "KeyO") return;
 
-      event.preventDefault();
-      event.stopImmediatePropagation();
+    event.preventDefault();
+    event.stopImmediatePropagation();
 
-      await actions.createFirstLifeLog();
-    }),
-  );
+    actions.createFirstLifeLog();
+  });
 
   const lifeLogIdWithNeighborIds$ = createMemo(
     () => {
