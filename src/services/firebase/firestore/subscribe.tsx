@@ -17,9 +17,13 @@ export function createSubscribeSignal<T extends object>(
   timestampPrefix$?: () => string,
 ): Accessor<DocumentData<T> | undefined> {
   const snapshot$ = createSubscribeWithResource(
-    query$,
-    (query, setValue: (value: DocumentSnapshot<T>) => void) => {
-      const unsubscribe = onSnapshot(query, (snapshot) => {
+    () => ({ query: query$() }),
+    (source, setValue: (value: DocumentSnapshot<T> | undefined) => void) => {
+      if (source.query === undefined) {
+        setValue(undefined);
+        return;
+      }
+      const unsubscribe = onSnapshot(source.query, (snapshot) => {
         console.timeStamp(`${timestampPrefix$?.() ?? "no prefix"}: createSubscribeSignal onSnapshot`);
         setValue(snapshot);
       });
@@ -46,9 +50,13 @@ export function createSubscribeAllSignal<T extends object>(
   timestampPrefix$?: () => string,
 ): Accessor<DocumentData<T>[]> {
   const snapshot$ = createSubscribeWithResource(
-    query$,
-    (query, setValue: (value: QuerySnapshot<T>) => void) => {
-      const unsubscribe = onSnapshot(query, (snapshot) => {
+    () => ({ query: query$() }),
+    (source, setValue: (value: QuerySnapshot<T> | undefined) => void) => {
+      if (source.query === undefined) {
+        setValue(undefined);
+        return;
+      }
+      const unsubscribe = onSnapshot(source.query, (snapshot) => {
         console.timeStamp(`${timestampPrefix$?.() ?? "no prefix"}: createSubscribeAllSignal onSnapshot`);
         setValue(snapshot);
       });

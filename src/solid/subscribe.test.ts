@@ -182,4 +182,41 @@ describe("createSubscribeWithResource", () => {
     // Most importantly: stale update was ignored
     expect(result.staleUpdateIgnored).toBe(true);
   });
+
+  it("should keep previous value when source$ becomes undefined", async () => {
+    // createResource doesn't call fetcher when source is undefined,
+    // so the signal keeps its previous value
+    const result = await new Promise<{ valueWithSource: string; valueWithoutSource: string }>((resolve) => {
+      createRoot((dispose) => {
+        const [source$, setSource] = createSignal<string | undefined>("initial");
+
+        const signal$ = createSubscribeWithResource<string, string, string>(
+          source$,
+          (source, setValue) => {
+            setValue(`data for ${source}`);
+          },
+          "initial value",
+        );
+
+        // Wait for initial data
+        setTimeout(() => {
+          const valueWithSource = signal$();
+
+          // Change source$ to undefined
+          setSource(undefined);
+
+          // Wait for reactive updates
+          setTimeout(() => {
+            const valueWithoutSource = signal$();
+            resolve({ valueWithSource, valueWithoutSource });
+            dispose();
+          }, 50);
+        }, 10);
+      });
+    });
+
+    expect(result.valueWithSource).toBe("data for initial");
+    // Previous value is kept since fetcher is not called when source is undefined
+    expect(result.valueWithoutSource).toBe("data for initial");
+  });
 });

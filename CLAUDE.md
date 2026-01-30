@@ -5,8 +5,10 @@
 - use `pnpm test` to run all test cases, `pnpm test/case "case title"` to run one case
   - always consider to run cases one by one first
   - pre-commit hook runs all tests, so they should all pass without any changes
+  - use `pnpm test ${file}` to run tests in a file
 - use `git restore` instead of `git checkout` to restore file content from commit
 - use `pnpm tsc` for type check
 - if test fails, add `console.log` to debug first to investigate the problem
   - use `createComputed` to trace the signal changes
+- use `pnpm lint` for lint
 - for planning, always consider adding tests instead of manual testing

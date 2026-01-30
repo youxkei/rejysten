@@ -53,37 +53,25 @@ export function Search() {
     return Object.keys(ngramMap);
   });
 
-  // Query Firestore with the first ngram
-  const rawResults$ = createSubscribeAllSignal(
+  // Query Firestore with all ngrams
+  const results$ = createSubscribeAllSignal(
     firestore,
     () => {
       const ngrams = queryNgrams$();
       if (ngrams.length === 0) return undefined;
 
-      // Query with first ngram
-      return query(ngramsCol, where(`ngramMap.${ngrams[0]}`, "==", true));
+      // Query with all ngrams
+      let q = query(ngramsCol);
+      for (const ngram of ngrams) {
+        q = query(q, where(`ngramMap.${ngram}`, "==", true));
+      }
+      return q;
     },
     () => `search ngrams`,
   );
 
-  // Filter results client-side for all required ngrams
-  const filteredResults$ = createMemo(() => {
-    const ngrams = queryNgrams$();
-    if (ngrams.length === 0) return [];
-
-    const results = rawResults$();
-    if (ngrams.length === 1) return results;
-
-    // Filter for documents that have all ngrams
-    return results.filter((result) => {
-      const ngramMap = result.ngramMap;
-      return ngrams.every((ngram) => ngramMap[ngram] === true);
-    });
-  });
-
   const resultIds$ = createMemo(() => {
-    queryNgrams$(); // FIXME: investigate why this is necessary for reactivity
-    return filteredResults$().map((r) => r.id);
+    return results$().map((r) => r.id);
   });
 
   // Update actions context with result IDs
