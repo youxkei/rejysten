@@ -77,12 +77,20 @@ async function startEmulator(): Promise<EmulatorInstance> {
     console.error(`[emulator:${port}] ${data.toString().trim()}`);
   });
 
-  console.log(`[globalSetup] Waiting for emulator on port ${port} to be ready...`);
-  await waitForEmulator(port);
-  console.log(`[globalSetup] Emulator on port ${port} is ready`);
-
+  // Track container immediately so it gets cleaned up even if wait times out
   const instance: EmulatorInstance = { port, containerName, process: emulatorProcess };
   activeEmulators.set(port, instance);
+
+  console.log(`[globalSetup] Waiting for emulator on port ${port} to be ready...`);
+  try {
+    await waitForEmulator(port);
+    console.log(`[globalSetup] Emulator on port ${port} is ready`);
+  } catch (e) {
+    // Clean up the container if it failed to start
+    console.error(`[globalSetup] Emulator on port ${port} failed to start, cleaning up...`);
+    await stopEmulator(port);
+    throw e;
+  }
 
   return instance;
 }
@@ -191,6 +199,22 @@ export async function setup(project: TestProject) {
 
   server.listen(httpPort);
   console.log(`[globalSetup] HTTP server listening on port ${httpPort}`);
+
+  // Add signal handlers for cleanup on Ctrl+C or termination
+  const cleanup = async () => {
+    console.log(`[globalSetup] Received shutdown signal, cleaning up...`);
+    await teardown();
+    process.exit(0);
+  };
+
+  process.once("SIGINT", cleanup);
+  process.once("SIGTERM", cleanup);
+
+  // Return teardown function (Vitest recommended pattern)
+  return async () => {
+    console.log(`[globalSetup] Teardown called via return function`);
+    await teardown();
+  };
 }
 
 export async function teardown() {

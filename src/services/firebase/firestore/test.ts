@@ -28,7 +28,7 @@ export function createTestFirestoreService(emulatorPort: number, appName: string
     );
   }
 
-  const firestore = initializeFirestore(firebaseApp, { localCache: persistentLocalCache() }, "test");
+  const firestore = initializeFirestore(firebaseApp, { localCache: persistentLocalCache() }, "(default)");
 
   connectFirestoreEmulator(firestore, "localhost", emulatorPort);
 

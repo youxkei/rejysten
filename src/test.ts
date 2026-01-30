@@ -71,9 +71,9 @@ export async function getEmulatorPort(): Promise<number> {
   return port;
 }
 
-async function clearDatabase(database: string = "(default)"): Promise<void> {
+async function clearDatabase(): Promise<void> {
   const emulatorPort = await getEmulatorPort();
-  await fetch(`http://localhost:${emulatorPort}/emulator/v1/projects/demo/databases/${database}/documents`, {
+  await fetch(`http://localhost:${emulatorPort}/emulator/v1/projects/demo/databases/(default)/documents`, {
     method: "DELETE",
   });
 }
