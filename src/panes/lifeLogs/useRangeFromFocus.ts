@@ -1,6 +1,6 @@
 import { debounce } from "@solid-primitives/scheduled";
 import { Timestamp } from "firebase/firestore";
-import { createEffect, createSignal, on, startTransition } from "solid-js";
+import { createEffect, createSignal, startTransition } from "solid-js";
 
 import { awaitable } from "@/awaitableCallback";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
@@ -31,15 +31,16 @@ export function useRangeFromFocus(options: UseRangeFromFocusOptions) {
       const lifeLog = await getDoc(firestore, lifeLogsCol, lifeLogId);
       if (!lifeLog) return;
 
-      const focusedStartAt = lifeLog.startAt;
+      const focusedEndAt = lifeLog.endAt;
 
-      // Don't slide window for LifeLogs with noneTimestamp startAt
+      // Don't slide window for LifeLogs with noneTimestamp endAt
       // These are newly created LifeLogs that haven't had their time set yet
-      if (focusedStartAt.isEqual(noneTimestamp)) return;
+      if (focusedEndAt.isEqual(noneTimestamp)) return;
 
-      // Slide window to center around focused LifeLog's startAt
-      const newStart = Timestamp.fromMillis(focusedStartAt.toMillis() - rangeMs);
-      const newEnd = Timestamp.fromMillis(focusedStartAt.toMillis() + rangeMs);
+      // Slide window to center around focused LifeLog's endAt
+      // This matches the query filter which uses endAt for filtering
+      const newStart = Timestamp.fromMillis(focusedEndAt.toMillis() - rangeMs);
+      const newEnd = Timestamp.fromMillis(focusedEndAt.toMillis() + rangeMs);
 
       await startTransition(() => {
         setRangeStart(newStart);
@@ -49,15 +50,9 @@ export function useRangeFromFocus(options: UseRangeFromFocusOptions) {
     options.debounceMs ?? 300,
   );
 
-  createEffect(
-    on(
-      () => state.panesLifeLogs.selectedLifeLogId,
-      (lifeLogId) => {
-        debouncedUpdateRange(lifeLogId);
-      },
-      { defer: true },
-    ),
-  );
+  createEffect(() => {
+    debouncedUpdateRange(state.panesLifeLogs.selectedLifeLogId);
+  });
 
   return {
     rangeStart$,

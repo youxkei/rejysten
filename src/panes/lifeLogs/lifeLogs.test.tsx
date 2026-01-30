@@ -1931,11 +1931,13 @@ describe("<LifeLogs />", () => {
       // Create LifeLogs at different time points (based on endAt for the new query):
       // - $farPast: endAt 9 days ago (outside initial 7-day range, visible after sliding to $nearPast)
       // - $nearPast: endAt 3 days ago (within initial 7-day range, will be selected first)
+      // - $futureLog: endAt 3 days in future (within initial range, used as navigation target)
       // Start from $nearPast and navigate forward with j key
       const { result } = await setupLifeLogsTest(task.id, db, {
         outOfRangeLifeLogs: [
           { id: "$farPast", text: "far past lifelog", daysAgo: 10, endDaysAgo: 9 },
           { id: "$nearPast", text: "near past lifelog", daysAgo: 4, endDaysAgo: 3 },
+          { id: "$futureLog", text: "future lifelog", daysAgo: -2, endDaysAgo: -3 },
         ],
         lifeLogsProps: { debounceMs: 0 },
         initialSelectedId: "$nearPast", // Start from $nearPast (endAt 3 days ago)
@@ -1946,11 +1948,14 @@ describe("<LifeLogs />", () => {
       await awaitPendingCallbacks();
 
       // After sliding to $nearPast, $farPast should now be visible
+      // $nearPast's endAt is 3 days ago, so new range is (3-7)=10 days ago to (3+7)=4 days in future
+      // $farPast (endAt 9 days ago) is within this range
       await result.findByText("far past lifelog");
       await result.findByText("near past lifelog");
 
-      // Now navigate forward with j key to $log1
-      // Order by endAt: $farPast (endAt 9d ago) -> $nearPast (endAt 3d ago) -> $log1 (endAt none) -> $log2 -> $log3
+      // Order by endAt: $farPast (9d ago) -> $nearPast (3d ago) -> $futureLog (3d future) -> $log1-4 (noneTimestamp)
+      // Note: LifeLogs with valid endAt come before noneTimestamp ones in the query order
+      // Navigate forward with j key once to reach $futureLog
       await userEvent.keyboard("{j}");
       await awaitPendingCallbacks();
 
@@ -1958,12 +1963,37 @@ describe("<LifeLogs />", () => {
       await new Promise((r) => setTimeout(r, 50));
       await awaitPendingCallbacks();
 
-      // After sliding to $log1, $farPast should be outside the range (endAt 9 days ago from day 0)
-      // New range is day -7 to day +7, so $farPast (endAt day -9) is outside
+      // After sliding to $futureLog (endAt 3 days in future), $farPast should be outside the range
+      // $futureLog's endAt is 3 days in future (-3 daysAgo), so new range is (-3-7)=-10 days to (-3+7)=4 days
+      // That means range is from 4 days ago to 10 days in future
+      // $farPast (endAt 9 days ago) is outside this range
       expect(result.queryByText("far past lifelog")).toBeNull();
 
-      // $log1 should be visible and selected
-      expect(result.getByText("first lifelog")).toBeTruthy();
+      // $futureLog should be visible and selected
+      expect(result.getByText("future lifelog")).toBeTruthy();
+    });
+
+    it("slides window correctly for LifeLog with large startAt-endAt difference", async ({ db, task }) => {
+      // Create a LifeLog where:
+      // - startAt is 30 days ago (far outside range)
+      // - endAt is 14 days ago (outside default 7-day range, but will be used for window sliding)
+      // The window should slide to center around endAt (14 days ago), not startAt (30 days ago)
+      // This tests that window sliding uses endAt to match the query filter
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: [{ id: "$longLog", text: "long duration lifelog", daysAgo: 30, endDaysAgo: 14 }],
+        lifeLogsProps: { debounceMs: 0 },
+        initialSelectedId: "$longLog",
+      });
+
+      // Wait for debounced update to slide the window
+      await new Promise((r) => setTimeout(r, 50));
+      await awaitPendingCallbacks();
+
+      // The LifeLog should be visible after window slides to center around endAt (14 days ago)
+      // New range: (14-7) = 21 days ago to (14+7) = 7 days ago
+      // endAt (14 days ago) is within this range, so the LifeLog should be visible
+      const longLogElement = await result.findByText("long duration lifelog");
+      expect(longLogElement).toBeTruthy();
     });
   });
 
