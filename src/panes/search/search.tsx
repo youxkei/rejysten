@@ -71,7 +71,7 @@ export function Search() {
   );
 
   const resultIds$ = createMemo(() => {
-    return results$().map((r) => r.id);
+    return results$().map((r) => r.id).toReversed();
   });
 
   // Update actions context with result IDs
@@ -93,7 +93,11 @@ export function Search() {
 
     if (event.key === "Escape") {
       event.preventDefault();
-      actions.closeSearch();
+      if (inputFocused) {
+        inputRef.blur();
+      } else {
+        actions.closeSearch();
+      }
       return;
     }
 
@@ -105,6 +109,21 @@ export function Search() {
 
     // Navigation keys only when input is not focused
     if (!inputFocused) {
+      if (event.code === "KeyI") {
+        event.preventDefault();
+        inputRef?.focus();
+        inputRef?.setSelectionRange(0, 0);
+        return;
+      }
+
+      if (event.code === "KeyA") {
+        event.preventDefault();
+        inputRef?.focus();
+        const len = inputRef?.value.length ?? 0;
+        inputRef?.setSelectionRange(len, len);
+        return;
+      }
+
       if (event.key === "j") {
         event.preventDefault();
         actions.navigateNext();
@@ -141,12 +160,8 @@ export function Search() {
     });
   }
 
-  function handleInputKeyDown(e: KeyboardEvent) {
-    // Blur input on Tab to enable j/k navigation
-    if (e.key === "Tab") {
-      e.preventDefault();
-      inputRef?.blur();
-    }
+  function handleInputKeyDown(_e: KeyboardEvent) {
+    // Tab key handling removed - use Escape to blur input
   }
 
   return (

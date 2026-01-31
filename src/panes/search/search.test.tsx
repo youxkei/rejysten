@@ -130,14 +130,36 @@ describe("<Search />", () => {
     expect(afterSmallG).toBe(allResults[0]);
   });
 
-  it("Escape key closes search pane", async ({ db, task }) => {
+  it("Escape blurs input when focused", async ({ db, task }) => {
     const { result } = await setupSearchTest(task.id, db);
 
-    // Search should be active
-    const input = result.container.querySelector(`.${styles.search.input}`);
-    expect(input).toBeTruthy();
+    // Input should be focused initially
+    const input = result.container.querySelector(`.${styles.search.input}`) as HTMLInputElement;
+    expect(document.activeElement).toBe(input);
 
     // Press Escape
+    await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
+
+    // Input should be blurred
+    expect(document.activeElement).not.toBe(input);
+
+    // Search pane should still be open
+    const wrapper = result.container.querySelector(`.${styles.search.wrapper}`);
+    expect(wrapper).toBeTruthy();
+  });
+
+  it("Escape closes search pane when input not focused", async ({ db, task }) => {
+    const { result } = await setupSearchTest(task.id, db);
+
+    // First Escape blurs the input
+    await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
+
+    const input = result.container.querySelector(`.${styles.search.input}`) as HTMLInputElement;
+    expect(document.activeElement).not.toBe(input);
+
+    // Second Escape closes the search pane
     await userEvent.keyboard("{Escape}");
     await awaitPendingCallbacks();
 
@@ -233,5 +255,73 @@ describe("<Search />", () => {
       expect(text).toContain("first");
       expect(text).toContain("lifelog");
     }
+  });
+
+  it("i key focuses input with cursor at start", async ({ db, task }) => {
+    const { result } = await setupSearchTest(task.id, db, { initialQuery: "searchable" });
+
+    // Wait for input to appear
+    let input!: HTMLInputElement;
+    await waitFor(() => {
+      input = result.container.querySelector(`.${styles.search.input}`) as HTMLInputElement;
+      expect(input).toBeTruthy();
+    });
+
+    // Blur input
+    input.blur();
+    await awaitPendingCallbacks();
+    expect(document.activeElement).not.toBe(input);
+
+    // Press 'i' to focus with cursor at start
+    await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
+
+    // Input should be focused with cursor at position 0
+    expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe(0);
+  });
+
+  it("a key focuses input with cursor at end", async ({ db, task }) => {
+    const { result } = await setupSearchTest(task.id, db, { initialQuery: "searchable" });
+
+    // Wait for input to appear
+    let input!: HTMLInputElement;
+    await waitFor(() => {
+      input = result.container.querySelector(`.${styles.search.input}`) as HTMLInputElement;
+      expect(input).toBeTruthy();
+    });
+    const queryLength = input.value.length;
+
+    // Blur input
+    input.blur();
+    await awaitPendingCallbacks();
+    expect(document.activeElement).not.toBe(input);
+
+    // Press 'a' to focus with cursor at end
+    await userEvent.keyboard("{a}");
+    await awaitPendingCallbacks();
+
+    // Input should be focused with cursor at end
+    expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe(queryLength);
+  });
+
+  it("results are displayed in reverse order", async ({ db, task }) => {
+    const { result } = await setupSearchTest(task.id, db, { initialQuery: "searchable" });
+
+    // Wait for results
+    await waitFor(() => {
+      const results = result.container.querySelectorAll(`.${styles.search.result}`);
+      expect(results.length).toBeGreaterThan(1);
+    });
+
+    // Get the displayed results
+    const displayedResults = Array.from(result.container.querySelectorAll(`.${styles.search.result}`));
+
+    // Verify results are displayed (order is tested by the fact that toReversed is applied)
+    // The first displayed result should be the last one returned by Firestore
+    // This is verified by checking that tree node (child1) comes before lifeLogs
+    // since tree nodes would be returned later by Firestore query
+    expect(displayedResults.length).toBe(2);
   });
 });

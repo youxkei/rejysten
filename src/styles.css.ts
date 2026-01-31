@@ -181,6 +181,7 @@ export const styles = {
       outline: "none",
       ":focus": {
         borderColor: nord[9],
+        boxShadow: `0 0 0 2px ${nord[9]}44`,
       },
     }),
     resultsContainer: style({
