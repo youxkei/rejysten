@@ -214,7 +214,9 @@ export function LifeLog(props: {
               <EditableValue
                 debugId="startAt"
                 value={lifeLog$().startAt}
-                onSave={actions.saveStartAt}
+                onSave={(_, stopEditing) => {
+                  actions.saveStartAt(stopEditing);
+                }}
                 isSelected={isLifeLogSelected$() && props.editingField == EditingField.StartAt}
                 isEditing={props.isEditing && props.editingField === EditingField.StartAt}
                 setIsEditing={(editing) => {
@@ -234,7 +236,7 @@ export function LifeLog(props: {
                   if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
                     event.preventDefault();
                     preventBlurSave();
-                    actions.saveStartAt();
+                    actions.saveStartAt(false);
                     if (event.shiftKey) {
                       actions.cycleFieldPrev();
                     } else {
@@ -252,7 +254,9 @@ export function LifeLog(props: {
               <EditableValue
                 debugId="endAt"
                 value={lifeLog$().endAt}
-                onSave={actions.saveEndAt}
+                onSave={(_, stopEditing) => {
+                  actions.saveEndAt(stopEditing);
+                }}
                 isSelected={isLifeLogSelected$() && props.editingField == EditingField.EndAt}
                 isEditing={props.isEditing && props.editingField === EditingField.EndAt}
                 setIsEditing={(editing) => {
@@ -272,7 +276,7 @@ export function LifeLog(props: {
                   if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
                     event.preventDefault();
                     preventBlurSave();
-                    actions.saveEndAt();
+                    actions.saveEndAt(false);
                     if (event.shiftKey) {
                       actions.cycleFieldPrev();
                     } else {
@@ -290,7 +294,9 @@ export function LifeLog(props: {
             <EditableValue
               debugId="text"
               value={lifeLog$().text}
-              onSave={actions.saveText}
+              onSave={(_, stopEditing) => {
+                actions.saveText(stopEditing);
+              }}
               isSelected={isLifeLogSelected$() && props.editingField === EditingField.Text}
               isEditing={props.isEditing && props.editingField === EditingField.Text}
               setIsEditing={(editing) => {
@@ -315,7 +321,7 @@ export function LifeLog(props: {
                 if (event.code === "Tab" && !event.isComposing && !event.ctrlKey) {
                   event.preventDefault();
                   preventBlurSave();
-                  actions.saveText();
+                  actions.saveText(false);
                   if (event.shiftKey) {
                     actions.cycleFieldPrev();
                   } else {

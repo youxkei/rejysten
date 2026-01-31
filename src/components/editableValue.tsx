@@ -5,7 +5,7 @@ import { addKeyDownEventListener } from "@/solid/event";
 
 export interface EditableValueProps<V> {
   value: V;
-  onSave: (newValue: V) => void;
+  onSave: (newValue: V, stopEditing: boolean) => void;
   isSelected: boolean;
   isEditing: boolean;
   setIsEditing: (isEditing: boolean) => void;
@@ -40,14 +40,19 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
   const [blurSavePrevented, setBlurSavePrevented] = createSignal(false);
   const [editTrigger, setEditTrigger] = createSignal<"i" | "a" | undefined>(undefined);
 
-  function saveChanges(text: string) {
+  function saveChanges(text: string, stopEditing: boolean) {
     const newValue = props.fromText(text);
     if (newValue !== undefined && props.toText(newValue) !== props.toText(props.value)) {
-      props.onSave(newValue);
+      props.onSave(newValue, stopEditing);
+    } else if (stopEditing) {
+      // No changes, but still need to stop editing
+      props.onSave(props.value, stopEditing);
     }
   }
 
-  const debouncedSaveChanges = debounce(saveChanges, props.debounceMs ?? 1000);
+  const debouncedSaveChanges = debounce((text: string) => {
+    saveChanges(text, false);
+  }, props.debounceMs ?? 1000);
 
   // Handle 'i' key to enter editing mode with cursor at start, 'a' for cursor at end
   addKeyDownEventListener((event) => {
@@ -156,8 +161,8 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                 if (e.code === "Escape") {
                   e.preventDefault();
                   debouncedSaveChanges.clear();
-                  saveChanges(editText());
-                  props.setIsEditing(false);
+                  setBlurSavePrevented(true);
+                  saveChanges(editText(), true);
                   setEditText("");
                   return;
                 }
@@ -173,8 +178,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                   return;
                 }
                 debouncedSaveChanges.clear();
-                saveChanges(editText());
-                props.setIsEditing(false);
+                saveChanges(editText(), true);
                 setEditText("");
               }}
             />

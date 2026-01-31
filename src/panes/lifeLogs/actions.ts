@@ -69,15 +69,15 @@ declare module "@/services/actions" {
       startEditing: (field?: EditingField) => void;
       cycleFieldNext: () => void;
       cycleFieldPrev: () => void;
-      saveText: () => void;
-      saveStartAt: () => void;
-      saveEndAt: () => void;
+      saveText: (stopEditing: boolean) => void;
+      saveStartAt: (stopEditing: boolean) => void;
+      saveEndAt: (stopEditing: boolean) => void;
       deleteEmptyLifeLogToPrev: () => void;
       deleteEmptyLifeLogToNext: () => void;
       createFirstLifeLog: () => void;
 
       // Tree node actions
-      saveTreeNode: () => void;
+      saveTreeNode: (stopEditing: boolean) => void;
       splitTreeNode: () => void;
       removeOrMergeNodeWithAbove: () => void;
       mergeTreeNodeWithBelow: () => void;
@@ -396,15 +396,30 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     context.setEditingField(fields[nextIndex]);
   }
 
+  // Helper to properly stop editing (reset both isEditing and editingField)
+  function doStopEditing() {
+    context.setEditingField(EditingField.Text);
+    context.setIsEditing(false);
+  }
+
   // Save operations for editable fields
-  async function saveText() {
-    if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
+  async function saveText(stopEditing: boolean) {
+    if (state.panesLifeLogs.selectedLifeLogNodeId !== "") {
+      if (stopEditing) doStopEditing();
+      return;
+    }
 
     const selectedLifeLogId = state.panesLifeLogs.selectedLifeLogId;
-    if (selectedLifeLogId === "") return;
+    if (selectedLifeLogId === "") {
+      if (stopEditing) doStopEditing();
+      return;
+    }
 
     const newText = context.pendingText;
-    if (newText === undefined) return;
+    if (newText === undefined) {
+      if (stopEditing) doStopEditing();
+      return;
+    }
 
     firestore.setClock(true);
     try {
@@ -417,19 +432,29 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
       });
     } finally {
       await startTransition(() => {
+        if (stopEditing) doStopEditing();
         firestore.setClock(false);
       });
     }
   }
 
-  async function saveStartAt() {
-    if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
+  async function saveStartAt(stopEditing: boolean) {
+    if (state.panesLifeLogs.selectedLifeLogNodeId !== "") {
+      if (stopEditing) doStopEditing();
+      return;
+    }
 
     const selectedLifeLogId = state.panesLifeLogs.selectedLifeLogId;
-    if (selectedLifeLogId === "") return;
+    if (selectedLifeLogId === "") {
+      if (stopEditing) doStopEditing();
+      return;
+    }
 
     const newTimestamp = context.pendingStartAt;
-    if (newTimestamp === undefined) return;
+    if (newTimestamp === undefined) {
+      if (stopEditing) doStopEditing();
+      return;
+    }
 
     firestore.setClock(true);
     try {
@@ -442,19 +467,29 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
       });
     } finally {
       await startTransition(() => {
+        if (stopEditing) doStopEditing();
         firestore.setClock(false);
       });
     }
   }
 
-  async function saveEndAt() {
-    if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
+  async function saveEndAt(stopEditing: boolean) {
+    if (state.panesLifeLogs.selectedLifeLogNodeId !== "") {
+      if (stopEditing) doStopEditing();
+      return;
+    }
 
     const selectedLifeLogId = state.panesLifeLogs.selectedLifeLogId;
-    if (selectedLifeLogId === "") return;
+    if (selectedLifeLogId === "") {
+      if (stopEditing) doStopEditing();
+      return;
+    }
 
     const newTimestamp = context.pendingEndAt;
-    if (newTimestamp === undefined) return;
+    if (newTimestamp === undefined) {
+      if (stopEditing) doStopEditing();
+      return;
+    }
 
     firestore.setClock(true);
     try {
@@ -467,6 +502,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
       });
     } finally {
       await startTransition(() => {
+        if (stopEditing) doStopEditing();
         firestore.setClock(false);
       });
     }
@@ -606,12 +642,18 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
   // Tree node actions
   const lifeLogTreeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
 
-  async function saveTreeNode() {
+  async function saveTreeNode(stopEditing: boolean) {
     const selectedNodeId = state.panesLifeLogs.selectedLifeLogNodeId;
-    if (selectedNodeId === "") return;
+    if (selectedNodeId === "") {
+      if (stopEditing) doStopEditing();
+      return;
+    }
 
     const newText = context.pendingNodeText;
-    if (newText === undefined) return;
+    if (newText === undefined) {
+      if (stopEditing) doStopEditing();
+      return;
+    }
 
     firestore.setClock(true);
     try {
@@ -624,6 +666,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
       });
     } finally {
       await startTransition(() => {
+        if (stopEditing) doStopEditing();
         firestore.setClock(false);
       });
     }
@@ -810,7 +853,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     const selectedNodeId = state.panesLifeLogs.selectedLifeLogNodeId;
     if (selectedNodeId === "") return;
 
-    await saveTreeNode();
+    await saveTreeNode(false);
     actions.components.tree.indentNode();
     context.setTabCursorInfo({ nodeId: selectedNodeId, cursorPosition });
   }
@@ -820,7 +863,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     const selectedNodeId = state.panesLifeLogs.selectedLifeLogNodeId;
     if (selectedNodeId === "") return;
 
-    await saveTreeNode();
+    await saveTreeNode(false);
     actions.components.tree.dedentNode();
     context.setTabCursorInfo({ nodeId: selectedNodeId, cursorPosition });
   }

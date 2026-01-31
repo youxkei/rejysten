@@ -67,7 +67,9 @@ export function LifeLogTreeNode(props: {
       value={props.node$().text}
       toText={(text) => text}
       fromText={(text) => text}
-      onSave={actions.saveTreeNode}
+      onSave={(_, stopEditing) => {
+        actions.saveTreeNode(stopEditing);
+      }}
       isSelected={props.isSelected$()}
       isEditing={props.isEditing}
       setIsEditing={(editing) => {

@@ -288,6 +288,7 @@ describe("<LifeLog />", () => {
 
     // Wait for tree nodes to render
     await result.findByText("first child");
+    await awaitPendingCallbacks();
 
     // Initial state: child1 is selected
     const child1Element = result.getByText("first child");
@@ -514,6 +515,7 @@ describe("<LifeLog />", () => {
     await result.findByText("second child");
     await result.findByText("grandchild");
     await result.findByText("great-grandchild");
+    await awaitPendingCallbacks();
 
     // Verify initial selection
     expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
@@ -598,6 +600,7 @@ describe("<LifeLog />", () => {
     await result.findByText("second child");
     await result.findByText("grandchild");
     await result.findByText("great-grandchild");
+    await awaitPendingCallbacks();
 
     // Verify initial selection
     expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);

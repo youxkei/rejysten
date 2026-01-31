@@ -193,22 +193,21 @@ function EditingToolbar() {
   const handleExitEditing = withOwner(() => {
     if (state.panesLifeLogs.selectedLifeLogNodeId !== "") {
       // Tree node editing
-      actions.saveTreeNode();
+      actions.saveTreeNode(true);
     } else {
       // LifeLog editing - save based on current editing field
       switch (context.editingField) {
         case EditingField.Text:
-          actions.saveText();
+          actions.saveText(true);
           break;
         case EditingField.StartAt:
-          actions.saveStartAt();
+          actions.saveStartAt(true);
           break;
         case EditingField.EndAt:
-          actions.saveEndAt();
+          actions.saveEndAt(true);
           break;
       }
     }
-    context.setIsEditing(false);
   });
 
   // Prevent blur by stopping mousedown default behavior
