@@ -9,6 +9,7 @@ import { FirebaseServiceProvider } from "@/services/firebase";
 import { FirestoreServiceProvider } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
+import { createIsMobile } from "@/solid/responsive";
 import { styles } from "@/styles.css";
 import { hourMs, dayMs } from "@/timestamp";
 
@@ -26,6 +27,7 @@ registerSW({
 function MainContent() {
   const { state } = useStoreService();
   const actions = useActionsService().panes.search;
+  const isMobile = createIsMobile();
 
   // "/" key handler to open search (when not editing)
   addKeyDownEventListener((event) => {
@@ -41,7 +43,7 @@ function MainContent() {
   });
 
   return (
-    <Show when={state.panesSearch.isActive} fallback={<LifeLogs rangeMs={1 * dayMs} />}>
+    <Show when={state.panesSearch.isActive} fallback={<LifeLogs rangeMs={isMobile() ? dayMs / 2 : dayMs} />}>
       <Search />
     </Show>
   );

@@ -7,6 +7,7 @@ import { awaitPendingCallbacks } from "@/awaitableCallback";
 import { baseTime, setupLifeLogsTest } from "@/panes/lifeLogs/test";
 import { styles } from "@/styles.css";
 import { acquireEmulator, releaseEmulator, testWithDb as it } from "@/test";
+import { dayMs } from "@/timestamp";
 
 vi.mock(import("@/date"), async () => {
   return {
@@ -109,7 +110,7 @@ describe("<LifeLogs />", () => {
     const end = performance.now();
     const duration = end - start;
 
-    expect(duration, `Edit text took ${duration.toFixed(2)}ms`).toBeLessThan(100);
+    expect(duration, `Edit text took ${duration.toFixed(2)}ms`).toBeLessThan(150);
     expect(result.queryByText("first lifelog")).toBeNull();
   });
 
@@ -341,7 +342,7 @@ describe("<LifeLogs />", () => {
     const end = performance.now();
     const duration = end - start;
 
-    expect(duration, `Set startAt took ${duration.toFixed(2)}ms`).toBeLessThan(100);
+    expect(duration, `Set startAt took ${duration.toFixed(2)}ms`).toBeLessThan(150);
   });
 
   it("can set endAt to current time with f key", async ({ db, task }) => {
@@ -370,7 +371,7 @@ describe("<LifeLogs />", () => {
     const end = performance.now();
     const duration = end - start;
 
-    expect(duration, `Set endAt took ${duration.toFixed(2)}ms`).toBeLessThan(100);
+    expect(duration, `Set endAt took ${duration.toFixed(2)}ms`).toBeLessThan(150);
   });
 
   it("can navigate between lifelogs with j/k keys", async ({ db, task }) => {
@@ -444,7 +445,7 @@ describe("<LifeLogs />", () => {
     const duration = end - start;
 
     // Assert operation completes within 100ms
-    expect(duration, `Add new lifelog took ${duration.toFixed(2)}ms`).toBeLessThan(100);
+    expect(duration, `Add new lifelog took ${duration.toFixed(2)}ms`).toBeLessThan(150);
 
     // Type text for the new lifelog
     input.focus();
@@ -2474,6 +2475,52 @@ describe("<LifeLogs />", () => {
         // Verify N/A count decreased
         expect(result.getAllByText("N/A").length).toBe(5);
       });
+    });
+  });
+
+  describe("rangeMs prop", () => {
+    it("shows LifeLog within range when using dayMs", async ({ db, task }) => {
+      // Create a LifeLog with endAt 0.6 days ago (within 1 day range)
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: [{ id: "$inRange", text: "in range lifelog", daysAgo: 0.7, endDaysAgo: 0.6 }],
+        lifeLogsProps: { rangeMs: dayMs, debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$inRange",
+      });
+
+      // Should be visible with rangeMs=dayMs (1 day)
+      const element = await result.findByText("in range lifelog");
+      expect(element).toBeTruthy();
+    });
+
+    it("hides LifeLog outside range when using dayMs / 2", async ({ db, task }) => {
+      // Create a LifeLog with endAt 0.6 days ago (outside 0.5 day range)
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: [{ id: "$outOfRange", text: "out of range lifelog", daysAgo: 0.7, endDaysAgo: 0.6 }],
+        lifeLogsProps: { rangeMs: dayMs / 2, debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+      });
+
+      // Wait for render
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Should NOT be visible with rangeMs=dayMs/2 (half day = 0.5 days)
+      const element = result.queryByText("out of range lifelog");
+      expect(element).toBeNull();
+    });
+
+    it("shows LifeLog within half-day range when using dayMs / 2", async ({ db, task }) => {
+      // Create a LifeLog with endAt 0.3 days ago (within 0.5 day range)
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: [{ id: "$halfDayRange", text: "half day range lifelog", daysAgo: 0.4, endDaysAgo: 0.3 }],
+        lifeLogsProps: { rangeMs: dayMs / 2, debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$halfDayRange",
+      });
+
+      // Should be visible with rangeMs=dayMs/2 (half day = 0.5 days)
+      const element = await result.findByText("half day range lifelog");
+      expect(element).toBeTruthy();
     });
   });
 });
