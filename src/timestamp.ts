@@ -88,3 +88,18 @@ export function timeTextToTimestamp(text: string) {
 
   return;
 }
+
+export function formatDuration(startAt: Timestamp, endAt: Timestamp): string | undefined {
+  if (startAt.isEqual(noneTimestamp) || endAt.isEqual(noneTimestamp)) {
+    return undefined;
+  }
+
+  const durationMs = endAt.toMillis() - startAt.toMillis();
+  if (durationMs < 0) return undefined;
+
+  const totalSeconds = Math.floor(durationMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}

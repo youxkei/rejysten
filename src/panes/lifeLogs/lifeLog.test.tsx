@@ -2337,4 +2337,33 @@ describe("<LifeLog />", () => {
       });
     });
   });
+
+  describe("duration display", () => {
+    it("displays duration when both startAt and endAt are set", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        includeLifeLogWithDuration: true,
+      });
+
+      // Wait for log with duration to appear (startAt 09:00:00, endAt 09:30:45 = 30:45 duration)
+      await result.findByText("log with duration");
+
+      // Verify duration is displayed (30:45)
+      expect(result.getByText("(30:45)")).toBeDefined();
+    });
+
+    it("does not display duration when endAt is noneTimestamp", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await result.findByText("first lifelog");
+
+      // The default lifeLogs have endAt = noneTimestamp, so no duration should be shown
+      // Check that no duration text like "(X:XX)" appears in the timeRange
+      const timeRange = result
+        .getByText("first lifelog")
+        .closest(`.${styles.lifeLogTree.container}`)
+        ?.querySelector(`.${styles.lifeLogTree.timeRange}`);
+
+      expect(timeRange?.textContent).not.toMatch(/\(\d+:\d{2}\)/);
+    });
+  });
 });

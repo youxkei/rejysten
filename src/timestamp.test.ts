@@ -1,7 +1,7 @@
 import { Timestamp } from "firebase/firestore";
 import { describe, it, expect } from "vitest";
 
-import { noneTimestamp, timestampToTimeText, timeTextToTimestamp } from "@/timestamp";
+import { formatDuration, noneTimestamp, timestampToTimeText, timeTextToTimestamp } from "@/timestamp";
 
 describe("timestamp", () => {
   describe("timestampToTimeText", () => {
@@ -134,6 +134,53 @@ describe("timestamp", () => {
       const parsedTs = timeTextToTimestamp(timeText!);
       expect(parsedTs).toBeDefined();
       expect(parsedTs!.toDate()).toEqual(originalTs.toDate());
+    });
+  });
+
+  describe("formatDuration", () => {
+    it("returns undefined when startAt is noneTimestamp", () => {
+      const endAt = Timestamp.fromDate(new Date(2024, 0, 15, 14, 30, 0));
+      expect(formatDuration(noneTimestamp, endAt)).toBeUndefined();
+    });
+
+    it("returns undefined when endAt is noneTimestamp", () => {
+      const startAt = Timestamp.fromDate(new Date(2024, 0, 15, 14, 0, 0));
+      expect(formatDuration(startAt, noneTimestamp)).toBeUndefined();
+    });
+
+    it("returns undefined when duration is negative", () => {
+      const startAt = Timestamp.fromDate(new Date(2024, 0, 15, 14, 30, 0));
+      const endAt = Timestamp.fromDate(new Date(2024, 0, 15, 14, 0, 0));
+      expect(formatDuration(startAt, endAt)).toBeUndefined();
+    });
+
+    it("formats zero duration as 0:00", () => {
+      const ts = Timestamp.fromDate(new Date(2024, 0, 15, 14, 0, 0));
+      expect(formatDuration(ts, ts)).toBe("0:00");
+    });
+
+    it("formats seconds only duration", () => {
+      const startAt = Timestamp.fromDate(new Date(2024, 0, 15, 14, 0, 0));
+      const endAt = Timestamp.fromDate(new Date(2024, 0, 15, 14, 0, 45));
+      expect(formatDuration(startAt, endAt)).toBe("0:45");
+    });
+
+    it("formats minutes and seconds", () => {
+      const startAt = Timestamp.fromDate(new Date(2024, 0, 15, 14, 0, 0));
+      const endAt = Timestamp.fromDate(new Date(2024, 0, 15, 14, 5, 30));
+      expect(formatDuration(startAt, endAt)).toBe("5:30");
+    });
+
+    it("formats duration over an hour", () => {
+      const startAt = Timestamp.fromDate(new Date(2024, 0, 15, 14, 0, 0));
+      const endAt = Timestamp.fromDate(new Date(2024, 0, 15, 15, 15, 45));
+      expect(formatDuration(startAt, endAt)).toBe("75:45");
+    });
+
+    it("pads seconds with leading zero", () => {
+      const startAt = Timestamp.fromDate(new Date(2024, 0, 15, 14, 0, 0));
+      const endAt = Timestamp.fromDate(new Date(2024, 0, 15, 14, 1, 5));
+      expect(formatDuration(startAt, endAt)).toBe("1:05");
     });
   });
 });

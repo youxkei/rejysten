@@ -12,7 +12,7 @@ import { useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
 import { scrollWithOffset } from "@/solid/scroll";
 import { styles } from "@/styles.css";
-import { timestampToTimeText, timeTextToTimestamp } from "@/timestamp";
+import { formatDuration, timestampToTimeText, timeTextToTimestamp } from "@/timestamp";
 
 export function LifeLog(props: {
   id: string;
@@ -290,6 +290,9 @@ export function LifeLog(props: {
                   });
                 }}
               />
+              <Show when={formatDuration(lifeLog$().startAt, lifeLog$().endAt)}>
+                {(duration) => <span>({duration()})</span>}
+              </Show>
             </div>
             <EditableValue
               debugId="text"

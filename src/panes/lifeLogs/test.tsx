@@ -33,6 +33,7 @@ export interface SetupLifeLogsTestOptions {
   }>;
   initialSelectedId?: string;
   skipDefaultLifeLogs?: boolean;
+  includeLifeLogWithDuration?: boolean;
 }
 
 export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, options?: SetupLifeLogsTestOptions) {
@@ -191,6 +192,23 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                         createdAt: Timestamp.fromDate(baseTime),
                         updatedAt: Timestamp.fromDate(baseTime),
                       });
+
+                      // LifeLog with both startAt and endAt for duration display test (optional)
+                      if (options?.includeLifeLogWithDuration) {
+                        const startTimeDuration = new Date(baseTime);
+                        startTimeDuration.setHours(9, 0, 0, 0);
+                        const endTimeDuration = new Date(baseTime);
+                        endTimeDuration.setHours(9, 30, 45, 0);
+
+                        batch.set(doc(lifeLogs, "$logDuration"), {
+                          text: "log with duration",
+                          hasTreeNodes: false,
+                          startAt: Timestamp.fromDate(startTimeDuration),
+                          endAt: Timestamp.fromDate(endTimeDuration),
+                          createdAt: Timestamp.fromDate(baseTime),
+                          updatedAt: Timestamp.fromDate(baseTime),
+                        });
+                      }
 
                       // Generate additional LifeLogs for scroll testing
                       const lifeLogCount = options?.lifeLogCount ?? 4;
