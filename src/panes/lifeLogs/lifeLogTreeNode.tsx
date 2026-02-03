@@ -53,7 +53,7 @@ export function LifeLogTreeNode(props: {
     }
 
     // Handle Delete at end of node - merge with below node
-    if (event.code === "Delete" && inputRef.selectionStart === inputRef.value.length) {
+    if (event.code === "Delete" && inputRef.selectionStart === inputRef.value.length && inputRef.selectionStart === inputRef.selectionEnd) {
       event.preventDefault();
       preventBlurSave();
       actions.mergeTreeNodeWithBelow();
