@@ -795,9 +795,10 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
         await remove(firestore, batch, lifeLogTreeNodesCol, node);
       });
 
-      context.setMergeCursorInfo({ nodeId: aboveNode.id, cursorPosition });
       const setIsEditing = context.setIsEditing;
+      const setMergeCursorInfo = context.setMergeCursorInfo;
       await startTransition(() => {
+        setMergeCursorInfo({ nodeId: aboveNode.id, cursorPosition });
         setIsEditing(true);
         updateState((s) => {
           s.panesLifeLogs.selectedLifeLogNodeId = aboveNode.id;

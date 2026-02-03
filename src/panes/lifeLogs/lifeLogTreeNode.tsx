@@ -45,7 +45,7 @@ export function LifeLogTreeNode(props: {
     }
 
     // Handle Backspace at beginning of node
-    if (event.code === "Backspace" && inputRef.selectionStart === 0) {
+    if (event.code === "Backspace" && inputRef.selectionStart === 0 && inputRef.selectionStart === inputRef.selectionEnd) {
       event.preventDefault();
       preventBlurSave();
       actions.removeOrMergeNodeWithAbove();
