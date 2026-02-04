@@ -44,7 +44,7 @@ function NavigationToolbar() {
       // ⏫ button: go to FIRST node in tree (top of visual tree)
       treeActions.goToFirst();
     } else {
-      actions.goToLast();
+      actions.goToLatest();
     }
   });
   const handleEnterTree = withOwner(() => {

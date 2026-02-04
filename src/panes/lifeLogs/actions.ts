@@ -1,4 +1,4 @@
-import { Timestamp } from "firebase/firestore";
+import { limit, orderBy, query, Timestamp } from "firebase/firestore";
 import { startTransition } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
@@ -6,7 +6,7 @@ import { awaitable } from "@/awaitableCallback";
 import { DateNow, TimestampNow } from "@/date";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { type Actions, actionsCreator, initialActionsContext } from "@/services/actions";
-import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
+import { getCollection, getDoc, getDocs, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
 import {
   addNextSibling,
@@ -60,6 +60,7 @@ declare module "@/services/actions" {
       navigatePrev: () => void;
       goToFirst: () => void;
       goToLast: () => void;
+      goToLatest: () => void;
       enterTree: () => void;
       exitTree: () => void;
       newLifeLog: () => void;
@@ -151,6 +152,29 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
       return;
     updateState((s) => {
       s.panesLifeLogs.selectedLifeLogId = context.lastId;
+    });
+  }
+
+  async function goToLatest() {
+    // ツリーフォーカス中は何もしない
+    if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
+
+    // 並び順で最後のlifeLogを取得
+    // 通常の並び順: orderBy("endAt"), orderBy("startAt") の逆順
+    const latestQuery = query(
+      lifeLogsCol,
+      orderBy("endAt", "desc"),
+      orderBy("startAt", "desc"),
+      limit(1),
+    );
+    const docs = await getDocs(firestore, latestQuery);
+    if (docs.length === 0) return;
+
+    const latestId = docs[0].id;
+    if (state.panesLifeLogs.selectedLifeLogId === latestId) return;
+
+    updateState((s) => {
+      s.panesLifeLogs.selectedLifeLogId = latestId;
     });
   }
 
@@ -874,6 +898,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     navigatePrev,
     goToFirst,
     goToLast,
+    goToLatest: awaitable(goToLatest),
     enterTree: awaitable(enterTree),
     exitTree,
     newLifeLog: awaitable(newLifeLog),

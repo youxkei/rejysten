@@ -681,7 +681,7 @@ describe("<LifeLogs />", () => {
       const input = result.container.querySelector("input") as HTMLInputElement;
       expect(input).toBeTruthy();
       expect(input.value).toBe("fourth lifelog");
-      // Cursor is at the end because $log4 has non-empty text
+      // Cursor should be at the start (position 0)
       expect(input.selectionStart).toBe(0);
     }
 
@@ -2423,6 +2423,53 @@ describe("<LifeLogs />", () => {
         await awaitPendingCallbacks();
 
         // $log4 should now be selected (last LifeLog)
+        const log4 = result.getByText("fourth lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log4?.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      it("navigates to latest LifeLog outside range and slides window with ⏫ button", async ({ db, task }) => {
+        // Use narrow range (1ms) and start with an older LifeLog
+        // $log1 (startAt=10:30) will be selected initially
+        // Latest LifeLog ($log4) should be selected after clicking ⏫
+        const { result } = await setupLifeLogsTest(task.id, db, {
+          lifeLogsProps: { rangeMs: 1, debounceMs: 0 },
+          initialSelectedId: "$log1",
+        });
+
+        // Range slides to show $log1
+        await result.findByText("first lifelog");
+
+        // Click ⏫ (goToLatest) button
+        const goToLatestButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "⏫",
+        ) as HTMLButtonElement;
+        expect(goToLatestButton).toBeTruthy();
+
+        await userEvent.click(goToLatestButton);
+        await awaitPendingCallbacks();
+
+        // Range should slide and $log4 should now be visible and selected
+        await result.findByText("fourth lifelog");
+        const log4 = result.getByText("fourth lifelog").closest(`.${styles.lifeLogTree.container}`);
+        expect(log4?.className).toContain(styles.lifeLogTree.selected);
+      });
+
+      it("navigates to latest LifeLog with Shift+G", async ({ db, task }) => {
+        // Use narrow range (1ms) and start with an older LifeLog
+        const { result } = await setupLifeLogsTest(task.id, db, {
+          lifeLogsProps: { rangeMs: 1, debounceMs: 0 },
+          initialSelectedId: "$log1",
+        });
+
+        // Range slides to show $log1
+        await result.findByText("first lifelog");
+
+        // Press Shift+G to go to latest
+        await userEvent.keyboard("{Shift>}{g}{/Shift}");
+        await awaitPendingCallbacks();
+
+        // Range should slide and $log4 should now be visible and selected
+        await result.findByText("fourth lifelog");
         const log4 = result.getByText("fourth lifelog").closest(`.${styles.lifeLogTree.container}`);
         expect(log4?.className).toContain(styles.lifeLogTree.selected);
       });

@@ -163,7 +163,7 @@ export function LifeLog(props: {
         if (isLifeLogTreeFocused$()) return; // Tree navigation handled in tree.tsx
         event.stopImmediatePropagation();
         if (shiftKey) {
-          actions.goToLast();
+          actions.goToLatest();
         } else {
           actions.goToFirst();
         }
