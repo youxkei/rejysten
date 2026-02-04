@@ -170,23 +170,29 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp; sc
   return (
     <ul class={styles.lifeLogs.list}>
       <Key each={lifeLogIdWithNeighborIds$()} by={(item) => item.id}>
-        {(lifeLogWithNeighborIds) => (
-          <li id={lifeLogWithNeighborIds().id} class={styles.lifeLogs.listItem}>
-            <LifeLog
-              id={lifeLogWithNeighborIds().id}
-              prevId={lifeLogWithNeighborIds().prevId}
-              nextId={lifeLogWithNeighborIds().nextId}
-              firstId={firstLifeLogId$()}
-              lastId={lastLifeLogId$()}
-              isEditing={isEditing$()}
-              setIsEditing={setIsEditing}
-              editingField={editingField$()}
-              setEditingField={setEditingField}
-              lifeLogCursorInfo$={lifeLogCursorInfo$}
-              setLifeLogCursorInfo={setLifeLogCursorInfo}
-            />
-          </li>
-        )}
+        {(lifeLogWithNeighborIds$) => {
+          const id$ = createMemo(() => lifeLogWithNeighborIds$().id);
+          const prevId$ = createMemo(() => lifeLogWithNeighborIds$().prevId);
+          const nextId$ = createMemo(() => lifeLogWithNeighborIds$().nextId);
+
+          return (
+            <li id={id$()} class={styles.lifeLogs.listItem}>
+              <LifeLog
+                id={id$()}
+                prevId={prevId$()}
+                nextId={nextId$()}
+                firstId={firstLifeLogId$()}
+                lastId={lastLifeLogId$()}
+                isEditing={isEditing$()}
+                setIsEditing={setIsEditing}
+                editingField={editingField$()}
+                setEditingField={setEditingField}
+                lifeLogCursorInfo$={lifeLogCursorInfo$}
+                setLifeLogCursorInfo={setLifeLogCursorInfo}
+              />
+            </li>
+          );
+        }}
       </Key>
     </ul>
   );
