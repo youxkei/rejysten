@@ -45,7 +45,11 @@ export function LifeLogTreeNode(props: {
     }
 
     // Handle Backspace at beginning of node
-    if (event.code === "Backspace" && inputRef.selectionStart === 0 && inputRef.selectionStart === inputRef.selectionEnd) {
+    if (
+      event.code === "Backspace" &&
+      inputRef.selectionStart === 0 &&
+      inputRef.selectionStart === inputRef.selectionEnd
+    ) {
       event.preventDefault();
       preventBlurSave();
       actions.removeOrMergeNodeWithAbove();
@@ -53,7 +57,11 @@ export function LifeLogTreeNode(props: {
     }
 
     // Handle Delete at end of node - merge with below node
-    if (event.code === "Delete" && inputRef.selectionStart === inputRef.value.length && inputRef.selectionStart === inputRef.selectionEnd) {
+    if (
+      event.code === "Delete" &&
+      inputRef.selectionStart === inputRef.value.length &&
+      inputRef.selectionStart === inputRef.selectionEnd
+    ) {
       event.preventDefault();
       preventBlurSave();
       actions.mergeTreeNodeWithBelow();

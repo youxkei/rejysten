@@ -71,7 +71,9 @@ export function Search() {
   );
 
   const resultIds$ = createMemo(() => {
-    return results$().map((r) => r.id).toReversed();
+    return results$()
+      .map((r) => r.id)
+      .toReversed();
   });
 
   // Update actions context with result IDs

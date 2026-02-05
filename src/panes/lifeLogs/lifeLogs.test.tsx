@@ -2039,6 +2039,51 @@ describe("<LifeLogs />", () => {
       // The old LifeLog should no longer be visible (range slid to present)
       expect(result.queryByText("old lifelog")).toBeNull();
     });
+
+    it("keeps focused element visible when range re-centers upward", async ({ db, task }) => {
+      // Create out-of-range LifeLogs that will appear above the selected LifeLog
+      // when the range re-centers after scrolling up.
+      // $oldLog1 endAt 5 days ago: within initial 7-day range (will be in initial view)
+      // $oldLog2 endAt 10 days ago: outside initial 7-day range, but within range after re-centering to $oldLog1
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: [
+          { id: "$oldLog1", text: "old lifelog 1", daysAgo: 6, endDaysAgo: 5 },
+          { id: "$oldLog2", text: "old lifelog 2", daysAgo: 11, endDaysAgo: 10 },
+        ],
+        lifeLogsProps: { debounceMs: 0 },
+        initialSelectedId: "$log1",
+      });
+
+      // $oldLog1 should be visible (endAt 5 days ago, within 7-day range)
+      await result.findByText("old lifelog 1");
+      // $oldLog2 should NOT be visible initially (endAt 10 days ago, outside 7-day range)
+      expect(result.queryByText("old lifelog 2")).toBeNull();
+
+      // Navigate to $oldLog1 with k key (going backwards)
+      // Order by endAt: $oldLog2 (10d ago) -> $oldLog1 (5d ago) -> $log1 (none) -> ...
+      await userEvent.keyboard("{k}");
+      await awaitPendingCallbacks();
+
+      // Wait for debounced range update
+      await new Promise((r) => setTimeout(r, 50));
+      await awaitPendingCallbacks();
+
+      // After range re-centers on $oldLog1 (endAt 5 days ago),
+      // $oldLog2 (endAt 10 days ago) should now be visible (range: 5-7=12 days ago to 5+7=2 days in future)
+      await result.findByText("old lifelog 2");
+
+      // The selected LifeLog ($oldLog1) should still be within the container's visible area
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
+      const selectedEl = document.getElementById("$oldLog1")!;
+      expect(selectedEl).toBeTruthy();
+
+      const containerRect = container.getBoundingClientRect();
+      const selectedRect = selectedEl.getBoundingClientRect();
+
+      // The selected element should be within the container bounds (not pushed off screen)
+      expect(selectedRect.top).toBeGreaterThanOrEqual(containerRect.top);
+      expect(selectedRect.bottom).toBeLessThanOrEqual(containerRect.bottom);
+    });
   });
 
   describe("MobileToolbar", () => {

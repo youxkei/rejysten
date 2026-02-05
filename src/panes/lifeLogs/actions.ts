@@ -161,12 +161,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
 
     // 並び順で最後のlifeLogを取得
     // 通常の並び順: orderBy("endAt"), orderBy("startAt") の逆順
-    const latestQuery = query(
-      lifeLogsCol,
-      orderBy("endAt", "desc"),
-      orderBy("startAt", "desc"),
-      limit(1),
-    );
+    const latestQuery = query(lifeLogsCol, orderBy("endAt", "desc"), orderBy("startAt", "desc"), limit(1));
     const docs = await getDocs(firestore, latestQuery);
     if (docs.length === 0) return;
 

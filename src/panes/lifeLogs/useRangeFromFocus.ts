@@ -33,9 +33,7 @@ export function useRangeFromFocus(options: UseRangeFromFocusOptions) {
       if (!lifeLog) return;
 
       const focusedEndAt = lifeLog.endAt;
-      const centerMs = focusedEndAt.isEqual(noneTimestamp)
-        ? DateNow()
-        : focusedEndAt.toMillis();
+      const centerMs = focusedEndAt.isEqual(noneTimestamp) ? DateNow() : focusedEndAt.toMillis();
       const newStart = Timestamp.fromMillis(centerMs - rangeMs);
       const newEnd = Timestamp.fromMillis(centerMs + rangeMs);
 
