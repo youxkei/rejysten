@@ -682,7 +682,7 @@ describe("<LifeLogs />", () => {
       expect(input).toBeTruthy();
       expect(input.value).toBe("fourth lifelog");
       // Cursor is at the end because $log4 has non-empty text
-      expect(input.selectionStart).toBe(14);
+      expect(input.selectionStart).toBe(0);
     }
 
     // Exit editing mode

@@ -233,7 +233,7 @@ globalStyle("body", {
   backgroundColor: nord[0],
 
   boxSizing: "border-box",
-  height: "calc(100svh - env(keyboard-inset-height))",
+  height: "calc(100svh - env(keyboard-inset-height, 0px))",
   margin: 0,
   padding: 8,
 });
