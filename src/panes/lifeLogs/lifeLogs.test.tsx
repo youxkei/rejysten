@@ -1996,6 +1996,49 @@ describe("<LifeLogs />", () => {
       const longLogElement = await result.findByText("long duration lifelog");
       expect(longLogElement).toBeTruthy();
     });
+
+    it("slides window when goToLatest navigates to LifeLog with noneTimestamp endAt from past range", async ({
+      db,
+      task,
+    }) => {
+      // Create an out-of-range LifeLog in the past to start from
+      // $oldLog: startAt 16 days ago, endAt 15 days ago (outside the default 7-day range)
+      // The default LifeLogs ($log1-$log4) have endAt = noneTimestamp (ongoing)
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: [{ id: "$oldLog", text: "old lifelog", daysAgo: 16, endDaysAgo: 15 }],
+        lifeLogsProps: { debounceMs: 0 },
+        initialSelectedId: "$oldLog",
+      });
+
+      // Wait for window to slide to $oldLog
+      await new Promise((r) => setTimeout(r, 50));
+      await awaitPendingCallbacks();
+
+      // $oldLog should be visible, default LifeLogs should NOT be visible (range is in the past)
+      await result.findByText("old lifelog");
+      expect(result.queryByText("first lifelog")).toBeNull();
+
+      // Click ⏫ (goToLatest) button to navigate to the latest LifeLog
+      const goToLatestButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+        (btn) => btn.textContent === "⏫",
+      ) as HTMLButtonElement;
+      expect(goToLatestButton).toBeTruthy();
+
+      await userEvent.click(goToLatestButton);
+      await awaitPendingCallbacks();
+
+      // Wait for debounced range update
+      await new Promise((r) => setTimeout(r, 50));
+      await awaitPendingCallbacks();
+
+      // The latest LifeLog ($log4, noneTimestamp endAt) should now be visible and selected
+      await result.findByText("fourth lifelog");
+      const log4 = result.getByText("fourth lifelog").closest(`.${styles.lifeLogTree.container}`);
+      expect(log4?.className).toContain(styles.lifeLogTree.selected);
+
+      // The old LifeLog should no longer be visible (range slid to present)
+      expect(result.queryByText("old lifelog")).toBeNull();
+    });
   });
 
   describe("MobileToolbar", () => {

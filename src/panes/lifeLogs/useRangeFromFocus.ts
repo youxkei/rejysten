@@ -3,6 +3,7 @@ import { Timestamp } from "firebase/firestore";
 import { createEffect, createSignal, startTransition } from "solid-js";
 
 import { awaitable } from "@/awaitableCallback";
+import { DateNow } from "@/date";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { useStoreService } from "@/services/store";
 import { noneTimestamp } from "@/timestamp";
@@ -32,15 +33,11 @@ export function useRangeFromFocus(options: UseRangeFromFocusOptions) {
       if (!lifeLog) return;
 
       const focusedEndAt = lifeLog.endAt;
-
-      // Don't slide window for LifeLogs with noneTimestamp endAt
-      // These are newly created LifeLogs that haven't had their time set yet
-      if (focusedEndAt.isEqual(noneTimestamp)) return;
-
-      // Slide window to center around focused LifeLog's endAt
-      // This matches the query filter which uses endAt for filtering
-      const newStart = Timestamp.fromMillis(focusedEndAt.toMillis() - rangeMs);
-      const newEnd = Timestamp.fromMillis(focusedEndAt.toMillis() + rangeMs);
+      const centerMs = focusedEndAt.isEqual(noneTimestamp)
+        ? DateNow()
+        : focusedEndAt.toMillis();
+      const newStart = Timestamp.fromMillis(centerMs - rangeMs);
+      const newEnd = Timestamp.fromMillis(centerMs + rangeMs);
 
       await startTransition(() => {
         setRangeStart(newStart);
