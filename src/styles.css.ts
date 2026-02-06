@@ -141,7 +141,7 @@ export const styles = {
     buttonGroup: style({
       display: "flex",
       gap: "0.25rem",
-      flexWrap: "nowrap",
+      flexWrap: "wrap",
       justifyContent: "flex-end",
     }),
     button: style({

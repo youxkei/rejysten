@@ -73,6 +73,7 @@ declare module "@/services/actions" {
       saveText: (stopEditing: boolean) => void;
       saveStartAt: (stopEditing: boolean) => void;
       saveEndAt: (stopEditing: boolean) => void;
+      deleteEmptyLifeLog: () => void;
       deleteEmptyLifeLogToPrev: () => void;
       deleteEmptyLifeLogToNext: () => void;
       createFirstLifeLog: () => void;
@@ -528,6 +529,47 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
   }
 
   // Delete operations for empty LifeLogs
+  async function deleteEmptyLifeLog() {
+    if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
+
+    const selectedLifeLogId = state.panesLifeLogs.selectedLifeLogId;
+    if (selectedLifeLogId === "") return;
+
+    const lifeLog = await getDoc(firestore, lifeLogsCol, selectedLifeLogId);
+    if (!lifeLog) return;
+
+    // Check conditions for deletion: text empty, timestamps = none, no tree nodes
+    if (
+      lifeLog.text !== "" ||
+      !lifeLog.startAt.isEqual(noneTimestamp) ||
+      !lifeLog.endAt.isEqual(noneTimestamp) ||
+      lifeLog.hasTreeNodes
+    ) {
+      return;
+    }
+
+    // Determine which LifeLog to select after deletion
+    const targetId = context.prevId !== "" ? context.prevId : context.nextId !== "" ? context.nextId : "";
+    if (targetId === "") return;
+
+    firestore.setClock(true);
+    try {
+      await runBatch(firestore, (batch) => {
+        batch.delete(lifeLogsCol, selectedLifeLogId);
+        return Promise.resolve();
+      });
+
+      await startTransition(() => {
+        updateState((state) => {
+          state.panesLifeLogs.selectedLifeLogId = targetId;
+        });
+        firestore.setClock(false);
+      });
+    } finally {
+      firestore.setClock(false);
+    }
+  }
+
   async function deleteEmptyLifeLogToPrev() {
     if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
 
@@ -906,6 +948,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     saveText: awaitable(saveText),
     saveStartAt: awaitable(saveStartAt),
     saveEndAt: awaitable(saveEndAt),
+    deleteEmptyLifeLog: awaitable(deleteEmptyLifeLog),
     deleteEmptyLifeLogToPrev: awaitable(deleteEmptyLifeLogToPrev),
     deleteEmptyLifeLogToNext: awaitable(deleteEmptyLifeLogToNext),
     createFirstLifeLog: awaitable(createFirstLifeLog),

@@ -68,6 +68,9 @@ function NavigationToolbar() {
   const handleStartEditingEndAt = withOwner(() => {
     actions.startEditing(EditingField.EndAt);
   });
+  const handleDeleteEmptyLifeLog = withOwner(() => {
+    actions.deleteEmptyLifeLog();
+  });
   const handleStartEditing = withOwner(() => {
     actions.startEditing();
   });
@@ -137,6 +140,13 @@ function NavigationToolbar() {
           disabled={state.panesLifeLogs.selectedLifeLogId === ""}
         >
           ⏹️
+        </button>
+        <button
+          class={styles.mobileToolbar.button}
+          onClick={handleDeleteEmptyLifeLog}
+          disabled={state.panesLifeLogs.selectedLifeLogId === ""}
+        >
+          🗑️
         </button>
         <button
           class={styles.mobileToolbar.button}

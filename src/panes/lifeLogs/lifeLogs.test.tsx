@@ -2740,6 +2740,171 @@ describe("<LifeLogs />", () => {
         // Verify N/A count decreased
         expect(result.getAllByText("N/A").length).toBe(5);
       });
+
+      it("can delete empty LifeLog with 🗑️ button and select previous LifeLog", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+        await result.findByText("third lifelog");
+
+        // Navigate to $log3 (startAt=none, endAt=none, text="third lifelog")
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+
+        // $log3 is selected - verify
+        const listItems1 = result.container.querySelectorAll("li");
+        const item = listItems1[2];
+        expect(item.querySelector(`.${styles.lifeLogTree.selected}`)).toBeTruthy();
+        expect(item.textContent).toContain("third lifelog");
+
+        // $log3 has text="third lifelog", so it's not empty - first clear its text
+        // Enter editing mode and clear text
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+
+        const input1 = result.container.querySelector("input")!;
+        expect(input1).toBeTruthy();
+        expect(input1.value).toBe("third lifelog");
+
+        await userEvent.keyboard("{Control>}a{/Control}{Backspace}");
+        {
+          const input = result.container.querySelector("input") as HTMLInputElement;
+          expect(input.value).toBe("");
+        }
+
+        // Save by exiting edit mode
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+        expect(result.container.querySelector("input")).toBeNull();
+
+        // Now $log3 is empty (text="", startAt=none, endAt=none, hasTreeNodes=false)
+        // Click 🗑️ button to delete
+        const deleteButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "🗑️",
+        ) as HTMLButtonElement;
+        expect(deleteButton).toBeTruthy();
+
+        await userEvent.click(deleteButton);
+        await awaitPendingCallbacks();
+
+        // Verify deletion - should have 3 items now ($log1, $log2, $log4)
+        const listItems2 = result.container.querySelectorAll("li");
+        expect(listItems2.length).toBe(3);
+
+        // Should NOT be in editing mode (unlike deleteEmptyLifeLogToPrev)
+        expect(result.container.querySelector("input")).toBeNull();
+
+        // Previous LifeLog ($log2) should be selected
+        const selectedItem = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+        expect(selectedItem).toBeTruthy();
+        expect(selectedItem!.textContent).toContain("second lifelog");
+      });
+
+      it("does not delete non-empty LifeLog with 🗑️ button", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // $log1 is selected, it has text="first lifelog" (not empty)
+        const initialListItems = result.container.querySelectorAll("li");
+        expect(initialListItems.length).toBe(4);
+
+        // Click 🗑️ button
+        const deleteButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "🗑️",
+        ) as HTMLButtonElement;
+        expect(deleteButton).toBeTruthy();
+
+        await userEvent.click(deleteButton);
+        await awaitPendingCallbacks();
+
+        // Should NOT be deleted - still 4 items
+        const listItems = result.container.querySelectorAll("li");
+        expect(listItems.length).toBe(4);
+
+        // $log1 should still be selected
+        const selectedItem = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+        expect(selectedItem).toBeTruthy();
+        expect(selectedItem!.textContent).toContain("first lifelog");
+      });
+
+      it("can delete multiple empty LifeLogs with 🗑️ button sequentially", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+        await result.findByText("third lifelog");
+        await result.findByText("fourth lifelog");
+
+        // Default order: $log1 (10:30), $log2 (12:00), $log3 (none), $log4 (none)
+        // Clear $log3 and $log4 text, then delete them sequentially
+
+        // Navigate to $log3 (press j twice)
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+
+        // Clear $log3's text
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+        await userEvent.keyboard("{Control>}a{/Control}{Backspace}");
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+
+        // Navigate to $log4
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+
+        // Clear $log4's text
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+        await userEvent.keyboard("{Control>}a{/Control}{Backspace}");
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+
+        // Now $log4 is selected (empty). Delete with 🗑️ → goes to prev ($log3)
+        {
+          const deleteButton = Array.from(
+            result.container.querySelectorAll(`.${styles.mobileToolbar.button}`),
+          ).find((btn) => btn.textContent === "🗑️") as HTMLButtonElement;
+          await userEvent.click(deleteButton);
+          await awaitPendingCallbacks();
+        }
+
+        // Now we have: $log1, $log2, $log3(empty, selected)
+        const listItems1 = result.container.querySelectorAll("li");
+        expect(listItems1.length).toBe(3);
+
+        // $log3 should be selected (prev of $log4)
+        {
+          const selectedItem = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+          expect(selectedItem).toBeTruthy();
+          // $log3 text was cleared, so it should show empty
+        }
+
+        // Delete $log3 with 🗑️ → goes to prev ($log2)
+        {
+          const deleteButton = Array.from(
+            result.container.querySelectorAll(`.${styles.mobileToolbar.button}`),
+          ).find((btn) => btn.textContent === "🗑️") as HTMLButtonElement;
+          await userEvent.click(deleteButton);
+          await awaitPendingCallbacks();
+        }
+
+        // Now we have: $log1, $log2
+        const listItems2 = result.container.querySelectorAll("li");
+        expect(listItems2.length).toBe(2);
+
+        // $log2 should be selected
+        const selectedItem = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+        expect(selectedItem).toBeTruthy();
+        expect(selectedItem!.textContent).toContain("second lifelog");
+
+        // Verify not in editing mode
+        expect(result.container.querySelector("input")).toBeNull();
+      });
     });
   });
 
