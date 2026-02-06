@@ -64,7 +64,7 @@ export function isElementFullyVisible(
  * @param offsetPx 上下のマージン（scrolloff）
  */
 export function scrollWithOffset(element: HTMLElement, offsetPx: number = DEFAULT_SCROLL_OFFSET_PX): void {
-  const container = useContext(ScrollContainerContext)?.();
+  const container = useScrollContainer()();
   if (!container) return;
 
   const containerRect = container.getBoundingClientRect();
