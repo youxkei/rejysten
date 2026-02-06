@@ -2064,6 +2064,13 @@ describe("<LifeLogs />", () => {
       await userEvent.keyboard("{k}");
       await awaitPendingCallbacks();
 
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
+      const selectedEl = document.getElementById("$oldLog1")!;
+      expect(selectedEl).toBeTruthy();
+
+      // Record position before range re-centers
+      const positionBefore = selectedEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+
       // Wait for debounced range update
       await new Promise((r) => setTimeout(r, 50));
       await awaitPendingCallbacks();
@@ -2072,17 +2079,140 @@ describe("<LifeLogs />", () => {
       // $oldLog2 (endAt 10 days ago) should now be visible (range: 5-7=12 days ago to 5+7=2 days in future)
       await result.findByText("old lifelog 2");
 
-      // The selected LifeLog ($oldLog1) should still be within the container's visible area
+      // The selected element's viewport position should be preserved
+      const positionAfter = selectedEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+      expect(Math.abs(positionAfter - positionBefore)).toBeLessThan(5);
+    });
+
+    it("preserves focused element position when range re-centers downward", async ({ db, task }) => {
+      // Create LifeLogs at different time points:
+      // $farPast: endAt 9 days ago (outside initial 7-day range, visible after sliding to $nearPast)
+      // $nearPast: endAt 3 days ago (within initial 7-day range, will be selected first)
+      // Navigate forward so range re-centers and $farPast gets removed from above
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: [
+          { id: "$farPast", text: "far past lifelog", daysAgo: 10, endDaysAgo: 9 },
+          { id: "$nearPast", text: "near past lifelog", daysAgo: 4, endDaysAgo: 3 },
+        ],
+        lifeLogsProps: { debounceMs: 0 },
+        initialSelectedId: "$nearPast",
+      });
+
+      // Wait for initial window slide to $nearPast
+      await new Promise((r) => setTimeout(r, 50));
+      await awaitPendingCallbacks();
+
+      // After sliding to $nearPast, $farPast should now be visible
+      await result.findByText("far past lifelog");
+      await result.findByText("near past lifelog");
+
+      // Navigate forward with j key to $log1 (noneTimestamp)
+      // Order by endAt: $farPast (9d ago) -> $nearPast (3d ago) -> $log1 (none) -> ...
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
+      const selectedEl = document.getElementById("$log1")!;
+      expect(selectedEl).toBeTruthy();
+
+      // Record position before range re-centers
+      const positionBefore = selectedEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+
+      // Wait for debounced range update (range re-centers on $log1 with noneTimestamp → DateNow())
+      await new Promise((r) => setTimeout(r, 50));
+      await awaitPendingCallbacks();
+
+      // $farPast should be removed (outside new range centered on DateNow())
+      expect(result.queryByText("far past lifelog")).toBeNull();
+
+      // The selected element's viewport position should be preserved
+      const positionAfter = selectedEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+      expect(Math.abs(positionAfter - positionBefore)).toBeLessThan(5);
+    });
+
+    it("preserves focused element position when range re-centers upward (mobile)", async ({ db, task }) => {
+      // Same as the upward test but at mobile viewport width (column-reverse layout)
+      await page.viewport(414, 896);
+
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: [
+          { id: "$oldLog1", text: "old lifelog 1", daysAgo: 6, endDaysAgo: 5 },
+          { id: "$oldLog2", text: "old lifelog 2", daysAgo: 11, endDaysAgo: 10 },
+        ],
+        lifeLogsProps: { debounceMs: 0 },
+        initialSelectedId: "$log1",
+      });
+
+      // $oldLog1 should be visible (endAt 5 days ago, within 7-day range)
+      await result.findByText("old lifelog 1");
+      // $oldLog2 should NOT be visible initially
+      expect(result.queryByText("old lifelog 2")).toBeNull();
+
+      // Navigate to $oldLog1 with k key
+      await userEvent.keyboard("{k}");
+      await awaitPendingCallbacks();
+
       const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
       const selectedEl = document.getElementById("$oldLog1")!;
       expect(selectedEl).toBeTruthy();
 
-      const containerRect = container.getBoundingClientRect();
-      const selectedRect = selectedEl.getBoundingClientRect();
+      // Record position before range re-centers
+      const positionBefore = selectedEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
 
-      // The selected element should be within the container bounds (not pushed off screen)
-      expect(selectedRect.top).toBeGreaterThanOrEqual(containerRect.top);
-      expect(selectedRect.bottom).toBeLessThanOrEqual(containerRect.bottom);
+      // Wait for debounced range update
+      await new Promise((r) => setTimeout(r, 50));
+      await awaitPendingCallbacks();
+
+      // $oldLog2 should now be visible after range re-centers
+      await result.findByText("old lifelog 2");
+
+      // The selected element's viewport position should be preserved (mobile column-reverse)
+      const positionAfter = selectedEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+      expect(Math.abs(positionAfter - positionBefore)).toBeLessThan(5);
+    });
+
+    it("preserves focused element position when range re-centers downward (mobile)", async ({ db, task }) => {
+      // Same as the downward test but at mobile viewport width (column-reverse layout)
+      await page.viewport(414, 896);
+
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: [
+          { id: "$farPast", text: "far past lifelog", daysAgo: 10, endDaysAgo: 9 },
+          { id: "$nearPast", text: "near past lifelog", daysAgo: 4, endDaysAgo: 3 },
+        ],
+        lifeLogsProps: { debounceMs: 0 },
+        initialSelectedId: "$nearPast",
+      });
+
+      // Wait for initial window slide to $nearPast
+      await new Promise((r) => setTimeout(r, 50));
+      await awaitPendingCallbacks();
+
+      // After sliding to $nearPast, $farPast should now be visible
+      await result.findByText("far past lifelog");
+      await result.findByText("near past lifelog");
+
+      // Navigate forward with j key to $log1 (noneTimestamp)
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
+      const selectedEl = document.getElementById("$log1")!;
+      expect(selectedEl).toBeTruthy();
+
+      // Record position before range re-centers
+      const positionBefore = selectedEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+
+      // Wait for debounced range update
+      await new Promise((r) => setTimeout(r, 50));
+      await awaitPendingCallbacks();
+
+      // $farPast should be removed (outside new range centered on DateNow())
+      expect(result.queryByText("far past lifelog")).toBeNull();
+
+      // The selected element's viewport position should be preserved (mobile column-reverse)
+      const positionAfter = selectedEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+      expect(Math.abs(positionAfter - positionBefore)).toBeLessThan(5);
     });
   });
 

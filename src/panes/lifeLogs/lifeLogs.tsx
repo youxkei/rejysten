@@ -1,7 +1,7 @@
 import { Key } from "@solid-primitives/keyed";
 import equal from "fast-deep-equal";
 import { orderBy, query, Timestamp, where } from "firebase/firestore";
-import { createEffect, createMemo, createSignal, on, onCleanup, onMount, untrack } from "solid-js";
+import { createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 
 interface VirtualKeyboard extends EventTarget {
   overlaysContent: boolean;
@@ -23,9 +23,8 @@ import { useScrollFocus } from "@/panes/lifeLogs/useScrollFocus";
 import { useActionsService } from "@/services/actions";
 import { getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal } from "@/services/firebase/firestore/subscribe";
-import { useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
-import { scrollWithOffset, ScrollContainer } from "@/solid/scroll";
+import { ScrollContainer } from "@/solid/scroll";
 import { styles } from "@/styles.css";
 import { dayMs, noneTimestamp } from "@/timestamp";
 
@@ -83,27 +82,7 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp; sc
 
   const lifeLogs$ = rangeLifeLogs$;
 
-  const { state } = useStoreService();
-
-  // lifeLogs一覧が変わった際（レンジ再センタリングで上にアイテムが追加されるなど）、
-  // 選択中のlifeLogがビューポート内に留まるようスクロール補正する
-  createEffect(
-    on(
-      () => lifeLogs$(),
-      () => {
-        const selectedId = untrack(() => state.panesLifeLogs.selectedLifeLogId);
-        if (!selectedId) return;
-
-        const el = document.getElementById(selectedId);
-        if (el) {
-          scrollWithOffset(el);
-        }
-      },
-      { defer: true },
-    ),
-  );
-
-  // スクロール時のフォーカス移動
+  // スクロール時のフォーカス移動 + レンジ再センタリング時のスクロール位置補正
   useScrollFocus({
     lifeLogIds$: () => lifeLogs$().map((l) => l.id),
     isEditing$,
