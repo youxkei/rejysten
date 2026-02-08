@@ -99,7 +99,18 @@ export function useScrollFocus(props: {
   createComputed(
     on(
       () => props.lifeLogIds$(),
-      () => {
+      (newIds, oldIds) => {
+        if (oldIds === undefined) return;
+
+        // Same set of IDs = reorder — skip position save
+        if (newIds.length === oldIds.length) {
+          const oldSet = new Set(oldIds);
+          if (newIds.every((id) => oldSet.has(id))) {
+            savedRelativeTop = undefined;
+            return;
+          }
+        }
+
         const selectedId = untrack(() => state.panesLifeLogs.selectedLifeLogId);
         if (!selectedId) {
           savedRelativeTop = undefined;
@@ -113,7 +124,6 @@ export function useScrollFocus(props: {
           savedRelativeTop = undefined;
         }
       },
-      { defer: true },
     ),
   );
 

@@ -1,4 +1,4 @@
-import { cleanup } from "@solidjs/testing-library";
+import { cleanup, waitFor } from "@solidjs/testing-library";
 import { Timestamp } from "firebase/firestore";
 import { afterAll, afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
@@ -372,6 +372,116 @@ describe("<LifeLogs />", () => {
     const duration = end - start;
 
     expect(duration, `Set endAt took ${duration.toFixed(2)}ms`).toBeLessThan(150);
+  });
+
+  it("does not scroll away from neighbor when setting endAt with f key", async ({ db, task }) => {
+    await page.viewport(1100, 600);
+
+    const { result } = await setupLifeLogsTest(task.id, db, {
+      lifeLogCount: 15,
+      lifeLogsProps: { debounceMs: 0 },
+    });
+
+    // Force the render container to have a fixed height so the scroll container overflows
+    result.container.style.height = "600px";
+
+    // Wait for items to render
+    await result.findByText("lifelog 10");
+    await awaitPendingCallbacks();
+
+    // Navigate to last item ($log4) using G key (goToLatest is async — queries Firestore)
+    await userEvent.keyboard("{Shift>}{g}{/Shift}");
+    await awaitPendingCallbacks();
+
+    // Wait for $log4 to become selected (goToLatest resolves asynchronously)
+    await waitFor(() => {
+      const log4Container = result.getByText("fourth lifelog").closest(`.${styles.lifeLogTree.container}`);
+      expect(log4Container?.className).toContain(styles.lifeLogTree.selected);
+    });
+
+    const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
+    const log3El = document.getElementById("$log3")!;
+    expect(log3El).toBeTruthy();
+
+    // Verify scroll container actually overflows (otherwise the bug can't manifest)
+    expect(container.scrollHeight).toBeGreaterThan(container.clientHeight);
+
+    // $log3 should be visible above $log4 (both at the bottom of the list)
+    const containerRect = container.getBoundingClientRect();
+    const log3RectBefore = log3El.getBoundingClientRect();
+    expect(
+      log3RectBefore.bottom > containerRect.top && log3RectBefore.top < containerRect.bottom,
+      "third lifelog should be visible before pressing f",
+    ).toBe(true);
+
+    // Press 'f' to set endAt on $log4 — this reorders $log4 to the top of the list
+    await userEvent.keyboard("{f}");
+    await awaitPendingCallbacks();
+    await new Promise((r) => setTimeout(r, 100));
+    await awaitPendingCallbacks();
+
+    // $log3 should still be visible after pressing 'f'
+    const log3RectAfter = log3El.getBoundingClientRect();
+    const containerRectAfter = container.getBoundingClientRect();
+    expect(
+      log3RectAfter.bottom > containerRectAfter.top && log3RectAfter.top < containerRectAfter.bottom,
+      `third lifelog should still be visible after pressing f (top=${log3RectAfter.top.toFixed(0)}, bottom=${log3RectAfter.bottom.toFixed(0)}, containerTop=${containerRectAfter.top.toFixed(0)}, containerBottom=${containerRectAfter.bottom.toFixed(0)})`,
+    ).toBe(true);
+  });
+
+  it("does not scroll away from neighbor when setting endAt with f key (mobile)", async ({ db, task }) => {
+    await page.viewport(414, 896);
+
+    const { result } = await setupLifeLogsTest(task.id, db, {
+      lifeLogCount: 15,
+      lifeLogsProps: { debounceMs: 0 },
+    });
+
+    // Force the render container to have a fixed height so the scroll container overflows
+    result.container.style.height = "600px";
+
+    // Wait for items to render
+    await result.findByText("lifelog 10");
+    await awaitPendingCallbacks();
+
+    // Navigate to last item ($log4) using G key (goToLatest is async — queries Firestore)
+    await userEvent.keyboard("{Shift>}{g}{/Shift}");
+    await awaitPendingCallbacks();
+
+    // Wait for $log4 to become selected (goToLatest resolves asynchronously)
+    await waitFor(() => {
+      const log4Container = result.getByText("fourth lifelog").closest(`.${styles.lifeLogTree.container}`);
+      expect(log4Container?.className).toContain(styles.lifeLogTree.selected);
+    });
+
+    const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
+    const log3El = document.getElementById("$log3")!;
+    expect(log3El).toBeTruthy();
+
+    // Verify scroll container actually overflows (otherwise the bug can't manifest)
+    expect(container.scrollHeight).toBeGreaterThan(container.clientHeight);
+
+    // $log3 should be visible near $log4 (in column-reverse, $log4 is at visual bottom)
+    const containerRect = container.getBoundingClientRect();
+    const log3RectBefore = log3El.getBoundingClientRect();
+    expect(
+      log3RectBefore.bottom > containerRect.top && log3RectBefore.top < containerRect.bottom,
+      "third lifelog should be visible before pressing f",
+    ).toBe(true);
+
+    // Press 'f' to set endAt on $log4 — this reorders $log4 in the list
+    await userEvent.keyboard("{f}");
+    await awaitPendingCallbacks();
+    await new Promise((r) => setTimeout(r, 100));
+    await awaitPendingCallbacks();
+
+    // $log3 should still be visible after pressing 'f'
+    const log3RectAfter = log3El.getBoundingClientRect();
+    const containerRectAfter = container.getBoundingClientRect();
+    expect(
+      log3RectAfter.bottom > containerRectAfter.top && log3RectAfter.top < containerRectAfter.bottom,
+      `third lifelog should still be visible after pressing f (top=${log3RectAfter.top.toFixed(0)}, bottom=${log3RectAfter.bottom.toFixed(0)}, containerTop=${containerRectAfter.top.toFixed(0)}, containerBottom=${containerRectAfter.bottom.toFixed(0)})`,
+    ).toBe(true);
   });
 
   it("can navigate between lifelogs with j/k keys", async ({ db, task }) => {
@@ -2866,9 +2976,9 @@ describe("<LifeLogs />", () => {
 
         // Now $log4 is selected (empty). Delete with 🗑️ → goes to prev ($log3)
         {
-          const deleteButton = Array.from(
-            result.container.querySelectorAll(`.${styles.mobileToolbar.button}`),
-          ).find((btn) => btn.textContent === "🗑️") as HTMLButtonElement;
+          const deleteButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+            (btn) => btn.textContent === "🗑️",
+          ) as HTMLButtonElement;
           await userEvent.click(deleteButton);
           await awaitPendingCallbacks();
         }
@@ -2886,9 +2996,9 @@ describe("<LifeLogs />", () => {
 
         // Delete $log3 with 🗑️ → goes to prev ($log2)
         {
-          const deleteButton = Array.from(
-            result.container.querySelectorAll(`.${styles.mobileToolbar.button}`),
-          ).find((btn) => btn.textContent === "🗑️") as HTMLButtonElement;
+          const deleteButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+            (btn) => btn.textContent === "🗑️",
+          ) as HTMLButtonElement;
           await userEvent.click(deleteButton);
           await awaitPendingCallbacks();
         }
