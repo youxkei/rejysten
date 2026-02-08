@@ -5,6 +5,8 @@
   - NEVER use `--no-verify` to skip pre-commit hooks
   - when pre-commit hook failed, try `pnpm run fix` first
   - if pre-commit hook fails due to flaky tests, retry the commit
+- NEVER use for loops in Bash — run commands directly
+- when piping long command output through grep, first write output to a file with `tee`, then grep the file
 - use `pnpm test` to run all test cases, `pnpm test/case "case title"` to run one case
   - always consider to run cases one by one first
   - pre-commit hook runs all tests, so they should all pass without any changes
@@ -13,5 +15,6 @@
 - use `pnpm tsc` for type check
 - if test fails, add `console.log` to debug first to investigate the problem
   - use `createComputed` to trace the signal changes
+  - NEVER stash/revert changes to check if a test was already failing — pre-commit hook guarantees all tests passed before changes. Always debug forward with console.log/createComputed
 - use `pnpm lint` for lint
 - for planning, always consider adding tests instead of manual testing
