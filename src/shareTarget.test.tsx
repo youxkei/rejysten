@@ -280,6 +280,146 @@ describe("handleShareTarget", () => {
     expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(allNodes[0].id);
   });
 
+  it("creates 読書 lifeLog for ncode.syosetu.com URL", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=Novel&url=https://ncode.syosetu.com/n1234ab/");
+
+    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const readingLog = logs.find((l) => l.text === "読書");
+    expect(readingLog).toBeTruthy();
+    expect(readingLog!.hasTreeNodes).toBe(true);
+
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", readingLog!.id)));
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe("[Novel](https://ncode.syosetu.com/n1234ab/)");
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe(readingLog!.id);
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(nodes[0].id);
+  });
+
+  it("creates 読書 lifeLog for kakuyomu.jp URL", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=Work&url=https://kakuyomu.jp/works/123");
+
+    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const readingLog = logs.find((l) => l.text === "読書");
+    expect(readingLog).toBeTruthy();
+    expect(readingLog!.hasTreeNodes).toBe(true);
+
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", readingLog!.id)));
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe("[Work](https://kakuyomu.jp/works/123)");
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe(readingLog!.id);
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(nodes[0].id);
+  });
+
+  it("appends to existing running 読書 for syosetu.org URL", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=Novel&url=https://syosetu.org/novel/123/");
+
+    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$reading1"), {
+        text: "読書",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$rnode1"), {
+        text: "existing reading node",
+        lifeLogId: "$reading1",
+        parentId: "$reading1",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$reading1")));
+
+    expect(nodes).toHaveLength(2);
+    const newNode = nodes.find((n) => n.text === "[Novel](https://syosetu.org/novel/123/)");
+    expect(newNode).toBeTruthy();
+    expect(newNode!.order > "a0").toBe(true);
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe("$reading1");
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(newNode!.id);
+  });
+
   it("does nothing when no valid URL is present", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Example&text=no+url+here");
 

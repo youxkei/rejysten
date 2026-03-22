@@ -26,6 +26,12 @@ export async function handleShareTarget(firestore: FirestoreService): Promise<vo
 
   if (!url) return;
 
+  const readingDomains = ["ncode.syosetu.com", "syosetu.org", "kakuyomu.jp"];
+  const hostname = new URL(url).hostname;
+  const category = readingDomains.some((d) => hostname === d || hostname.endsWith("." + d))
+    ? "読書"
+    : "ネットサーフィン";
+
   // Determine title: prefer title param, otherwise use URL
   const linkTitle = title || url;
   const markdownLink = `[${linkTitle}](${url})`;
@@ -33,9 +39,9 @@ export async function handleShareTarget(firestore: FirestoreService): Promise<vo
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
   const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
 
-  // Find running "ネットサーフィン" lifeLog
+  // Find running lifeLog matching the category
   const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
-  const netSurfingLog = runningLogs.find((log) => log.text === "ネットサーフィン");
+  const netSurfingLog = runningLogs.find((log) => log.text === category);
 
   let lifeLogId: string;
   let nodeId: string;
@@ -81,7 +87,7 @@ export async function handleShareTarget(firestore: FirestoreService): Promise<vo
     await runBatch(firestore, (batch) => {
       batch.set(lifeLogsCol, {
         id: newLogId,
-        text: "ネットサーフィン",
+        text: category,
         hasTreeNodes: true,
         startAt: TimestampNow(),
         endAt: noneTimestamp,
