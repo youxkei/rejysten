@@ -18,3 +18,4 @@
   - NEVER stash/revert changes to check if a test was already failing — pre-commit hook guarantees all tests passed before changes. Always debug forward with console.log/createComputed
 - use `pnpm lint` for lint
 - for planning, always consider adding tests instead of manual testing
+- use `agent-browser` CLI for Storybook visual verification on `http://localhost:6006`

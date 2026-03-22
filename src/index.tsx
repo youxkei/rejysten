@@ -8,6 +8,7 @@ import { ActionsServiceProvider, useActionsService } from "@/services/actions";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import { FirestoreServiceProvider } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
+import { ShareHandler } from "@/shareTarget";
 import { addKeyDownEventListener } from "@/solid/event";
 import { createIsMobile } from "@/solid/responsive";
 import { styles } from "@/styles.css";
@@ -43,9 +44,12 @@ function MainContent() {
   });
 
   return (
-    <Show when={state.panesSearch.isActive} fallback={<LifeLogs rangeMs={isMobile() ? dayMs / 2 : dayMs} />}>
-      <Search />
-    </Show>
+    <>
+      <ShareHandler />
+      <Show when={state.panesSearch.isActive} fallback={<LifeLogs rangeMs={isMobile() ? dayMs / 2 : dayMs} />}>
+        <Search />
+      </Show>
+    </>
   );
 }
 

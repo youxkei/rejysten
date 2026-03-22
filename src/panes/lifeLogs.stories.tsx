@@ -12,6 +12,7 @@ import {
   useFirestoreService,
 } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
+import { ShareHandler } from "@/shareTarget";
 import { noneTimestamp } from "@/timestamp";
 
 export default {
@@ -186,125 +187,220 @@ export const LifeLogsStory: StoryObj = {
   },
 };
 
+function FullscreenSetup(props: { children?: JSXElement }) {
+  const firestore = useFirestoreService();
+
+  const batchVersion = getCollection(firestore, "batchVersion");
+  const lifeLogs = getCollection(firestore, "lifeLogs");
+  const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+  const { updateState } = useStoreService();
+
+  onMount(() => {
+    (async () => {
+      const batch = writeBatch(firestore.firestore);
+
+      for (const lifeLog of (await getDocs(lifeLogs)).docs) {
+        batch.delete(lifeLog.ref);
+      }
+
+      for (const lifeLogTreeNode of (await getDocs(lifeLogTreeNodes)).docs) {
+        batch.delete(lifeLogTreeNode.ref);
+      }
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+
+      batch.set(doc(lifeLogs, "$log1"), {
+        text: "lifelog1",
+        hasTreeNodes: true,
+        startAt: noneTimestamp,
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "child1"), {
+        text: "child1",
+        lifeLogId: "$log1",
+        parentId: "$log1",
+        order: "a0",
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "child2"), {
+        text: "child2",
+        lifeLogId: "$log1",
+        parentId: "$log1",
+        order: "a1",
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "child3"), {
+        text: "child3",
+        lifeLogId: "$log1",
+        parentId: "$log1",
+        order: "a2",
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "child4"), {
+        text: "child4",
+        lifeLogId: "$log1",
+        parentId: "$log1",
+        order: "a3",
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "child5"), {
+        text: "child5",
+        lifeLogId: "$log1",
+        parentId: "$log1",
+        order: "a4",
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "child6"), {
+        text: "child6",
+        lifeLogId: "$log1",
+        parentId: "$log1",
+        order: "a5",
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "child1 of child1"), {
+        text: "child1 of child1",
+        lifeLogId: "$log1",
+        parentId: "child1",
+        order: "a0",
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+
+      await batch.commit();
+
+      updateState((state) => {
+        state.panesLifeLogs.selectedLifeLogId = "$log1";
+        state.panesLifeLogs.selectedLifeLogNodeId = "";
+      });
+    })().catch((error: unknown) => {
+      console.error("Error initializing Firestore data:", error);
+    });
+  });
+
+  return (
+    <>
+      {props.children}
+      <LifeLogs />
+    </>
+  );
+}
+
 export const LifeLogsFullscreen: StoryObj = {
   render() {
     return (
       <StoreServiceProvider>
         <StorybookFirebaseWrapper showConfig={false}>
           <Suspense fallback={<span>loading....</span>}>
-            {(() => {
-              const firestore = useFirestoreService();
+            <FullscreenSetup />
+          </Suspense>
+        </StorybookFirebaseWrapper>
+      </StoreServiceProvider>
+    );
+  },
+};
 
-              const batchVersion = getCollection(firestore, "batchVersion");
-              const lifeLogs = getCollection(firestore, "lifeLogs");
-              const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+function ShareTargetStory() {
+  const firestore = useFirestoreService();
 
-              const { updateState } = useStoreService();
+  const batchVersion = getCollection(firestore, "batchVersion");
+  const lifeLogs = getCollection(firestore, "lifeLogs");
+  const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
 
-              onMount(() => {
-                (async () => {
-                  const batch = writeBatch(firestore.firestore);
+  const { updateState } = useStoreService();
 
-                  for (const lifeLog of (await getDocs(lifeLogs)).docs) {
-                    batch.delete(lifeLog.ref);
-                  }
+  const initialize = async () => {
+    const batch = writeBatch(firestore.firestore);
 
-                  for (const lifeLogTreeNode of (await getDocs(lifeLogTreeNodes)).docs) {
-                    batch.delete(lifeLogTreeNode.ref);
-                  }
+    for (const lifeLog of (await getDocs(lifeLogs)).docs) {
+      batch.delete(lifeLog.ref);
+    }
 
-                  batch.set(doc(batchVersion, singletonDocumentId), {
-                    version: "__INITIAL__",
-                    prevVersion: "",
-                    createdAt: Timestamp.fromDate(new Date()),
-                    updatedAt: Timestamp.fromDate(new Date()),
-                  });
+    for (const lifeLogTreeNode of (await getDocs(lifeLogTreeNodes)).docs) {
+      batch.delete(lifeLogTreeNode.ref);
+    }
 
-                  batch.set(doc(lifeLogs, "$log1"), {
-                    text: "lifelog1",
-                    hasTreeNodes: true,
-                    startAt: noneTimestamp,
-                    endAt: noneTimestamp,
-                    createdAt: Timestamp.fromDate(new Date()),
-                    updatedAt: Timestamp.fromDate(new Date()),
-                  });
+    batch.set(doc(batchVersion, singletonDocumentId), {
+      version: "__INITIAL__",
+      prevVersion: "",
+      createdAt: Timestamp.fromDate(new Date()),
+      updatedAt: Timestamp.fromDate(new Date()),
+    });
 
-                  batch.set(doc(lifeLogTreeNodes, "child1"), {
-                    text: "child1",
-                    lifeLogId: "$log1",
-                    parentId: "$log1",
-                    order: "a0",
-                    createdAt: Timestamp.fromDate(new Date()),
-                    updatedAt: Timestamp.fromDate(new Date()),
-                  });
+    batch.set(doc(lifeLogs, "$log1"), {
+      text: "lifelog1",
+      hasTreeNodes: true,
+      startAt: noneTimestamp,
+      endAt: noneTimestamp,
+      createdAt: Timestamp.fromDate(new Date()),
+      updatedAt: Timestamp.fromDate(new Date()),
+    });
 
-                  batch.set(doc(lifeLogTreeNodes, "child2"), {
-                    text: "child2",
-                    lifeLogId: "$log1",
-                    parentId: "$log1",
-                    order: "a1",
-                    createdAt: Timestamp.fromDate(new Date()),
-                    updatedAt: Timestamp.fromDate(new Date()),
-                  });
+    batch.set(doc(lifeLogTreeNodes, "child1"), {
+      text: "child1",
+      lifeLogId: "$log1",
+      parentId: "$log1",
+      order: "a0",
+      createdAt: Timestamp.fromDate(new Date()),
+      updatedAt: Timestamp.fromDate(new Date()),
+    });
 
-                  batch.set(doc(lifeLogTreeNodes, "child3"), {
-                    text: "child3",
-                    lifeLogId: "$log1",
-                    parentId: "$log1",
-                    order: "a2",
-                    createdAt: Timestamp.fromDate(new Date()),
-                    updatedAt: Timestamp.fromDate(new Date()),
-                  });
+    await batch.commit();
 
-                  batch.set(doc(lifeLogTreeNodes, "child4"), {
-                    text: "child4",
-                    lifeLogId: "$log1",
-                    parentId: "$log1",
-                    order: "a3",
-                    createdAt: Timestamp.fromDate(new Date()),
-                    updatedAt: Timestamp.fromDate(new Date()),
-                  });
+    updateState((state) => {
+      state.panesLifeLogs.selectedLifeLogId = "$log1";
+      state.panesLifeLogs.selectedLifeLogNodeId = "";
+    });
+  };
 
-                  batch.set(doc(lifeLogTreeNodes, "child5"), {
-                    text: "child5",
-                    lifeLogId: "$log1",
-                    parentId: "$log1",
-                    order: "a4",
-                    createdAt: Timestamp.fromDate(new Date()),
-                    updatedAt: Timestamp.fromDate(new Date()),
-                  });
+  const openWithShare = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("title", "Example");
+    url.searchParams.set("url", "https://example.com");
+    window.location.href = url.toString();
+  };
 
-                  batch.set(doc(lifeLogTreeNodes, "child6"), {
-                    text: "child6",
-                    lifeLogId: "$log1",
-                    parentId: "$log1",
-                    order: "a5",
-                    createdAt: Timestamp.fromDate(new Date()),
-                    updatedAt: Timestamp.fromDate(new Date()),
-                  });
+  return (
+    <>
+      <div style={{ "margin-bottom": "8px" }}>
+        <button onClick={() => void initialize()}>Initialize</button>
+        <button onClick={openWithShare} style={{ "margin-left": "8px" }}>
+          Open with Share
+        </button>
+      </div>
+      <ShareHandler />
+      <LifeLogs />
+    </>
+  );
+}
 
-                  batch.set(doc(lifeLogTreeNodes, "child1 of child1"), {
-                    text: "child1 of child1",
-                    lifeLogId: "$log1",
-                    parentId: "child1",
-                    order: "a0",
-                    createdAt: Timestamp.fromDate(new Date()),
-                    updatedAt: Timestamp.fromDate(new Date()),
-                  });
-
-                  await batch.commit();
-
-                  updateState((state) => {
-                    state.panesLifeLogs.selectedLifeLogId = "$log1";
-                    state.panesLifeLogs.selectedLifeLogNodeId = "";
-                  });
-                })().catch((error: unknown) => {
-                  console.error("Error initializing Firestore data:", error);
-                });
-              });
-
-              return <LifeLogs />;
-            })()}
+export const ShareTarget: StoryObj = {
+  render() {
+    return (
+      <StoreServiceProvider>
+        <StorybookFirebaseWrapper showConfig={false}>
+          <Suspense fallback={<span>loading....</span>}>
+            <ShareTargetStory />
           </Suspense>
         </StorybookFirebaseWrapper>
       </StoreServiceProvider>

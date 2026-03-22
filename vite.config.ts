@@ -33,6 +33,15 @@ export default defineConfig({
         manifest: {
           name: "Rejysten",
           icons: [{ src: "logo.svg", sizes: "512x512", type: "image/svg+xml" }],
+          share_target: {
+            action: "/",
+            method: "GET",
+            params: {
+              title: "title",
+              text: "text",
+              url: "url",
+            },
+          },
         },
       }),
   ],
