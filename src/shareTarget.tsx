@@ -1,8 +1,8 @@
-import { query, where } from "firebase/firestore";
+import { limit, orderBy, query, Timestamp, where } from "firebase/firestore";
 import { onMount } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
-import { TimestampNow } from "@/date";
+import { DateNow } from "@/date";
 import { type FirestoreService, getCollection, getDocs, useFirestoreService } from "@/services/firebase/firestore";
 import "@/panes/lifeLogs/schema";
 import { runBatch } from "@/services/firebase/firestore/batch";
@@ -31,6 +31,7 @@ export async function handleShareTarget(firestore: FirestoreService): Promise<vo
   const category = readingDomains.some((d) => hostname === d || hostname.endsWith("." + d))
     ? "読書"
     : "ネットサーフィン";
+  const otherCategory = category === "読書" ? "ネットサーフィン" : "読書";
 
   // Determine title: prefer title param, otherwise use URL
   const linkTitle = title || url;
@@ -39,26 +40,32 @@ export async function handleShareTarget(firestore: FirestoreService): Promise<vo
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
   const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
 
-  // Find running lifeLog matching the category
+  // Find all running lifeLogs
   const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
-  const netSurfingLog = runningLogs.find((log) => log.text === category);
+  const matchingLog = runningLogs.find((log) => log.text === category);
+  const otherLog = runningLogs.find((log) => log.text === otherCategory);
+
+  const now = Timestamp.fromMillis(Math.floor(DateNow() / 1000) * 1000);
 
   let lifeLogId: string;
   let nodeId: string;
 
-  if (netSurfingLog) {
-    lifeLogId = netSurfingLog.id;
+  if (matchingLog) {
+    lifeLogId = matchingLog.id;
 
-    if (netSurfingLog.hasTreeNodes) {
+    if (matchingLog.hasTreeNodes) {
       // Has tree nodes - add as next sibling of last child
-      const lastChild = await getLastChildNode(firestore, treeNodesCol, netSurfingLog);
+      const lastChild = await getLastChildNode(firestore, treeNodesCol, matchingLog);
       if (lastChild) {
         nodeId = uuidv7();
         await runBatch(firestore, async (batch) => {
+          if (otherLog) {
+            batch.update(lifeLogsCol, { id: otherLog.id, endAt: now });
+          }
           await addNextSibling(firestore, batch, treeNodesCol, lastChild, {
             id: nodeId,
             text: markdownLink,
-            lifeLogId: netSurfingLog.id,
+            lifeLogId: matchingLog.id,
           });
         });
       }
@@ -66,30 +73,49 @@ export async function handleShareTarget(firestore: FirestoreService): Promise<vo
       // No tree nodes - add single and update hasTreeNodes
       nodeId = uuidv7();
       await runBatch(firestore, (batch) => {
-        addSingle(firestore, batch, treeNodesCol, netSurfingLog.id, {
+        if (otherLog) {
+          batch.update(lifeLogsCol, { id: otherLog.id, endAt: now });
+        }
+        addSingle(firestore, batch, treeNodesCol, matchingLog.id, {
           id: nodeId,
           text: markdownLink,
-          lifeLogId: netSurfingLog.id,
+          lifeLogId: matchingLog.id,
         });
         batch.update(lifeLogsCol, {
-          id: netSurfingLog.id,
+          id: matchingLog.id,
           hasTreeNodes: true,
         });
         return Promise.resolve();
       });
     }
   } else {
-    // No running ネットサーフィン - create new lifeLog + tree node
+    // No matching log - create new lifeLog + tree node
     const newLogId = uuidv7();
     lifeLogId = newLogId;
     nodeId = uuidv7();
 
+    // Determine startAt: if otherLog exists, use now (same as its endAt).
+    // Otherwise, check if any lifeLog is running — if so use now, else use most recent endAt.
+    let startAt: Timestamp;
+    if (otherLog) {
+      startAt = now;
+    } else if (runningLogs.length > 0) {
+      startAt = now;
+    } else {
+      const latestQuery = query(lifeLogsCol, orderBy("endAt", "desc"), orderBy("startAt", "desc"), limit(1));
+      const latestLogs = await getDocs(firestore, latestQuery);
+      startAt = latestLogs.length > 0 ? latestLogs[0].endAt : now;
+    }
+
     await runBatch(firestore, (batch) => {
+      if (otherLog) {
+        batch.update(lifeLogsCol, { id: otherLog.id, endAt: now });
+      }
       batch.set(lifeLogsCol, {
         id: newLogId,
         text: category,
         hasTreeNodes: true,
-        startAt: TimestampNow(),
+        startAt,
         endAt: noneTimestamp,
       });
       addSingle(firestore, batch, treeNodesCol, newLogId, {

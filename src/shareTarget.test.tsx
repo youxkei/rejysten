@@ -420,6 +420,352 @@ describe("handleShareTarget", () => {
     expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(newNode!.id);
   });
 
+  it("ends running ネットサーフィン when creating new 読書", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=Novel&url=https://ncode.syosetu.com/n1234ab/");
+
+    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-excl1"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+
+    // ネットサーフィン should be ended
+    const allLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "ネットサーフィン")));
+    const endedLog = allLogs.find((l) => l.id === "$netsurf-excl1");
+    expect(endedLog).toBeTruthy();
+    expect(endedLog!.endAt.toMillis()).toBe(Timestamp.fromDate(baseTime).toMillis());
+
+    // New 読書 should be created with same startAt
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const readingLog = runningLogs.find((l) => l.text === "読書");
+    expect(readingLog).toBeTruthy();
+    expect(readingLog!.startAt.toMillis()).toBe(Timestamp.fromDate(baseTime).toMillis());
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe(readingLog!.id);
+  });
+
+  it("ends running 読書 when creating new ネットサーフィン", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=Example&url=https://example.com");
+
+    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$reading-excl1"), {
+        text: "読書",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+
+    // 読書 should be ended
+    const allLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "読書")));
+    const endedLog = allLogs.find((l) => l.id === "$reading-excl1");
+    expect(endedLog).toBeTruthy();
+    expect(endedLog!.endAt.toMillis()).toBe(Timestamp.fromDate(baseTime).toMillis());
+
+    // New ネットサーフィン should be created with same startAt
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const netSurfLog = runningLogs.find((l) => l.text === "ネットサーフィン");
+    expect(netSurfLog).toBeTruthy();
+    expect(netSurfLog!.startAt.toMillis()).toBe(Timestamp.fromDate(baseTime).toMillis());
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe(netSurfLog!.id);
+  });
+
+  it("ends running ネットサーフィン when appending to existing 読書", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=Novel&url=https://ncode.syosetu.com/n1234ab/");
+
+    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$reading-both1"), {
+        text: "読書",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$rnode-both1"), {
+        text: "existing reading node",
+        lifeLogId: "$reading-both1",
+        parentId: "$reading-both1",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-both1"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+
+    // ネットサーフィン should be ended
+    const allLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "ネットサーフィン")));
+    const endedLog = allLogs.find((l) => l.id === "$netsurf-both1");
+    expect(endedLog).toBeTruthy();
+    expect(endedLog!.endAt.toMillis()).toBe(Timestamp.fromDate(baseTime).toMillis());
+
+    // 読書 should still be running
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const readingLog = runningLogs.find((l) => l.text === "読書");
+    expect(readingLog).toBeTruthy();
+    expect(readingLog!.id).toBe("$reading-both1");
+
+    // Node should be appended to 読書
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$reading-both1")));
+    expect(nodes).toHaveLength(2);
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe("$reading-both1");
+  });
+
+  it("ends running 読書 when appending to existing ネットサーフィン", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=Example&url=https://example.com");
+
+    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-both2"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$nnode-both2"), {
+        text: "existing surf node",
+        lifeLogId: "$netsurf-both2",
+        parentId: "$netsurf-both2",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$reading-both2"), {
+        text: "読書",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+
+    // 読書 should be ended
+    const allLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "読書")));
+    const endedLog = allLogs.find((l) => l.id === "$reading-both2");
+    expect(endedLog).toBeTruthy();
+    expect(endedLog!.endAt.toMillis()).toBe(Timestamp.fromDate(baseTime).toMillis());
+
+    // ネットサーフィン should still be running
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const netSurfLog = runningLogs.find((l) => l.text === "ネットサーフィン");
+    expect(netSurfLog).toBeTruthy();
+    expect(netSurfLog!.id).toBe("$netsurf-both2");
+
+    // Node should be appended to ネットサーフィン
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf-both2")));
+    expect(nodes).toHaveLength(2);
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe("$netsurf-both2");
+  });
+
+  it("uses most recent endAt as startAt when nothing is running", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=Example&url=https://example.com");
+
+    const pastEndAt = Timestamp.fromDate(new Date(2026, 0, 10, 11, 30, 0, 0));
+
+    const { ready, getFirestore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$finished1"), {
+        text: "仕事",
+        hasTreeNodes: false,
+        startAt: Timestamp.fromDate(new Date(2026, 0, 10, 11, 0, 0, 0)),
+        endAt: pastEndAt,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const netSurfLog = runningLogs.find((l) => l.text === "ネットサーフィン");
+    expect(netSurfLog).toBeTruthy();
+    expect(netSurfLog!.startAt.toMillis()).toBe(pastEndAt.toMillis());
+  });
+
+  it("uses current time as startAt when other lifeLog is running", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=Example&url=https://example.com");
+
+    const { ready, getFirestore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$running-other"), {
+        text: "仕事",
+        hasTreeNodes: false,
+        startAt: Timestamp.fromDate(new Date(2026, 0, 10, 11, 0, 0, 0)),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const netSurfLog = runningLogs.find((l) => l.text === "ネットサーフィン");
+    expect(netSurfLog).toBeTruthy();
+    expect(netSurfLog!.startAt.toMillis()).toBe(Timestamp.fromDate(baseTime).toMillis());
+  });
+
   it("does nothing when no valid URL is present", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Example&text=no+url+here");
 
