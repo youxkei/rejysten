@@ -15,6 +15,7 @@ import {
   memoryLocalCache,
   persistentLocalCache,
   persistentMultipleTabManager,
+  onSnapshot,
   onSnapshotsInSync,
   connectFirestoreEmulator,
   type Timestamp,
@@ -116,6 +117,22 @@ export function useFirestoreService() {
   if (!service) throw new ServiceNotAvailable("Firestore");
 
   return service;
+}
+
+export function waitForServerSync(service: FirestoreService): Promise<void> {
+  const batchVersionCol = collection(service.firestore, "batchVersion") as CollectionReference<Schema["batchVersion"]>;
+  return new Promise<void>((resolve) => {
+    const unsubscribe = onSnapshot(
+      doc(batchVersionCol, singletonDocumentId),
+      { includeMetadataChanges: true },
+      (snapshot) => {
+        if (!snapshot.metadata.fromCache) {
+          unsubscribe();
+          resolve();
+        }
+      },
+    );
+  });
 }
 
 export function getCollection<Name extends keyof Schema>(service: FirestoreService, name: Name) {

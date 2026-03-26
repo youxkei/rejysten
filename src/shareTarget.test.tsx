@@ -369,6 +369,88 @@ describe("handleShareTarget", () => {
     expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(nodes[0].id);
   });
 
+  it("creates 読書 lifeLog for manga.nicovideo.jp URL", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=Manga&url=https://manga.nicovideo.jp/comic/12345");
+
+    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const readingLog = logs.find((l) => l.text === "読書");
+    expect(readingLog).toBeTruthy();
+    expect(readingLog!.hasTreeNodes).toBe(true);
+
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", readingLog!.id)));
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe("[Manga](https://manga.nicovideo.jp/comic/12345)");
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe(readingLog!.id);
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(nodes[0].id);
+  });
+
+  it("creates 読書 lifeLog for shonenjumpplus.com URL", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=Jump&url=https://shonenjumpplus.com/episode/123");
+
+    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const readingLog = logs.find((l) => l.text === "読書");
+    expect(readingLog).toBeTruthy();
+    expect(readingLog!.hasTreeNodes).toBe(true);
+
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", readingLog!.id)));
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe("[Jump](https://shonenjumpplus.com/episode/123)");
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe(readingLog!.id);
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(nodes[0].id);
+  });
+
   it("appends to existing running 読書 for syosetu.org URL", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Novel&url=https://syosetu.org/novel/123/");
 

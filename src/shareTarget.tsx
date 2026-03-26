@@ -5,7 +5,13 @@ import { uuidv7 } from "uuidv7";
 import { DateNow } from "@/date";
 import { fetchOGPTitle } from "@/ogp";
 import "@/panes/lifeLogs/schema";
-import { type FirestoreService, getCollection, getDocs, useFirestoreService } from "@/services/firebase/firestore";
+import {
+  type FirestoreService,
+  getCollection,
+  getDocs,
+  useFirestoreService,
+  waitForServerSync,
+} from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
 import { addNextSibling, addSingle, getLastChildNode } from "@/services/firebase/firestore/treeNode";
 import { noneTimestamp } from "@/timestamp";
@@ -27,7 +33,9 @@ export async function handleShareTarget(firestore: FirestoreService): Promise<vo
 
   if (!url) return;
 
-  const readingDomains = ["ncode.syosetu.com", "syosetu.org", "kakuyomu.jp"];
+  await waitForServerSync(firestore);
+
+  const readingDomains = ["ncode.syosetu.com", "syosetu.org", "kakuyomu.jp", "manga.nicovideo.jp", "shonenjumpplus.com"];
   const hostname = new URL(url).hostname;
   const category = readingDomains.some((d) => hostname === d || hostname.endsWith("." + d))
     ? "読書"
