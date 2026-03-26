@@ -32,7 +32,7 @@ async function findFreePort(): Promise<number> {
   });
 }
 
-async function waitForEmulator(port: number, maxAttempts = 30): Promise<void> {
+async function waitForEmulator(port: number, maxAttempts = 60): Promise<void> {
   for (let i = 0; i < maxAttempts; i++) {
     try {
       const res = await fetch(`http://localhost:${port}/`);

@@ -49,7 +49,7 @@ export default defineConfig({
     "import.meta.vitest": false,
   },
   test: {
-    exclude: ["functions/**", "node_modules/**"],
+    exclude: ["functions/**", "node_modules/**", "firebase-functions/**"],
     globalSetup: "./test/globalSetup.ts",
     browser: {
       provider: playwright(),

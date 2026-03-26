@@ -1,3 +1,17 @@
+const FIREBASE_OGP_URL = "https://ogp-7qz7lfkdoa-an.a.run.app";
+
+async function fetchFromFirebase(targetUrl: string): Promise<Response> {
+  try {
+    const res = await fetch(`${FIREBASE_OGP_URL}?url=${encodeURIComponent(targetUrl)}`, {
+      signal: AbortSignal.timeout(10000),
+    });
+    const data = (await res.json()) as { title: string | null };
+    return Response.json({ title: data.title });
+  } catch {
+    return Response.json({ title: null });
+  }
+}
+
 interface Env {}
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
@@ -25,9 +39,15 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
       },
       redirect: "follow",
     });
+
+    if (response.status === 403) {
+      return await fetchFromFirebase(targetUrl);
+    }
 
     const contentType = response.headers.get("content-type") ?? "";
     if (!contentType.includes("text/html")) {
