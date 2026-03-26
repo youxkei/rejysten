@@ -3,8 +3,9 @@ import { onMount } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
 import { DateNow } from "@/date";
-import { type FirestoreService, getCollection, getDocs, useFirestoreService } from "@/services/firebase/firestore";
+import { fetchOGPTitle } from "@/ogp";
 import "@/panes/lifeLogs/schema";
+import { type FirestoreService, getCollection, getDocs, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
 import { addNextSibling, addSingle, getLastChildNode } from "@/services/firebase/firestore/treeNode";
 import { noneTimestamp } from "@/timestamp";
@@ -33,8 +34,18 @@ export async function handleShareTarget(firestore: FirestoreService): Promise<vo
     : "ネットサーフィン";
   const otherCategory = category === "読書" ? "ネットサーフィン" : "読書";
 
-  // Determine title: prefer title param, otherwise use URL
-  const linkTitle = title || url;
+  // Determine title: prefer title param, then OGP title, then URL
+  let linkTitle = title;
+  if (!linkTitle) {
+    try {
+      linkTitle = await fetchOGPTitle(url);
+    } catch {
+      // fall through
+    }
+  }
+  if (!linkTitle) {
+    linkTitle = url;
+  }
   const markdownLink = `[${linkTitle}](${url})`;
 
   const lifeLogsCol = getCollection(firestore, "lifeLogs");

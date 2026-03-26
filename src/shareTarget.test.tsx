@@ -4,6 +4,7 @@ import { onMount, Suspense } from "solid-js";
 import { afterAll, afterEach, beforeAll, describe, expect, vi } from "vitest";
 
 import { awaitPendingCallbacks } from "@/awaitableCallback";
+import { fetchOGPTitle } from "@/ogp";
 import { baseTime } from "@/panes/lifeLogs/test";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import {
@@ -24,6 +25,12 @@ vi.mock(import("@/date"), async () => {
     NewDate: () => baseTime,
     DateNow: () => baseTime.getTime(),
     TimestampNow: () => Timestamp.fromDate(baseTime),
+  };
+});
+
+vi.mock(import("@/ogp"), async () => {
+  return {
+    fetchOGPTitle: vi.fn().mockResolvedValue(null),
   };
 });
 
@@ -794,5 +801,100 @@ describe("handleShareTarget", () => {
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
     const nodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")));
     expect(nodes).toHaveLength(0);
+  });
+
+  it("uses OGP title when share title is not provided", async ({ db, task }) => {
+    history.replaceState(null, "", "/?url=https://example.com");
+    vi.mocked(fetchOGPTitle).mockResolvedValueOnce("OGP Title");
+
+    const { ready, getFirestore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")));
+    expect(allNodes).toHaveLength(1);
+    expect(allNodes[0].text).toBe("[OGP Title](https://example.com)");
+  });
+
+  it("falls back to URL when OGP returns null", async ({ db, task }) => {
+    history.replaceState(null, "", "/?url=https://example.com");
+
+    const { ready, getFirestore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")));
+    expect(allNodes).toHaveLength(1);
+    expect(allNodes[0].text).toBe("[https://example.com](https://example.com)");
+  });
+
+  it("falls back to URL when OGP fetch rejects", async ({ db, task }) => {
+    history.replaceState(null, "", "/?url=https://example.com");
+    vi.mocked(fetchOGPTitle).mockRejectedValueOnce(new Error("network"));
+
+    const { ready, getFirestore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")));
+    expect(allNodes).toHaveLength(1);
+    expect(allNodes[0].text).toBe("[https://example.com](https://example.com)");
   });
 });

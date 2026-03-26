@@ -783,7 +783,7 @@ describe.concurrent("treeNode", () => {
             await remove(service, batch, col, nodeToRemove);
           }),
         )
-        .rejects.toThrowError("cannot delete node with children");
+        .rejects.toThrow("cannot delete node with children");
     });
 
     it("removes ngram when node is deleted and collection is ngram-enabled", async (ctx) => {
