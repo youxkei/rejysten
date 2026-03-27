@@ -324,4 +324,134 @@ describe("<Search />", () => {
     // since tree nodes would be returned later by Firestore query
     expect(displayedResults.length).toBe(2);
   });
+
+  it("clicking a result selects it", async ({ db, task }) => {
+    const { result } = await setupSearchTest(task.id, db, { initialQuery: "searchable" });
+
+    // Wait for multiple results
+    await waitFor(() => {
+      const results = result.container.querySelectorAll(`.${styles.search.result}`);
+      expect(results.length).toBeGreaterThan(1);
+    });
+
+    const allResults = Array.from(result.container.querySelectorAll(`.${styles.search.result}`));
+
+    // First result is selected by default
+    expect(allResults[0].className).toContain(styles.search.resultSelected);
+    expect(allResults[1].className).not.toContain(styles.search.resultSelected);
+
+    // Click the second result
+    await userEvent.click(allResults[1]);
+    await awaitPendingCallbacks();
+
+    // Second result should now be selected
+    await waitFor(() => {
+      const updatedResults = Array.from(result.container.querySelectorAll(`.${styles.search.result}`));
+      expect(updatedResults[0].className).not.toContain(styles.search.resultSelected);
+      expect(updatedResults[1].className).toContain(styles.search.resultSelected);
+    });
+  });
+
+  describe("MobileToolbar", () => {
+    const findToolbarButton = (container: HTMLElement, emoji: string) =>
+      Array.from(container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+        (btn) => btn.textContent === emoji,
+      ) as HTMLButtonElement | undefined;
+
+    it("⏫ button goes to first result", async ({ db, task }) => {
+      const { result } = await setupSearchTest(task.id, db, { initialQuery: "searchable" });
+
+      // Wait for multiple results
+      await waitFor(() => {
+        const results = result.container.querySelectorAll(`.${styles.search.result}`);
+        expect(results.length).toBeGreaterThan(1);
+      });
+
+      // Blur input and go to last with G
+      const input = result.container.querySelector(`.${styles.search.input}`) as HTMLInputElement;
+      input.blur();
+      await awaitPendingCallbacks();
+
+      await userEvent.keyboard("{Shift>}{g}{/Shift}");
+      await awaitPendingCallbacks();
+
+      const allResults = () => Array.from(result.container.querySelectorAll(`.${styles.search.result}`));
+      expect(allResults()[allResults().length - 1].className).toContain(styles.search.resultSelected);
+
+      // Click ⏫
+      const goToFirstButton = findToolbarButton(result.container, "⏫");
+      expect(goToFirstButton).toBeTruthy();
+      goToFirstButton!.click();
+      await awaitPendingCallbacks();
+
+      // First result should be selected
+      await waitFor(() => {
+        expect(allResults()[0].className).toContain(styles.search.resultSelected);
+      });
+    });
+
+    it("⏬ button goes to last result", async ({ db, task }) => {
+      const { result } = await setupSearchTest(task.id, db, { initialQuery: "searchable" });
+
+      // Wait for multiple results
+      await waitFor(() => {
+        const results = result.container.querySelectorAll(`.${styles.search.result}`);
+        expect(results.length).toBeGreaterThan(1);
+      });
+
+      // First result is selected by default
+      const allResults = () => Array.from(result.container.querySelectorAll(`.${styles.search.result}`));
+      expect(allResults()[0].className).toContain(styles.search.resultSelected);
+
+      // Click ⏬
+      const goToLastButton = findToolbarButton(result.container, "⏬");
+      expect(goToLastButton).toBeTruthy();
+      goToLastButton!.click();
+      await awaitPendingCallbacks();
+
+      // Last result should be selected
+      await waitFor(() => {
+        const results = allResults();
+        expect(results[results.length - 1].className).toContain(styles.search.resultSelected);
+      });
+    });
+
+    it("↩️ button closes search", async ({ db, task }) => {
+      const { result } = await setupSearchTest(task.id, db);
+
+      // Click ↩️
+      const closeButton = findToolbarButton(result.container, "↩️");
+      expect(closeButton).toBeTruthy();
+      closeButton!.click();
+      await awaitPendingCallbacks();
+
+      // Search pane should close
+      await waitFor(() => {
+        const wrapper = result.container.querySelector(`.${styles.search.wrapper}`);
+        expect(wrapper).toBeFalsy();
+      });
+    });
+
+    it("✅ button jumps to selected result and closes search", async ({ db, task }) => {
+      const { result } = await setupSearchTest(task.id, db, { initialQuery: "lifelog" });
+
+      // Wait for results
+      await waitFor(() => {
+        const results = result.container.querySelectorAll(`.${styles.search.result}`);
+        expect(results.length).toBeGreaterThan(0);
+      });
+
+      // Click ✅
+      const jumpButton = findToolbarButton(result.container, "✅");
+      expect(jumpButton).toBeTruthy();
+      jumpButton!.click();
+      await awaitPendingCallbacks();
+
+      // Search pane should close
+      await waitFor(() => {
+        const wrapper = result.container.querySelector(`.${styles.search.wrapper}`);
+        expect(wrapper).toBeFalsy();
+      });
+    });
+  });
 });

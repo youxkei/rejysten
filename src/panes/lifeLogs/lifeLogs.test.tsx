@@ -3016,6 +3016,21 @@ describe("<LifeLogs />", () => {
         expect(result.container.querySelector("input")).toBeNull();
       });
     });
+
+    describe("search button", () => {
+      it("🔍 button exists in toolbar", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        const searchButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === "🔍",
+        ) as HTMLButtonElement;
+        expect(searchButton).toBeTruthy();
+
+        // Click should not throw
+        searchButton.click();
+        await awaitPendingCallbacks();
+      });
+    });
   });
 
   describe("rangeMs prop", () => {

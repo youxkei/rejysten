@@ -6,7 +6,7 @@ import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { scrollWithOffset } from "@/solid/scroll";
 import { styles } from "@/styles.css";
 
-export function SearchResult(props: { ngramId: string; isSelected: boolean }) {
+export function SearchResult(props: { ngramId: string; isSelected: boolean; onSelect: () => void }) {
   const firestore = useFirestoreService();
   const ngramsCol = getCollection(firestore, "ngrams");
 
@@ -25,7 +25,7 @@ export function SearchResult(props: { ngramId: string; isSelected: boolean }) {
   });
 
   return (
-    <div ref={resultRef} class={`${styles.search.result} ${props.isSelected ? styles.search.resultSelected : ""}`}>
+    <div ref={resultRef} class={`${styles.search.result} ${props.isSelected ? styles.search.resultSelected : ""}`} onClick={props.onSelect}>
       <span class={styles.search.resultCollection}>{ngram$()?.collection}</span>
       <span class={styles.search.resultText}>{ngram$()?.text}</span>
     </div>

@@ -16,6 +16,15 @@ interface EmulatorInstance {
 
 const activeEmulators = new Map<number, EmulatorInstance>();
 
+// Serialize emulator starts to avoid overwhelming the system
+let startQueue: Promise<void> = Promise.resolve();
+
+function enqueueStart(): Promise<EmulatorInstance> {
+  return new Promise<EmulatorInstance>((resolve, reject) => {
+    startQueue = startQueue.then(() => startEmulator().then(resolve, reject));
+  });
+}
+
 declare module "vitest" {
   export interface ProvidedContext {
     httpPort: number;
@@ -161,7 +170,7 @@ export async function setup(project: TestProject) {
 
     if (req.method === "POST" && url.pathname === "/emulator/acquire") {
       try {
-        const instance = await startEmulator();
+        const instance = await enqueueStart();
         res.writeHead(200);
         res.end(JSON.stringify({ emulatorPort: instance.port }));
       } catch (e) {

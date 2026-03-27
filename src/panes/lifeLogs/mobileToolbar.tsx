@@ -24,7 +24,7 @@ export function MobileToolbar() {
 
 function NavigationToolbar() {
   const {
-    panes: { lifeLogs: actions },
+    panes: { lifeLogs: actions, search: searchActions },
     components: { tree: treeActions },
   } = useActionsService();
   const { state } = useStoreService();
@@ -85,6 +85,9 @@ function NavigationToolbar() {
   });
   const handleDedent = withOwner(() => {
     treeActions.dedentNode();
+  });
+  const handleOpenSearch = withOwner(() => {
+    searchActions.openSearch();
   });
 
   return (
@@ -183,6 +186,9 @@ function NavigationToolbar() {
         disabled={state.panesLifeLogs.selectedLifeLogId === ""}
       >
         ✏️
+      </button>
+      <button class={styles.mobileToolbar.button} onClick={handleOpenSearch}>
+        🔍
       </button>
     </div>
   );

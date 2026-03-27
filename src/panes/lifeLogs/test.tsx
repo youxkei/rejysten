@@ -3,6 +3,8 @@ import { doc, Timestamp, writeBatch } from "firebase/firestore";
 import { onMount, Suspense } from "solid-js";
 
 import { LifeLogs } from "@/panes/lifeLogs";
+import "@/panes/search/actions";
+import "@/panes/search/store";
 import { ActionsServiceProvider } from "@/services/actions";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import {

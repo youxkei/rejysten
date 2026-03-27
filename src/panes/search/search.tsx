@@ -3,6 +3,7 @@ import { query, where } from "firebase/firestore";
 import { createEffect, createMemo, onCleanup, onMount, startTransition } from "solid-js";
 
 import { analyzeTextForNgrams } from "@/ngram";
+import { SearchMobileToolbar } from "@/panes/search/mobileToolbar";
 import { SearchResult } from "@/panes/search/searchResult";
 import { useActionsService } from "@/services/actions";
 import { getCollection, useFirestoreService } from "@/services/firebase/firestore";
@@ -183,12 +184,24 @@ export function Search() {
           <Key each={resultIds$()} by={(id) => id}>
             {(id, index) => (
               <li>
-                <SearchResult ngramId={id()} isSelected={state.panesSearch.selectedResultIndex === index()} />
+                <SearchResult
+                  ngramId={id()}
+                  isSelected={state.panesSearch.selectedResultIndex === index()}
+                  onSelect={() => {
+                    const i = index();
+                    void startTransition(() => {
+                      updateState((s) => {
+                        s.panesSearch.selectedResultIndex = i;
+                      });
+                    });
+                  }}
+                />
               </li>
             )}
           </Key>
         </ul>
       </ScrollContainer>
+      <SearchMobileToolbar />
     </div>
   );
 }
