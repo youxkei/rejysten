@@ -61,8 +61,8 @@ export default defineConfig({
     fileParallelism: true,
     retry: 3,
     bail: 1,
-    testTimeout: 2_000,
-    hookTimeout: 60_000,
+    testTimeout: 5_000,
+    hookTimeout: 120_000,
   },
   resolve: {
     conditions: ["development|production", "browser"],

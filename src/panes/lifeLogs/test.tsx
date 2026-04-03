@@ -14,14 +14,11 @@ import {
   useFirestoreService,
 } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
+import { type DatabaseInfo } from "@/test";
 import { dayMs, noneTimestamp } from "@/timestamp";
 import { LifeLogsProps } from "@/panes/lifeLogs/index";
 
 export const baseTime = new Date(2026, 0, 10, 12, 0, 0, 0);
-
-export interface DatabaseInfo {
-  emulatorPort: number;
-}
 
 export interface SetupLifeLogsTestOptions {
   lifeLogCount?: number;

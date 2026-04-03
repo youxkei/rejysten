@@ -4,6 +4,7 @@ import { spawn, type ChildProcess } from "child_process";
 import type { TestProject } from "vitest/node";
 
 const CONTAINER_PORT = 8080;
+const POOL_SIZE = 2;
 
 let server: http.Server | undefined;
 let httpPort: number;
@@ -14,16 +15,9 @@ interface EmulatorInstance {
   process: ChildProcess;
 }
 
-const activeEmulators = new Map<number, EmulatorInstance>();
-
-// Serialize emulator starts to avoid overwhelming the system
-let startQueue: Promise<void> = Promise.resolve();
-
-function enqueueStart(): Promise<EmulatorInstance> {
-  return new Promise<EmulatorInstance>((resolve, reject) => {
-    startQueue = startQueue.then(() => startEmulator().then(resolve, reject));
-  });
-}
+const allEmulators: EmulatorInstance[] = [];
+const availableEmulators: EmulatorInstance[] = [];
+const waitQueue: Array<(instance: EmulatorInstance) => void> = [];
 
 declare module "vitest" {
   export interface ProvidedContext {
@@ -86,32 +80,23 @@ async function startEmulator(): Promise<EmulatorInstance> {
     console.error(`[emulator:${port}] ${data.toString().trim()}`);
   });
 
-  // Track container immediately so it gets cleaned up even if wait times out
   const instance: EmulatorInstance = { port, containerName, process: emulatorProcess };
-  activeEmulators.set(port, instance);
 
   console.log(`[globalSetup] Waiting for emulator on port ${port} to be ready...`);
   try {
     await waitForEmulator(port);
     console.log(`[globalSetup] Emulator on port ${port} is ready`);
   } catch (e) {
-    // Clean up the container if it failed to start
     console.error(`[globalSetup] Emulator on port ${port} failed to start, cleaning up...`);
-    await stopEmulator(port);
+    await stopEmulator(instance);
     throw e;
   }
 
   return instance;
 }
 
-async function stopEmulator(port: number): Promise<void> {
-  const instance = activeEmulators.get(port);
-  if (!instance) {
-    console.warn(`[globalSetup] No emulator found for port ${port}`);
-    return;
-  }
-
-  console.log(`[globalSetup] Stopping emulator on port ${port}, container: ${instance.containerName}`);
+async function stopEmulator(instance: EmulatorInstance): Promise<void> {
+  console.log(`[globalSetup] Stopping emulator on port ${instance.port}, container: ${instance.containerName}`);
 
   const rmProcess = spawn("podman", ["rm", "-f", instance.containerName], {
     stdio: ["ignore", "pipe", "pipe"],
@@ -121,8 +106,34 @@ async function stopEmulator(port: number): Promise<void> {
     rmProcess.on("close", () => resolve());
   });
 
-  activeEmulators.delete(port);
-  console.log(`[globalSetup] Emulator on port ${port} stopped`);
+  console.log(`[globalSetup] Emulator on port ${instance.port} stopped`);
+}
+
+function acquireFromPool(): Promise<EmulatorInstance> {
+  const available = availableEmulators.shift();
+  if (available) {
+    return Promise.resolve(available);
+  }
+  return new Promise((resolve) => {
+    waitQueue.push(resolve);
+  });
+}
+
+async function releaseToPool(port: number): Promise<void> {
+  // Clear database before returning to pool
+  await fetch(`http://localhost:${port}/emulator/v1/projects/demo/databases/(default)/documents`, {
+    method: "DELETE",
+  });
+
+  const instance = allEmulators.find((e) => e.port === port);
+  if (!instance) return;
+
+  const waiter = waitQueue.shift();
+  if (waiter) {
+    waiter(instance);
+  } else {
+    availableEmulators.push(instance);
+  }
 }
 
 function readRequestBody(req: http.IncomingMessage): Promise<string> {
@@ -153,7 +164,15 @@ export async function setup(project: TestProject) {
   // 2. Provide HTTP port to tests
   project.provide("httpPort", httpPort);
 
-  // 3. Start HTTP server
+  // 3. Start emulator pool (sequentially to avoid resource contention)
+  for (let i = 0; i < POOL_SIZE; i++) {
+    const instance = await startEmulator();
+    allEmulators.push(instance);
+    availableEmulators.push(instance);
+  }
+  console.log(`[globalSetup] Emulator pool ready (${POOL_SIZE} instances)`);
+
+  // 4. Start HTTP server
   server = http.createServer(async (req, res) => {
     res.setHeader("Content-Type", "application/json");
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -169,36 +188,31 @@ export async function setup(project: TestProject) {
     const url = new URL(req.url ?? "/", `http://localhost:${httpPort}`);
 
     if (req.method === "POST" && url.pathname === "/emulator/acquire") {
-      try {
-        const instance = await enqueueStart();
-        res.writeHead(200);
-        res.end(JSON.stringify({ emulatorPort: instance.port }));
-      } catch (e) {
-        console.error(`[globalSetup] Failed to start emulator:`, e);
-        res.writeHead(500);
-        res.end(JSON.stringify({ error: "Failed to start emulator" }));
-      }
+      const instance = await acquireFromPool();
+      res.writeHead(200);
+      res.end(JSON.stringify({ emulatorPort: instance.port }));
       return;
     }
 
     if (req.method === "POST" && url.pathname === "/emulator/release") {
-      try {
-        const body = await readRequestBody(req);
-        const { port } = JSON.parse(body);
-        await stopEmulator(port);
-        res.writeHead(200);
-        res.end(JSON.stringify({ success: true }));
-      } catch (e) {
-        console.error(`[globalSetup] Failed to stop emulator:`, e);
-        res.writeHead(500);
-        res.end(JSON.stringify({ error: "Failed to stop emulator" }));
-      }
+      const body = await readRequestBody(req);
+      const { port } = JSON.parse(body);
+      await releaseToPool(port);
+      res.writeHead(200);
+      res.end(JSON.stringify({ success: true }));
       return;
     }
 
     if (req.method === "GET" && url.pathname === "/health") {
       res.writeHead(200);
-      res.end(JSON.stringify({ status: "ok", activeEmulators: activeEmulators.size }));
+      res.end(
+        JSON.stringify({
+          status: "ok",
+          total: allEmulators.length,
+          available: availableEmulators.length,
+          waiting: waitQueue.length,
+        }),
+      );
       return;
     }
 
@@ -229,14 +243,22 @@ export async function setup(project: TestProject) {
 export async function teardown() {
   console.log(`[globalSetup] Shutting down...`);
 
+  // Unblock any waiters
+  for (const waiter of waitQueue) {
+    // These will get a dead emulator, but teardown is happening anyway
+    waiter(allEmulators[0]);
+  }
+  waitQueue.length = 0;
+
   if (server) {
     server.close();
   }
 
-  // Stop all active emulators
-  for (const [port] of activeEmulators) {
-    await stopEmulator(port);
+  for (const instance of allEmulators) {
+    await stopEmulator(instance);
   }
+  allEmulators.length = 0;
+  availableEmulators.length = 0;
 
   console.log(`[globalSetup] Shutdown complete`);
 }

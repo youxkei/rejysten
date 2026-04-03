@@ -14,13 +14,10 @@ import {
   useFirestoreService,
 } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
+import { type DatabaseInfo } from "@/test";
 import { noneTimestamp } from "@/timestamp";
 
 export const baseTime = new Date(2026, 0, 10, 12, 0, 0, 0);
-
-export interface DatabaseInfo {
-  emulatorPort: number;
-}
 
 export interface SetupSearchTestOptions {
   initialQuery?: string;
