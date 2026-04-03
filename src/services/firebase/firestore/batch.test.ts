@@ -36,16 +36,16 @@ afterAll(async () => {
   await releaseEmulator();
 });
 
+vi.mock(import("firebase/firestore"), async (importOriginal) => {
+  const mod = await importOriginal();
+
+  return {
+    ...mod,
+    serverTimestamp: () => timestampForServerTimestamp,
+  };
+});
+
 describe("batch", () => {
-  vi.mock(import("firebase/firestore"), async (importOriginal) => {
-    const mod = await importOriginal();
-
-    return {
-      ...mod,
-      serverTimestamp: () => timestampForServerTimestamp,
-    };
-  });
-
   describe("updateDoc", () => {
     it("updates document with serverTimestamp", async (test) => {
       const now = new Date();
@@ -335,15 +335,6 @@ describe("batch", () => {
 });
 
 describe("transaction", () => {
-  vi.mock(import("firebase/firestore"), async (importOriginal) => {
-    const mod = await importOriginal();
-
-    return {
-      ...mod,
-      serverTimestamp: () => timestampForServerTimestamp,
-    };
-  });
-
   describe("Batch with Transaction backend", () => {
     it("set creates document via transaction", async (test) => {
       const now = new Date();
