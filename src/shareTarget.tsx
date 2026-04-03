@@ -70,6 +70,21 @@ export async function handleShareTarget(firestore: FirestoreService): Promise<vo
   let nodeId: string;
 
   if (matchingLog) {
+    // Check if URL already exists in this lifeLog's nodes
+    const existingNodes = await getDocs(
+      firestore,
+      query(treeNodesCol, where("lifeLogId", "==", matchingLog.id)),
+    );
+    const existingNode = existingNodes.find((node) => node.text.includes(`](${url})`));
+    if (existingNode) {
+      firestore.services.store.updateState((state) => {
+        state.panesLifeLogs.selectedLifeLogId = matchingLog.id;
+        state.panesLifeLogs.selectedLifeLogNodeId = existingNode.id;
+      });
+      history.replaceState(null, "", "/");
+      return;
+    }
+
     lifeLogId = matchingLog.id;
 
     if (matchingLog.hasTreeNodes) {

@@ -979,4 +979,192 @@ describe("handleShareTarget", () => {
     expect(allNodes).toHaveLength(1);
     expect(allNodes[0].text).toBe("[https://example.com](https://example.com)");
   });
+
+  it("does not add duplicate when same URL already exists in running lifeLog", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=Example&url=https://example.com");
+
+    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-dup1"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$node-dup1"), {
+        text: "[Example](https://example.com)",
+        lifeLogId: "$netsurf-dup1",
+        parentId: "$netsurf-dup1",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf-dup1")));
+
+    // Should still have only 1 node (no duplicate added)
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe("[Example](https://example.com)");
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe("$netsurf-dup1");
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe("$node-dup1");
+  });
+
+  it("detects duplicate by URL even when title differs", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=New+Title&url=https://example.com");
+
+    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-dup2"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$node-dup2"), {
+        text: "[Old Title](https://example.com)",
+        lifeLogId: "$netsurf-dup2",
+        parentId: "$netsurf-dup2",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf-dup2")));
+
+    // Should still have only 1 node (no duplicate added)
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe("[Old Title](https://example.com)");
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe("$netsurf-dup2");
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe("$node-dup2");
+  });
+
+  it("does not end otherLog when duplicate URL detected", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=Novel&url=https://ncode.syosetu.com/n1234ab/");
+
+    const { ready, getFirestore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$reading-dup3"), {
+        text: "読書",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$node-dup3"), {
+        text: "[Novel](https://ncode.syosetu.com/n1234ab/)",
+        lifeLogId: "$reading-dup3",
+        parentId: "$reading-dup3",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-dup3"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+
+    // ネットサーフィン should still be running (not ended)
+    const netSurfLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "ネットサーフィン")));
+    const netSurfLog = netSurfLogs.find((l) => l.id === "$netsurf-dup3");
+    expect(netSurfLog).toBeTruthy();
+    expect(netSurfLog!.endAt).toEqual(noneTimestamp);
+
+    // 読書 should still be running
+    const readingLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "読書")));
+    const readingLog = readingLogs.find((l) => l.id === "$reading-dup3");
+    expect(readingLog).toBeTruthy();
+    expect(readingLog!.endAt).toEqual(noneTimestamp);
+
+    // No new tree nodes added
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "==", "$reading-dup3")));
+    expect(nodes).toHaveLength(1);
+  });
 });
