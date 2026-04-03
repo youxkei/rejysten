@@ -27,6 +27,20 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "lifeLogTreeNodes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "parentId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "order",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
