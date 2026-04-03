@@ -2,7 +2,6 @@ import { defineConfig } from "vitest/config";
 import solidPlugin from "vite-plugin-solid";
 import checker from "vite-plugin-checker";
 import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
-import tsconfigPaths from "vite-tsconfig-paths";
 // @ts-ignore
 import { VitePWA } from "vite-plugin-pwa";
 import { playwright } from "@vitest/browser-playwright";
@@ -26,7 +25,6 @@ export default defineConfig({
         },
       }),
     vanillaExtractPlugin(),
-    tsconfigPaths(),
     !process.env.VITEST &&
       VitePWA({
         registerType: "autoUpdate",
@@ -65,6 +63,7 @@ export default defineConfig({
     hookTimeout: 120_000,
   },
   resolve: {
+    tsconfigPaths: true,
     conditions: ["development|production", "browser"],
   },
 });
