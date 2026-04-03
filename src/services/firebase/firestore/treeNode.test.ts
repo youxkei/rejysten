@@ -62,9 +62,10 @@ async function getDoc<T extends object>(col: CollectionReference<T>, id: string)
 }
 
 async function runTestBatch(fn: (batch: Batch) => Promise<void>) {
-  const batch = new Batch(service, writeBatch(firestore));
+  const wb = writeBatch(firestore);
+  const batch = new Batch(service, wb);
   await fn(batch);
-  await batch.commit();
+  await wb.commit();
 }
 
 type TreeNodeWithText = TreeNode & { text: string };

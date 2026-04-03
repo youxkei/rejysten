@@ -1,8 +1,9 @@
 import { doc, getDocs, Timestamp, writeBatch } from "firebase/firestore";
-import { onMount, Suspense, type JSXElement, createSignal } from "solid-js";
+import { onMount, Show, Suspense, type JSXElement, createSignal } from "solid-js";
 import { type Meta, type StoryObj } from "storybook-solidjs-vite";
 
 import { LifeLogs } from "@/panes/lifeLogs";
+import { Share } from "@/panes/share";
 import { ActionsServiceProvider } from "@/services/actions";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import {
@@ -12,7 +13,7 @@ import {
   useFirestoreService,
 } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
-import { ShareHandler } from "@/shareTarget";
+import { Toast } from "@/services/toast";
 import { noneTimestamp } from "@/timestamp";
 
 export default {
@@ -320,14 +321,22 @@ export const LifeLogsFullscreen: StoryObj = {
   },
 };
 
-function ShareTargetStory() {
+function ShareStory() {
   const firestore = useFirestoreService();
 
   const batchVersion = getCollection(firestore, "batchVersion");
   const lifeLogs = getCollection(firestore, "lifeLogs");
   const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
 
-  const { updateState } = useStoreService();
+  const { state, updateState } = useStoreService();
+
+  // Detect share params on load
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("title") || params.has("url") || params.has("text")) {
+    updateState((s) => {
+      s.panesShare.isActive = true;
+    });
+  }
 
   const initialize = async () => {
     const batch = writeBatch(firestore.firestore);
@@ -367,9 +376,9 @@ function ShareTargetStory() {
 
     await batch.commit();
 
-    updateState((state) => {
-      state.panesLifeLogs.selectedLifeLogId = "$log1";
-      state.panesLifeLogs.selectedLifeLogNodeId = "";
+    updateState((s) => {
+      s.panesLifeLogs.selectedLifeLogId = "$log1";
+      s.panesLifeLogs.selectedLifeLogNodeId = "";
     });
   };
 
@@ -388,19 +397,21 @@ function ShareTargetStory() {
           Open with Share
         </button>
       </div>
-      <ShareHandler />
-      <LifeLogs />
+      <Show when={state.panesShare.isActive} fallback={<LifeLogs />}>
+        <Share />
+      </Show>
+      <Toast state={state} />
     </>
   );
 }
 
-export const ShareTarget: StoryObj = {
+export const SharePane: StoryObj = {
   render() {
     return (
       <StoreServiceProvider>
         <StorybookFirebaseWrapper showConfig={false}>
           <Suspense fallback={<span>loading....</span>}>
-            <ShareTargetStory />
+            <ShareStory />
           </Suspense>
         </StorybookFirebaseWrapper>
       </StoreServiceProvider>

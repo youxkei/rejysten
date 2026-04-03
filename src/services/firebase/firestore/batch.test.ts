@@ -3,13 +3,14 @@ import {
   type Firestore,
   collection,
   writeBatch,
+  runTransaction as firebaseRunTransaction,
   getDoc as getDocOriginal,
   doc,
 } from "firebase/firestore";
 import { describe, it, vi, beforeAll, afterAll } from "vitest";
 
 import { singletonDocumentId, type Timestamps, type FirestoreService } from "@/services/firebase/firestore";
-import { Batch } from "@/services/firebase/firestore/batch";
+import { Batch, runTransaction } from "@/services/firebase/firestore/batch";
 import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
 import {
   createTestFirestoreService,
@@ -64,13 +65,14 @@ describe("batch", () => {
       await setupBatch.commit();
 
       // Update the document
-      const batch = new Batch(service, writeBatch(firestore));
+      const wb = writeBatch(firestore);
+      const batch = new Batch(service, wb);
       batch.update(col, {
         id: "testDoc",
         text: "updated text",
         value: 2,
       });
-      await batch.commit();
+      await wb.commit();
 
       const updatedDoc = await getDocOriginal(doc(col, "testDoc"));
       test.expect(updatedDoc.data()).toEqual({
@@ -104,13 +106,14 @@ describe("batch", () => {
       await setupBatch.commit();
 
       // Update the document
-      const batch = new Batch(service, writeBatch(firestore));
+      const wb = writeBatch(firestore);
+      const batch = new Batch(service, wb);
       batch.update(col, {
         id: "testDoc",
         text: "hello world",
         value: 2,
       });
-      await batch.commit();
+      await wb.commit();
 
       const ngramDoc = await getDocOriginal(doc(ngramsCol, `testDoc${tid}`));
       test.expect(ngramDoc.exists()).toBe(true);
@@ -137,12 +140,13 @@ describe("batch", () => {
       await setupBatch.commit();
 
       // Update only the value field
-      const batch = new Batch(service, writeBatch(firestore));
+      const wb = writeBatch(firestore);
+      const batch = new Batch(service, wb);
       batch.update(col, {
         id: "testDoc",
         value: 99,
       });
-      await batch.commit();
+      await wb.commit();
 
       const updatedDoc = await getDocOriginal(doc(col, "testDoc"));
       test.expect(updatedDoc.data()).toEqual({
@@ -173,12 +177,13 @@ describe("batch", () => {
       await setupBatch.commit();
 
       // Update the singleton document
-      const batch = new Batch(service, writeBatch(firestore));
+      const wb = writeBatch(firestore);
+      const batch = new Batch(service, wb);
       batch.updateSingleton(col, {
         text: "updated singleton",
         value: 20,
       });
-      await batch.commit();
+      await wb.commit();
 
       const updatedDoc = await getDocOriginal(doc(col, singletonDocumentId));
       test.expect(updatedDoc.data()).toEqual({
@@ -196,14 +201,15 @@ describe("batch", () => {
       const tid = `${test.task.id}_${now.getTime()}`;
 
       const col = collection(firestore, tid) as CollectionReference<TestDoc>;
-      const batch = new Batch(service, writeBatch(firestore));
+      const wb = writeBatch(firestore);
+      const batch = new Batch(service, wb);
 
       batch.set(col, {
         id: "newDoc",
         text: "new document",
         value: 42,
       });
-      await batch.commit();
+      await wb.commit();
 
       const newDoc = await getDocOriginal(doc(col, "newDoc"));
       test.expect(newDoc.data()).toEqual({
@@ -224,13 +230,14 @@ describe("batch", () => {
       // Enable ngram for this collection
       collectionNgramConfig[tid] = true;
 
-      const batch = new Batch(service, writeBatch(firestore));
+      const wb = writeBatch(firestore);
+      const batch = new Batch(service, wb);
       batch.set(col, {
         id: "newDoc",
         text: "hello ngram",
         value: 42,
       });
-      await batch.commit();
+      await wb.commit();
 
       const ngramDoc = await getDocOriginal(doc(ngramsCol, `newDoc${tid}`));
       test.expect(ngramDoc.exists()).toBe(true);
@@ -257,13 +264,14 @@ describe("batch", () => {
       await batch1.commit();
 
       // Set (overwrite) the document
-      const batch2 = new Batch(service, writeBatch(firestore));
+      const wb2 = writeBatch(firestore);
+      const batch2 = new Batch(service, wb2);
       batch2.set(col, {
         id: "existingDoc",
         text: "new text",
         value: 999,
       });
-      await batch2.commit();
+      await wb2.commit();
 
       const existingDoc = await getDocOriginal(doc(col, "existingDoc"));
       test.expect(existingDoc.data()).toEqual({
@@ -281,13 +289,14 @@ describe("batch", () => {
       const tid = `${test.task.id}_${now.getTime()}`;
 
       const col = collection(firestore, tid) as CollectionReference<TestDoc>;
-      const batch = new Batch(service, writeBatch(firestore));
+      const wb = writeBatch(firestore);
+      const batch = new Batch(service, wb);
 
       batch.setSingleton(col, {
         text: "singleton content",
         value: 100,
       });
-      await batch.commit();
+      await wb.commit();
 
       const singletonDoc = await getDocOriginal(doc(col, singletonDocumentId));
       test.expect(singletonDoc.data()).toEqual({
@@ -308,18 +317,176 @@ describe("batch", () => {
       // Enable ngram for this collection
       collectionNgramConfig[tid] = true;
 
-      const batch = new Batch(service, writeBatch(firestore));
+      const wb = writeBatch(firestore);
+      const batch = new Batch(service, wb);
       batch.setSingleton(col, {
         text: "singleton ngram text",
         value: 200,
       });
-      await batch.commit();
+      await wb.commit();
 
       const ngramDoc = await getDocOriginal(doc(ngramsCol, `${singletonDocumentId}${tid}`));
       test.expect(ngramDoc.exists()).toBe(true);
       test.expect(ngramDoc.data()?.text).toBe("singleton ngram text");
       test.expect(ngramDoc.data()?.normalizedText).toBe("singleton ngram text");
       test.expect(ngramDoc.data()?.collection).toBe(tid);
+    });
+  });
+});
+
+describe("transaction", () => {
+  vi.mock(import("firebase/firestore"), async (importOriginal) => {
+    const mod = await importOriginal();
+
+    return {
+      ...mod,
+      serverTimestamp: () => timestampForServerTimestamp,
+    };
+  });
+
+  describe("Batch with Transaction backend", () => {
+    it("set creates document via transaction", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+
+      await firebaseRunTransaction(firestore, async (transaction) => {
+        const batch = new Batch(service, transaction);
+        batch.set(col, {
+          id: "txDoc",
+          text: "transaction doc",
+          value: 77,
+        });
+      });
+
+      const created = await getDocOriginal(doc(col, "txDoc"));
+      test.expect(created.data()).toEqual({
+        text: "transaction doc",
+        value: 77,
+        createdAt: timestampForServerTimestamp,
+        updatedAt: timestampForServerTimestamp,
+      });
+    });
+
+    it("update modifies document via transaction", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const setupBatch = writeBatch(firestore);
+      setupBatch.set(doc(col, "txDoc"), {
+        text: "original",
+        value: 1,
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForCreatedAt,
+      });
+      await setupBatch.commit();
+
+      await firebaseRunTransaction(firestore, async (transaction) => {
+        const batch = new Batch(service, transaction);
+        batch.update(col, {
+          id: "txDoc",
+          text: "updated via tx",
+          value: 2,
+        });
+      });
+
+      const updated = await getDocOriginal(doc(col, "txDoc"));
+      test.expect(updated.data()).toEqual({
+        text: "updated via tx",
+        value: 2,
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForServerTimestamp,
+      });
+    });
+
+    it("delete removes document via transaction", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const setupBatch = writeBatch(firestore);
+      setupBatch.set(doc(col, "txDoc"), {
+        text: "to delete",
+        value: 0,
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForCreatedAt,
+      });
+      await setupBatch.commit();
+
+      await firebaseRunTransaction(firestore, async (transaction) => {
+        const batch = new Batch(service, transaction);
+        batch.delete(col, "txDoc");
+      });
+
+      const deleted = await getDocOriginal(doc(col, "txDoc"));
+      test.expect(deleted.exists()).toBe(false);
+    });
+
+    it("transaction can read and write atomically", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const setupBatch = writeBatch(firestore);
+      setupBatch.set(doc(col, "txDoc"), {
+        text: "start",
+        value: 10,
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForCreatedAt,
+      });
+      await setupBatch.commit();
+
+      await firebaseRunTransaction(firestore, async (transaction) => {
+        const snap = await transaction.get(doc(col, "txDoc"));
+        const currentValue = snap.data()!.value;
+
+        const batch = new Batch(service, transaction);
+        batch.update(col, {
+          id: "txDoc",
+          value: currentValue + 5,
+        });
+      });
+
+      const result = await getDocOriginal(doc(col, "txDoc"));
+      test.expect(result.data()!.value).toBe(15);
+    });
+  });
+
+  describe("runTransaction helper", () => {
+    it("runs update function with Batch and Transaction", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const setupBatch = writeBatch(firestore);
+      setupBatch.set(doc(col, "helperDoc"), {
+        text: "before",
+        value: 1,
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForCreatedAt,
+      });
+      await setupBatch.commit();
+
+      await runTransaction(service, async (batch, transaction) => {
+        const snap = await transaction.get(doc(col, "helperDoc"));
+        const currentValue = snap.data()!.value;
+
+        batch.update(col, {
+          id: "helperDoc",
+          text: "after",
+          value: currentValue + 100,
+        });
+      });
+
+      const result = await getDocOriginal(doc(col, "helperDoc"));
+      test.expect(result.data()).toEqual({
+        text: "after",
+        value: 101,
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForServerTimestamp,
+      });
     });
   });
 });

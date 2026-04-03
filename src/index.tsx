@@ -4,11 +4,12 @@ import { registerSW } from "virtual:pwa-register";
 
 import { LifeLogs } from "@/panes/lifeLogs";
 import { Search } from "@/panes/search";
+import { Share } from "@/panes/share";
 import { ActionsServiceProvider, useActionsService } from "@/services/actions";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import { FirestoreServiceProvider } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
-import { ShareHandler } from "@/shareTarget";
+import { Toast } from "@/services/toast";
 import { addKeyDownEventListener } from "@/solid/event";
 import { createIsMobile } from "@/solid/responsive";
 import { styles } from "@/styles.css";
@@ -26,9 +27,17 @@ registerSW({
 });
 
 function MainContent() {
-  const { state } = useStoreService();
+  const { state, updateState } = useStoreService();
   const actions = useActionsService().panes.search;
   const isMobile = createIsMobile();
+
+  // Detect share target params and activate share pane
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("title") || params.has("url") || params.has("text")) {
+    updateState((s) => {
+      s.panesShare.isActive = true;
+    });
+  }
 
   // "/" key handler to open search (when not editing)
   addKeyDownEventListener((event) => {
@@ -45,10 +54,17 @@ function MainContent() {
 
   return (
     <>
-      <ShareHandler />
-      <Show when={state.panesSearch.isActive} fallback={<LifeLogs rangeMs={isMobile() ? dayMs / 2 : dayMs} />}>
-        <Search />
+      <Show
+        when={state.panesShare.isActive}
+        fallback={
+          <Show when={state.panesSearch.isActive} fallback={<LifeLogs rangeMs={isMobile() ? dayMs / 2 : dayMs} />}>
+            <Search />
+          </Show>
+        }
+      >
+        <Share />
       </Show>
+      <Toast state={state} />
     </>
   );
 }

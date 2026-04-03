@@ -1,7 +1,8 @@
-import { type CollectionReference, doc, type WriteBatch } from "firebase/firestore";
+import { type CollectionReference, doc } from "firebase/firestore";
 
 import { type FirestoreService, getCollection } from ".";
 import { analyzeTextForNgrams } from "@/ngram";
+import { type Writer } from "@/services/firebase/firestore/writer";
 
 declare module "@/services/firebase/firestore/schema" {
   interface Schema {
@@ -18,7 +19,7 @@ export const collectionNgramConfig: Partial<Record<string, true>> = {};
 
 export function setNgram<T>(
   service: FirestoreService,
-  batch: WriteBatch,
+  writer: Writer,
   col: CollectionReference<T>,
   id: string,
   text: string,
@@ -31,7 +32,7 @@ export function setNgram<T>(
   const ngramsCol = getCollection(service, "ngrams");
   const { normalizedText, ngramMap } = analyzeTextForNgrams(text);
 
-  batch.set(doc(ngramsCol, `${id}${col.id}`), {
+  writer.set(doc(ngramsCol, `${id}${col.id}`), {
     collection: colId,
     text,
     normalizedText,
@@ -39,12 +40,12 @@ export function setNgram<T>(
   });
 }
 
-export function deleteNgram<T>(service: FirestoreService, batch: WriteBatch, col: CollectionReference<T>, id: string) {
+export function deleteNgram<T>(service: FirestoreService, writer: Writer, col: CollectionReference<T>, id: string) {
   if (!collectionNgramConfig[col.id]) return;
 
   const colId = col.id;
   if (colId === "ngrams") return;
 
   const ngramsCol = getCollection(service, "ngrams");
-  batch.delete(doc(ngramsCol, `${id}${col.id}`));
+  writer.delete(doc(ngramsCol, `${id}${col.id}`));
 }

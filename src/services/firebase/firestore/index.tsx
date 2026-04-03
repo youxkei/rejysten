@@ -163,7 +163,12 @@ export async function getDoc<T extends object>(
   _service: FirestoreService,
   col: CollectionReference<T>,
   id: string,
+  options?: { fromServer?: boolean },
 ): Promise<DocumentData<T> | undefined> {
+  if (options?.fromServer) {
+    return getDocumentData(await getDocFromServer(doc(col, id)));
+  }
+
   try {
     return getDocumentData(await getDocFromCache(doc(col, id)));
   } catch (e) {
@@ -180,8 +185,9 @@ export const singletonDocumentId = "singleton";
 export async function getSingletonDoc<T extends object>(
   service: FirestoreService,
   col: CollectionReference<T>,
+  options?: { fromServer?: boolean },
 ): Promise<T | undefined> {
-  const data = await getDoc(service, col, singletonDocumentId);
+  const data = await getDoc(service, col, singletonDocumentId, options);
   if (!data) return;
 
   const { id: _, ...dataWithoutId } = data;
@@ -192,7 +198,12 @@ export async function getSingletonDoc<T extends object>(
 export async function getDocs<T extends object>(
   _service: FirestoreService,
   query: Query<T>,
+  options?: { fromServer?: boolean },
 ): Promise<DocumentData<T>[]> {
+  if (options?.fromServer) {
+    return (await getDocsFromServer(query)).docs.map(getDocumentData) as DocumentData<T>[];
+  }
+
   try {
     // snapshot.docs must not have non-existing values
     return (await getDocsFromCache(query)).docs.map(getDocumentData) as DocumentData<T>[];

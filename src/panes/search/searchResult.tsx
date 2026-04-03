@@ -25,7 +25,11 @@ export function SearchResult(props: { ngramId: string; isSelected: boolean; onSe
   });
 
   return (
-    <div ref={resultRef} class={`${styles.search.result} ${props.isSelected ? styles.search.resultSelected : ""}`} onClick={props.onSelect}>
+    <div
+      ref={resultRef}
+      class={`${styles.search.result} ${props.isSelected ? styles.search.resultSelected : ""}`}
+      onClick={props.onSelect}
+    >
       <span class={styles.search.resultCollection}>{ngram$()?.collection}</span>
       <span class={styles.search.resultText}>{ngram$()?.text}</span>
     </div>

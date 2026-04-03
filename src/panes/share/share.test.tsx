@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { awaitPendingCallbacks } from "@/awaitableCallback";
 import { fetchOGPTitle } from "@/ogp";
 import { baseTime } from "@/panes/lifeLogs/test";
+import { handleShare } from "@/panes/share";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import {
   FirestoreServiceProvider,
@@ -15,8 +16,8 @@ import {
   useFirestoreService,
 } from "@/services/firebase/firestore";
 import "@/panes/lifeLogs/schema";
+import "@/panes/lifeLogs/store";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
-import { handleShareTarget } from "@/shareTarget";
 import { acquireEmulator, releaseEmulator, testWithDb as it, type DatabaseInfo } from "@/test";
 import { noneTimestamp } from "@/timestamp";
 
@@ -48,7 +49,7 @@ afterEach(async () => {
   history.replaceState(null, "", "/");
 });
 
-function setupShareHandlerTest(
+function setupShareTest(
   testId: string,
   db: DatabaseInfo,
   setupData: (firestore: ReturnType<typeof useFirestoreService>) => Promise<void>,
@@ -80,7 +81,14 @@ function setupShareHandlerTest(
               onMount(() => {
                 (async () => {
                   await setupData(firestore);
-                  await handleShareTarget(firestore);
+                  const result = await handleShare(firestore);
+                  if (result) {
+                    storeRef.updateState((state) => {
+                      state.panesLifeLogs.selectedLifeLogId = result.lifeLogId;
+                      state.panesLifeLogs.selectedLifeLogNodeId = result.nodeId;
+                    });
+                  }
+                  history.replaceState(null, "", "/");
                 })().then(resolveReady, rejectReady);
               });
 
@@ -95,11 +103,11 @@ function setupShareHandlerTest(
   return { ready, result, getFirestore: () => firestoreRef, getStore: () => storeRef };
 }
 
-describe("handleShareTarget", () => {
+describe("share", () => {
   it("adds link to existing running ネットサーフィン with tree nodes", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Example&url=https://example.com");
 
-    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
       const lifeLogs = getCollection(firestore, "lifeLogs");
@@ -142,7 +150,9 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf1")));
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf1")), {
+      fromServer: true,
+    });
 
     expect(nodes).toHaveLength(2);
     const newNode = nodes.find((n) => n.text === "[Example](https://example.com)");
@@ -157,7 +167,7 @@ describe("handleShareTarget", () => {
   it("adds link to existing running ネットサーフィン without tree nodes", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Example&url=https://example.com");
 
-    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
       const lifeLogs = getCollection(firestore, "lifeLogs");
@@ -190,14 +200,18 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf2")));
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf2")), {
+      fromServer: true,
+    });
 
     expect(nodes).toHaveLength(1);
     expect(nodes[0].text).toBe("[Example](https://example.com)");
 
     // Check hasTreeNodes was updated
     const lifeLogsCol = getCollection(firestore, "lifeLogs");
-    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
     const netSurfLog = logs.find((l) => l.text === "ネットサーフィン");
     expect(netSurfLog!.hasTreeNodes).toBe(true);
 
@@ -209,7 +223,7 @@ describe("handleShareTarget", () => {
   it("creates new ネットサーフィン lifeLog when none exists", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Example&url=https://example.com");
 
-    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
 
@@ -232,7 +246,9 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const lifeLogsCol = getCollection(firestore, "lifeLogs");
-    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
     const netSurfLog = logs.find((l) => l.text === "ネットサーフィン");
     expect(netSurfLog).toBeTruthy();
     expect(netSurfLog!.hasTreeNodes).toBe(true);
@@ -240,7 +256,9 @@ describe("handleShareTarget", () => {
 
     // Check tree node was created
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", netSurfLog!.id)));
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", netSurfLog!.id)), {
+      fromServer: true,
+    });
     expect(nodes).toHaveLength(1);
     expect(nodes[0].text).toBe("[Example](https://example.com)");
 
@@ -252,7 +270,7 @@ describe("handleShareTarget", () => {
   it("extracts URL from text parameter", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Example&text=https://example.com");
 
-    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
 
@@ -275,13 +293,15 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")));
+    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")), { fromServer: true });
     expect(allNodes).toHaveLength(1);
     expect(allNodes[0].text).toBe("[Example](https://example.com)");
 
     const store = getStore();
     const lifeLogsCol = getCollection(firestore, "lifeLogs");
-    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
     const netSurfLog = logs.find((l) => l.text === "ネットサーフィン");
     expect(store.state.panesLifeLogs.selectedLifeLogId).toBe(netSurfLog!.id);
     expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(allNodes[0].id);
@@ -290,7 +310,7 @@ describe("handleShareTarget", () => {
   it("creates 読書 lifeLog for ncode.syosetu.com URL", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Novel&url=https://ncode.syosetu.com/n1234ab/");
 
-    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
 
@@ -313,13 +333,17 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const lifeLogsCol = getCollection(firestore, "lifeLogs");
-    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
     const readingLog = logs.find((l) => l.text === "読書");
     expect(readingLog).toBeTruthy();
     expect(readingLog!.hasTreeNodes).toBe(true);
 
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", readingLog!.id)));
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", readingLog!.id)), {
+      fromServer: true,
+    });
     expect(nodes).toHaveLength(1);
     expect(nodes[0].text).toBe("[Novel](https://ncode.syosetu.com/n1234ab/)");
 
@@ -331,7 +355,7 @@ describe("handleShareTarget", () => {
   it("creates 読書 lifeLog for kakuyomu.jp URL", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Work&url=https://kakuyomu.jp/works/123");
 
-    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
 
@@ -354,13 +378,17 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const lifeLogsCol = getCollection(firestore, "lifeLogs");
-    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
     const readingLog = logs.find((l) => l.text === "読書");
     expect(readingLog).toBeTruthy();
     expect(readingLog!.hasTreeNodes).toBe(true);
 
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", readingLog!.id)));
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", readingLog!.id)), {
+      fromServer: true,
+    });
     expect(nodes).toHaveLength(1);
     expect(nodes[0].text).toBe("[Work](https://kakuyomu.jp/works/123)");
 
@@ -372,7 +400,7 @@ describe("handleShareTarget", () => {
   it("creates 読書 lifeLog for manga.nicovideo.jp URL", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Manga&url=https://manga.nicovideo.jp/comic/12345");
 
-    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
 
@@ -395,13 +423,17 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const lifeLogsCol = getCollection(firestore, "lifeLogs");
-    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
     const readingLog = logs.find((l) => l.text === "読書");
     expect(readingLog).toBeTruthy();
     expect(readingLog!.hasTreeNodes).toBe(true);
 
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", readingLog!.id)));
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", readingLog!.id)), {
+      fromServer: true,
+    });
     expect(nodes).toHaveLength(1);
     expect(nodes[0].text).toBe("[Manga](https://manga.nicovideo.jp/comic/12345)");
 
@@ -413,7 +445,7 @@ describe("handleShareTarget", () => {
   it("creates 読書 lifeLog for shonenjumpplus.com URL", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Jump&url=https://shonenjumpplus.com/episode/123");
 
-    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
 
@@ -436,13 +468,17 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const lifeLogsCol = getCollection(firestore, "lifeLogs");
-    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
     const readingLog = logs.find((l) => l.text === "読書");
     expect(readingLog).toBeTruthy();
     expect(readingLog!.hasTreeNodes).toBe(true);
 
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", readingLog!.id)));
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", readingLog!.id)), {
+      fromServer: true,
+    });
     expect(nodes).toHaveLength(1);
     expect(nodes[0].text).toBe("[Jump](https://shonenjumpplus.com/episode/123)");
 
@@ -454,7 +490,7 @@ describe("handleShareTarget", () => {
   it("appends to existing running 読書 for syosetu.org URL", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Novel&url=https://syosetu.org/novel/123/");
 
-    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
       const lifeLogs = getCollection(firestore, "lifeLogs");
@@ -497,7 +533,9 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$reading1")));
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$reading1")), {
+      fromServer: true,
+    });
 
     expect(nodes).toHaveLength(2);
     const newNode = nodes.find((n) => n.text === "[Novel](https://syosetu.org/novel/123/)");
@@ -512,7 +550,7 @@ describe("handleShareTarget", () => {
   it("ends running ネットサーフィン when creating new 読書", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Novel&url=https://ncode.syosetu.com/n1234ab/");
 
-    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
       const lifeLogs = getCollection(firestore, "lifeLogs");
@@ -547,13 +585,17 @@ describe("handleShareTarget", () => {
     const lifeLogsCol = getCollection(firestore, "lifeLogs");
 
     // ネットサーフィン should be ended
-    const allLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "ネットサーフィン")));
+    const allLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "ネットサーフィン")), {
+      fromServer: true,
+    });
     const endedLog = allLogs.find((l) => l.id === "$netsurf-excl1");
     expect(endedLog).toBeTruthy();
     expect(endedLog!.endAt.toMillis()).toBe(Timestamp.fromDate(baseTime).toMillis());
 
     // New 読書 should be created with same startAt
-    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
     const readingLog = runningLogs.find((l) => l.text === "読書");
     expect(readingLog).toBeTruthy();
     expect(readingLog!.startAt.toMillis()).toBe(Timestamp.fromDate(baseTime).toMillis());
@@ -565,7 +607,7 @@ describe("handleShareTarget", () => {
   it("ends running 読書 when creating new ネットサーフィン", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Example&url=https://example.com");
 
-    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
       const lifeLogs = getCollection(firestore, "lifeLogs");
@@ -600,13 +642,15 @@ describe("handleShareTarget", () => {
     const lifeLogsCol = getCollection(firestore, "lifeLogs");
 
     // 読書 should be ended
-    const allLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "読書")));
+    const allLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "読書")), { fromServer: true });
     const endedLog = allLogs.find((l) => l.id === "$reading-excl1");
     expect(endedLog).toBeTruthy();
     expect(endedLog!.endAt.toMillis()).toBe(Timestamp.fromDate(baseTime).toMillis());
 
     // New ネットサーフィン should be created with same startAt
-    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
     const netSurfLog = runningLogs.find((l) => l.text === "ネットサーフィン");
     expect(netSurfLog).toBeTruthy();
     expect(netSurfLog!.startAt.toMillis()).toBe(Timestamp.fromDate(baseTime).toMillis());
@@ -618,7 +662,7 @@ describe("handleShareTarget", () => {
   it("ends running ネットサーフィン when appending to existing 読書", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Novel&url=https://ncode.syosetu.com/n1234ab/");
 
-    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
       const lifeLogs = getCollection(firestore, "lifeLogs");
@@ -672,20 +716,26 @@ describe("handleShareTarget", () => {
     const lifeLogsCol = getCollection(firestore, "lifeLogs");
 
     // ネットサーフィン should be ended
-    const allLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "ネットサーフィン")));
+    const allLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "ネットサーフィン")), {
+      fromServer: true,
+    });
     const endedLog = allLogs.find((l) => l.id === "$netsurf-both1");
     expect(endedLog).toBeTruthy();
     expect(endedLog!.endAt.toMillis()).toBe(Timestamp.fromDate(baseTime).toMillis());
 
     // 読書 should still be running
-    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
     const readingLog = runningLogs.find((l) => l.text === "読書");
     expect(readingLog).toBeTruthy();
     expect(readingLog!.id).toBe("$reading-both1");
 
     // Node should be appended to 読書
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$reading-both1")));
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$reading-both1")), {
+      fromServer: true,
+    });
     expect(nodes).toHaveLength(2);
 
     const store = getStore();
@@ -695,7 +745,7 @@ describe("handleShareTarget", () => {
   it("ends running 読書 when appending to existing ネットサーフィン", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Example&url=https://example.com");
 
-    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
       const lifeLogs = getCollection(firestore, "lifeLogs");
@@ -749,20 +799,24 @@ describe("handleShareTarget", () => {
     const lifeLogsCol = getCollection(firestore, "lifeLogs");
 
     // 読書 should be ended
-    const allLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "読書")));
+    const allLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "読書")), { fromServer: true });
     const endedLog = allLogs.find((l) => l.id === "$reading-both2");
     expect(endedLog).toBeTruthy();
     expect(endedLog!.endAt.toMillis()).toBe(Timestamp.fromDate(baseTime).toMillis());
 
     // ネットサーフィン should still be running
-    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
     const netSurfLog = runningLogs.find((l) => l.text === "ネットサーフィン");
     expect(netSurfLog).toBeTruthy();
     expect(netSurfLog!.id).toBe("$netsurf-both2");
 
     // Node should be appended to ネットサーフィン
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf-both2")));
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf-both2")), {
+      fromServer: true,
+    });
     expect(nodes).toHaveLength(2);
 
     const store = getStore();
@@ -774,7 +828,7 @@ describe("handleShareTarget", () => {
 
     const pastEndAt = Timestamp.fromDate(new Date(2026, 0, 10, 11, 30, 0, 0));
 
-    const { ready, getFirestore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
       const lifeLogs = getCollection(firestore, "lifeLogs");
@@ -807,7 +861,9 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const lifeLogsCol = getCollection(firestore, "lifeLogs");
-    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
     const netSurfLog = runningLogs.find((l) => l.text === "ネットサーフィン");
     expect(netSurfLog).toBeTruthy();
     expect(netSurfLog!.startAt.toMillis()).toBe(pastEndAt.toMillis());
@@ -816,7 +872,7 @@ describe("handleShareTarget", () => {
   it("uses current time as startAt when other lifeLog is running", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Example&url=https://example.com");
 
-    const { ready, getFirestore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
       const lifeLogs = getCollection(firestore, "lifeLogs");
@@ -849,7 +905,9 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const lifeLogsCol = getCollection(firestore, "lifeLogs");
-    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
     const netSurfLog = runningLogs.find((l) => l.text === "ネットサーフィン");
     expect(netSurfLog).toBeTruthy();
     expect(netSurfLog!.startAt.toMillis()).toBe(Timestamp.fromDate(baseTime).toMillis());
@@ -858,7 +916,7 @@ describe("handleShareTarget", () => {
   it("does nothing when no valid URL is present", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Example&text=no+url+here");
 
-    const { ready, getFirestore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
 
@@ -877,11 +935,13 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const lifeLogsCol = getCollection(firestore, "lifeLogs");
-    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
     expect(logs).toHaveLength(0);
 
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const nodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")));
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")), { fromServer: true });
     expect(nodes).toHaveLength(0);
   });
 
@@ -889,7 +949,7 @@ describe("handleShareTarget", () => {
     history.replaceState(null, "", "/?url=https://example.com");
     vi.mocked(fetchOGPTitle).mockResolvedValueOnce("OGP Title");
 
-    const { ready, getFirestore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
 
@@ -912,7 +972,7 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")));
+    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")), { fromServer: true });
     expect(allNodes).toHaveLength(1);
     expect(allNodes[0].text).toBe("[OGP Title](https://example.com)");
   });
@@ -920,7 +980,7 @@ describe("handleShareTarget", () => {
   it("falls back to URL when OGP returns null", async ({ db, task }) => {
     history.replaceState(null, "", "/?url=https://example.com");
 
-    const { ready, getFirestore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
 
@@ -943,7 +1003,7 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")));
+    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")), { fromServer: true });
     expect(allNodes).toHaveLength(1);
     expect(allNodes[0].text).toBe("[https://example.com](https://example.com)");
   });
@@ -952,7 +1012,7 @@ describe("handleShareTarget", () => {
     history.replaceState(null, "", "/?url=https://example.com");
     vi.mocked(fetchOGPTitle).mockRejectedValueOnce(new Error("network"));
 
-    const { ready, getFirestore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
 
@@ -975,7 +1035,7 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")));
+    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")), { fromServer: true });
     expect(allNodes).toHaveLength(1);
     expect(allNodes[0].text).toBe("[https://example.com](https://example.com)");
   });
@@ -983,7 +1043,7 @@ describe("handleShareTarget", () => {
   it("does not add duplicate when same URL already exists in running lifeLog", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Example&url=https://example.com");
 
-    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
       const lifeLogs = getCollection(firestore, "lifeLogs");
@@ -1026,7 +1086,9 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf-dup1")));
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf-dup1")), {
+      fromServer: true,
+    });
 
     // Should still have only 1 node (no duplicate added)
     expect(nodes).toHaveLength(1);
@@ -1040,7 +1102,7 @@ describe("handleShareTarget", () => {
   it("detects duplicate by URL even when title differs", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=New+Title&url=https://example.com");
 
-    const { ready, getFirestore, getStore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
       const lifeLogs = getCollection(firestore, "lifeLogs");
@@ -1083,7 +1145,9 @@ describe("handleShareTarget", () => {
 
     const firestore = getFirestore();
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf-dup2")));
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf-dup2")), {
+      fromServer: true,
+    });
 
     // Should still have only 1 node (no duplicate added)
     expect(nodes).toHaveLength(1);
@@ -1097,7 +1161,7 @@ describe("handleShareTarget", () => {
   it("does not end otherLog when duplicate URL detected", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Novel&url=https://ncode.syosetu.com/n1234ab/");
 
-    const { ready, getFirestore } = setupShareHandlerTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
       const lifeLogs = getCollection(firestore, "lifeLogs");
@@ -1151,20 +1215,24 @@ describe("handleShareTarget", () => {
     const lifeLogsCol = getCollection(firestore, "lifeLogs");
 
     // ネットサーフィン should still be running (not ended)
-    const netSurfLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "ネットサーフィン")));
+    const netSurfLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "ネットサーフィン")), {
+      fromServer: true,
+    });
     const netSurfLog = netSurfLogs.find((l) => l.id === "$netsurf-dup3");
     expect(netSurfLog).toBeTruthy();
     expect(netSurfLog!.endAt).toEqual(noneTimestamp);
 
     // 読書 should still be running
-    const readingLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "読書")));
+    const readingLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "読書")), { fromServer: true });
     const readingLog = readingLogs.find((l) => l.id === "$reading-dup3");
     expect(readingLog).toBeTruthy();
     expect(readingLog!.endAt).toEqual(noneTimestamp);
 
     // No new tree nodes added
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
-    const nodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "==", "$reading-dup3")));
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "==", "$reading-dup3")), {
+      fromServer: true,
+    });
     expect(nodes).toHaveLength(1);
   });
 });

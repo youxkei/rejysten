@@ -5,18 +5,18 @@ import { uuidv7 } from "uuidv7";
 import { DateNow } from "@/date";
 import { fetchOGPTitle } from "@/ogp";
 import "@/panes/lifeLogs/schema";
-import {
-  type FirestoreService,
-  getCollection,
-  getDocs,
-  useFirestoreService,
-  waitForServerSync,
-} from "@/services/firebase/firestore";
-import { runBatch } from "@/services/firebase/firestore/batch";
+import "@/panes/share/store";
+import { type FirestoreService, getCollection, getDocs, useFirestoreService } from "@/services/firebase/firestore";
+import { runTransaction } from "@/services/firebase/firestore/batch";
 import { addNextSibling, addSingle, getLastChildNode } from "@/services/firebase/firestore/treeNode";
+import { useStoreService } from "@/services/store";
+import { showToast } from "@/services/toast";
+import { styles } from "@/styles.css";
 import { noneTimestamp } from "@/timestamp";
 
-export async function handleShareTarget(firestore: FirestoreService): Promise<void> {
+export async function handleShare(
+  firestore: FirestoreService,
+): Promise<{ lifeLogId: string; nodeId: string; added: boolean } | null> {
   const params = new URLSearchParams(window.location.search);
   const title = params.get("title");
   const text = params.get("text");
@@ -31,11 +31,15 @@ export async function handleShareTarget(firestore: FirestoreService): Promise<vo
     }
   }
 
-  if (!url) return;
+  if (!url) return null;
 
-  await waitForServerSync(firestore);
-
-  const readingDomains = ["ncode.syosetu.com", "syosetu.org", "kakuyomu.jp", "manga.nicovideo.jp", "shonenjumpplus.com"];
+  const readingDomains = [
+    "ncode.syosetu.com",
+    "syosetu.org",
+    "kakuyomu.jp",
+    "manga.nicovideo.jp",
+    "shonenjumpplus.com",
+  ];
   const hostname = new URL(url).hostname;
   const category = readingDomains.some((d) => hostname === d || hostname.endsWith("." + d))
     ? "読書"
@@ -59,8 +63,11 @@ export async function handleShareTarget(firestore: FirestoreService): Promise<vo
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
   const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
 
+  // Fetch fresh data from server
+  const fromServer = { fromServer: true } as const;
+
   // Find all running lifeLogs
-  const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)));
+  const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), fromServer);
   const matchingLog = runningLogs.find((log) => log.text === category);
   const otherLog = runningLogs.find((log) => log.text === otherCategory);
 
@@ -74,29 +81,44 @@ export async function handleShareTarget(firestore: FirestoreService): Promise<vo
     const existingNodes = await getDocs(
       firestore,
       query(treeNodesCol, where("lifeLogId", "==", matchingLog.id)),
+      fromServer,
     );
     const existingNode = existingNodes.find((node) => node.text.includes(`](${url})`));
     if (existingNode) {
-      firestore.services.store.updateState((state) => {
-        state.panesLifeLogs.selectedLifeLogId = matchingLog.id;
-        state.panesLifeLogs.selectedLifeLogNodeId = existingNode.id;
-      });
-      history.replaceState(null, "", "/");
-      return;
+      return { lifeLogId: matchingLog.id, nodeId: existingNode.id, added: false };
     }
 
     lifeLogId = matchingLog.id;
 
     if (matchingLog.hasTreeNodes) {
-      // Has tree nodes - add as next sibling of last child
-      const lastChild = await getLastChildNode(firestore, treeNodesCol, matchingLog);
+      const lastChild = await getLastChildNode(firestore, treeNodesCol, matchingLog, fromServer);
       if (lastChild) {
         nodeId = uuidv7();
-        await runBatch(firestore, async (batch) => {
+        await runTransaction(firestore, async (batch) => {
           if (otherLog) {
             batch.update(lifeLogsCol, { id: otherLog.id, endAt: now });
           }
-          await addNextSibling(firestore, batch, treeNodesCol, lastChild, {
+          await addNextSibling(
+            firestore,
+            batch,
+            treeNodesCol,
+            lastChild,
+            {
+              id: nodeId,
+              text: markdownLink,
+              lifeLogId: matchingLog.id,
+            },
+            fromServer,
+          );
+        });
+      } else {
+        // Shouldn't happen, but handle gracefully
+        nodeId = uuidv7();
+        await runTransaction(firestore, (batch) => {
+          if (otherLog) {
+            batch.update(lifeLogsCol, { id: otherLog.id, endAt: now });
+          }
+          addSingle(firestore, batch, treeNodesCol, matchingLog.id, {
             id: nodeId,
             text: markdownLink,
             lifeLogId: matchingLog.id,
@@ -104,9 +126,8 @@ export async function handleShareTarget(firestore: FirestoreService): Promise<vo
         });
       }
     } else {
-      // No tree nodes - add single and update hasTreeNodes
       nodeId = uuidv7();
-      await runBatch(firestore, (batch) => {
+      await runTransaction(firestore, (batch) => {
         if (otherLog) {
           batch.update(lifeLogsCol, { id: otherLog.id, endAt: now });
         }
@@ -119,17 +140,13 @@ export async function handleShareTarget(firestore: FirestoreService): Promise<vo
           id: matchingLog.id,
           hasTreeNodes: true,
         });
-        return Promise.resolve();
       });
     }
   } else {
-    // No matching log - create new lifeLog + tree node
     const newLogId = uuidv7();
     lifeLogId = newLogId;
     nodeId = uuidv7();
 
-    // Determine startAt: if otherLog exists, use now (same as its endAt).
-    // Otherwise, check if any lifeLog is running — if so use now, else use most recent endAt.
     let startAt: Timestamp;
     if (otherLog) {
       startAt = now;
@@ -137,11 +154,11 @@ export async function handleShareTarget(firestore: FirestoreService): Promise<vo
       startAt = now;
     } else {
       const latestQuery = query(lifeLogsCol, orderBy("endAt", "desc"), orderBy("startAt", "desc"), limit(1));
-      const latestLogs = await getDocs(firestore, latestQuery);
+      const latestLogs = await getDocs(firestore, latestQuery, fromServer);
       startAt = latestLogs.length > 0 ? latestLogs[0].endAt : now;
     }
 
-    await runBatch(firestore, (batch) => {
+    await runTransaction(firestore, (batch) => {
       if (otherLog) {
         batch.update(lifeLogsCol, { id: otherLog.id, endAt: now });
       }
@@ -157,25 +174,55 @@ export async function handleShareTarget(firestore: FirestoreService): Promise<vo
         text: markdownLink,
         lifeLogId: newLogId,
       });
-      return Promise.resolve();
     });
   }
 
-  firestore.services.store.updateState((state) => {
-    state.panesLifeLogs.selectedLifeLogId = lifeLogId;
-    state.panesLifeLogs.selectedLifeLogNodeId = nodeId;
-  });
-
-  history.replaceState(null, "", "/");
+  return { lifeLogId, nodeId, added: true };
 }
 
-export function ShareHandler() {
+export function Share() {
   const firestore = useFirestoreService();
+  const { updateState } = useStoreService();
+
   onMount(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.has("title") || params.has("url") || params.has("text")) {
-      void handleShareTarget(firestore);
-    }
+    void (async () => {
+      try {
+        const result = await handleShare(firestore);
+
+        updateState((state) => {
+          state.panesShare.isActive = false;
+          if (result) {
+            state.panesLifeLogs.selectedLifeLogId = result.lifeLogId;
+            state.panesLifeLogs.selectedLifeLogNodeId = result.nodeId;
+          }
+        });
+
+        if (result) {
+          showToast(updateState, result.added ? "共有から追加しました" : "共有されたURLは追加済みです", "success");
+        }
+      } catch (e) {
+        console.error("Share error:", e);
+
+        updateState((state) => {
+          state.panesShare.isActive = false;
+        });
+
+        const message = e instanceof Error ? e.message : String(e);
+        showToast(updateState, `共有からの追加に失敗しました: ${message}`, "error");
+      } finally {
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete("title");
+        cleanUrl.searchParams.delete("text");
+        cleanUrl.searchParams.delete("url");
+        history.replaceState(null, "", cleanUrl.pathname + cleanUrl.search);
+      }
+    })();
   });
-  return null;
+
+  return (
+    <div class={styles.share.wrapper}>
+      <div class={styles.share.spinner} />
+      <p class={styles.share.text}>共有されたURLを追加中...</p>
+    </div>
+  );
 }

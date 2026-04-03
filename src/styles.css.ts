@@ -1,4 +1,8 @@
-import { style, globalStyle } from "@vanilla-extract/css";
+import { style, globalStyle, keyframes } from "@vanilla-extract/css";
+
+const shareSpin = keyframes({
+  to: { transform: "rotate(360deg)" },
+});
 
 export const MOBILE_BREAKPOINT = 1024;
 
@@ -222,6 +226,64 @@ export const styles = {
     resultText: style({
       fontSize: "1rem",
       lineHeight: 1.5,
+      color: nord[4],
+    }),
+  },
+  toast: {
+    success: style({
+      position: "fixed",
+      bottom: "1rem",
+      left: "50%",
+      transform: "translateX(-50%)",
+      padding: "0.75rem 1.5rem",
+      borderRadius: "0.5rem",
+      backgroundColor: nord[14],
+      color: nord[0],
+      fontSize: "0.875rem",
+      fontWeight: 500,
+      zIndex: 1000,
+      boxShadow: `0 4px 12px ${nord[0]}88`,
+    }),
+    error: style({
+      position: "fixed",
+      bottom: "1rem",
+      left: "50%",
+      transform: "translateX(-50%)",
+      padding: "0.75rem 1.5rem",
+      borderRadius: "0.5rem",
+      backgroundColor: nord[11],
+      color: nord[6],
+      fontSize: "0.875rem",
+      fontWeight: 500,
+      zIndex: 1000,
+      boxShadow: `0 4px 12px ${nord[0]}88`,
+    }),
+  },
+  share: {
+    wrapper: style({
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      height: "100%",
+      gap: "1.5rem",
+      color: nord[4],
+      fontSize: "1rem",
+    }),
+    spinner: style({
+      width: "2.5rem",
+      height: "2.5rem",
+      border: `3px solid ${nord[2]}`,
+      borderTopColor: nord[8],
+      borderRadius: "50%",
+      animationName: shareSpin,
+      animationDuration: "0.8s",
+      animationTimingFunction: "linear",
+      animationIterationCount: "infinite",
+    }),
+    text: style({
+      fontSize: "1.125rem",
+      fontWeight: 500,
       color: nord[4],
     }),
   },
