@@ -7,7 +7,9 @@ service cloud.firestore {
 
       allow update: if
         request.auth.uid == "XoVR64j2pfgnlX8L05kL5V96y8n1" &&
-          (col != "batchVersion" || request.resource.data.prevVersion == resource.data.version);
+          (col != "batchVersion"
+            || request.resource.data.version == "__INITIAL__"
+            || request.resource.data.prevVersion == resource.data.version);
     }
   }
 }
