@@ -1,7 +1,10 @@
 import type { StorybookConfig } from "storybook-solidjs-vite";
 
 export default {
-  framework: "storybook-solidjs-vite",
+  framework: {
+    name: "storybook-solidjs-vite",
+    options: {},
+  },
   stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
   addons: [],
   docs: {

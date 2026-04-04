@@ -3,8 +3,6 @@ import type { Preview } from "storybook-solidjs-vite";
 export default {
   tags: ["!autodocs"],
   parameters: {
-    // automatically create action args for all props that start with "on"
-    actions: { argTypesRegex: "^on.*" },
     controls: {
       matchers: {
         color: /(background|color)$/i,
