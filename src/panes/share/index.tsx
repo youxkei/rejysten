@@ -39,6 +39,7 @@ export async function handleShare(
     "kakuyomu.jp",
     "manga.nicovideo.jp",
     "shonenjumpplus.com",
+    "takecomic.jp",
   ];
   const hostname = new URL(url).hostname;
   const category = readingDomains.some((d) => hostname === d || hostname.endsWith("." + d))
