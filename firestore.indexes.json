@@ -15,6 +15,24 @@
       ]
     },
     {
+      "collectionGroup": "lifeLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "endAt",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "startAt",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "lifeLogTreeNodes",
       "queryScope": "COLLECTION",
       "fields": [
