@@ -1514,6 +1514,50 @@ describe("<LifeLogs />", () => {
       expect(selectedRect.top).toBeGreaterThanOrEqual(containerRect.top);
     });
 
+    it("scrolls to already-selected latest LifeLog with G key", async ({ db, task }) => {
+      await page.viewport(1200, 600);
+      // Start with $log4 selected — it's the latest (noneTimestamp endAt/startAt, highest doc ID)
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        lifeLogCount: 15,
+        initialSelectedId: "$log4",
+      });
+
+      // Constrain wrapper height so container gets overflow scroll
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "300px";
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
+
+      // Verify $log4 is selected and visible
+      const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`)!;
+      expect(selected).toBeTruthy();
+      expect(selected.textContent).toContain("fourth lifelog");
+
+      // Scroll container to top so the selected (latest) element at the bottom is out of view
+      container.scrollTop = 0;
+      await new Promise((r) => setTimeout(r, 50));
+      await awaitPendingCallbacks();
+
+      // Verify selected element is now below the visible area
+      const containerRect = container.getBoundingClientRect();
+      const selectedRectBefore = selected.getBoundingClientRect();
+      expect(selectedRectBefore.top).toBeGreaterThan(containerRect.bottom);
+
+      // Press Shift+G again — already selected, should still scroll into view
+      await userEvent.keyboard("{Shift>}{g}{/Shift}");
+      await awaitPendingCallbacks();
+
+      // Selection should not have changed
+      const selectedAfter = result.container.querySelector(`.${styles.lifeLogTree.selected}`)!;
+      expect(selectedAfter.textContent).toContain("fourth lifelog");
+
+      // Selected element should now be visible
+      const selectedRectAfter = selectedAfter.getBoundingClientRect();
+      const containerRectAfter = container.getBoundingClientRect();
+      expect(selectedRectAfter.bottom).toBeLessThanOrEqual(containerRectAfter.bottom);
+      expect(selectedRectAfter.top).toBeGreaterThanOrEqual(containerRectAfter.top);
+    });
+
     // scroll-edge focus tests removed — scroll-edge focus feature was deleted
     // (replaced by scroll-based range expansion)
   });

@@ -167,6 +167,9 @@ export function LifeLog(props: {
         } else {
           actions.goToFirst();
         }
+        if (isLifeLogSelected$() && lifeLogContainerRef) {
+          scrollWithOffset(lifeLogContainerRef);
+        }
         break;
       }
 
