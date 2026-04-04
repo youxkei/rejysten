@@ -400,7 +400,7 @@ function ShareStory() {
       <Show when={state.panesShare.isActive} fallback={<LifeLogs />}>
         <Share />
       </Show>
-      <Toast state={state} />
+      <Toast />
     </>
   );
 }

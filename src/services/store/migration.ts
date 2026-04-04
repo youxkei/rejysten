@@ -1,6 +1,6 @@
 import { type State, initialState } from "@/services/store";
 
-export const CURRENT_VERSION = 1;
+export const CURRENT_VERSION = 2;
 
 type VersionedState = {
   version: number;
@@ -11,7 +11,17 @@ type Migration = (state: unknown) => unknown;
 
 // Registry of migrations: key is the version to migrate FROM
 // e.g., migrations[1] migrates from version 1 to version 2
-export const migrations: Partial<Record<number, Migration>> = {};
+export const migrations: Partial<Record<number, Migration>> = {
+  1: (state: unknown) => {
+    const s = state as Record<string, unknown>;
+    if (s.toast && typeof s.toast === "object") {
+      const toast = s.toast as Record<string, unknown>;
+      delete toast.visible;
+      toast.phase = "hidden";
+    }
+    return s;
+  },
+};
 
 function isVersionedState(data: unknown): data is VersionedState {
   return (

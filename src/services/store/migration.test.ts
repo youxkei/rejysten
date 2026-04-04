@@ -104,13 +104,11 @@ describe("migration", () => {
         return state;
       };
 
-      // Test with legacy data (version 0) when CURRENT_VERSION is 1
-      // Only migration[0] should be called since we go from 0 to 1
+      // Test with legacy data (version 0) - all migrations from 0 to CURRENT_VERSION are called in order
       const data = JSON.stringify({});
       migrateState(data);
 
-      // With CURRENT_VERSION = 1, migrating from version 0 only calls migrations[0]
-      expect(calls).toEqual([0]);
+      expect(calls).toEqual([0, 1]);
     });
 
     it("skips migrations for current version", () => {

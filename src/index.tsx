@@ -64,7 +64,7 @@ function MainContent() {
       >
         <Share />
       </Show>
-      <Toast state={state} />
+      <Toast />
     </>
   );
 }

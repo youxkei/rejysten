@@ -4,6 +4,28 @@ const shareSpin = keyframes({
   to: { transform: "rotate(360deg)" },
 });
 
+const toastSlideIn = keyframes({
+  from: {
+    transform: "translateX(-50%) translateY(100%)",
+    opacity: 0,
+  },
+  to: {
+    transform: "translateX(-50%) translateY(0)",
+    opacity: 1,
+  },
+});
+
+const toastSlideOut = keyframes({
+  from: {
+    transform: "translateX(-50%) translateY(0)",
+    opacity: 1,
+  },
+  to: {
+    transform: "translateX(-50%) translateY(100%)",
+    opacity: 0,
+  },
+});
+
 export const MOBILE_BREAKPOINT = 1024;
 
 // from https://www.nordtheme.com/docs/colors-and-palettes
@@ -243,6 +265,30 @@ export const styles = {
       fontWeight: 500,
       zIndex: 1000,
       boxShadow: `0 4px 12px ${nord[0]}88`,
+      cursor: "pointer",
+      animationName: toastSlideIn,
+      animationDuration: "0.3s",
+      animationTimingFunction: "ease-out",
+      animationFillMode: "forwards",
+    }),
+    successHiding: style({
+      position: "fixed",
+      bottom: "1rem",
+      left: "50%",
+      transform: "translateX(-50%)",
+      padding: "0.75rem 1.5rem",
+      borderRadius: "0.5rem",
+      backgroundColor: nord[14],
+      color: nord[0],
+      fontSize: "0.875rem",
+      fontWeight: 500,
+      zIndex: 1000,
+      boxShadow: `0 4px 12px ${nord[0]}88`,
+      cursor: "pointer",
+      animationName: toastSlideOut,
+      animationDuration: "0.3s",
+      animationTimingFunction: "ease-in",
+      animationFillMode: "forwards",
     }),
     error: style({
       position: "fixed",
@@ -257,6 +303,30 @@ export const styles = {
       fontWeight: 500,
       zIndex: 1000,
       boxShadow: `0 4px 12px ${nord[0]}88`,
+      cursor: "pointer",
+      animationName: toastSlideIn,
+      animationDuration: "0.3s",
+      animationTimingFunction: "ease-out",
+      animationFillMode: "forwards",
+    }),
+    errorHiding: style({
+      position: "fixed",
+      bottom: "1rem",
+      left: "50%",
+      transform: "translateX(-50%)",
+      padding: "0.75rem 1.5rem",
+      borderRadius: "0.5rem",
+      backgroundColor: nord[11],
+      color: nord[6],
+      fontSize: "0.875rem",
+      fontWeight: 500,
+      zIndex: 1000,
+      boxShadow: `0 4px 12px ${nord[0]}88`,
+      cursor: "pointer",
+      animationName: toastSlideOut,
+      animationDuration: "0.3s",
+      animationTimingFunction: "ease-in",
+      animationFillMode: "forwards",
     }),
   },
   share: {
