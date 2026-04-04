@@ -14,7 +14,7 @@ import {
 } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
 import { Toast } from "@/services/toast";
-import { noneTimestamp } from "@/timestamp";
+import { hourMs, noneTimestamp } from "@/timestamp";
 
 export default {
   title: "panes/lifeLogs",
@@ -404,6 +404,78 @@ function ShareStory() {
     </>
   );
 }
+
+function ManyLifeLogsSetup() {
+  const firestore = useFirestoreService();
+
+  const batchVersion = getCollection(firestore, "batchVersion");
+  const lifeLogs = getCollection(firestore, "lifeLogs");
+  const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+  const { updateState } = useStoreService();
+
+  onMount(() => {
+    (async () => {
+      const batch = writeBatch(firestore.firestore);
+
+      for (const lifeLog of (await getDocs(lifeLogs)).docs) {
+        batch.delete(lifeLog.ref);
+      }
+
+      for (const lifeLogTreeNode of (await getDocs(lifeLogTreeNodes)).docs) {
+        batch.delete(lifeLogTreeNode.ref);
+      }
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+
+      // Generate 120 lifeLogs at 12-hour intervals (60 days)
+      const now = Date.now();
+      for (let i = 0; i < 120; i++) {
+        const startTime = new Date(now - i * 12 * hourMs - 30 * 60 * 1000);
+        const endTime = new Date(now - i * 12 * hourMs);
+
+        batch.set(doc(lifeLogs, `$manyLog${String(i).padStart(3, "0")}`), {
+          text: `lifelog ${120 - i} (${i * 12}h ago)`,
+          hasTreeNodes: false,
+          startAt: Timestamp.fromDate(startTime),
+          endAt: Timestamp.fromDate(endTime),
+          createdAt: Timestamp.fromDate(new Date()),
+          updatedAt: Timestamp.fromDate(new Date()),
+        });
+      }
+
+      await batch.commit();
+
+      updateState((state) => {
+        state.panesLifeLogs.selectedLifeLogId = "$manyLog000";
+        state.panesLifeLogs.selectedLifeLogNodeId = "";
+      });
+    })().catch((error: unknown) => {
+      console.error("Error initializing Firestore data:", error);
+    });
+  });
+
+  return <LifeLogs />;
+}
+
+export const ManyLifeLogs: StoryObj = {
+  render() {
+    return (
+      <StoreServiceProvider>
+        <StorybookFirebaseWrapper showConfig={false}>
+          <Suspense fallback={<span>loading....</span>}>
+            <ManyLifeLogsSetup />
+          </Suspense>
+        </StorybookFirebaseWrapper>
+      </StoreServiceProvider>
+    );
+  },
+};
 
 export const SharePane: StoryObj = {
   render() {

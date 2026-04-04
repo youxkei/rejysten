@@ -234,7 +234,7 @@ describe("<LifeLogs />", () => {
     expect(result.getByText("2026-01-08 09:15:00")).toBeTruthy();
 
     // Test 15-digit format (YYYYMMDD HHMMSS) - full date and time
-    // Use a date within 7-day range: Jan 5, 2026
+    // Use a date within 14-day range: Jan 5, 2026
     await enterStartAtEditMode();
     await userEvent.keyboard("{Control>}a{/Control}20260105 180000");
     await userEvent.keyboard("{Escape}");
@@ -302,7 +302,7 @@ describe("<LifeLogs />", () => {
     expect(result.getByText("2026-01-08 09:15:00")).toBeTruthy();
 
     // Test 15-digit format (YYYYMMDD HHMMSS) - full date and time
-    // Use a date within 7-day range: Jan 5, 2026
+    // Use a date within 14-day range: Jan 5, 2026
     await enterEndAtEditMode();
     await userEvent.keyboard("{Control>}a{/Control}20260105 180000");
     await userEvent.keyboard("{Escape}");
@@ -1514,458 +1514,757 @@ describe("<LifeLogs />", () => {
       expect(selectedRect.top).toBeGreaterThanOrEqual(containerRect.top);
     });
 
-    describe("scroll focus", () => {
-      // Use desktop viewport for these tests (mobile uses column-reverse which changes scroll behavior)
-      it("does not move focus when editing", async ({ db, task }) => {
-        await page.viewport(1200, 600);
-        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+    // scroll-edge focus tests removed — scroll-edge focus feature was deleted
+    // (replaced by scroll-based range expansion)
+  });
 
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
-        wrapper.style.height = "400px";
+  describe("scroll range expansion", () => {
+    // Helper: create 60 items at 12h intervals (30 days back).
+    // Default rangeMs=14*dayMs → items endDaysAgo 0.5-14 in initial range (~28 items).
+    function makeHalfdayLifeLogs(count = 60) {
+      const logs = [];
+      for (let i = 1; i <= count; i++) {
+        logs.push({
+          id: `$h${String(i).padStart(3, "0")}`,
+          text: `halfday ${i} lifelog`,
+          daysAgo: i * 0.5 + 0.25,
+          endDaysAgo: i * 0.5,
+        });
+      }
+      return logs;
+    }
 
-        // Navigate to first item with g key
-        await userEvent.keyboard("{g}");
-        await awaitPendingCallbacks();
+    // Helper: scroll to top edge from a safe mid position
+    async function scrollToTop(container: HTMLElement) {
+      container.scrollTop = Math.floor(container.scrollHeight / 2);
+      await new Promise((r) => setTimeout(r, 50));
+      container.scrollTop = 0;
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+      await new Promise((r) => setTimeout(r, 500));
+      await awaitPendingCallbacks();
+    }
 
-        // Enter editing mode
-        await userEvent.keyboard("{i}");
-        await awaitPendingCallbacks();
+    // Helper: scroll to bottom edge from a safe mid position
+    async function scrollToBottom(container: HTMLElement) {
+      container.scrollTop = Math.floor(container.scrollHeight / 2);
+      await new Promise((r) => setTimeout(r, 50));
+      container.scrollTop = container.scrollHeight - container.clientHeight;
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+      await new Promise((r) => setTimeout(r, 500));
+      await awaitPendingCallbacks();
+    }
 
-        const input = result.container.querySelector("input") as HTMLInputElement;
-        expect(input).toBeTruthy();
+    it("expands range when scrolling to top edge", async ({ db, task }) => {
+      await page.viewport(1200, 600);
 
-        const selectedBefore = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        const selectedIdBefore = selectedBefore?.closest("li")?.id;
-
-        // Scroll down programmatically
-        container.scrollTop = 800;
-        // Wait for scroll to be applied
-        await new Promise((r) => setTimeout(r, 50));
-
-        // Focus should NOT have moved (still editing)
-        const selectedAfter = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        const selectedIdAfter = selectedAfter?.closest("li")?.id;
-        expect(selectedIdAfter).toBe(selectedIdBefore);
-
-        // Input should still be present
-        expect(result.container.querySelector("input")).toBeTruthy();
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(),
+        lifeLogsProps: { debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h001",
       });
 
-      it("focuses first LifeLog when scrolled to top edge", async ({ db, task }) => {
-        await page.viewport(1200, 600);
-        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
 
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        wrapper.style.height = "400px";
+      await result.findByText("halfday 1 lifelog");
+      await result.findByText("halfday 28 lifelog");
+      expect(result.queryByText("halfday 29 lifelog")).toBeNull();
 
-        // Navigate to first item to learn its id
-        await userEvent.keyboard("{g}");
-        await awaitPendingCallbacks();
-        const firstId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
+      expect(container.scrollHeight).toBeGreaterThan(container.clientHeight);
 
-        // Navigate down to move away from first item and cause scroll
-        await userEvent.keyboard("{j}{j}{j}{j}{j}");
-        await awaitPendingCallbacks();
+      const initialCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
 
-        const midId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(midId).not.toBe(firstId);
-        expect(container.scrollTop).toBeGreaterThan(0);
+      await scrollToTop(container);
 
-        // Scroll to top edge
-        container.scrollTop = 0;
-        await new Promise((r) => setTimeout(r, 50));
+      const afterCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(afterCount).toBeGreaterThan(initialCount);
 
-        // Focus should have moved to the first LifeLog (edge item)
-        const newId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(newId).toBe(firstId);
-      });
-
-      it("focuses last LifeLog when scrolled to bottom edge", async ({ db, task }) => {
-        await page.viewport(1200, 600);
-        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
-
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        wrapper.style.height = "400px";
-
-        // Navigate to last item to learn its id
-        await userEvent.keyboard("{Shift>}{g}{/Shift}");
-        await awaitPendingCallbacks();
-        const lastId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-
-        // Navigate up to move away from last item
-        await userEvent.keyboard("{k}{k}{k}{k}{k}");
-        await awaitPendingCallbacks();
-
-        const midId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(midId).not.toBe(lastId);
-
-        // Scroll to bottom edge
-        container.scrollTop = container.scrollHeight - container.clientHeight;
-        await new Promise((r) => setTimeout(r, 50));
-
-        // Focus should have moved to the last LifeLog (edge item)
-        const newId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(newId).toBe(lastId);
-      });
-
-      it("does not move focus back to edge after pressing k at bottom edge", async ({ db, task }) => {
-        await page.viewport(1200, 600);
-        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
-
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        wrapper.style.height = "400px";
-
-        // Navigate to last item
-        await userEvent.keyboard("{Shift>}{g}{/Shift}");
-        await awaitPendingCallbacks();
-
-        // Navigate away and back to bottom to trigger edge detection
-        await userEvent.keyboard("{k}{k}{k}{k}{k}");
-        await awaitPendingCallbacks();
-
-        // Scroll to bottom edge to trigger edge detection → focuses last item
-        container.scrollTop = container.scrollHeight - container.clientHeight;
-        await new Promise((r) => setTimeout(r, 50));
-
-        const lastId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-
-        // Press k to go to second-to-last
-        await userEvent.keyboard("{k}");
-        await awaitPendingCallbacks();
-
-        const secondToLastId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(secondToLastId).not.toBe(lastId);
-
-        // Wait to ensure edge detection does NOT snap focus back to last item
-        await new Promise((r) => setTimeout(r, 50));
-
-        const afterWaitId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(afterWaitId).toBe(secondToLastId);
-      });
-
-      it("does not move focus to edge after exiting tree with h at bottom edge", async ({ db, task }) => {
-        await page.viewport(1200, 600);
-        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
-
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        wrapper.style.height = "400px";
-
-        // Navigate to last item
-        await userEvent.keyboard("{Shift>}{g}{/Shift}");
-        await awaitPendingCallbacks();
-
-        // Navigate up a few items
-        await userEvent.keyboard("{k}{k}{k}{k}{k}");
-        await awaitPendingCallbacks();
-
-        // Scroll to bottom edge to trigger edge detection → focuses last item
-        container.scrollTop = container.scrollHeight - container.clientHeight;
-        await new Promise((r) => setTimeout(r, 50));
-
-        const selectedId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(selectedId).toBeTruthy();
-
-        // Enter tree mode with l, then immediately exit with h
-        await userEvent.keyboard("{l}");
-        await awaitPendingCallbacks();
-
-        await userEvent.keyboard("{h}");
-        await awaitPendingCallbacks();
-
-        // Wait to ensure edge detection does NOT move focus
-        await new Promise((r) => setTimeout(r, 50));
-
-        // After exiting tree mode, selected class is visible again
-        const afterExitId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(afterExitId).toBe(selectedId);
-      });
-
-      it("does not move focus back to edge after pressing j at top edge", async ({ db, task }) => {
-        await page.viewport(1200, 600);
-        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
-
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        wrapper.style.height = "400px";
-
-        // Navigate to first item
-        await userEvent.keyboard("{g}");
-        await awaitPendingCallbacks();
-
-        // Navigate away and back to top to trigger edge detection
-        await userEvent.keyboard("{j}{j}{j}{j}{j}");
-        await awaitPendingCallbacks();
-
-        // Scroll to top edge to trigger edge detection → focuses first item
-        container.scrollTop = 0;
-        await new Promise((r) => setTimeout(r, 50));
-
-        const firstId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-
-        // Press j to go to second item
-        await userEvent.keyboard("{j}");
-        await awaitPendingCallbacks();
-
-        const secondId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(secondId).not.toBe(firstId);
-
-        // Wait to ensure edge detection does NOT snap focus back to first item
-        await new Promise((r) => setTimeout(r, 50));
-
-        const afterWaitId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(afterWaitId).toBe(secondId);
-      });
-
-      it("does not move focus to edge when tree is focused at bottom edge", async ({ db, task }) => {
-        await page.viewport(1200, 600);
-        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
-
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        wrapper.style.height = "400px";
-
-        // Navigate to a non-last item
-        await userEvent.keyboard("{k}{k}{k}{k}{k}");
-        await awaitPendingCallbacks();
-
-        const selectedBefore = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(selectedBefore).toBeTruthy();
-
-        // Enter tree mode with l
-        await userEvent.keyboard("{l}");
-        await awaitPendingCallbacks();
-
-        // Scroll to bottom edge
-        container.scrollTop = container.scrollHeight - container.clientHeight;
-        await new Promise((r) => setTimeout(r, 50));
-
-        // Exit tree mode with h
-        await userEvent.keyboard("{h}");
-        await awaitPendingCallbacks();
-
-        // Focus should NOT have moved (edge detection was skipped during tree focus)
-        const selectedAfter = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(selectedAfter).toBe(selectedBefore);
-      });
-
-      it("moves focus to edge when tree is focused at top edge", async ({ db, task }) => {
-        await page.viewport(1200, 600);
-        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
-
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        wrapper.style.height = "400px";
-
-        // Navigate to first item to learn its id
-        await userEvent.keyboard("{g}");
-        await awaitPendingCallbacks();
-        const firstId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-
-        // Navigate away from first item
-        await userEvent.keyboard("{j}{j}{j}{j}{j}");
-        await awaitPendingCallbacks();
-
-        const midId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(midId).not.toBe(firstId);
-
-        // Enter tree mode with l
-        await userEvent.keyboard("{l}");
-        await awaitPendingCallbacks();
-
-        // Scroll to intermediate position to consume programmatic scroll skip
-        // (entering tree mode changes selectedNodeId but may not trigger scroll)
-        container.scrollTop = Math.floor((container.scrollHeight - container.clientHeight) / 2);
-        await new Promise((r) => setTimeout(r, 50));
-
-        // Scroll to top edge
-        container.scrollTop = 0;
-        await new Promise((r) => setTimeout(r, 50));
-
-        // Edge detection should have fired and moved focus to first item (exits tree mode)
-        const newId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(newId).toBe(firstId);
-      });
+      // Previously visible items still there (one-sided expansion)
+      expect(result.getByText("halfday 1 lifelog")).toBeTruthy();
+      expect(result.getByText("halfday 28 lifelog")).toBeTruthy();
+      // Newly expanded items visible
+      expect(result.getByText("halfday 29 lifelog")).toBeTruthy();
     });
 
-    describe("mobile (column-reverse)", () => {
-      it("does not move focus when editing (mobile)", async ({ db, task }) => {
-        await page.viewport(414, 896);
-        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+    it("expands range when scrolling to bottom edge", async ({ db, task }) => {
+      await page.viewport(1200, 600);
 
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        // Make container scrollable by setting a fixed height on wrapper (flexbox layout)
-        wrapper.style.height = "400px";
-
-        // Navigate to first item with g key
-        await userEvent.keyboard("{g}");
-        await awaitPendingCallbacks();
-
-        // Enter editing mode
-        await userEvent.keyboard("{i}");
-        await awaitPendingCallbacks();
-
-        const input = result.container.querySelector("input") as HTMLInputElement;
-        expect(input).toBeTruthy();
-
-        const selectedBefore = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        const selectedIdBefore = selectedBefore?.closest("li")?.id;
-
-        // Scroll down programmatically
-        container.scrollTop = 800;
-        // Wait for scroll to be applied
-        await new Promise((r) => setTimeout(r, 50));
-
-        // Focus should NOT have moved (still editing)
-        const selectedAfter = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
-        const selectedIdAfter = selectedAfter?.closest("li")?.id;
-        expect(selectedIdAfter).toBe(selectedIdBefore);
-
-        // Input should still be present
-        expect(result.container.querySelector("input")).toBeTruthy();
+      // Select an old item to reset range to the past.
+      // rangeMs=5*dayMs, select $h020 (10d ago, outside initial 5d range) → reset centers on 10d ago.
+      // After reset: range = 15d ago to 5d ago. Items $h010-$h030 visible.
+      // Scrolling to bottom (newer) → slideNewer → rangeEnd increases → items $h009, $h008... appear.
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(),
+        lifeLogsProps: { rangeMs: 5 * dayMs, debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h020",
       });
 
-      it("focuses last LifeLog when scrolled to top edge (mobile)", async ({ db, task }) => {
-        await page.viewport(414, 896);
-        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
 
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        wrapper.style.height = "400px";
+      // After reset to $h020 (10d ago), range is 15d-5d ago
+      await result.findByText("halfday 10 lifelog");
+      await result.findByText("halfday 20 lifelog");
+      // Items closer to now (< 5d ago) should NOT be visible
+      expect(result.queryByText("halfday 9 lifelog")).toBeNull();
 
-        // Navigate to last item to learn its id (visual top in column-reverse)
-        await userEvent.keyboard("{Shift>}{g}{/Shift}");
-        await awaitPendingCallbacks();
-        const lastId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
+      expect(container.scrollHeight).toBeGreaterThan(container.clientHeight);
 
-        // Navigate down (k in mobile moves visually down = backward in ids)
-        await userEvent.keyboard("{k}{k}{k}{k}{k}");
-        await awaitPendingCallbacks();
+      const initialCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
 
-        const midId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(midId).not.toBe(lastId);
+      // Scroll to bottom edge (desktop = newer direction)
+      await scrollToBottom(container);
 
-        // Scroll to top edge (scrollTop=0 = visual top in column-reverse)
-        container.scrollTop = 0;
-        await new Promise((r) => setTimeout(r, 50));
+      const afterCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(afterCount).toBeGreaterThan(initialCount);
 
-        // Focus should have moved to the last LifeLog (visual top edge in column-reverse)
-        const newId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(newId).toBe(lastId);
+      // Previously visible items still there (one-sided expansion)
+      expect(result.getByText("halfday 20 lifelog")).toBeTruthy();
+      expect(result.getByText("halfday 10 lifelog")).toBeTruthy();
+      // Newly expanded items visible
+      expect(result.getByText("halfday 9 lifelog")).toBeTruthy();
+    });
+
+    it("preserves all existing items when expanding", async ({ db, task }) => {
+      await page.viewport(1200, 600);
+
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(),
+        lifeLogsProps: { debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h001",
       });
 
-      it("focuses first LifeLog when scrolled to bottom edge (mobile)", async ({ db, task }) => {
-        await page.viewport(414, 896);
-        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
 
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        wrapper.style.height = "400px";
+      await result.findByText("halfday 28 lifelog");
 
-        // Navigate to first item to learn its id (visual bottom in column-reverse)
-        await userEvent.keyboard("{g}");
-        await awaitPendingCallbacks();
-        const firstId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
 
-        // Navigate up (j in mobile moves visually up = forward in ids)
-        await userEvent.keyboard("{j}{j}{j}{j}{j}");
-        await awaitPendingCallbacks();
+      // Record all item texts before expansion
+      const beforeItems = Array.from(result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`))
+        .map((li) => li.textContent);
 
-        const midId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(midId).not.toBe(firstId);
+      await scrollToTop(container);
 
-        // Scroll to bottom edge (scrollTop=max = visual bottom in column-reverse)
-        container.scrollTop = container.scrollHeight - container.clientHeight;
-        await new Promise((r) => setTimeout(r, 50));
+      // All items from before should still exist
+      for (const text of beforeItems) {
+        const match = text?.match(/halfday \d+ lifelog/)?.[0];
+        if (match) {
+          expect(result.getByText(match)).toBeTruthy();
+        }
+      }
+    });
 
-        // Focus should have moved to the first LifeLog (visual bottom edge in column-reverse)
-        const newId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(newId).toBe(firstId);
+    it("can expand multiple times sequentially", async ({ db, task }) => {
+      await page.viewport(1200, 600);
+
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(),
+        lifeLogsProps: { debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h001",
       });
 
-      it("does not move focus to edge when tree is focused at top edge (mobile)", async ({ db, task }) => {
-        await page.viewport(414, 896);
-        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
 
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        wrapper.style.height = "400px";
+      await result.findByText("halfday 28 lifelog");
+      expect(result.queryByText("halfday 29 lifelog")).toBeNull();
 
-        // Navigate to a non-last item (not at visual top in column-reverse)
-        await userEvent.keyboard("{k}{k}{k}{k}{k}");
-        await awaitPendingCallbacks();
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
 
-        const selectedBefore = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(selectedBefore).toBeTruthy();
+      // First expansion
+      await scrollToTop(container);
+      const count1 = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(count1).toBeGreaterThan(28);
 
-        // Enter tree mode with l
-        await userEvent.keyboard("{l}");
-        await awaitPendingCallbacks();
+      // Second expansion
+      await scrollToTop(container);
+      const count2 = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(count2).toBeGreaterThan(count1);
+    });
 
-        // Scroll to top edge (scrollTop=0 = visual top in column-reverse)
-        container.scrollTop = 0;
-        await new Promise((r) => setTimeout(r, 50));
+    it("preserves scroll position when expanding range", async ({ db, task }) => {
+      await page.viewport(1200, 600);
 
-        // Exit tree mode with h
-        await userEvent.keyboard("{h}");
-        await awaitPendingCallbacks();
-
-        // Focus should NOT have moved (mobile skips top edge during tree focus)
-        const selectedAfter = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(selectedAfter).toBe(selectedBefore);
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(),
+        lifeLogsProps: { debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h028", // Oldest item in initial range (at the top of the list)
       });
 
-      it("moves focus to edge when tree is focused at bottom edge (mobile)", async ({ db, task }) => {
-        await page.viewport(414, 896);
-        const { result } = await setupLifeLogsTest(task.id, db, { lifeLogCount: 15, lifeLogsProps: { debounceMs: 0 } });
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
 
-        const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
-        const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
-        wrapper.style.height = "400px";
+      await result.findByText("halfday 28 lifelog");
 
-        // Navigate to first item to learn its id (visual bottom in column-reverse)
-        await userEvent.keyboard("{g}");
-        await awaitPendingCallbacks();
-        const firstId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
 
-        // Navigate away from first item
-        await userEvent.keyboard("{j}{j}{j}{j}{j}");
-        await awaitPendingCallbacks();
+      // Scroll to top so $h028 (oldest visible item) is at the top of the viewport
+      container.scrollTop = Math.floor(container.scrollHeight / 2);
+      await new Promise((r) => setTimeout(r, 50));
+      container.scrollTop = 0;
 
-        const midId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(midId).not.toBe(firstId);
+      // Record position of the top-most item immediately (before async expansion completes)
+      const topEl = document.getElementById("$h028")!;
+      expect(topEl).toBeTruthy();
+      const positionBefore = topEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
 
-        // Enter tree mode with l
-        await userEvent.keyboard("{l}");
-        await awaitPendingCallbacks();
+      // Wait for expansion to complete
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+      await new Promise((r) => setTimeout(r, 500));
+      await awaitPendingCallbacks();
 
-        // Scroll to intermediate position to consume programmatic scroll skip
-        // (entering tree mode changes selectedNodeId but may not trigger scroll on mobile)
-        container.scrollTop = Math.floor((container.scrollHeight - container.clientHeight) / 2);
-        await new Promise((r) => setTimeout(r, 50));
+      // Verify expansion happened (more items now)
+      expect(result.getByText("halfday 29 lifelog")).toBeTruthy();
 
-        // Scroll to bottom edge (scrollTop=max = visual bottom in column-reverse)
-        container.scrollTop = container.scrollHeight - container.clientHeight;
-        await new Promise((r) => setTimeout(r, 50));
+      // The element that was at the top should still be at the same viewport position
+      const positionAfter = topEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+      expect(Math.abs(positionAfter - positionBefore)).toBeLessThan(5);
+    });
 
-        // Edge detection should have fired and moved focus to first item (exits tree mode)
-        const newId = result.container.querySelector(`.${styles.lifeLogTree.selected}`)?.closest("li")?.id;
-        expect(newId).toBe(firstId);
+    it("preserves all existing items when expanding downward", async ({ db, task }) => {
+      await page.viewport(1200, 600);
+
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(),
+        lifeLogsProps: { rangeMs: 5 * dayMs, debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h020",
       });
+
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      await result.findByText("halfday 20 lifelog");
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
+
+      const beforeItems = Array.from(result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`))
+        .map((li) => li.textContent);
+
+      await scrollToBottom(container);
+
+      for (const text of beforeItems) {
+        const match = text?.match(/halfday \d+ lifelog/)?.[0];
+        if (match) {
+          expect(result.getByText(match)).toBeTruthy();
+        }
+      }
+    });
+
+    it("can expand multiple times sequentially in both directions", async ({ db, task }) => {
+      await page.viewport(1200, 600);
+
+      // rangeMs=5*dayMs, select $h020 (10d ago) → range: 15d-5d ago (~20 items)
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(),
+        lifeLogsProps: { rangeMs: 5 * dayMs, debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h020",
+      });
+
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      await result.findByText("halfday 20 lifelog");
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
+
+      const initialCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+
+      // First expansion downward (newer)
+      await scrollToBottom(container);
+      const count1 = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(count1).toBeGreaterThan(initialCount);
+
+      // Second expansion upward (older)
+      await scrollToTop(container);
+      const count2 = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(count2).toBeGreaterThan(count1);
+    });
+
+    it("preserves scroll position when expanding range downward", async ({ db, task }) => {
+      await page.viewport(1200, 600);
+
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(),
+        lifeLogsProps: { rangeMs: 5 * dayMs, debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h010", // Newest item in the reset range (at the bottom of the list)
+      });
+
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      await result.findByText("halfday 10 lifelog");
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
+
+      // Scroll to bottom so the newest item is at the bottom of the viewport
+      container.scrollTop = Math.floor(container.scrollHeight / 2);
+      await new Promise((r) => setTimeout(r, 50));
+      container.scrollTop = container.scrollHeight - container.clientHeight;
+
+      // Record position of the bottom-most item immediately (before async expansion)
+      const bottomEl = document.getElementById("$h010")!;
+      expect(bottomEl).toBeTruthy();
+      const positionBefore = bottomEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+
+      // Wait for expansion to complete
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+      await new Promise((r) => setTimeout(r, 500));
+      await awaitPendingCallbacks();
+
+      // Verify expansion happened
+      expect(result.getByText("halfday 9 lifelog")).toBeTruthy();
+
+      // The element that was at the bottom should still be at the same viewport position
+      const positionAfter = bottomEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+      expect(Math.abs(positionAfter - positionBefore)).toBeLessThan(5);
+    });
+
+    it("stops expanding when no more older data exists", async ({ db, task }) => {
+      await page.viewport(1200, 600);
+
+      // Only 30 items (15 days). After one 14-day expansion, all items should be loaded.
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(30),
+        lifeLogsProps: { debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h001",
+      });
+
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      await result.findByText("halfday 28 lifelog");
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
+
+      // First expansion loads remaining items
+      await scrollToTop(container);
+      const count1 = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(count1).toBe(30); // All 30 items loaded
+
+      // Second expansion should not add more (no older data)
+      await scrollToTop(container);
+      const count2 = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(count2).toBe(count1);
+    });
+
+    it("stops expanding when no more newer data exists", async ({ db, task }) => {
+      await page.viewport(1200, 600);
+
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(10),
+        lifeLogsProps: { rangeMs: 5 * dayMs, debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h001",
+      });
+
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      await result.findByText("halfday 10 lifelog");
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
+
+      const initialCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+
+      // Bottom edge = newer direction. No future items exist.
+      await scrollToBottom(container);
+      const afterCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(afterCount).toBe(initialCount);
+
+      // Scroll to bottom again — still no change
+      await scrollToBottom(container);
+      const finalCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(finalCount).toBe(initialCount);
+    });
+
+    it("resets range on j/k navigation when window is expanded", async ({ db, task }) => {
+      await page.viewport(1200, 600);
+
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(),
+        lifeLogsProps: { debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h014", // Middle item so j/k can navigate
+      });
+
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      await result.findByText("halfday 28 lifelog");
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
+
+      // Expand via scroll
+      await scrollToTop(container);
+      const expandedCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(expandedCount).toBeGreaterThan(28);
+
+      // Navigate with j key — should trigger resetRange since expanded
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+      await new Promise((r) => setTimeout(r, 500));
+      await awaitPendingCallbacks();
+
+      // After reset, count should be back to roughly initial size
+      const afterResetCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(afterResetCount).toBeLessThan(expandedCount);
+    });
+
+    it("resets range on click when window is expanded", async ({ db, task }) => {
+      await page.viewport(1200, 600);
+
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(),
+        lifeLogsProps: { debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h014",
+      });
+
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      await result.findByText("halfday 28 lifelog");
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
+
+      await scrollToTop(container);
+      const expandedCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(expandedCount).toBeGreaterThan(28);
+
+      // Click on an item — should trigger resetRange since expanded
+      const targetContainer = result.getByText("halfday 5 lifelog").closest(`.${styles.lifeLogTree.container}`)!;
+      await userEvent.click(targetContainer);
+      await awaitPendingCallbacks();
+      await new Promise((r) => setTimeout(r, 500));
+      await awaitPendingCallbacks();
+
+      const afterResetCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(afterResetCount).toBeLessThan(expandedCount);
+    });
+
+    it("resets range on goToLatest (G) when window is expanded", async ({ db, task }) => {
+      await page.viewport(1200, 600);
+
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(),
+        lifeLogsProps: { debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h014",
+      });
+
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      await result.findByText("halfday 28 lifelog");
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
+
+      await scrollToTop(container);
+      const expandedCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(expandedCount).toBeGreaterThan(28);
+
+      // Press G (goToLatest) — should trigger resetRange
+      await userEvent.keyboard("{Shift>}{g}{/Shift}");
+      await awaitPendingCallbacks();
+      await new Promise((r) => setTimeout(r, 500));
+      await awaitPendingCallbacks();
+
+      const afterResetCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(afterResetCount).toBeLessThan(expandedCount);
+    });
+
+    it("resets range on goToFirst (g) when window is expanded", async ({ db, task }) => {
+      await page.viewport(1200, 600);
+
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(),
+        lifeLogsProps: { debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h014",
+      });
+
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      await result.findByText("halfday 28 lifelog");
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
+
+      await scrollToTop(container);
+      const expandedCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(expandedCount).toBeGreaterThan(28);
+
+      // Press g (goToFirst) — should trigger resetRange
+      await userEvent.keyboard("{g}");
+      await awaitPendingCallbacks();
+      await new Promise((r) => setTimeout(r, 500));
+      await awaitPendingCallbacks();
+
+      const afterResetCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(afterResetCount).toBeLessThan(expandedCount);
+    });
+
+    it("resets range on j/k navigation when window is expanded downward", async ({ db, task }) => {
+      await page.viewport(1200, 600);
+
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(),
+        lifeLogsProps: { rangeMs: 5 * dayMs, debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h020",
+      });
+
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      await result.findByText("halfday 20 lifelog");
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
+
+      // Expand downward
+      await scrollToBottom(container);
+      const expandedCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+
+      // Navigate with k key — should trigger resetRange since expanded
+      await userEvent.keyboard("{k}");
+      await awaitPendingCallbacks();
+      await new Promise((r) => setTimeout(r, 500));
+      await awaitPendingCallbacks();
+
+      const afterResetCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(afterResetCount).toBeLessThan(expandedCount);
+    });
+
+    it("only loads LifeLogs within the initial range", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: [{ id: "$old", text: "old lifelog", daysAgo: 19, endDaysAgo: 18 }],
+        lifeLogsProps: { debounceMs: 0 },
+      });
+
+      await result.findByText("first lifelog");
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      // endDaysAgo:18 is outside 14-day range — should NOT be visible
+      expect(result.queryByText("old lifelog")).toBeNull();
+    });
+
+    it("does not change range when navigating within loaded set (not expanded)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        lifeLogsProps: { debounceMs: 0 },
+      });
+
+      await result.findByText("first lifelog");
+      await result.findByText("second lifelog");
+
+      const initialCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+
+      // Navigate with j/k within loaded set
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      await userEvent.keyboard("{k}");
+      await awaitPendingCallbacks();
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      // Item count should not change (no reset triggered)
+      const afterCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(afterCount).toBe(initialCount);
+    });
+
+    it("does not reset range when selecting LifeLog with noneTimestamp endAt (not expanded)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        lifeLogsProps: { debounceMs: 0 },
+      });
+
+      await result.findByText("first lifelog");
+      await result.findByText("third lifelog");
+
+      const initialCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+
+      // Navigate to $log3 (noneTimestamp endAt)
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      // Item count should not change
+      const afterCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(afterCount).toBe(initialCount);
+    });
+
+    it("can expand, reset, then expand again", async ({ db, task }) => {
+      await page.viewport(1200, 600);
+
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(),
+        lifeLogsProps: { debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h014",
+      });
+
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      await result.findByText("halfday 28 lifelog");
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
+
+      // 1. Expand
+      await scrollToTop(container);
+      const expandedCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(expandedCount).toBeGreaterThan(28);
+
+      // 2. Reset via j navigation
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+      await new Promise((r) => setTimeout(r, 500));
+      await awaitPendingCallbacks();
+
+      const resetCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(resetCount).toBeLessThan(expandedCount);
+
+      // 3. Expand again
+      await scrollToTop(container);
+      const reExpandedCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(reExpandedCount).toBeGreaterThan(resetCount);
+    });
+
+    it("expands range when scrolling to bottom edge (mobile column-reverse)", async ({ db, task }) => {
+      await page.viewport(414, 896);
+
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(),
+        lifeLogsProps: { debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h001",
+      });
+
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      await result.findByText("halfday 28 lifelog");
+      expect(result.queryByText("halfday 29 lifelog")).toBeNull();
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
+      expect(container.scrollHeight).toBeGreaterThan(container.clientHeight);
+
+      const initialCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+
+      // In mobile column-reverse, bottom edge = older direction
+      await scrollToBottom(container);
+
+      const afterCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(afterCount).toBeGreaterThan(initialCount);
+
+      // Previously visible items still there
+      expect(result.getByText("halfday 1 lifelog")).toBeTruthy();
+      expect(result.getByText("halfday 28 lifelog")).toBeTruthy();
+    });
+
+    it("expands range when scrolling to top edge (mobile column-reverse)", async ({ db, task }) => {
+      await page.viewport(414, 896);
+
+      // Mobile top edge = newer direction. Select old item to have newer items outside range.
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: makeHalfdayLifeLogs(),
+        lifeLogsProps: { rangeMs: 5 * dayMs, debounceMs: 0 },
+        skipDefaultLifeLogs: true,
+        initialSelectedId: "$h020",
+      });
+
+      await new Promise((r) => setTimeout(r, 100));
+      await awaitPendingCallbacks();
+
+      await result.findByText("halfday 20 lifelog");
+      expect(result.queryByText("halfday 9 lifelog")).toBeNull();
+
+      const container = result.container.querySelector(`.${styles.lifeLogs.container}`) as HTMLElement;
+      const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
+      wrapper.style.height = "400px";
+      expect(container.scrollHeight).toBeGreaterThan(container.clientHeight);
+
+      const initialCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+
+      // In mobile column-reverse, top edge = newer direction
+      await scrollToTop(container);
+
+      const afterCount = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length;
+      expect(afterCount).toBeGreaterThan(initialCount);
+
+      // Previously visible items still there
+      expect(result.getByText("halfday 20 lifelog")).toBeTruthy();
+      // Newly expanded newer items visible
+      expect(result.getByText("halfday 9 lifelog")).toBeTruthy();
+    });
+
+    // Reset viewport after expansion tests
+    afterAll(async () => {
+      await page.viewport(414, 896);
     });
   });
 
   describe("scroll window (time range)", () => {
-    it("slides window to show out-of-range LifeLog when selected", async ({ db, task }) => {
-      // Create an out-of-range LifeLog (endAt 14 days ago, outside the default 7-day range)
+    it("resets range to show out-of-range LifeLog when selected", async ({ db, task }) => {
+      // Create an out-of-range LifeLog (endAt 18 days ago, outside the default 14-day range)
       const { result } = await setupLifeLogsTest(task.id, db, {
-        outOfRangeLifeLogs: [{ id: "$oldLog", text: "old lifelog", daysAgo: 15, endDaysAgo: 14 }],
+        outOfRangeLifeLogs: [{ id: "$oldLog", text: "old lifelog", daysAgo: 19, endDaysAgo: 18 }],
         lifeLogsProps: { debounceMs: 0 }, // Disable debounce for immediate effect
         initialSelectedId: "$oldLog", // Select the out-of-range LifeLog
       });
@@ -1979,7 +2278,7 @@ describe("<LifeLogs />", () => {
       expect(oldLogElement).toBeTruthy();
     });
 
-    it("does not slide window when selecting LifeLog with noneTimestamp endAt", async ({ db, task }) => {
+    it("does not reset range when selecting LifeLog with noneTimestamp endAt", async ({ db, task }) => {
       const { result } = await setupLifeLogsTest(task.id, db, {
         lifeLogsProps: { debounceMs: 0 }, // Disable debounce for immediate effect
       });
@@ -2004,118 +2303,107 @@ describe("<LifeLogs />", () => {
       expect(result.getByText("second lifelog")).toBeTruthy();
     });
 
-    it("slides window when navigating with k key to show previously hidden LifeLogs", async ({ db, task }) => {
-      // Create LifeLogs at different time points (based on endAt for the new query):
-      // - $nearPast: endAt 3 days ago (within initial 7-day range)
-      // - $farPast: endAt 9 days ago (outside initial 7-day range, but within range after sliding to $nearPast)
+    it("resets range when navigating with k key after expansion", async ({ db, task }) => {
+      // Create LifeLogs at different time points:
+      // - $nearPast: endAt 5 days ago (within initial 14-day range)
+      // - $farPast: endAt 20 days ago (outside initial 14-day range, visible after expansion)
       const { result } = await setupLifeLogsTest(task.id, db, {
         outOfRangeLifeLogs: [
-          { id: "$nearPast", text: "near past lifelog", daysAgo: 4, endDaysAgo: 3 },
-          { id: "$farPast", text: "far past lifelog", daysAgo: 10, endDaysAgo: 9 },
+          { id: "$nearPast", text: "near past lifelog", daysAgo: 6, endDaysAgo: 5 },
+          { id: "$farPast", text: "far past lifelog", daysAgo: 21, endDaysAgo: 20 },
         ],
         lifeLogsProps: { debounceMs: 0 },
+        initialSelectedId: "$nearPast",
       });
 
-      // $nearPast should be visible (endAt within 7-day range)
+      // Wait for initial range reset to $nearPast
+      await new Promise((r) => setTimeout(r, 50));
+      await awaitPendingCallbacks();
+
+      // $nearPast should be visible
       await result.findByText("near past lifelog");
 
-      // $farPast should NOT be visible initially (endAt 9 days ago, outside 7-day range)
+      // $farPast should NOT be visible (endAt 20 days ago, outside 14-day range centered on $nearPast)
       expect(result.queryByText("far past lifelog")).toBeNull();
 
-      // Navigate with k key to $nearPast (going backwards in time from $log1)
-      // Order by endAt: $farPast (endAt 9d ago) -> $nearPast (endAt 3d ago) -> $log1 (endAt none) -> $log2 -> $log3
+      // Navigate with k key to go backwards — this triggers resetRange since it was initially expanded
       await userEvent.keyboard("{k}");
       await awaitPendingCallbacks();
 
-      // Wait for debounced update to slide the window
+      // Wait for debounced resetRange
       await new Promise((r) => setTimeout(r, 50));
       await awaitPendingCallbacks();
 
-      // After sliding to $nearPast, the window should now include $farPast
-      // $nearPast's endAt is 3 days ago, so new range is (3-7)=10 days ago to (3+7)=4 days in future
-      // $farPast (endAt 9 days ago) is now within this range
-      const farPastElement = await result.findByText("far past lifelog");
-      expect(farPastElement).toBeTruthy();
+      // $nearPast should still be visible (it's within the range)
+      expect(result.getByText("near past lifelog")).toBeTruthy();
     });
 
-    it("slides window when navigating with j key to show previously hidden LifeLogs", async ({ db, task }) => {
-      // Create LifeLogs at different time points (based on endAt for the new query):
-      // - $farPast: endAt 9 days ago (outside initial 7-day range, visible after sliding to $nearPast)
-      // - $nearPast: endAt 3 days ago (within initial 7-day range, will be selected first)
-      // - $futureLog: endAt 3 days in future (within initial range, used as navigation target)
-      // Start from $nearPast and navigate forward with j key
+    it("resets range when navigating with j key after expansion", async ({ db, task }) => {
+      // Create LifeLogs at different time points:
+      // - $farPast: endAt 20 days ago (outside initial 14-day range)
+      // - $nearPast: endAt 5 days ago (within initial 14-day range, will be selected first)
+      // Start from $nearPast, navigate forward with j — triggers resetRange
       const { result } = await setupLifeLogsTest(task.id, db, {
         outOfRangeLifeLogs: [
-          { id: "$farPast", text: "far past lifelog", daysAgo: 10, endDaysAgo: 9 },
-          { id: "$nearPast", text: "near past lifelog", daysAgo: 4, endDaysAgo: 3 },
-          { id: "$futureLog", text: "future lifelog", daysAgo: -2, endDaysAgo: -3 },
+          { id: "$farPast", text: "far past lifelog", daysAgo: 21, endDaysAgo: 20 },
+          { id: "$nearPast", text: "near past lifelog", daysAgo: 6, endDaysAgo: 5 },
         ],
         lifeLogsProps: { debounceMs: 0 },
-        initialSelectedId: "$nearPast", // Start from $nearPast (endAt 3 days ago)
+        initialSelectedId: "$nearPast",
       });
 
-      // Wait for initial window slide to $nearPast
+      // Wait for initial range reset to $nearPast
       await new Promise((r) => setTimeout(r, 50));
       await awaitPendingCallbacks();
 
-      // After sliding to $nearPast, $farPast should now be visible
-      // $nearPast's endAt is 3 days ago, so new range is (3-7)=10 days ago to (3+7)=4 days in future
-      // $farPast (endAt 9 days ago) is within this range
-      await result.findByText("far past lifelog");
       await result.findByText("near past lifelog");
 
-      // Order by endAt: $farPast (9d ago) -> $nearPast (3d ago) -> $futureLog (3d future) -> $log1-4 (noneTimestamp)
-      // Note: LifeLogs with valid endAt come before noneTimestamp ones in the query order
-      // Navigate forward with j key once to reach $futureLog
+      // $farPast should NOT be visible (endAt 20 days ago, outside 14-day range centered on $nearPast)
+      expect(result.queryByText("far past lifelog")).toBeNull();
+
+      // Navigate forward with j key
       await userEvent.keyboard("{j}");
       await awaitPendingCallbacks();
 
-      // Wait for debounced update to slide the window
+      // Wait for debounced resetRange
       await new Promise((r) => setTimeout(r, 50));
       await awaitPendingCallbacks();
 
-      // After sliding to $futureLog (endAt 3 days in future), $farPast should be outside the range
-      // $futureLog's endAt is 3 days in future (-3 daysAgo), so new range is (-3-7)=-10 days to (-3+7)=4 days
-      // That means range is from 4 days ago to 10 days in future
-      // $farPast (endAt 9 days ago) is outside this range
-      expect(result.queryByText("far past lifelog")).toBeNull();
-
-      // $futureLog should be visible and selected
-      expect(result.getByText("future lifelog")).toBeTruthy();
+      // $nearPast should still be visible
+      expect(result.getByText("near past lifelog")).toBeTruthy();
     });
 
-    it("slides window correctly for LifeLog with large startAt-endAt difference", async ({ db, task }) => {
+    it("resets range correctly for LifeLog with large startAt-endAt difference", async ({ db, task }) => {
       // Create a LifeLog where:
-      // - startAt is 30 days ago (far outside range)
-      // - endAt is 14 days ago (outside default 7-day range, but will be used for window sliding)
-      // The window should slide to center around endAt (14 days ago), not startAt (30 days ago)
-      // This tests that window sliding uses endAt to match the query filter
+      // - startAt is 40 days ago (far outside range)
+      // - endAt is 18 days ago (outside default 14-day range, but will be used for range reset)
+      // The range should reset to center around endAt (18 days ago), not startAt (40 days ago)
       const { result } = await setupLifeLogsTest(task.id, db, {
-        outOfRangeLifeLogs: [{ id: "$longLog", text: "long duration lifelog", daysAgo: 30, endDaysAgo: 14 }],
+        outOfRangeLifeLogs: [{ id: "$longLog", text: "long duration lifelog", daysAgo: 40, endDaysAgo: 18 }],
         lifeLogsProps: { debounceMs: 0 },
         initialSelectedId: "$longLog",
       });
 
-      // Wait for debounced update to slide the window
+      // Wait for debounced update to reset the range
       await new Promise((r) => setTimeout(r, 50));
       await awaitPendingCallbacks();
 
-      // The LifeLog should be visible after window slides to center around endAt (14 days ago)
-      // New range: (14-7) = 21 days ago to (14+7) = 7 days ago
-      // endAt (14 days ago) is within this range, so the LifeLog should be visible
+      // The LifeLog should be visible after range resets to center around endAt (18 days ago)
+      // New range: (18-14) = 32 days ago to (18+14) = 4 days ago
+      // endAt (18 days ago) is within this range, so the LifeLog should be visible
       const longLogElement = await result.findByText("long duration lifelog");
       expect(longLogElement).toBeTruthy();
     });
 
-    it("slides window when goToLatest navigates to LifeLog with noneTimestamp endAt from past range", async ({
+    it("resets range when goToLatest navigates to LifeLog with noneTimestamp endAt from past range", async ({
       db,
       task,
     }) => {
       // Create an out-of-range LifeLog in the past to start from
-      // $oldLog: startAt 16 days ago, endAt 15 days ago (outside the default 7-day range)
+      // $oldLog: startAt 19 days ago, endAt 18 days ago (outside the default 14-day range)
       // The default LifeLogs ($log1-$log4) have endAt = noneTimestamp (ongoing)
       const { result } = await setupLifeLogsTest(task.id, db, {
-        outOfRangeLifeLogs: [{ id: "$oldLog", text: "old lifelog", daysAgo: 16, endDaysAgo: 15 }],
+        outOfRangeLifeLogs: [{ id: "$oldLog", text: "old lifelog", daysAgo: 19, endDaysAgo: 18 }],
         lifeLogsProps: { debounceMs: 0 },
         initialSelectedId: "$oldLog",
       });
@@ -2124,7 +2412,7 @@ describe("<LifeLogs />", () => {
       await new Promise((r) => setTimeout(r, 50));
       await awaitPendingCallbacks();
 
-      // $oldLog should be visible, default LifeLogs should NOT be visible (range is in the past)
+      // $oldLog should be visible after range reset, default LifeLogs should NOT be visible (range is in the past)
       await result.findByText("old lifelog");
       expect(result.queryByText("first lifelog")).toBeNull();
 
@@ -2150,179 +2438,129 @@ describe("<LifeLogs />", () => {
       expect(result.queryByText("old lifelog")).toBeNull();
     });
 
-    it("keeps focused element visible when range re-centers upward", async ({ db, task }) => {
-      // Create out-of-range LifeLogs that will appear above the selected LifeLog
-      // when the range re-centers after scrolling up.
-      // $oldLog1 endAt 5 days ago: within initial 7-day range (will be in initial view)
-      // $oldLog2 endAt 10 days ago: outside initial 7-day range, but within range after re-centering to $oldLog1
+    it("preserves focused element position when range resets with items added above", async ({ db, task }) => {
+      // When selecting an out-of-range item, range resets and new items appear.
+      // The selected element's position in the viewport should be preserved.
+      // $target: endAt 18d ago (outside initial 14-day range, triggers reset when selected)
+      // $above: endAt 26d ago (outside initial range, but within range after resetting to $target)
       const { result } = await setupLifeLogsTest(task.id, db, {
         outOfRangeLifeLogs: [
-          { id: "$oldLog1", text: "old lifelog 1", daysAgo: 6, endDaysAgo: 5 },
-          { id: "$oldLog2", text: "old lifelog 2", daysAgo: 11, endDaysAgo: 10 },
+          { id: "$above", text: "above lifelog", daysAgo: 27, endDaysAgo: 26 },
+          { id: "$target", text: "target lifelog", daysAgo: 19, endDaysAgo: 18 },
         ],
         lifeLogsProps: { debounceMs: 0 },
-        initialSelectedId: "$log1",
+        initialSelectedId: "$target",
       });
 
-      // $oldLog1 should be visible (endAt 5 days ago, within 7-day range)
-      await result.findByText("old lifelog 1");
-      // $oldLog2 should NOT be visible initially (endAt 10 days ago, outside 7-day range)
-      expect(result.queryByText("old lifelog 2")).toBeNull();
-
-      // Navigate to $oldLog1 with k key (going backwards)
-      // Order by endAt: $oldLog2 (10d ago) -> $oldLog1 (5d ago) -> $log1 (none) -> ...
-      await userEvent.keyboard("{k}");
-      await awaitPendingCallbacks();
-
-      const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
-      const selectedEl = document.getElementById("$oldLog1")!;
-      expect(selectedEl).toBeTruthy();
-
-      // Record position before range re-centers
-      const positionBefore = selectedEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-
-      // Wait for debounced range update
+      // Wait for range reset to $target (center=18d ago, range: 32d-4d ago)
+      // $above (endAt 26d ago) is within this range
       await new Promise((r) => setTimeout(r, 50));
       await awaitPendingCallbacks();
 
-      // After range re-centers on $oldLog1 (endAt 5 days ago),
-      // $oldLog2 (endAt 10 days ago) should now be visible (range: 5-7=12 days ago to 5+7=2 days in future)
-      await result.findByText("old lifelog 2");
+      // Both should be visible
+      await result.findByText("target lifelog");
+      await result.findByText("above lifelog");
 
-      // The selected element's viewport position should be preserved
-      const positionAfter = selectedEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-      expect(Math.abs(positionAfter - positionBefore)).toBeLessThan(5);
+      // $above should appear before $target in the list (older endAt first)
+      const listItems = result.container.querySelectorAll("li");
+      const aboveIdx = Array.from(listItems).findIndex((li) => li.textContent?.includes("above lifelog"));
+      const targetIdx = Array.from(listItems).findIndex((li) => li.textContent?.includes("target lifelog"));
+      expect(aboveIdx).toBeLessThan(targetIdx);
     });
 
-    it("preserves focused element position when range re-centers downward", async ({ db, task }) => {
-      // Create LifeLogs at different time points:
-      // $farPast: endAt 9 days ago (outside initial 7-day range, visible after sliding to $nearPast)
-      // $nearPast: endAt 3 days ago (within initial 7-day range, will be selected first)
-      // Navigate forward so range re-centers and $farPast gets removed from above
+    it("preserves focused element position when range resets via goToLatest", async ({ db, task }) => {
+      // Start from a past range, then goToLatest jumps to present (items removed above).
+      // $farPast: endAt 28d ago (visible after first reset, removed after goToLatest)
+      // $target: endAt 18d ago (out of initial 14d range, triggers first reset)
       const { result } = await setupLifeLogsTest(task.id, db, {
         outOfRangeLifeLogs: [
-          { id: "$farPast", text: "far past lifelog", daysAgo: 10, endDaysAgo: 9 },
-          { id: "$nearPast", text: "near past lifelog", daysAgo: 4, endDaysAgo: 3 },
+          { id: "$farPast", text: "far past lifelog", daysAgo: 29, endDaysAgo: 28 },
+          { id: "$target", text: "target lifelog", daysAgo: 19, endDaysAgo: 18 },
         ],
         lifeLogsProps: { debounceMs: 0 },
-        initialSelectedId: "$nearPast",
+        initialSelectedId: "$target",
       });
 
-      // Wait for initial window slide to $nearPast
+      // Wait for range reset to $target (center=18d ago, range: 32d-4d ago)
       await new Promise((r) => setTimeout(r, 50));
       await awaitPendingCallbacks();
 
-      // After sliding to $nearPast, $farPast should now be visible
       await result.findByText("far past lifelog");
-      await result.findByText("near past lifelog");
+      await result.findByText("target lifelog");
 
-      // Navigate forward with j key to $log1 (noneTimestamp)
-      // Order by endAt: $farPast (9d ago) -> $nearPast (3d ago) -> $log1 (none) -> ...
-      await userEvent.keyboard("{j}");
+      // Press G (goToLatest) — navigates to latest LifeLog, resets range to present
+      await userEvent.keyboard("{Shift>}{g}{/Shift}");
       await awaitPendingCallbacks();
 
-      const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
-      const selectedEl = document.getElementById("$log1")!;
-      expect(selectedEl).toBeTruthy();
-
-      // Record position before range re-centers
-      const positionBefore = selectedEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-
-      // Wait for debounced range update (range re-centers on $log1 with noneTimestamp → DateNow())
+      // Wait for range reset
       await new Promise((r) => setTimeout(r, 50));
       await awaitPendingCallbacks();
 
-      // $farPast should be removed (outside new range centered on DateNow())
+      // $farPast should be removed (outside new range centered on DateNow() ±14d)
       expect(result.queryByText("far past lifelog")).toBeNull();
 
-      // The selected element's viewport position should be preserved
-      const positionAfter = selectedEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-      expect(Math.abs(positionAfter - positionBefore)).toBeLessThan(5);
+      // Latest LifeLog should now be visible
+      await result.findByText("fourth lifelog");
     });
 
-    it("preserves focused element position when range re-centers upward (mobile)", async ({ db, task }) => {
-      // Same as the upward test but at mobile viewport width (column-reverse layout)
+    it("preserves focused element position when range resets with items added above (mobile)", async ({ db, task }) => {
       await page.viewport(414, 896);
 
       const { result } = await setupLifeLogsTest(task.id, db, {
         outOfRangeLifeLogs: [
-          { id: "$oldLog1", text: "old lifelog 1", daysAgo: 6, endDaysAgo: 5 },
-          { id: "$oldLog2", text: "old lifelog 2", daysAgo: 11, endDaysAgo: 10 },
+          { id: "$above", text: "above lifelog", daysAgo: 27, endDaysAgo: 26 },
+          { id: "$target", text: "target lifelog", daysAgo: 19, endDaysAgo: 18 },
         ],
         lifeLogsProps: { debounceMs: 0 },
-        initialSelectedId: "$log1",
+        initialSelectedId: "$target",
       });
 
-      // $oldLog1 should be visible (endAt 5 days ago, within 7-day range)
-      await result.findByText("old lifelog 1");
-      // $oldLog2 should NOT be visible initially
-      expect(result.queryByText("old lifelog 2")).toBeNull();
-
-      // Navigate to $oldLog1 with k key
-      await userEvent.keyboard("{k}");
-      await awaitPendingCallbacks();
-
-      const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
-      const selectedEl = document.getElementById("$oldLog1")!;
-      expect(selectedEl).toBeTruthy();
-
-      // Record position before range re-centers
-      const positionBefore = selectedEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-
-      // Wait for debounced range update
+      // Wait for range reset to $target (center=18d ago, range: 32d-4d ago)
       await new Promise((r) => setTimeout(r, 50));
       await awaitPendingCallbacks();
 
-      // $oldLog2 should now be visible after range re-centers
-      await result.findByText("old lifelog 2");
+      // Both should be visible
+      await result.findByText("target lifelog");
+      await result.findByText("above lifelog");
 
-      // The selected element's viewport position should be preserved (mobile column-reverse)
-      const positionAfter = selectedEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-      expect(Math.abs(positionAfter - positionBefore)).toBeLessThan(5);
+      const listItems = result.container.querySelectorAll("li");
+      const aboveIdx = Array.from(listItems).findIndex((li) => li.textContent?.includes("above lifelog"));
+      const targetIdx = Array.from(listItems).findIndex((li) => li.textContent?.includes("target lifelog"));
+      expect(aboveIdx).toBeLessThan(targetIdx);
     });
 
-    it("preserves focused element position when range re-centers downward (mobile)", async ({ db, task }) => {
-      // Same as the downward test but at mobile viewport width (column-reverse layout)
+    it("preserves focused element position when range resets via goToLatest (mobile)", async ({ db, task }) => {
       await page.viewport(414, 896);
 
       const { result } = await setupLifeLogsTest(task.id, db, {
         outOfRangeLifeLogs: [
-          { id: "$farPast", text: "far past lifelog", daysAgo: 10, endDaysAgo: 9 },
-          { id: "$nearPast", text: "near past lifelog", daysAgo: 4, endDaysAgo: 3 },
+          { id: "$farPast", text: "far past lifelog", daysAgo: 29, endDaysAgo: 28 },
+          { id: "$target", text: "target lifelog", daysAgo: 19, endDaysAgo: 18 },
         ],
         lifeLogsProps: { debounceMs: 0 },
-        initialSelectedId: "$nearPast",
+        initialSelectedId: "$target",
       });
 
-      // Wait for initial window slide to $nearPast
+      // Wait for range reset to $target
       await new Promise((r) => setTimeout(r, 50));
       await awaitPendingCallbacks();
 
-      // After sliding to $nearPast, $farPast should now be visible
       await result.findByText("far past lifelog");
-      await result.findByText("near past lifelog");
+      await result.findByText("target lifelog");
 
-      // Navigate forward with j key to $log1 (noneTimestamp)
-      await userEvent.keyboard("{j}");
+      // Press G (goToLatest) — navigates to latest LifeLog, resets range to present
+      await userEvent.keyboard("{Shift>}{g}{/Shift}");
       await awaitPendingCallbacks();
 
-      const container = result.container.querySelector(`.${styles.lifeLogs.container}`)!;
-      const selectedEl = document.getElementById("$log1")!;
-      expect(selectedEl).toBeTruthy();
-
-      // Record position before range re-centers
-      const positionBefore = selectedEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-
-      // Wait for debounced range update
+      // Wait for range reset
       await new Promise((r) => setTimeout(r, 50));
       await awaitPendingCallbacks();
 
-      // $farPast should be removed (outside new range centered on DateNow())
+      // $farPast should be removed
       expect(result.queryByText("far past lifelog")).toBeNull();
 
-      // The selected element's viewport position should be preserved (mobile column-reverse)
-      const positionAfter = selectedEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
-      expect(Math.abs(positionAfter - positionBefore)).toBeLessThan(5);
+      // Latest LifeLog should now be visible
+      await result.findByText("fourth lifelog");
     });
   });
 

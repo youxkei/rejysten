@@ -1,7 +1,8 @@
 import { Key } from "@solid-primitives/keyed";
+import { debounce } from "@solid-primitives/scheduled";
 import equal from "fast-deep-equal";
-import { orderBy, query, Timestamp, where } from "firebase/firestore";
-import { createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import { orderBy, query, type Timestamp, where } from "firebase/firestore";
+import { createEffect, createMemo, createSignal, on, onCleanup, onMount, untrack } from "solid-js";
 
 interface VirtualKeyboard extends EventTarget {
   overlaysContent: boolean;
@@ -14,17 +15,20 @@ declare global {
   }
 }
 
+import { awaitable } from "@/awaitableCallback";
 import { DateNow, TimestampNow } from "@/date";
 import { LifeLog } from "@/panes/lifeLogs/lifeLog";
 import { MobileToolbar } from "@/panes/lifeLogs/mobileToolbar";
 import { EditingField } from "@/panes/lifeLogs/schema";
-import { useRangeFromFocus } from "@/panes/lifeLogs/useRangeFromFocus";
 import { useScrollFocus } from "@/panes/lifeLogs/useScrollFocus";
+import { useScrollRange } from "@/panes/lifeLogs/useScrollRange";
 import { useActionsService } from "@/services/actions";
 import { getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal } from "@/services/firebase/firestore/subscribe";
+import { useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
-import { ScrollContainer } from "@/solid/scroll";
+import { createIsMobile } from "@/solid/responsive";
+import { ScrollContainer, useScrollContainer } from "@/solid/scroll";
 import { styles } from "@/styles.css";
 import { dayMs, noneTimestamp } from "@/timestamp";
 
@@ -34,29 +38,56 @@ export interface LifeLogsProps {
 }
 
 export function LifeLogs(props: LifeLogsProps = {}) {
-  const rangeMs = props.rangeMs ?? 7 * dayMs;
+  const rangeMs = props.rangeMs ?? 14 * dayMs;
 
-  const { rangeStart$, rangeEnd$ } = useRangeFromFocus({
-    initialStart: Timestamp.fromMillis(DateNow() - rangeMs),
-    initialEnd: Timestamp.fromMillis(DateNow() + rangeMs),
+  const scrollRange = useScrollRange({
+    initialCenterMs: DateNow(),
     rangeMs,
-    debounceMs: props.debounceMs ?? 300,
   });
 
   return (
     <div class={styles.lifeLogs.wrapper}>
       <ScrollContainer class={styles.lifeLogs.container}>
-        <TimeRangedLifeLogs start={rangeStart$()} end={rangeEnd$()} scrollFocusDebounceMs={props.debounceMs} />
+        <TimeRangedLifeLogs
+          start={scrollRange.rangeStart$()}
+          end={scrollRange.rangeEnd$()}
+          isExpanded={scrollRange.isExpanded$()}
+          isSliding={scrollRange.isSliding$()}
+          slideOlder={scrollRange.slideOlder}
+          slideNewer={scrollRange.slideNewer}
+          resetToLifeLog={scrollRange.resetToLifeLog}
+          markNoOlderData={scrollRange.markNoOlderData}
+          markNoNewerData={scrollRange.markNoNewerData}
+          hasNoOlderData={scrollRange.hasNoOlderData$()}
+          hasNoNewerData={scrollRange.hasNoNewerData$()}
+          scrollFocusDebounceMs={props.debounceMs}
+        />
       </ScrollContainer>
       <MobileToolbar />
     </div>
   );
 }
 
-export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp; scrollFocusDebounceMs?: number }) {
+export function TimeRangedLifeLogs(props: {
+  start: Timestamp;
+  end: Timestamp;
+  isExpanded: boolean;
+  isSliding: boolean;
+  slideOlder: () => Promise<void>;
+  slideNewer: () => Promise<void>;
+  resetToLifeLog: (lifeLogId: string) => Promise<void>;
+  markNoOlderData: () => void;
+  markNoNewerData: () => void;
+  hasNoOlderData: boolean;
+  hasNoNewerData: boolean;
+  scrollFocusDebounceMs?: number;
+}) {
   const firestore = useFirestoreService();
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
   const actions = useActionsService().panes.lifeLogs;
+  const { state } = useStoreService();
+  const container$ = useScrollContainer();
+  const isMobile$ = createIsMobile();
 
   const [editingField$, setEditingField] = createSignal<EditingField>(EditingField.Text);
   const [isEditing$, setIsEditing] = createSignal(false);
@@ -82,12 +113,97 @@ export function TimeRangedLifeLogs(props: { start: Timestamp; end: Timestamp; sc
 
   const lifeLogs$ = rangeLifeLogs$;
 
-  // スクロール時のフォーカス移動 + レンジ再センタリング時のスクロール位置補正
+  // スクロール位置補正（レンジ変更時）
   useScrollFocus({
     lifeLogIds$: () => lifeLogs$().map((l) => l.id),
-    isEditing$,
-    debounceMs: props.scrollFocusDebounceMs,
   });
+
+  // selectedId変更時のresetRange (展開中 or 範囲外)
+  const debouncedResetToSelected = debounce(
+    awaitable(async (lifeLogId: string) => {
+      await props.resetToLifeLog(lifeLogId);
+    }),
+    props.scrollFocusDebounceMs ?? 300,
+  );
+
+  createEffect(() => {
+    const selectedId = state.panesLifeLogs.selectedLifeLogId;
+    if (!selectedId) return;
+    const currentIds = untrack(() => lifeLogs$().map((l) => l.id));
+    if (currentIds.includes(selectedId) && !untrack(() => props.isExpanded)) return;
+    debouncedResetToSelected(selectedId);
+  });
+
+  // スクロールによるレンジ展開
+  const handleScroll = () => {
+    if (isEditing$()) return;
+    if (props.isSliding) return;
+
+    const container = container$();
+    if (!container) return;
+
+    const isAtTop = container.scrollTop <= 1;
+    const isAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 1;
+
+    const isMobile = isMobile$();
+
+    if (isAtTop) {
+      if (isMobile) {
+        if (!props.hasNoNewerData) void trackingSlideNewer();
+      } else {
+        if (!props.hasNoOlderData) void trackingSlideOlder();
+      }
+    } else if (isAtBottom) {
+      if (isMobile) {
+        if (!props.hasNoOlderData) void trackingSlideOlder();
+      } else {
+        if (!props.hasNoNewerData) void trackingSlideNewer();
+      }
+    }
+  };
+
+  createEffect(() => {
+    const container = container$();
+    if (!container) return;
+
+    container.addEventListener("scroll", handleScroll);
+    onCleanup(() => {
+      container.removeEventListener("scroll", handleScroll);
+    });
+  });
+
+  // データ終端検出: 展開方向に対応するエッジのみチェック
+  let prevOldestId: string | undefined;
+  let prevNewestId: string | undefined;
+  let lastSlideDirection: "older" | "newer" | undefined;
+
+  const originalSlideOlder = props.slideOlder;
+  const originalSlideNewer = props.slideNewer;
+  const trackingSlideOlder = async () => { lastSlideDirection = "older"; await originalSlideOlder(); };
+  const trackingSlideNewer = async () => { lastSlideDirection = "newer"; await originalSlideNewer(); };
+
+  createEffect(
+    on(
+      () => lifeLogs$(),
+      (logs) => {
+        if (logs.length === 0) return;
+
+        const oldestId = logs[0].id;
+        const newestId = logs[logs.length - 1].id;
+
+        if (lastSlideDirection === "older" && prevOldestId !== undefined && oldestId === prevOldestId) {
+          props.markNoOlderData();
+        }
+        if (lastSlideDirection === "newer" && prevNewestId !== undefined && newestId === prevNewestId) {
+          props.markNoNewerData();
+        }
+
+        lastSlideDirection = undefined;
+        prevOldestId = oldestId;
+        prevNewestId = newestId;
+      },
+    ),
+  );
 
   // 仮想キーボード表示時に編集中の要素をビューポート内にスクロール
   const scrollFocusedElementIntoView = () => {

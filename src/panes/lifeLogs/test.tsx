@@ -249,11 +249,14 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
 
                     // Select the first LifeLog that exists in the query results
                     // When lifeLogCount > 3, earlier LifeLogs might be filtered out by the time-based query
-                    if (!options?.skipDefaultLifeLogs) {
+                    if (options?.initialSelectedId) {
+                      updateState((state) => {
+                        state.panesLifeLogs.selectedLifeLogId = options.initialSelectedId!;
+                      });
+                    } else if (!options?.skipDefaultLifeLogs) {
                       const lifeLogCount = options?.lifeLogCount ?? 3;
                       const initialSelectedId =
-                        options?.initialSelectedId ??
-                        (lifeLogCount > 3 ? `$log${Math.min(lifeLogCount, 10)}` : "$log1");
+                        lifeLogCount > 3 ? `$log${Math.min(lifeLogCount, 10)}` : "$log1";
                       updateState((state) => {
                         state.panesLifeLogs.selectedLifeLogId = initialSelectedId;
                       });
