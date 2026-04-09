@@ -1,6 +1,6 @@
 import { style, globalStyle, keyframes } from "@vanilla-extract/css";
 
-const shareSpin = keyframes({
+const spin = keyframes({
   to: { transform: "rotate(360deg)" },
 });
 
@@ -250,6 +250,29 @@ export const styles = {
       lineHeight: 1.5,
       color: nord[4],
     }),
+    statusContainer: style({
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "2rem",
+      gap: "1rem",
+      color: nord[3],
+    }),
+    spinner: style({
+      width: "1.5rem",
+      height: "1.5rem",
+      border: `2px solid ${nord[2]}`,
+      borderTopColor: nord[8],
+      borderRadius: "50%",
+      animationName: spin,
+      animationDuration: "0.8s",
+      animationTimingFunction: "linear",
+      animationIterationCount: "infinite",
+    }),
+    statusText: style({
+      fontSize: "0.875rem",
+    }),
   },
   toast: {
     success: style({
@@ -346,7 +369,7 @@ export const styles = {
       border: `3px solid ${nord[2]}`,
       borderTopColor: nord[8],
       borderRadius: "50%",
-      animationName: shareSpin,
+      animationName: spin,
       animationDuration: "0.8s",
       animationTimingFunction: "linear",
       animationIterationCount: "infinite",

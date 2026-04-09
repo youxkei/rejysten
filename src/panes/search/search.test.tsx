@@ -41,7 +41,7 @@ describe("<Search />", () => {
     expect(resultsContainer).toBeTruthy();
   });
 
-  it("shows results for valid queries (>= 2 chars)", async ({ db, task }) => {
+  it("shows result count and results for valid queries", async ({ db, task }) => {
     const { result } = await setupSearchTest(task.id, db, { initialQuery: "se" });
 
     // Wait for results to appear
@@ -49,15 +49,29 @@ describe("<Search />", () => {
       const results = result.container.querySelectorAll(`.${styles.search.result}`);
       expect(results.length).toBeGreaterThan(0);
     });
+
+    // Result count should be displayed
+    const count = result.container.querySelectorAll(`.${styles.search.result}`).length;
+    await result.findByText(`${count}件`);
   });
 
-  it("shows no results for queries < 2 chars", async ({ db, task }) => {
+  it("shows hint message for queries < 2 chars", async ({ db, task }) => {
     const { result } = await setupSearchTest(task.id, db, { initialQuery: "s" });
 
     // Wait a bit and check no results appear
     await new Promise((resolve) => setTimeout(resolve, 100));
     const results = result.container.querySelectorAll(`.${styles.search.result}`);
     expect(results.length).toBe(0);
+
+    // Hint message should be displayed
+    await result.findByText("2文字以上入力してください");
+  });
+
+  it("shows 0 count for no matching results", async ({ db, task }) => {
+    const { result } = await setupSearchTest(task.id, db, { initialQuery: "zzzz" });
+
+    // Wait for search to complete and show 0 count
+    await waitFor(() => result.findByText("0件"));
   });
 
   it("j/k navigation changes selected result", async ({ db, task }) => {

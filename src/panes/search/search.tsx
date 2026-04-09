@@ -1,6 +1,6 @@
 import { Key } from "@solid-primitives/keyed";
 import { query, where } from "firebase/firestore";
-import { createEffect, createMemo, onCleanup, onMount, startTransition } from "solid-js";
+import { Show, createEffect, createMemo, createSignal, on, onCleanup, onMount, startTransition } from "solid-js";
 
 import { analyzeTextForNgrams } from "@/ngram";
 import { SearchMobileToolbar } from "@/panes/search/mobileToolbar";
@@ -76,6 +76,20 @@ export function Search() {
       .map((r) => r.id)
       .toReversed();
   });
+
+  // Track whether we're waiting for search results
+  const [isSearchPending, setIsSearchPending] = createSignal(false);
+
+  createEffect(() => {
+    const ngrams = queryNgrams$();
+    setIsSearchPending(ngrams.length > 0);
+  });
+
+  createEffect(
+    on(results$, () => {
+      setIsSearchPending(false);
+    }, { defer: true }),
+  );
 
   // Update actions context with result IDs
   createEffect(() => {
@@ -179,6 +193,22 @@ export function Search() {
           onKeyDown={handleInputKeyDown}
         />
       </div>
+      <Show when={queryNgrams$().length === 0 && state.panesSearch.query.length > 0}>
+        <div class={styles.search.statusContainer}>
+          <span class={styles.search.statusText}>2文字以上入力してください</span>
+        </div>
+      </Show>
+      <Show when={isSearchPending() && queryNgrams$().length > 0}>
+        <div class={styles.search.statusContainer}>
+          <div class={styles.search.spinner} />
+          <span class={styles.search.statusText}>検索中...</span>
+        </div>
+      </Show>
+      <Show when={!isSearchPending() && queryNgrams$().length > 0}>
+        <div class={styles.search.statusContainer}>
+          <span class={styles.search.statusText}>{resultIds$().length}件</span>
+        </div>
+      </Show>
       <ScrollContainer class={styles.search.resultsContainer}>
         <ul class={styles.search.resultsList}>
           <Key each={resultIds$()} by={(id) => id}>
