@@ -5,6 +5,7 @@ import { awaitable } from "@/awaitableCallback";
 import { actionsCreator, initialActionsContext } from "@/services/actions";
 import { getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
+import { buildSelection } from "@/services/firebase/firestore/editHistory/schema";
 import {
   dedent,
   getAboveNode,
@@ -14,6 +15,7 @@ import {
   indent,
   type TreeNode,
 } from "@/services/firebase/firestore/treeNode";
+import { useStoreService } from "@/services/store";
 
 declare module "@/services/actions" {
   interface ComponentnsActionsContext {
@@ -46,6 +48,11 @@ initialActionsContext.components.tree = {
 
 actionsCreator.components.tree = ({ components: { tree: context } }, _actions) => {
   const firestore = useFirestoreService();
+  const { state } = useStoreService();
+
+  function currentSelection() {
+    return buildSelection(state);
+  }
 
   async function navigateDown() {
     if (!context.col || context.selectedId === "") return;
@@ -101,9 +108,13 @@ actionsCreator.components.tree = ({ components: { tree: context } }, _actions) =
 
     try {
       firestore.setClock(true);
-      await runBatch(firestore, async (batch) => {
-        await indent(firestore, batch, context.col as CollectionReference<TreeNode>, node);
-      });
+      await runBatch(
+        firestore,
+        async (batch) => {
+          await indent(firestore, batch, context.col as CollectionReference<TreeNode>, node);
+        },
+        { description: "インデント変更", prevSelection: currentSelection() },
+      );
 
       await startTransition(() => {
         firestore.setClock(false);
@@ -121,9 +132,13 @@ actionsCreator.components.tree = ({ components: { tree: context } }, _actions) =
 
     try {
       firestore.setClock(true);
-      await runBatch(firestore, async (batch) => {
-        await dedent(firestore, batch, context.col as CollectionReference<TreeNode>, node);
-      });
+      await runBatch(
+        firestore,
+        async (batch) => {
+          await dedent(firestore, batch, context.col as CollectionReference<TreeNode>, node);
+        },
+        { description: "インデント変更", prevSelection: currentSelection() },
+      );
 
       await startTransition(() => {
         firestore.setClock(false);

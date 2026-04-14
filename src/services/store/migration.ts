@@ -1,6 +1,6 @@
 import { type State, initialState } from "@/services/store";
 
-export const CURRENT_VERSION = 2;
+export const CURRENT_VERSION = 3;
 
 type VersionedState = {
   version: number;

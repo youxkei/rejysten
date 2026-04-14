@@ -25,7 +25,7 @@ export function MobileToolbar() {
 function NavigationToolbar() {
   const {
     panes: { lifeLogs: actions, search: searchActions },
-    components: { tree: treeActions },
+    components: { tree: treeActions, editHistory: editHistoryActions },
   } = useActionsService();
   const { state } = useStoreService();
 
@@ -88,6 +88,15 @@ function NavigationToolbar() {
   });
   const handleOpenSearch = withOwner(() => {
     searchActions.openSearch();
+  });
+  const handleUndo = withOwner(() => {
+    editHistoryActions.undo();
+  });
+  const handleRedo = withOwner(() => {
+    editHistoryActions.redo();
+  });
+  const handleToggleHistoryPanel = withOwner(() => {
+    editHistoryActions.togglePanel();
   });
 
   return (
@@ -180,6 +189,15 @@ function NavigationToolbar() {
           ➡️
         </button>
       </Show>
+      <button class={styles.mobileToolbar.button} onClick={handleUndo}>
+        ↺
+      </button>
+      <button class={styles.mobileToolbar.button} onClick={handleRedo}>
+        ↻
+      </button>
+      <button class={styles.mobileToolbar.button} onClick={handleToggleHistoryPanel}>
+        📜
+      </button>
       <button
         class={styles.mobileToolbar.button}
         onClick={handleStartEditing}

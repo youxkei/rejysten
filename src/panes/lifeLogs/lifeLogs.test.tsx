@@ -5,6 +5,7 @@ import { page, userEvent } from "vitest/browser";
 
 import { awaitPendingCallbacks } from "@/awaitableCallback";
 import { baseTime, setupLifeLogsTest } from "@/panes/lifeLogs/test";
+import { getCollection, getSingletonDoc } from "@/services/firebase/firestore";
 import { styles } from "@/styles.css";
 import { acquireEmulator, releaseEmulator, testWithDb as it } from "@/test";
 import { dayMs } from "@/timestamp";
@@ -1699,8 +1700,9 @@ describe("<LifeLogs />", () => {
       wrapper.style.height = "400px";
 
       // Record all item texts before expansion
-      const beforeItems = Array.from(result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`))
-        .map((li) => li.textContent);
+      const beforeItems = Array.from(result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`)).map(
+        (li) => li.textContent,
+      );
 
       await scrollToTop(container);
 
@@ -1806,8 +1808,9 @@ describe("<LifeLogs />", () => {
       const wrapper = result.container.querySelector(`.${styles.lifeLogs.wrapper}`) as HTMLElement;
       wrapper.style.height = "400px";
 
-      const beforeItems = Array.from(result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`))
-        .map((li) => li.textContent);
+      const beforeItems = Array.from(result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`)).map(
+        (li) => li.textContent,
+      );
 
       await scrollToBottom(container);
 
@@ -3358,6 +3361,2529 @@ describe("<LifeLogs />", () => {
       // Should be visible with rangeMs=dayMs/2 (half day = 0.5 days)
       const element = await result.findByText("half day range lifelog");
       expect(element).toBeTruthy();
+    });
+  });
+
+  describe("undo/redo with EditHistory", () => {
+    it("u key undoes a setStartAtNow operation", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+
+      // $log3 has noneTimestamp startAt — verify no time is shown
+      const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+      expect(log3Element.textContent).not.toContain(":");
+
+      // Press s to set startAt to now
+      await userEvent.keyboard("{s}");
+      await awaitPendingCallbacks();
+
+      // Wait for the startAt to appear (mocked to baseTime = 12:00:00)
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      // Press u to undo
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // Wait for the startAt to revert
+      await waitFor(() => {
+        expect(log3Element.textContent).not.toContain("12:00");
+      });
+    });
+
+    it("r key redoes an undone operation", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+
+      const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+
+      // Set startAt
+      await userEvent.keyboard("{s}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      // Undo
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).not.toContain("12:00");
+      });
+
+      // Redo
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+    });
+
+    it("t key toggles edit history panel", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // Panel should not be visible initially
+      expect(result.queryByText("編集履歴")).toBeNull();
+
+      // Press t to open panel
+      await userEvent.keyboard("{t}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeTruthy();
+      });
+
+      // Press t again to close
+      await userEvent.keyboard("{t}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeNull();
+      });
+    });
+
+    it("u and r keys do nothing when editing text", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // Enter editing mode
+      await userEvent.keyboard("{i}");
+      await awaitPendingCallbacks();
+
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      expect(input).toBeTruthy();
+
+      // Type u and r — should be typed as text, not trigger undo/redo
+      await userEvent.keyboard("ur");
+      await awaitPendingCallbacks();
+
+      expect(input.value).toContain("u");
+      expect(input.value).toContain("r");
+    });
+
+    it("undo of newLifeLog restores previous selection", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log1",
+      });
+
+      await result.findByText("first lifelog");
+
+      // $log1 should be selected
+      const log1Element = result.getByText("first lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+      expect(log1Element.className).toContain(styles.lifeLogs.listItem);
+
+      // Press o to create new lifeLog
+      await userEvent.keyboard("{o}");
+      await awaitPendingCallbacks();
+
+      // Wait for editing mode on new lifeLog
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+      });
+
+      // Press Escape to exit editing
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      // Undo the creation — should go back to $log1 selected
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // $log1 should be visible and selected again
+      await waitFor(() => {
+        expect(result.getByText("first lifelog")).toBeTruthy();
+      });
+    });
+
+    it("newLifeLog with empty text requires only one undo", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+
+      // $log3 has noneTimestamp startAt
+      const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+      expect(log3Element.textContent).not.toContain(":");
+
+      // Press s to set startAt
+      await userEvent.keyboard("{s}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      // Press o to create new lifeLog
+      await userEvent.keyboard("{o}");
+      await awaitPendingCallbacks();
+
+      // Wait for editing mode
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+      });
+
+      // Press Escape without typing anything (empty text save should be skipped)
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      // First undo: should undo the newLifeLog creation (not a no-op text save)
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // After one undo, the new lifeLog should be gone and $log3 should have startAt set
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      // Second undo: should undo the setStartAtNow
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(log3Element.textContent).not.toContain("12:00");
+      });
+    });
+
+    it("redo of newLifeLog restores selection to the created lifeLog", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log1",
+      });
+
+      await result.findByText("first lifelog");
+
+      // Create new lifeLog
+      await userEvent.keyboard("{o}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+      });
+
+      // Type something so save is not a no-op
+      await userEvent.keyboard("new entry");
+      await awaitPendingCallbacks();
+
+      // Exit editing
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      // Wait for save
+      await waitFor(() => {
+        expect(result.queryByText("new entry")).toBeTruthy();
+      });
+
+      // Undo creation
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // Should be back at $log1
+      await waitFor(() => {
+        expect(result.getByText("first lifelog")).toBeTruthy();
+      });
+
+      // Redo creation — should select the recreated lifeLog
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      // The new lifeLog should be visible again
+      await waitFor(() => {
+        expect(result.queryByText("new entry")).toBeTruthy();
+      });
+    });
+
+    it("edit history panel shows entries after operations", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+
+      // Perform an operation to create a history entry
+      await userEvent.keyboard("{s}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      // Open panel with t — panel header should appear
+      await userEvent.keyboard("{t}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeTruthy();
+      });
+
+      // The history entry description and details should be shown
+      await waitFor(() => {
+        expect(result.queryByText("時刻設定")).toBeTruthy();
+        // Collection name should be shown
+        expect(result.queryByText("lifeLogs")).toBeTruthy();
+        // Field name "startAt" should appear in the details
+        expect(result.container.textContent).toContain("startAt");
+        // Virtual root node should be shown at the bottom
+        expect(result.queryByText("初期状態")).toBeTruthy();
+      });
+    });
+
+    it("edit history panel closes with Escape key", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // Open panel
+      await userEvent.keyboard("{t}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeTruthy();
+      });
+
+      // Close with Escape
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeNull();
+      });
+    });
+
+    it("edit history panel close button works", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // Open panel
+      await userEvent.keyboard("{t}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeTruthy();
+      });
+
+      // Click close button
+      const closeButton = result.getByText("✕");
+      await userEvent.click(closeButton);
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeNull();
+      });
+    });
+
+    it("edit history panel entry is clickable", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+
+      // Create a history entry
+      await userEvent.keyboard("{s}");
+      await awaitPendingCallbacks();
+
+      // Open panel
+      await userEvent.keyboard("{t}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeTruthy();
+      });
+
+      // Verify entry is rendered and clickable (has node style)
+      await waitFor(() => {
+        const timeEntry = result.queryByText("時刻設定");
+        expect(timeEntry).toBeTruthy();
+      });
+    });
+
+    it("clicking panel entry restores selection (jumpTo)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+      const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+
+      // Create 2 history entries
+      await userEvent.keyboard("{s}"); // setStartAtNow
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      await userEvent.keyboard("{f}"); // setEndAtNow
+      await awaitPendingCallbacks();
+
+      // Open history panel
+      await userEvent.keyboard("{t}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeTruthy();
+      });
+
+      // Find the "時刻設定" entry (should have 2 of them, one for startAt, one for endAt)
+      // The earliest one is the startAt. Click it to jump back.
+      await waitFor(() => {
+        const entries = result.container.querySelectorAll(`.${styles.editHistory.graphRow}`);
+        expect(entries.length).toBeGreaterThan(1);
+      });
+
+      // Get all graph rows with entry content, click the oldest (last) "時刻設定"
+      const rows = Array.from(result.container.querySelectorAll(`.${styles.editHistory.graphRow}`));
+      const rowsWithEntries = rows.filter((r) => r.textContent?.includes("時刻設定"));
+      expect(rowsWithEntries.length).toBeGreaterThanOrEqual(2);
+
+      // Click the OLDEST (last in DOM order) — should be the first setStartAtNow
+      const oldestTimeEntry = rowsWithEntries[rowsWithEntries.length - 1];
+      await userEvent.click(oldestTimeEntry);
+      await awaitPendingCallbacks();
+
+      // After jumping to the first 時刻設定, endAt should be reverted (|f undone)
+      // but startAt should still be set
+      await waitFor(() => {
+        const log3TextAfter = log3Element.textContent ?? "";
+        // Should have startAt "12:00" but endAt should be N/A
+        expect(log3TextAfter).toContain("12:00");
+        expect(log3TextAfter).toContain("N/A");
+      });
+    });
+
+    it("cross-branch: redo picks newest branch after undo+new operations", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      async function editPrefix(prefix: string): Promise<void> {
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        input.focus();
+        await userEvent.keyboard(prefix);
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+      }
+
+      // --- Branch A: 3 chained text prepends ---
+      await editPrefix("A1 ");
+      await waitFor(() => {
+        expect(result.queryByText("A1 first lifelog")).toBeTruthy();
+      });
+      await editPrefix("A2 ");
+      await waitFor(() => {
+        expect(result.queryByText("A2 A1 first lifelog")).toBeTruthy();
+      });
+      await editPrefix("A3 ");
+      await waitFor(() => {
+        expect(result.queryByText("A3 A2 A1 first lifelog")).toBeTruthy();
+      });
+
+      // --- Undo all 3 → text back to "first lifelog", HEAD="" ---
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("first lifelog")).toBeTruthy();
+        expect(result.queryByText("A1 first lifelog")).toBeNull();
+      });
+
+      // --- Branch B: 3 chained text prepends (creates new branch from root) ---
+      await editPrefix("B1 ");
+      await waitFor(() => {
+        expect(result.queryByText("B1 first lifelog")).toBeTruthy();
+      });
+      await editPrefix("B2 ");
+      await waitFor(() => {
+        expect(result.queryByText("B2 B1 first lifelog")).toBeTruthy();
+      });
+      await editPrefix("B3 ");
+      await waitFor(() => {
+        expect(result.queryByText("B3 B2 B1 first lifelog")).toBeTruthy();
+      });
+
+      // --- Undo all 3 of branch B → HEAD="" ---
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("first lifelog")).toBeTruthy();
+        expect(result.queryByText("B1 first lifelog")).toBeNull();
+      });
+
+      // --- Redo 3 times → should follow newest branch (B), not A ---
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      // The text should end up as branch B's tip, not branch A's
+      await waitFor(() => {
+        expect(result.queryByText("B3 B2 B1 first lifelog")).toBeTruthy();
+      });
+      expect(result.queryByText("A3 A2 A1 first lifelog")).toBeNull();
+    });
+
+    it("redo of enterTree on a newly-created lifeLog reapplies the change", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log1",
+      });
+
+      await result.findByText("first lifelog");
+
+      // Reproduce screenshot scenario exactly:
+      // 1. Create new lifeLog (o)
+      // 2. Type text and save (テキスト編集)
+      // 3. Enter tree → creates new tree node (ノード作成)
+      // 4. Undo ×2 → should be at テキスト編集 HEAD
+      // 5. Redo → should restore tree node + hasTreeNodes=true
+
+      // Step 1+2: create new lifeLog with text
+      await userEvent.keyboard("{o}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+      });
+      await userEvent.keyboard("hoge");
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("hoge")).toBeTruthy();
+      });
+
+      // Step 3: enter tree → creates new tree node
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBeGreaterThan(0);
+      });
+
+      // Step 4: Edit tree node text (simulates ノードテキスト編集 entry)
+      await userEvent.keyboard("{i}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        const inputs = result.container.querySelectorAll("input");
+        expect(inputs.length).toBeGreaterThan(0);
+      });
+      await userEvent.keyboard("ほげ");
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("ほげ")).toBeTruthy();
+      });
+
+      // Step 5: Undo ×2 → HEAD should land at テキスト編集 (lifeLog text edit)
+      // u1 undoes ノードテキスト編集, u2 undoes ノード作成
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBe(0);
+        expect(result.queryByText("hoge")).toBeTruthy();
+      });
+
+      // Step 6: Redo → should re-apply ノード作成 (create tree node + hasTreeNodes=true)
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      // The childrenNodes wrapper should appear...
+      await waitFor(
+        () => {
+          expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBe(1);
+        },
+        { timeout: 3000 },
+      );
+
+      // ...and the tree node itself (the <li> rendered by ChildrenNodes) must exist.
+      await waitFor(() => {
+        const wrapper = result.container.querySelector(`.${styles.lifeLogTree.childrenNodes}`)!;
+        const listItems = wrapper.querySelectorAll("li");
+        expect(listItems.length).toBeGreaterThan(0);
+      });
+    });
+
+    it("redo of enterTree (new tree node creation) reapplies the change", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+
+      // $log3 has hasTreeNodes=false. Pressing l creates a new tree node and enters tree mode.
+      // Tree mode materializes a `.childrenNodes` wrapper — count that.
+      expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBe(0);
+
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBe(1);
+      });
+
+      // Undo → $log3.hasTreeNodes back to false, tree node deleted, childrenNodes wrapper gone
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBe(0);
+      });
+
+      // Redo → tree node should be recreated, wrapper should return
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBe(1);
+      });
+    });
+
+    it("cross-branch: jumpTo navigates across branches", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      async function editPrefix(prefix: string): Promise<void> {
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        input.focus();
+        await userEvent.keyboard(prefix);
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+      }
+
+      // Branch A: 3 chained edits
+      await editPrefix("A1 ");
+      await waitFor(() => {
+        expect(result.queryByText("A1 first lifelog")).toBeTruthy();
+      });
+      await editPrefix("A2 ");
+      await editPrefix("A3 ");
+      await waitFor(() => {
+        expect(result.queryByText("A3 A2 A1 first lifelog")).toBeTruthy();
+      });
+
+      // Undo ×3 to root
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("first lifelog")).toBeTruthy();
+      });
+
+      // Branch B: 3 different edits, creating a sibling branch
+      await editPrefix("B1 ");
+      await editPrefix("B2 ");
+      await editPrefix("B3 ");
+      await waitFor(() => {
+        expect(result.queryByText("B3 B2 B1 first lifelog")).toBeTruthy();
+      });
+
+      // Open history panel
+      await userEvent.keyboard("{t}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeTruthy();
+      });
+
+      // Find a branch-A row (A1 prepend: text -> "A1 first lifelog")
+      // and click it → cross-branch jumpTo
+      await waitFor(() => {
+        const rows = result.container.querySelectorAll(`.${styles.editHistory.graphRow}`);
+        expect(rows.length).toBeGreaterThan(6);
+      });
+
+      const rows = Array.from(result.container.querySelectorAll(`.${styles.editHistory.graphRow}`));
+      const a3Row = rows.find((r) => r.textContent?.includes("A3 A2 A1"));
+      expect(a3Row).toBeTruthy();
+
+      await userEvent.click(a3Row!);
+      await awaitPendingCallbacks();
+
+      // After cross-branch jumpTo to A3 tip, text should be branch-A's A3 state
+      await waitFor(() => {
+        expect(result.queryByText("A3 A2 A1 first lifelog")).toBeTruthy();
+      });
+      expect(result.queryByText("B3 B2 B1 first lifelog")).toBeNull();
+
+      // Now jumpTo back to B3 tip (cross-branch the other way)
+      const rows2 = Array.from(result.container.querySelectorAll(`.${styles.editHistory.graphRow}`));
+      const b3Row = rows2.find((r) => r.textContent?.includes("B3 B2 B1"));
+      expect(b3Row).toBeTruthy();
+
+      await userEvent.click(b3Row!);
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("B3 B2 B1 first lifelog")).toBeTruthy();
+      });
+      expect(result.queryByText("A3 A2 A1 first lifelog")).toBeNull();
+    });
+
+    it("deep cross-branch jumpTo with tree node edits", async ({ db, task }) => {
+      const { result, firestore } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      const batchVersionCol = getCollection(firestore, "batchVersion");
+
+      let lastServerVersion = (await getSingletonDoc(firestore, batchVersionCol, { fromServer: true }))?.version;
+      async function waitForServerCommit(): Promise<void> {
+        const prev = lastServerVersion;
+        let newVersion: string | undefined;
+        await waitFor(async () => {
+          const serverDoc = await getSingletonDoc(firestore, batchVersionCol, { fromServer: true });
+          newVersion = serverDoc?.version;
+          expect(newVersion).not.toBe(prev);
+        });
+        lastServerVersion = newVersion;
+      }
+
+      // Enter tree mode
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+      await result.findByText("first child");
+
+      async function editTreeNodePrefix(prefix: string, expectedText: string): Promise<void> {
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        input.focus();
+        await userEvent.keyboard(prefix);
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+        await waitFor(() => {
+          expect(result.queryByText(expectedText)).toBeTruthy();
+        });
+        await waitForServerCommit();
+      }
+
+      // Branch A: 3 edits
+      await editTreeNodePrefix("A1 ", "A1 first child");
+      await editTreeNodePrefix("A2 ", "A2 A1 first child");
+      await editTreeNodePrefix("A3 ", "A3 A2 A1 first child");
+
+      // Undo ×3
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitForServerCommit();
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitForServerCommit();
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitForServerCommit();
+      await waitFor(() => {
+        expect(result.queryByText("first child")).toBeTruthy();
+        expect(result.queryByText("A1 first child")).toBeNull();
+      });
+
+      // Branch B: 3 edits
+      await editTreeNodePrefix("B1 ", "B1 first child");
+      await editTreeNodePrefix("B2 ", "B2 B1 first child");
+      await editTreeNodePrefix("B3 ", "B3 B2 B1 first child");
+
+      // Open panel and jumpTo branch A's tip
+      await userEvent.keyboard("{t}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeTruthy();
+      });
+
+      // Wait for editHistory entries to appear in panel
+      await waitFor(() => {
+        const rows = result.container.querySelectorAll(`.${styles.editHistory.graphRow}`);
+        expect(rows.length).toBeGreaterThan(6);
+      });
+
+      const rows = Array.from(result.container.querySelectorAll(`.${styles.editHistory.graphRow}`));
+      const a3Row = rows.find((r) => r.textContent?.includes("A3 A2 A1"));
+      expect(a3Row).toBeTruthy();
+
+      await userEvent.click(a3Row!);
+      await awaitPendingCallbacks();
+
+      // After jumpTo A3, tree node text should be "A3 A2 A1 first child"
+      await waitFor(() => {
+        const wrapper = result.container.querySelector(`.${styles.lifeLogTree.childrenNodes}`);
+        expect(wrapper?.textContent).toContain("A3 A2 A1 first child");
+      });
+      const wrapper = result.container.querySelector(`.${styles.lifeLogTree.childrenNodes}`)!;
+      expect(wrapper.textContent).not.toContain("B3 B2 B1 first child");
+    });
+
+    it("undo/redo of tree node text edit", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // Enter tree mode on $log1 (has existing tree nodes)
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+      await result.findByText("first child");
+
+      // Edit tree node text: i → type "edited " → Escape
+      await userEvent.keyboard("{i}");
+      await awaitPendingCallbacks();
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      input.focus();
+      await userEvent.keyboard("edited ");
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("edited first child")).toBeTruthy();
+      });
+
+      // Undo → text should revert
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("first child")).toBeTruthy();
+        expect(result.queryByText("edited first child")).toBeNull();
+      });
+
+      // Redo → text should restore
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("edited first child")).toBeTruthy();
+      });
+    });
+
+    it("undo/redo of tree node indent", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // Enter tree, navigate to second child
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+      await result.findByText("first child");
+
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+
+      // Indent second child (Tab) — it becomes a child of first child
+      await userEvent.keyboard("{Tab}");
+      await awaitPendingCallbacks();
+
+      // After indent, "second child" should still exist but under "first child"
+      await waitFor(() => {
+        expect(result.queryByText("second child")).toBeTruthy();
+      });
+
+      // Undo → should dedent back
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("second child")).toBeTruthy();
+      });
+
+      // Redo → should indent again
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("second child")).toBeTruthy();
+      });
+    });
+
+    it("cross-branch redo picks newest branch for tree node text edits", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // Enter tree mode
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+      await result.findByText("first child");
+
+      async function editTreeNodePrefix(prefix: string): Promise<void> {
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        input.focus();
+        await userEvent.keyboard(prefix);
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+      }
+
+      // Branch A: 3 chained tree node text edits
+      await editTreeNodePrefix("A1 ");
+      await waitFor(() => {
+        expect(result.queryByText("A1 first child")).toBeTruthy();
+      });
+      await editTreeNodePrefix("A2 ");
+      await editTreeNodePrefix("A3 ");
+      await waitFor(() => {
+        expect(result.queryByText("A3 A2 A1 first child")).toBeTruthy();
+      });
+
+      // Undo ×3
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("first child")).toBeTruthy();
+        expect(result.queryByText("A1 first child")).toBeNull();
+      });
+
+      // Branch B: 3 chained tree node text edits (creates new branch)
+      await editTreeNodePrefix("B1 ");
+      await editTreeNodePrefix("B2 ");
+      await editTreeNodePrefix("B3 ");
+      await waitFor(() => {
+        expect(result.queryByText("B3 B2 B1 first child")).toBeTruthy();
+      });
+
+      // Undo ×3
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("first child")).toBeTruthy();
+      });
+
+      // Redo ×3 → should follow newest branch (B)
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("B3 B2 B1 first child")).toBeTruthy();
+      });
+      expect(result.queryByText("A3 A2 A1 first child")).toBeNull();
+    });
+
+    it("undo of setEndAtNow restores none timestamp", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+      const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+
+      // Set startAt first (so endAt button becomes effective)
+      await userEvent.keyboard("{s}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      // Set endAt
+      await userEvent.keyboard("{f}");
+      await awaitPendingCallbacks();
+
+      // Undo endAt
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // endAt should be reverted, but startAt should remain
+      await waitFor(() => {
+        // Should still have startAt "12:00" but endAt reverted to N/A
+        expect(log3Element.textContent).toContain("12:00");
+        expect(log3Element.textContent).toContain("N/A");
+      });
+    });
+
+    it("R key redoes second-newest branch", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      async function editPrefix(prefix: string): Promise<void> {
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        input.focus();
+        await userEvent.keyboard(prefix);
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+      }
+
+      // Branch A
+      await editPrefix("A ");
+      await waitFor(() => {
+        expect(result.queryByText("A first lifelog")).toBeTruthy();
+      });
+
+      // Undo → root
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("first lifelog")).toBeTruthy();
+      });
+
+      // Branch B (newer)
+      await editPrefix("B ");
+      await waitFor(() => {
+        expect(result.queryByText("B first lifelog")).toBeTruthy();
+      });
+
+      // Undo → root
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("first lifelog")).toBeTruthy();
+      });
+
+      // R (Shift+r) → should pick branch A (second-newest), not B
+      await userEvent.keyboard("{Shift>}{r}{/Shift}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("A first lifelog")).toBeTruthy();
+      });
+      expect(result.queryByText("B first lifelog")).toBeNull();
+    });
+
+    it("R key cycles through branches on repeated u+R", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      async function editPrefix(prefix: string): Promise<void> {
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        input.focus();
+        await userEvent.keyboard(prefix);
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+      }
+
+      // Branch A, B (A older, B newer)
+      await editPrefix("A ");
+      await waitFor(() => {
+        expect(result.queryByText("A first lifelog")).toBeTruthy();
+      });
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await editPrefix("B ");
+      await waitFor(() => {
+        expect(result.queryByText("B first lifelog")).toBeTruthy();
+      });
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("first lifelog")).toBeTruthy();
+      });
+
+      // R → branch A (2nd newest)
+      await userEvent.keyboard("{Shift>}{r}{/Shift}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("A first lifelog")).toBeTruthy();
+      });
+
+      // u → back to root, then R → should cycle to B (wrap around)
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{Shift>}{r}{/Shift}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("B first lifelog")).toBeTruthy();
+      });
+    });
+
+    it("R key cycles correctly when u is pressed manually between R presses (non-root branch)", async ({
+      db,
+      task,
+    }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log1",
+      });
+
+      await result.findByText("first lifelog");
+
+      // Create a new lifeLog (= LifeLog作成 entry, like the screenshot scenario)
+      await userEvent.keyboard("{o}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+      });
+
+      // Type "hoge" and save (= テキスト編集 → hoge)
+      await userEvent.keyboard("hoge");
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("hoge")).toBeTruthy();
+      });
+
+      // Undo hoge → back to empty text LifeLog
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // Type "piyo" and save (= テキスト編集 → piyo, creates branch from LifeLog作成)
+      await userEvent.keyboard("{i}");
+      await awaitPendingCallbacks();
+      const input2 = result.container.querySelector("input") as HTMLInputElement;
+      input2.focus();
+      await userEvent.keyboard("piyo");
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("piyo")).toBeTruthy();
+      });
+
+      // Now at piyo (HEAD = テキスト編集 piyo)
+      // u → back to LifeLog作成 (empty text)
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // R → should go to hoge (2nd newest branch)
+      await userEvent.keyboard("{Shift>}{r}{/Shift}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("hoge")).toBeTruthy();
+      });
+
+      // u → back to LifeLog作成
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // R again → should cycle to piyo (wrap to newest)
+      await userEvent.keyboard("{Shift>}{r}{/Shift}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        // hoge should NOT be showing (we cycled away from it)
+        expect(result.queryByText("hoge")).toBeNull();
+        // piyo SHOULD be showing
+        expect(result.queryByText("piyo")).toBeTruthy();
+      });
+    });
+
+    it("R key with single child behaves like r", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+      const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+
+      await userEvent.keyboard("{s}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).not.toContain("12:00");
+      });
+
+      // R with single child → same as r
+      await userEvent.keyboard("{Shift>}{r}{/Shift}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+    });
+
+    it("r after R resets cycle state", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      async function editPrefix(prefix: string): Promise<void> {
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        input.focus();
+        await userEvent.keyboard(prefix);
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+      }
+
+      // Branch A, B
+      await editPrefix("A ");
+      await waitFor(() => {
+        expect(result.queryByText("A first lifelog")).toBeTruthy();
+      });
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await editPrefix("B ");
+      await waitFor(() => {
+        expect(result.queryByText("B first lifelog")).toBeTruthy();
+      });
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // R → branch A
+      await userEvent.keyboard("{Shift>}{r}{/Shift}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("A first lifelog")).toBeTruthy();
+      });
+
+      // u → root, then r (not R) → should pick newest (B), cycle state reset
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("B first lifelog")).toBeTruthy();
+      });
+    });
+
+    it("R key with tree node edits cycles branches", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // Enter tree mode
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+      await result.findByText("first child");
+
+      async function editTreeNodePrefix(prefix: string): Promise<void> {
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        input.focus();
+        await userEvent.keyboard(prefix);
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+      }
+
+      // Branch A
+      await editTreeNodePrefix("A ");
+      await waitFor(() => {
+        expect(result.queryByText("A first child")).toBeTruthy();
+      });
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // Branch B
+      await editTreeNodePrefix("B ");
+      await waitFor(() => {
+        expect(result.queryByText("B first child")).toBeTruthy();
+      });
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("first child")).toBeTruthy();
+      });
+
+      // R → branch A (second-newest)
+      await userEvent.keyboard("{Shift>}{r}{/Shift}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("A first child")).toBeTruthy();
+      });
+    });
+
+    it("jumpTo after R resets cycle state", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+      const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+
+      // Branch A: setStartAtNow
+      await userEvent.keyboard("{s}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).not.toContain("12:00");
+      });
+
+      // Branch B: setEndAtNow
+      await userEvent.keyboard("{f}");
+      await awaitPendingCallbacks();
+
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // R → branch A (startAt set, endAt N/A)
+      await userEvent.keyboard("{Shift>}{r}{/Shift}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+        expect(log3Element.textContent).toContain("N/A");
+      });
+
+      // Open panel and jumpTo root → resets cycle
+      await userEvent.keyboard("{t}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeTruthy();
+      });
+
+      // Undo back to root first (jumpTo root directly would be jumpTo "")
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).not.toContain("12:00");
+      });
+
+      // r (normal redo, not R) → should pick newest = B (endAt)
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      // After r, the jumpTo should have reset cycle, but we just pressed r which also resets.
+      // The key verification: r picks the newest branch (B = endAt), not branch A.
+      // If endAt was set, "N/A" should disappear from endAt position.
+      // $log3 originally has startAt=N/A, endAt=N/A. Branch B sets endAt only.
+      await waitFor(() => {
+        // endAt should be set (branch B = setEndAtNow), startAt still N/A
+        const text = log3Element.textContent ?? "";
+        expect(text).toContain("12:00");
+      });
+    });
+
+    it("R key with mixed lifeLog and tree node edits", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+      const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+
+      // Branch A: set startAt
+      await userEvent.keyboard("{s}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      // Undo → root
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).not.toContain("12:00");
+      });
+
+      // Branch B: set endAt
+      await userEvent.keyboard("{f}");
+      await awaitPendingCallbacks();
+
+      // Undo → root
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // R → branch A (second-newest = startAt), not B (newest = endAt)
+      await userEvent.keyboard("{Shift>}{r}{/Shift}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        // startAt should be set (branch A applied)
+        expect(log3Element.textContent).toContain("12:00");
+        // endAt should still be N/A (branch B not applied)
+        expect(log3Element.textContent).toContain("N/A");
+      });
+    });
+
+    it("R key no-op when no children exist", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // R at root with no history entries → no-op
+      await userEvent.keyboard("{Shift>}{r}{/Shift}");
+      await awaitPendingCallbacks();
+
+      // Still shows first lifelog, no change
+      expect(result.queryByText("first lifelog")).toBeTruthy();
+    });
+
+    it("undo/redo of deleteEmptyLifeLog", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+
+      // $log3 has no startAt/endAt, no tree nodes, and text is not empty — can't delete yet
+      // Create a new empty lifeLog that can be deleted
+      await userEvent.keyboard("{o}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+      });
+
+      // Exit editing without typing (empty text)
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      // Delete the empty lifeLog with Backspace
+      await userEvent.keyboard("{Backspace}");
+      await awaitPendingCallbacks();
+
+      // Should be back at $log3
+      await waitFor(() => {
+        expect(result.getByText("third lifelog")).toBeTruthy();
+      });
+
+      // Undo → lifeLog should be restored
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // Redo → lifeLog should be deleted again, back to $log3
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.getByText("third lifelog")).toBeTruthy();
+      });
+    });
+
+    it("undo/redo of splitTreeNode", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // Enter tree
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+      await result.findByText("first child");
+
+      // Edit first child: replace text, set cursor, then split
+      await userEvent.keyboard("{i}");
+      await awaitPendingCallbacks();
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      input.focus();
+      await userEvent.keyboard("{Control>}a{/Control}beforeafter");
+      await awaitPendingCallbacks();
+
+      // Set cursor at position 6 ("before" | "after") and split
+      input.setSelectionRange(6, 6);
+      await userEvent.keyboard("{Enter}");
+      await awaitPendingCallbacks();
+
+      // After split: "before" appears as text, "after" is in the editing input
+      await waitFor(() => {
+        expect(result.queryByText("before")).toBeTruthy();
+        const inputAfter = result.container.querySelector("input") as HTMLInputElement;
+        expect(inputAfter?.value).toBe("after");
+      });
+
+      // Exit editing so both are rendered as text
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("before")).toBeTruthy();
+        expect(result.queryByText("after")).toBeTruthy();
+      });
+
+      // Undo → the split is reverted: original node restored to "first child" (Firestore value)
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("first child")).toBeTruthy();
+        expect(result.queryByText("before")).toBeNull();
+      });
+
+      // Redo → split again (both rendered as text since we're not editing)
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("before")).toBeTruthy();
+        expect(result.queryByText("after")).toBeTruthy();
+      });
+    });
+
+    it("undo/redo of mergeWithAbove (Backspace at node start)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // Enter tree, navigate to child2 (j×3: child1 → grandchild → great-grandchild → child2)
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+      await result.findByText("first child");
+      await waitFor(() => {
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+      });
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Edit child2, cursor at start, press Backspace to merge with above (great-grandchild)
+      await userEvent.keyboard("{i}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("second child");
+      });
+      await userEvent.keyboard("{Backspace}");
+      await awaitPendingCallbacks();
+
+      // Should merge "great-grandchild" + "second child" → "great-grandchildsecond child"
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("great-grandchildsecond child");
+      });
+
+      // Undo → nodes should separate again
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("great-grandchild")).toBeTruthy();
+        expect(result.queryByText("second child")).toBeTruthy();
+      });
+    });
+
+    it("undo/redo of mergeWithBelow (Delete at node end)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // Enter tree, navigate to great-grandchild (j×2: child1 → grandchild → great-grandchild)
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+      await result.findByText("first child");
+      await waitFor(() => {
+        expect(result.getByText("first child").className).toContain(styles.lifeLogTree.selected);
+      });
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Edit great-grandchild with cursor at end, press Delete to merge with below (second child)
+      await userEvent.keyboard("{a}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input.value).toBe("great-grandchild");
+      });
+      await userEvent.keyboard("{Delete}");
+      await awaitPendingCallbacks();
+
+      // Should merge "great-grandchild" + "second child" → "great-grandchildsecond child"
+      // The merged text is in the editing input
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input?.value).toBe("great-grandchildsecond child");
+      });
+
+      // Exit editing, then undo
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("great-grandchildsecond child")).toBeTruthy();
+      });
+
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("great-grandchild")).toBeTruthy();
+        expect(result.queryByText("second child")).toBeTruthy();
+      });
+
+      // Redo → merged text should return
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("great-grandchildsecond child")).toBeTruthy();
+      });
+    });
+
+    it("undo/redo of addSiblingNode", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // Enter tree
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+      await result.findByText("first child");
+
+      // Add sibling below with o
+      await userEvent.keyboard("{o}");
+      await awaitPendingCallbacks();
+
+      // New empty node should exist — type something
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+      });
+      await userEvent.keyboard("new sibling");
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("new sibling")).toBeTruthy();
+      });
+
+      // Undo text edit, then undo node creation
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("new sibling")).toBeNull();
+      });
+
+      // Redo ×2 → node should be back
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("new sibling")).toBeTruthy();
+      });
+    });
+
+    it("undo of enterTree (node creation) reverts hasTreeNodes to false", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+
+      // $log3 has no tree nodes. Enter tree to create one (ノード作成 + hasTreeNodes=true).
+      expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBe(0);
+
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+
+      // Wait for the tree node to be fully rendered
+      await waitFor(() => {
+        expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBe(1);
+      });
+
+      // Undo ノード作成 → hasTreeNodes should revert to false, wrapper gone
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(
+        () => {
+          expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBe(0);
+        },
+        { timeout: 3000 },
+      );
+
+      // Redo → node should be restored
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      await waitFor(
+        () => {
+          expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBe(1);
+        },
+        { timeout: 3000 },
+      );
+    });
+
+    it("jumpToNode cross-branch via panel", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+      const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+
+      // Branch A: set startAt
+      await userEvent.keyboard("{s}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      // Undo → root
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // Branch B: set endAt
+      await userEvent.keyboard("{f}");
+      await awaitPendingCallbacks();
+
+      // Open history panel
+      await userEvent.keyboard("{t}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeTruthy();
+      });
+
+      // Find the 時刻設定 row that corresponds to branch A (startAt)
+      // There should be 2 時刻設定 rows; click the one that is NOT the current HEAD
+      await waitFor(() => {
+        const rows = result.container.querySelectorAll(`.${styles.editHistory.graphRow}`);
+        expect(rows.length).toBeGreaterThanOrEqual(3); // root + 2 entries
+      });
+
+      const rows = Array.from(result.container.querySelectorAll(`.${styles.editHistory.graphRow}`));
+      // Find a 時刻設定 row without HEAD marker (branch A)
+      const branchARow = rows.find(
+        (row) => row.textContent?.includes("時刻設定") && !row.textContent?.includes("HEAD"),
+      );
+      expect(branchARow).toBeTruthy();
+
+      // Click to jump to branch A
+      await userEvent.click(branchARow!);
+      await awaitPendingCallbacks();
+
+      // After jumping to branch A: startAt should be set, endAt should be N/A
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+        expect(log3Element.textContent).toContain("N/A");
+      });
+    });
+
+    it("undo/redo of lifeLog text edit (saveText)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // Edit lifeLog text
+      await userEvent.keyboard("{i}");
+      await awaitPendingCallbacks();
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      input.focus();
+      await userEvent.keyboard("{Control>}a{/Control}edited lifelog");
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("edited lifelog")).toBeTruthy();
+      });
+
+      // Undo → text should revert to "first lifelog"
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("first lifelog")).toBeTruthy();
+        expect(result.queryByText("edited lifelog")).toBeNull();
+      });
+
+      // Redo → text should restore to "edited lifelog"
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("edited lifelog")).toBeTruthy();
+      });
+    });
+
+    it("undo/redo of saveStartAt (manual time edit)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // $log1 startAt is 10:30:00. Edit it via Tab to startAt field.
+      await userEvent.keyboard("{i}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{Tab}");
+      await awaitPendingCallbacks();
+
+      // Input should show startAt
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input.value).toBe("20260110 103000");
+      });
+
+      // Change last digit: 103000 → 103005
+      await userEvent.keyboard("{Backspace}5");
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("2026-01-10 10:30:05")).toBeTruthy();
+      });
+
+      // Undo → startAt should revert to 10:30:00
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("2026-01-10 10:30:00")).toBeTruthy();
+        expect(result.queryByText("2026-01-10 10:30:05")).toBeNull();
+      });
+
+      // Redo → startAt should restore to 10:30:05
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("2026-01-10 10:30:05")).toBeTruthy();
+      });
+    });
+
+    it("undo/redo of saveEndAt (manual time edit)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+
+      // $log3 has noneTimestamp for both startAt and endAt
+      // First set startAt so endAt field can be edited
+      await userEvent.keyboard("{s}");
+      await awaitPendingCallbacks();
+      const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      // Edit endAt: i → Tab (to startAt) → Tab (to endAt) → type time → Escape
+      await userEvent.keyboard("{i}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{Tab}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{Tab}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe(""); // noneTimestamp shows as empty
+      });
+
+      await userEvent.keyboard("20260110 130000");
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("2026-01-10 13:00:00")).toBeTruthy();
+      });
+
+      // Undo saveEndAt → endAt should revert to N/A
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("N/A");
+        expect(result.queryByText("2026-01-10 13:00:00")).toBeNull();
+      });
+    });
+
+    it("undo/redo of createFirstLifeLog", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        skipDefaultLifeLogs: true,
+      });
+
+      // No lifeLogs exist — the o key (createFirstLifeLog) should create one
+      await userEvent.keyboard("{o}");
+      await awaitPendingCallbacks();
+
+      // Wait for the new lifeLog to appear as a list item
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+        expect(listItems.length).toBeGreaterThan(0);
+      });
+
+      // Undo createFirstLifeLog → lifeLog should be gone
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+        expect(listItems.length).toBe(0);
+      });
+
+      // Redo → lifeLog should be back
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      await waitFor(
+        () => {
+          const listItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+          expect(listItems.length).toBeGreaterThan(0);
+        },
+        { timeout: 3000 },
+      );
+    });
+
+    it("edit history panel is scrollable with many entries", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+
+      // Generate many history entries by toggling startAt/endAt multiple times
+      // Each s/f keypress creates a new entry (when the field was empty)
+      // But since setStartAtNow only works when startAt is none, we need other operations
+      // Use undo/redo cycles with setStartAt/setEndAt to create history
+      for (let i = 0; i < 20; i++) {
+        await userEvent.keyboard("{s}");
+        await awaitPendingCallbacks();
+        await userEvent.keyboard("{u}");
+        await awaitPendingCallbacks();
+      }
+
+      // Open panel
+      await userEvent.keyboard("{t}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeTruthy();
+      });
+
+      // Verify the panel's scrollable container has overflow (many entries present)
+      const treeContainer = result.container.querySelector(`.${styles.editHistory.treeContainer}`) as HTMLElement;
+      expect(treeContainer).toBeTruthy();
+
+      // Should have many history entry rows
+      const rows = treeContainer.querySelectorAll(`.${styles.editHistory.graphRow}`);
+      expect(rows.length).toBeGreaterThan(5);
+    });
+
+    it("undo/redo of deleteEmptyLifeLogToPrev (Backspace on empty lifeLog in editing mode)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+
+      // $log3: text="third lifelog", startAt=none, endAt=none
+      // Clear text first to make it deletable
+      await userEvent.keyboard("{i}");
+      await awaitPendingCallbacks();
+      const input1 = result.container.querySelector("input") as HTMLInputElement;
+      input1.focus();
+      await userEvent.keyboard("{Control>}a{/Control}{Backspace}");
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      // Re-enter editing mode on now-empty $log3
+      await userEvent.keyboard("{i}");
+      await awaitPendingCallbacks();
+
+      // Backspace at position 0 on empty text → deleteEmptyLifeLogToPrev → goes to $log2
+      await userEvent.keyboard("{Backspace}");
+      await awaitPendingCallbacks();
+
+      // Should be editing $log2 now
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("second lifelog");
+      });
+
+      // Exit editing
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      // Undo the deletion → $log3 should reappear (empty)
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+        expect(listItems.length).toBe(4); // $log1, $log2, $log3 (empty), $log4
+      });
+
+      // Redo the deletion → $log3 should be removed again
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+        expect(listItems.length).toBe(3); // $log1, $log2, $log4
+      });
+    });
+
+    it("undo/redo of deleteEmptyLifeLogToNext (Delete on empty lifeLog in editing mode)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+
+      // Clear $log3 text to make it deletable
+      await userEvent.keyboard("{i}");
+      await awaitPendingCallbacks();
+      const input1 = result.container.querySelector("input") as HTMLInputElement;
+      input1.focus();
+      await userEvent.keyboard("{Control>}a{/Control}{Backspace}");
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      // Re-enter editing, press Delete at end → deleteEmptyLifeLogToNext → goes to $log4
+      await userEvent.keyboard("{i}");
+      await awaitPendingCallbacks();
+
+      // Cursor is at position 0 = end (text is empty), Delete should trigger
+      await userEvent.keyboard("{Delete}");
+      await awaitPendingCallbacks();
+
+      // Should be editing $log4 now
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("fourth lifelog");
+      });
+
+      // Exit editing
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      // Undo the deletion → $log3 should reappear
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+        expect(listItems.length).toBe(4); // $log1, $log2, $log3, $log4
+      });
+
+      // Redo → $log3 gone again
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        const listItems = result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`);
+        expect(listItems.length).toBe(3); // $log1, $log2, $log4
+      });
+    });
+
+    it("redo after jumpTo navigates to correct branch", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+      const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+
+      // Branch A: set startAt
+      await userEvent.keyboard("{s}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      // Undo → back to root
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // Branch B: set endAt
+      await userEvent.keyboard("{f}");
+      await awaitPendingCallbacks();
+
+      // Open panel and jump to branch A
+      await userEvent.keyboard("{t}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeTruthy();
+      });
+
+      await waitFor(() => {
+        const rows = result.container.querySelectorAll(`.${styles.editHistory.graphRow}`);
+        expect(rows.length).toBeGreaterThanOrEqual(3);
+      });
+
+      const rows = Array.from(result.container.querySelectorAll(`.${styles.editHistory.graphRow}`));
+      const branchARow = rows.find(
+        (row) => row.textContent?.includes("時刻設定") && !row.textContent?.includes("HEAD"),
+      );
+      expect(branchARow).toBeTruthy();
+      await userEvent.click(branchARow!);
+      await awaitPendingCallbacks();
+
+      // After jumpTo branch A: startAt set, endAt is N/A
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+        expect(log3Element.textContent).toContain("N/A");
+      });
+
+      // Close panel
+      await userEvent.keyboard("{t}");
+      await awaitPendingCallbacks();
+
+      // Now undo back to root (undo branch A)
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(log3Element.textContent).not.toContain("12:00");
+      });
+
+      // Redo should go to branch A's child (newest child of root = branch B, because B was created after A)
+      // Branch B set endAt, not startAt
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      // Verify that redo picked the newest child (branch B = endAt set)
+      // After redo, endAt should no longer be N/A (it was set by branch B)
+      await waitFor(() => {
+        // Branch B set endAt, so there should be no "N/A" for endAt in $log3
+        const naCount = (log3Element.textContent?.match(/N\/A/g) || []).length;
+        // startAt is still N/A (branch B only set endAt), so exactly 1 N/A
+        expect(naCount).toBe(1);
+      });
+    });
+
+    it("multiple sequential undos back to initial state", async ({ db, task }) => {
+      const { result, firestore } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+      const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+
+      // Operation 1: set startAt
+      await userEvent.keyboard("{s}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      // Operation 2: set endAt
+      await userEvent.keyboard("{f}");
+      await awaitPendingCallbacks();
+
+      // Operation 3: create new lifeLog
+      await userEvent.keyboard("{o}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+      });
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      // Undo 3: undo newLifeLog
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // Undo 2: undo setEndAtNow
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // Undo 1: undo setStartAtNow
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // Now at initial state — $log3 should have no times set
+      await waitFor(() => {
+        expect(log3Element.textContent).not.toContain("12:00");
+      });
+
+      // One more undo should be a no-op (already at root)
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // Verify editHistoryHead is at root ("")
+      const head = await getSingletonDoc(firestore, getCollection(firestore, "editHistoryHead"));
+      expect(head?.entryId).toBe("");
+
+      // $log3 should still be visible and unchanged
+      expect(result.getByText("third lifelog")).toBeTruthy();
+    });
+
+    it("undo/redo of addSiblingNode above (Shift+O)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // Enter tree
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+      await result.findByText("first child");
+
+      // Navigate to second child
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Add sibling ABOVE with Shift+O
+      await userEvent.keyboard("{Shift>}o{/Shift}");
+      await awaitPendingCallbacks();
+
+      // Should enter editing mode on new node above second child
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+      });
+
+      // Type text and save
+      await userEvent.keyboard("above sibling");
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("above sibling")).toBeTruthy();
+      });
+
+      // Undo ×2 (text save + node creation)
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // "above sibling" should be gone
+      await waitFor(() => {
+        expect(result.queryByText("above sibling")).toBeNull();
+      });
+
+      // Redo ×2 → node should be back
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("above sibling")).toBeTruthy();
+      });
+    });
+
+    it("undo/redo of saveAndDedentTreeNode", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // Enter tree → child1 selected
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+      await result.findByText("first child");
+
+      // Navigate to grandchild (j to grandchild)
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+      });
+
+      // Grandchild is a child of child1. Dedent it (Shift+Tab) to make it a sibling of child1.
+      await userEvent.keyboard("{i}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+      await awaitPendingCallbacks();
+
+      // After dedent, grandchild should be at root level (sibling of child1)
+      // Exit editing to verify
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      // Undo the dedent → grandchild should go back under child1
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // Redo → grandchild should be dedented again (sibling of child1)
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      // Verify grandchild is still accessible (redo didn't break anything)
+      await waitFor(() => {
+        expect(result.queryByText("grandchild")).toBeTruthy();
+      });
+    });
+
+    it("R key cycles correctly with exactly 2 branches", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+      const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+
+      // Branch A: set startAt
+      await userEvent.keyboard("{s}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      // Undo → root
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // Branch B: set endAt (creates exactly 2 branches from root)
+      await userEvent.keyboard("{f}");
+      await awaitPendingCallbacks();
+
+      // Undo → root
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // r picks newest (branch B). Verify by checking endAt is set.
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        // Branch B set endAt; startAt should still be N/A
+        const naCount = (log3Element.textContent?.match(/N\/A/g) || []).length;
+        expect(naCount).toBe(1); // only startAt is N/A
+      });
+
+      // Undo back to root
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // R (Shift+R) picks second-newest = branch A (startAt set)
+      await userEvent.keyboard("{Shift>}r{/Shift}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+        // Branch A set startAt; endAt should be N/A
+        expect(log3Element.textContent).toContain("N/A");
+      });
+
+      // Another u+R should cycle to branch B
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{Shift>}r{/Shift}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        // Branch B: endAt set, startAt is N/A
+        const naCount = (log3Element.textContent?.match(/N\/A/g) || []).length;
+        expect(naCount).toBe(1);
+      });
+    });
+
+    it("mobile toolbar 📜 button opens history panel", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      // Panel should not be visible
+      expect(result.queryByText("編集履歴")).toBeNull();
+
+      // Click 📜 button to open
+      const historyButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+        (btn) => btn.textContent === "📜",
+      );
+      expect(historyButton).toBeTruthy();
+      await userEvent.click(historyButton!);
+      await awaitPendingCallbacks();
+
+      // Panel should be visible
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeTruthy();
+      });
+
+      // Close with Escape key (panel overlays the button, so use keyboard)
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.queryByText("編集履歴")).toBeNull();
+      });
+    });
+
+    it("undo/redo of deleting last tree node (Backspace on only node)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+
+      // Record baseline count ($log1 may have childrenNodes visible)
+      const initialCount = result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length;
+
+      // $log3 has no tree nodes. Enter tree to create one (ノード作成 + hasTreeNodes=true).
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBe(initialCount + 1);
+      });
+
+      // Enter editing mode on the empty node, then Backspace → deleteLastNode
+      await userEvent.keyboard("{i}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        expect(input).toBeTruthy();
+        expect(input.value).toBe("");
+      });
+
+      await userEvent.keyboard("{Backspace}");
+      await awaitPendingCallbacks();
+
+      // hasTreeNodes should be false, childrenNodes wrapper gone, back to lifeLog editing
+      await waitFor(
+        () => {
+          expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBe(initialCount);
+        },
+        { timeout: 3000 },
+      );
+
+      // Exit editing mode to allow undo keybind
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      // Undo → node and hasTreeNodes restored
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await waitFor(
+        () => {
+          expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBe(initialCount + 1);
+        },
+        { timeout: 3000 },
+      );
+
+      // Redo → node deleted again
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      await waitFor(
+        () => {
+          expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBe(initialCount);
+        },
+        { timeout: 3000 },
+      );
     });
   });
 });

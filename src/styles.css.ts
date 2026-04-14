@@ -49,6 +49,131 @@ const nord = [
 ];
 
 export const styles = {
+  editHistory: {
+    layoutWrapper: style({
+      display: "flex",
+      flexDirection: "row" as const,
+      flex: 1,
+      minHeight: 0,
+      width: "100%",
+    }),
+    mainContent: style({
+      flex: 1,
+      minWidth: 0,
+      minHeight: 0,
+      display: "flex",
+      flexDirection: "column" as const,
+    }),
+    panel: style({
+      width: "320px",
+      height: "100%",
+      backgroundColor: nord[1],
+      borderLeft: `1px solid ${nord[2]}`,
+      display: "flex",
+      flexDirection: "column" as const,
+      overflow: "hidden",
+      "@media": {
+        [`(max-width: ${MOBILE_BREAKPOINT}px)`]: {
+          position: "fixed",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+          width: "100%",
+          borderLeft: "none",
+          zIndex: 500,
+        },
+      },
+    }),
+    panelHeader: style({
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "0.75rem 1rem",
+      borderBottom: `1px solid ${nord[2]}`,
+      color: nord[4],
+      fontWeight: 500,
+      fontSize: "0.875rem",
+    }),
+    closeButton: style({
+      background: "none",
+      border: "none",
+      color: nord[4],
+      cursor: "pointer",
+      padding: "0.25rem",
+      fontSize: "1rem",
+      ":hover": {
+        color: nord[6],
+      },
+    }),
+    treeContainer: style({
+      flex: 1,
+      minHeight: 0,
+      overflow: "auto",
+      padding: "0.5rem",
+    }),
+    graphRow: style({
+      cursor: "pointer",
+      borderRadius: "0.25rem",
+      padding: "0.125rem 0.5rem",
+      ":hover": {
+        backgroundColor: `${nord[2]}44`,
+      },
+    }),
+    graphRowActive: style({
+      backgroundColor: nord[2],
+      boxShadow: `0 0 0 1px ${nord[9]}`,
+    }),
+    graphLine: style({
+      display: "flex",
+      alignItems: "baseline",
+      lineHeight: 1.4,
+    }),
+    graphPrefix: style({
+      fontFamily: "monospace",
+      whiteSpace: "pre",
+      color: nord[8],
+      flexShrink: 0,
+    }),
+    graphContent: style({
+      flex: 1,
+      minWidth: 0,
+    }),
+    graphDescription: style({
+      fontSize: "0.75rem",
+      color: nord[4],
+    }),
+    graphTimestamp: style({
+      fontSize: "0.6875rem",
+      color: nord[5],
+      marginLeft: "0.5rem",
+    }),
+    graphHead: style({
+      fontSize: "0.75rem",
+      color: nord[13],
+      marginLeft: "0.25rem",
+      fontWeight: 600,
+    }),
+    graphDetails: style({
+      fontSize: "0.6875rem",
+      color: nord[5],
+    }),
+    graphDetailLine: style({
+      display: "flex",
+      gap: "0.25rem",
+      flexWrap: "wrap" as const,
+    }),
+    graphCollection: style({
+      color: nord[9],
+    }),
+    graphOldValue: style({
+      color: nord[11],
+      textDecoration: "line-through",
+    }),
+    graphNewValue: style({
+      color: nord[14],
+    }),
+  },
   app: {
     wrapper: style({
       display: "flex",

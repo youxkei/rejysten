@@ -1,7 +1,8 @@
-import { doc, getDocs, Timestamp, writeBatch } from "firebase/firestore";
+import { doc, Timestamp, writeBatch } from "firebase/firestore";
 import { onMount, Show, Suspense, type JSXElement, createSignal } from "solid-js";
 import { type Meta, type StoryObj } from "storybook-solidjs-vite";
 
+import { WithEditHistoryPanel } from "@/components/editHistory";
 import { LifeLogs } from "@/panes/lifeLogs";
 import { Share } from "@/panes/share";
 import { ActionsServiceProvider } from "@/services/actions";
@@ -12,6 +13,8 @@ import {
   singletonDocumentId,
   useFirestoreService,
 } from "@/services/firebase/firestore";
+import { runBatch } from "@/services/firebase/firestore/batch";
+import { undo as undoEngine } from "@/services/firebase/firestore/editHistory";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
 import { Toast } from "@/services/toast";
 import { hourMs, noneTimestamp } from "@/timestamp";
@@ -49,7 +52,7 @@ function StorybookFirebaseWrapper(props: { children: JSXElement; showConfig?: bo
             </div>
           </>
         )}
-        <FirestoreServiceProvider>
+        <FirestoreServiceProvider useMemoryCache>
           <ActionsServiceProvider>{props.children}</ActionsServiceProvider>
         </FirestoreServiceProvider>
       </FirebaseServiceProvider>
@@ -69,25 +72,16 @@ export const LifeLogsStory: StoryObj = {
               const batchVersion = getCollection(firestore, "batchVersion");
               const lifeLogs = getCollection(firestore, "lifeLogs");
               const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
-              const ngrams = getCollection(firestore, "ngrams");
 
               const { updateState } = useStoreService();
 
               onMount(() => {
                 (async () => {
+                  await fetch("http://localhost:8080/emulator/v1/projects/demo/databases/(default)/documents", {
+                    method: "DELETE",
+                  });
+
                   const batch = writeBatch(firestore.firestore);
-
-                  for (const lifeLog of (await getDocs(lifeLogs)).docs) {
-                    batch.delete(lifeLog.ref);
-                  }
-
-                  for (const lifeLogTreeNode of (await getDocs(lifeLogTreeNodes)).docs) {
-                    batch.delete(lifeLogTreeNode.ref);
-                  }
-
-                  for (const ngram of (await getDocs(ngrams)).docs) {
-                    batch.delete(ngram.ref);
-                  }
 
                   batch.set(doc(batchVersion, singletonDocumentId), {
                     version: "__INITIAL__",
@@ -199,15 +193,11 @@ function FullscreenSetup(props: { children?: JSXElement }) {
 
   onMount(() => {
     (async () => {
+      await fetch("http://localhost:8080/emulator/v1/projects/demo/databases/(default)/documents", {
+        method: "DELETE",
+      });
+
       const batch = writeBatch(firestore.firestore);
-
-      for (const lifeLog of (await getDocs(lifeLogs)).docs) {
-        batch.delete(lifeLog.ref);
-      }
-
-      for (const lifeLogTreeNode of (await getDocs(lifeLogTreeNodes)).docs) {
-        batch.delete(lifeLogTreeNode.ref);
-      }
 
       batch.set(doc(batchVersion, singletonDocumentId), {
         version: "__INITIAL__",
@@ -302,7 +292,11 @@ function FullscreenSetup(props: { children?: JSXElement }) {
   return (
     <>
       {props.children}
-      <LifeLogs />
+      <div style={{ height: "100svh" }}>
+        <WithEditHistoryPanel>
+          <LifeLogs />
+        </WithEditHistoryPanel>
+      </div>
     </>
   );
 }
@@ -339,15 +333,11 @@ function ShareStory() {
   }
 
   const initialize = async () => {
+    await fetch("http://localhost:8080/emulator/v1/projects/demo/databases/(default)/documents", {
+      method: "DELETE",
+    });
+
     const batch = writeBatch(firestore.firestore);
-
-    for (const lifeLog of (await getDocs(lifeLogs)).docs) {
-      batch.delete(lifeLog.ref);
-    }
-
-    for (const lifeLogTreeNode of (await getDocs(lifeLogTreeNodes)).docs) {
-      batch.delete(lifeLogTreeNode.ref);
-    }
 
     batch.set(doc(batchVersion, singletonDocumentId), {
       version: "__INITIAL__",
@@ -410,21 +400,16 @@ function ManyLifeLogsSetup() {
 
   const batchVersion = getCollection(firestore, "batchVersion");
   const lifeLogs = getCollection(firestore, "lifeLogs");
-  const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
 
   const { updateState } = useStoreService();
 
   onMount(() => {
     (async () => {
+      await fetch("http://localhost:8080/emulator/v1/projects/demo/databases/(default)/documents", {
+        method: "DELETE",
+      });
+
       const batch = writeBatch(firestore.firestore);
-
-      for (const lifeLog of (await getDocs(lifeLogs)).docs) {
-        batch.delete(lifeLog.ref);
-      }
-
-      for (const lifeLogTreeNode of (await getDocs(lifeLogTreeNodes)).docs) {
-        batch.delete(lifeLogTreeNode.ref);
-      }
 
       batch.set(doc(batchVersion, singletonDocumentId), {
         version: "__INITIAL__",
@@ -484,6 +469,291 @@ export const SharePane: StoryObj = {
         <StorybookFirebaseWrapper showConfig={false}>
           <Suspense fallback={<span>loading....</span>}>
             <ShareStory />
+          </Suspense>
+        </StorybookFirebaseWrapper>
+      </StoreServiceProvider>
+    );
+  },
+};
+
+function EditHistorySetup() {
+  const firestore = useFirestoreService();
+
+  const batchVersion = getCollection(firestore, "batchVersion");
+  const lifeLogs = getCollection(firestore, "lifeLogs");
+  const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+  const editHistory = getCollection(firestore, "editHistory");
+  const editHistoryHead = getCollection(firestore, "editHistoryHead");
+
+  const { updateState } = useStoreService();
+
+  onMount(() => {
+    (async () => {
+      await fetch("http://localhost:8080/emulator/v1/projects/demo/databases/(default)/documents", {
+        method: "DELETE",
+      });
+
+      const batch = writeBatch(firestore.firestore);
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+
+      batch.set(doc(lifeLogs, "$log1"), {
+        text: "lifelog1",
+        hasTreeNodes: true,
+        startAt: noneTimestamp,
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "child1"), {
+        text: "child1",
+        lifeLogId: "$log1",
+        parentId: "$log1",
+        order: "a0",
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+
+      // Create edit history entries with branches
+      const now = new Date();
+      const t = (minutesAgo: number) => Timestamp.fromDate(new Date(now.getTime() - minutesAgo * 60 * 1000));
+
+      // Linear chain: entry1 → entry2 → entry3
+      batch.set(doc(editHistory, "entry1"), {
+        parentId: "",
+        description: "LifeLog作成",
+        operations: [],
+        inverseOperations: [],
+        prevSelection: {},
+        nextSelection: {},
+        createdAt: t(10),
+        updatedAt: t(10),
+      });
+      batch.set(doc(editHistory, "entry2"), {
+        parentId: "entry1",
+        description: "テキスト編集",
+        operations: [],
+        inverseOperations: [],
+        prevSelection: {},
+        nextSelection: {},
+        createdAt: t(8),
+        updatedAt: t(8),
+      });
+      batch.set(doc(editHistory, "entry3"), {
+        parentId: "entry2",
+        description: "時刻設定",
+        operations: [],
+        inverseOperations: [],
+        prevSelection: {},
+        nextSelection: {},
+        createdAt: t(6),
+        updatedAt: t(6),
+      });
+
+      // Branch from entry2: entry4 → entry5
+      batch.set(doc(editHistory, "entry4"), {
+        parentId: "entry2",
+        description: "ノード追加",
+        operations: [],
+        inverseOperations: [],
+        prevSelection: {},
+        nextSelection: {},
+        createdAt: t(4),
+        updatedAt: t(4),
+      });
+      batch.set(doc(editHistory, "entry5"), {
+        parentId: "entry4",
+        description: "ノードテキスト編集",
+        operations: [],
+        inverseOperations: [],
+        prevSelection: {},
+        nextSelection: {},
+        createdAt: t(2),
+        updatedAt: t(2),
+      });
+
+      // Child of entry3 (branch has its own chain): entry8
+      batch.set(doc(editHistory, "entry8"), {
+        parentId: "entry3",
+        description: "ノード統合",
+        operations: [],
+        inverseOperations: [],
+        prevSelection: {},
+        nextSelection: {},
+        createdAt: t(5),
+        updatedAt: t(5),
+      });
+
+      // Another child of entry3 (branch within a branch): entry9
+      batch.set(doc(editHistory, "entry9"), {
+        parentId: "entry3",
+        description: "テキスト編集2",
+        operations: [],
+        inverseOperations: [],
+        prevSelection: {},
+        nextSelection: {},
+        createdAt: t(4.5),
+        updatedAt: t(4.5),
+      });
+
+      // 3rd branch from entry2: entry7
+      batch.set(doc(editHistory, "entry7"), {
+        parentId: "entry2",
+        description: "インデント変更",
+        operations: [],
+        inverseOperations: [],
+        prevSelection: {},
+        nextSelection: {},
+        createdAt: t(3),
+        updatedAt: t(3),
+      });
+
+      // Another branch from entry1: entry6
+      batch.set(doc(editHistory, "entry6"), {
+        parentId: "entry1",
+        description: "LifeLog削除",
+        operations: [],
+        inverseOperations: [],
+        prevSelection: {},
+        nextSelection: {},
+        createdAt: t(1),
+        updatedAt: t(1),
+      });
+
+      // Set head to entry5 (end of second branch from entry2)
+      batch.set(doc(editHistoryHead, singletonDocumentId), {
+        entryId: "entry5",
+        createdAt: Timestamp.fromDate(now),
+        updatedAt: Timestamp.fromDate(now),
+      });
+
+      await batch.commit();
+
+      updateState((state) => {
+        state.panesLifeLogs.selectedLifeLogId = "$log1";
+        state.panesLifeLogs.selectedLifeLogNodeId = "";
+        state.editHistory.isPanelOpen = true;
+      });
+    })().catch((error: unknown) => {
+      console.error("Error initializing edit history data:", error);
+    });
+  });
+
+  return (
+    <div style={{ height: "100svh" }}>
+      <WithEditHistoryPanel>
+        <LifeLogs />
+      </WithEditHistoryPanel>
+    </div>
+  );
+}
+
+export const EditHistoryPanelStory: StoryObj = {
+  name: "EditHistoryPanel",
+  render() {
+    return (
+      <StoreServiceProvider>
+        <StorybookFirebaseWrapper showConfig={false}>
+          <Suspense fallback={<span>loading....</span>}>
+            <EditHistorySetup />
+          </Suspense>
+        </StorybookFirebaseWrapper>
+      </StoreServiceProvider>
+    );
+  },
+};
+
+function LongHistorySetup() {
+  const firestore = useFirestoreService();
+
+  const batchVersion = getCollection(firestore, "batchVersion");
+  const lifeLogs = getCollection(firestore, "lifeLogs");
+
+  const { updateState } = useStoreService();
+
+  onMount(() => {
+    (async () => {
+      await fetch("http://localhost:8080/emulator/v1/projects/demo/databases/(default)/documents", {
+        method: "DELETE",
+      });
+
+      // Initial setup: create batchVersion + 1 lifeLog
+      const setupBatch = writeBatch(firestore.firestore);
+      setupBatch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+      setupBatch.set(doc(lifeLogs, "$log1"), {
+        text: "initial",
+        hasTreeNodes: false,
+        startAt: noneTimestamp,
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+      await setupBatch.commit();
+
+      // Wait for subscription to catch up
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Perform many real operations via runBatch + undo to create branches.
+      // Every 8 edits, undo 3 times then continue editing to create a branch.
+      for (let i = 0; i < 40; i++) {
+        await runBatch(
+          firestore,
+          (batch) => {
+            batch.update(lifeLogs, { id: "$log1", text: `edit-${i}` });
+            return Promise.resolve();
+          },
+          {
+            description: "テキスト編集",
+            prevSelection: { lifeLogs: "$log1" },
+          },
+        );
+
+        // Every 8 edits, create a branch: undo 3 times then continue
+        if (i > 0 && i % 8 === 0) {
+          for (let u = 0; u < 3; u++) {
+            await undoEngine(firestore);
+          }
+        }
+      }
+
+      updateState((state) => {
+        state.panesLifeLogs.selectedLifeLogId = "$log1";
+        state.panesLifeLogs.selectedLifeLogNodeId = "";
+        state.editHistory.isPanelOpen = true;
+      });
+    })().catch((error: unknown) => {
+      console.error("Error initializing long history data:", error);
+    });
+  });
+
+  return (
+    <div style={{ height: "100svh" }}>
+      <WithEditHistoryPanel>
+        <LifeLogs />
+      </WithEditHistoryPanel>
+    </div>
+  );
+}
+
+export const EditHistoryPanelLongScrollStory: StoryObj = {
+  name: "EditHistoryPanel (long, scrollable)",
+  render() {
+    return (
+      <StoreServiceProvider>
+        <StorybookFirebaseWrapper showConfig={false}>
+          <Suspense fallback={<span>loading....</span>}>
+            <LongHistorySetup />
           </Suspense>
         </StorybookFirebaseWrapper>
       </StoreServiceProvider>

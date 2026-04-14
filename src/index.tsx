@@ -2,6 +2,7 @@ import { createSignal, Show, Suspense } from "solid-js";
 import { render } from "solid-js/web";
 import { registerSW } from "virtual:pwa-register";
 
+import { WithEditHistoryPanel } from "@/components/editHistory";
 import { LifeLogs } from "@/panes/lifeLogs";
 import { Search } from "@/panes/search";
 import { Share } from "@/panes/share";
@@ -28,7 +29,9 @@ registerSW({
 
 function MainContent() {
   const { state, updateState } = useStoreService();
-  const actions = useActionsService().panes.search;
+  const {
+    panes: { search: searchActions },
+  } = useActionsService();
   const isMobile = createIsMobile();
 
   // Detect share target params and activate share pane
@@ -48,22 +51,24 @@ function MainContent() {
 
     if (event.code === "Slash") {
       event.preventDefault();
-      actions.openSearch();
+      searchActions.openSearch();
     }
   });
 
   return (
     <>
-      <Show
-        when={state.panesShare.isActive}
-        fallback={
-          <Show when={state.panesSearch.isActive} fallback={<LifeLogs rangeMs={isMobile() ? dayMs / 2 : dayMs} />}>
-            <Search />
-          </Show>
-        }
-      >
-        <Share />
-      </Show>
+      <WithEditHistoryPanel>
+        <Show
+          when={state.panesShare.isActive}
+          fallback={
+            <Show when={state.panesSearch.isActive} fallback={<LifeLogs rangeMs={isMobile() ? dayMs / 2 : dayMs} />}>
+              <Search />
+            </Show>
+          }
+        >
+          <Share />
+        </Show>
+      </WithEditHistoryPanel>
       <Toast />
     </>
   );

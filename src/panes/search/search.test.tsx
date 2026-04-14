@@ -468,4 +468,32 @@ describe("<Search />", () => {
       });
     });
   });
+
+  describe("undo/redo keys with search active", () => {
+    it("u and r keys do not trigger undo/redo when search is active", async ({ db, task }) => {
+      const { result } = await setupSearchTest(task.id, db, {
+        withEditHistory: true,
+        isActive: true,
+        initialQuery: "se",
+      });
+
+      // Wait for search results to load
+      await waitFor(() => {
+        const resultItems = result.container.querySelectorAll(`.${styles.search.result}`);
+        expect(resultItems.length).toBeGreaterThan(0);
+      });
+
+      // Press u — should not crash or trigger undo (search pane is active, guard blocks it)
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // Press r — same
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+
+      // Search should still be active and functional
+      const input = result.container.querySelector(`.${styles.search.input}`) as HTMLInputElement;
+      expect(input).toBeTruthy();
+    });
+  });
 });

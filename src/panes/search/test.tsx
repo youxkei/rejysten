@@ -2,6 +2,7 @@ import { render } from "@solidjs/testing-library";
 import { doc, Timestamp, writeBatch } from "firebase/firestore";
 import { onMount, Show, Suspense } from "solid-js";
 
+import { WithEditHistoryPanel } from "@/components/editHistory";
 import { analyzeTextForNgrams } from "@/ngram";
 import "@/panes/lifeLogs/store";
 import { Search } from "@/panes/search";
@@ -22,6 +23,7 @@ export const baseTime = new Date(2026, 0, 10, 12, 0, 0, 0);
 export interface SetupSearchTestOptions {
   initialQuery?: string;
   isActive?: boolean;
+  withEditHistory?: boolean;
 }
 
 export async function setupSearchTest(testId: string, db: DatabaseInfo, options?: SetupSearchTestOptions) {
@@ -156,11 +158,12 @@ export async function setupSearchTest(testId: string, db: DatabaseInfo, options?
                   })().then(resolveReady, rejectReady);
                 });
 
-                return (
+                const content = (
                   <Show when={state.panesSearch.isActive}>
                     <Search />
                   </Show>
                 );
+                return options?.withEditHistory ? <WithEditHistoryPanel>{content}</WithEditHistoryPanel> : content;
               })()}
             </Suspense>
           </ActionsServiceProvider>

@@ -86,9 +86,13 @@ export function Search() {
   });
 
   createEffect(
-    on(results$, () => {
-      setIsSearchPending(false);
-    }, { defer: true }),
+    on(
+      results$,
+      () => {
+        setIsSearchPending(false);
+      },
+      { defer: true },
+    ),
   );
 
   // Update actions context with result IDs

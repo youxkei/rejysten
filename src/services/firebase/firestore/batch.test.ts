@@ -6,12 +6,22 @@ import {
   runTransaction as firebaseRunTransaction,
   getDoc as getDocOriginal,
   doc,
+  onSnapshotsInSync,
 } from "firebase/firestore";
-import { describe, it, vi, beforeAll, afterAll } from "vitest";
+import { createComputed, createRoot, createSignal } from "solid-js";
+import { describe, it, vi, beforeAll, afterAll, expect } from "vitest";
 
-import { singletonDocumentId, type Timestamps, type FirestoreService } from "@/services/firebase/firestore";
-import { Batch, runTransaction } from "@/services/firebase/firestore/batch";
+import {
+  singletonDocumentId,
+  type Timestamps,
+  type FirestoreService,
+  waitForServerSync,
+} from "@/services/firebase/firestore";
+import { Batch, runBatch, runTransaction } from "@/services/firebase/firestore/batch";
+import "@/services/firebase/firestore/editHistory/schema";
 import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
+import { type Schema } from "@/services/firebase/firestore/schema";
+import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import {
   createTestFirestoreService,
   timestampForServerTimestamp,
@@ -446,6 +456,82 @@ describe("transaction", () => {
   });
 
   describe("runTransaction helper", () => {
+    it("runTransaction creates editHistory entry when not skipped", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const setupBatch = writeBatch(firestore);
+      setupBatch.set(doc(col, "histDoc"), {
+        text: "before",
+        value: 1,
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForCreatedAt,
+      });
+      await setupBatch.commit();
+
+      await runTransaction(
+        service,
+        async (batch, transaction) => {
+          const snap = await transaction.get(doc(col, "histDoc"));
+          const currentValue = snap.data()!.value;
+
+          batch.update(col, {
+            id: "histDoc",
+            text: "after-tx",
+            value: currentValue + 1,
+          });
+        },
+        { description: "トランザクション操作" },
+      );
+
+      const editHistoryCol = collection(firestore, "editHistory");
+      const { getDocs: getDocsOriginal } = await import("firebase/firestore");
+      const allEntries = await getDocsOriginal(editHistoryCol);
+      const txEntry = allEntries.docs.find((d) => d.data().description === "トランザクション操作");
+      test.expect(txEntry).toBeTruthy();
+      test.expect((txEntry!.data().operations as unknown[]).length).toBeGreaterThan(0);
+    });
+
+    it("runTransaction skips editHistory with skipHistory", async (test) => {
+      const now = new Date();
+      const tid = `${test.task.id}_${now.getTime()}`;
+
+      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const setupBatch = writeBatch(firestore);
+      setupBatch.set(doc(col, "skipDoc"), {
+        text: "before",
+        value: 1,
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForCreatedAt,
+      });
+      await setupBatch.commit();
+
+      await runTransaction(
+        service,
+        async (batch, transaction) => {
+          const snap = await transaction.get(doc(col, "skipDoc"));
+          const currentValue = snap.data()!.value;
+
+          batch.update(col, {
+            id: "skipDoc",
+            text: "after-skip",
+            value: currentValue + 1,
+          });
+        },
+        { skipHistory: true },
+      );
+
+      const editHistoryCol = collection(firestore, "editHistory");
+      const { getDocs: getDocsOriginal } = await import("firebase/firestore");
+      const allEntries = await getDocsOriginal(editHistoryCol);
+      const skipEntry = allEntries.docs.find((d) => {
+        const ops = d.data().operations as { id?: string }[];
+        return ops.some((op) => op.id === "skipDoc");
+      });
+      test.expect(skipEntry).toBeUndefined();
+    });
+
     it("runs update function with Batch and Transaction", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
@@ -479,5 +565,542 @@ describe("transaction", () => {
         updatedAt: timestampForServerTimestamp,
       });
     });
+  });
+});
+
+describe("Batch operation recording", () => {
+  it("records set operation as forward op", async (test) => {
+    const now = new Date();
+    const tid = `${test.task.id}_${now.getTime()}`;
+
+    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const wb = writeBatch(firestore);
+    const batch = new Batch(service, wb);
+
+    batch.set(col, {
+      id: "newDoc",
+      text: "hello",
+      value: 1,
+    });
+
+    expect(batch.forwardOps).toEqual([
+      {
+        type: "set",
+        collection: tid,
+        id: "newDoc",
+        data: { text: "hello", value: 1 },
+      },
+    ]);
+  });
+
+  it("records update operation as forward op", async (test) => {
+    const now = new Date();
+    const tid = `${test.task.id}_${now.getTime()}`;
+
+    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const setupBatch = writeBatch(firestore);
+    setupBatch.set(doc(col, "testDoc"), {
+      text: "original",
+      value: 1,
+      createdAt: timestampForCreatedAt,
+      updatedAt: timestampForCreatedAt,
+    });
+    await setupBatch.commit();
+
+    const wb = writeBatch(firestore);
+    const batch = new Batch(service, wb);
+
+    batch.update(col, {
+      id: "testDoc",
+      text: "updated",
+    });
+
+    expect(batch.forwardOps).toEqual([
+      {
+        type: "update",
+        collection: tid,
+        id: "testDoc",
+        data: { text: "updated" },
+      },
+    ]);
+  });
+
+  it("records delete operation as forward op", async (test) => {
+    const now = new Date();
+    const tid = `${test.task.id}_${now.getTime()}`;
+
+    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const wb = writeBatch(firestore);
+    const batch = new Batch(service, wb);
+
+    batch.delete(col, "someDoc");
+
+    expect(batch.forwardOps).toEqual([
+      {
+        type: "delete",
+        collection: tid,
+        id: "someDoc",
+      },
+    ]);
+  });
+
+  it("does not record operations on excluded collections", () => {
+    const batchVersionCol = collection(firestore, "batchVersion") as CollectionReference<TestDoc>;
+    const editHistoryCol = collection(firestore, "editHistory") as CollectionReference<TestDoc>;
+    const editHistoryHeadCol = collection(firestore, "editHistoryHead") as CollectionReference<TestDoc>;
+    const ngramsCol = collection(firestore, "ngrams") as CollectionReference<TestDoc>;
+
+    const wb = writeBatch(firestore);
+    const batch = new Batch(service, wb);
+
+    batch.set(batchVersionCol, { id: "doc1", text: "a", value: 1 });
+    batch.set(editHistoryCol, { id: "doc2", text: "b", value: 2 });
+    batch.set(editHistoryHeadCol, { id: "doc3", text: "c", value: 3 });
+    batch.set(ngramsCol, { id: "doc4", text: "d", value: 4 });
+
+    expect(batch.forwardOps).toEqual([]);
+  });
+
+  it("records multiple operations in order", async (test) => {
+    const now = new Date();
+    const tid = `${test.task.id}_${now.getTime()}`;
+
+    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const setupBatch = writeBatch(firestore);
+    setupBatch.set(doc(col, "existingDoc"), {
+      text: "existing",
+      value: 10,
+      createdAt: timestampForCreatedAt,
+      updatedAt: timestampForCreatedAt,
+    });
+    await setupBatch.commit();
+
+    const wb = writeBatch(firestore);
+    const batch = new Batch(service, wb);
+
+    batch.set(col, { id: "newDoc", text: "new", value: 1 });
+    batch.update(col, { id: "existingDoc", text: "changed" });
+    batch.delete(col, "deleteDoc");
+
+    expect(batch.forwardOps).toHaveLength(3);
+    expect(batch.forwardOps[0].type).toBe("set");
+    expect(batch.forwardOps[1].type).toBe("update");
+    expect(batch.forwardOps[2].type).toBe("delete");
+  });
+});
+
+describe("runBatch stability", () => {
+  let sharedSvc: FirestoreService;
+  let sharedFirestore: ReturnType<typeof createTestFirestoreService>;
+  let disposeRoot: (() => void) | undefined;
+
+  beforeAll(async () => {
+    const emulatorPort = await getEmulatorPort();
+    sharedFirestore = createTestFirestoreService(emulatorPort, "runbatch-stability", { useMemoryCache: true });
+
+    await new Promise<void>((resolve) => {
+      createRoot((dispose) => {
+        disposeRoot = dispose;
+
+        const batchVersionCol = collection(sharedFirestore.firestore, "batchVersion") as CollectionReference<
+          Schema["batchVersion"]
+        >;
+        const editHistoryHeadCol = collection(sharedFirestore.firestore, "editHistoryHead") as CollectionReference<
+          Schema["editHistoryHead"]
+        >;
+
+        const [clock$] = createSignal(false);
+        let lock = false;
+
+        sharedSvc = {
+          firestore: sharedFirestore.firestore,
+          clock$,
+          setClock: () => undefined,
+          resolve: undefined,
+          batchVersion$: () => undefined,
+          editHistoryHead$: () => undefined,
+          services: {
+            firebase: {} as FirestoreService["services"]["firebase"],
+            store: {
+              state: {
+                servicesFirestoreBatch: {
+                  get lock() {
+                    return lock;
+                  },
+                  set lock(v: boolean) {
+                    lock = v;
+                  },
+                },
+              },
+              updateState: (fn: (s: { servicesFirestoreBatch: { lock: boolean } }) => void) => {
+                fn(sharedSvc.services.store.state);
+              },
+            } as FirestoreService["services"]["store"],
+          },
+        };
+
+        sharedSvc.batchVersion$ = createSubscribeSignal(sharedSvc, () => doc(batchVersionCol, singletonDocumentId));
+        sharedSvc.editHistoryHead$ = createSubscribeSignal(sharedSvc, () =>
+          doc(editHistoryHeadCol, singletonDocumentId),
+        );
+
+        onSnapshotsInSync(sharedFirestore.firestore, () => {
+          sharedSvc.resolve?.();
+          sharedSvc.resolve = undefined;
+        });
+
+        resolve();
+      });
+    });
+  });
+
+  afterAll(() => {
+    disposeRoot?.();
+  });
+
+  async function setupEmulator(): Promise<void> {
+    const emulatorPort = await getEmulatorPort();
+    await fetch(`http://localhost:${emulatorPort}/emulator/v1/projects/demo/databases/(default)/documents`, {
+      method: "DELETE",
+    });
+
+    const batchVersionCol = collection(sharedFirestore.firestore, "batchVersion") as CollectionReference<
+      Schema["batchVersion"]
+    >;
+    const setupBatch = writeBatch(sharedFirestore.firestore);
+    setupBatch.set(doc(batchVersionCol, singletonDocumentId), {
+      version: "__INITIAL__",
+      prevVersion: "",
+      createdAt: timestampForCreatedAt,
+      updatedAt: timestampForCreatedAt,
+    });
+    await setupBatch.commit();
+
+    await new Promise<void>((resolve) => {
+      createComputed(() => {
+        if (sharedSvc.batchVersion$()?.version === "__INITIAL__") {
+          resolve();
+        }
+      });
+    });
+  }
+
+  it("sequential runBatch calls all commit successfully", { timeout: 15000 }, async () => {
+    await setupEmulator();
+    const testCol = collection(sharedFirestore.firestore, "sequential_docs") as CollectionReference<TestDoc>;
+
+    for (let i = 0; i < 5; i++) {
+      await runBatch(
+        sharedSvc,
+        (batch) => {
+          batch.set(testCol, { id: `doc${i}`, text: `text-${i}`, value: i });
+          return Promise.resolve();
+        },
+        { skipHistory: true },
+      );
+      await waitForServerSync(sharedSvc);
+    }
+
+    for (let i = 0; i < 5; i++) {
+      const d = await getDocOriginal(doc(testCol, `doc${i}`));
+      expect(d.exists()).toBe(true);
+      expect(d.data()!.text).toBe(`text-${i}`);
+    }
+  });
+
+  it("sequential runBatch calls produce distinct batchVersions", { timeout: 15000 }, async () => {
+    await setupEmulator();
+    const testCol = collection(sharedFirestore.firestore, "distinct_docs") as CollectionReference<TestDoc>;
+    const versions: (string | undefined)[] = [];
+
+    for (let i = 0; i < 5; i++) {
+      await runBatch(
+        sharedSvc,
+        (batch) => {
+          batch.set(testCol, { id: `doc${i}`, text: `text-${i}`, value: i });
+          return Promise.resolve();
+        },
+        { skipHistory: true },
+      );
+      await waitForServerSync(sharedSvc);
+      versions.push(sharedSvc.batchVersion$()?.version);
+    }
+
+    const unique = new Set(versions);
+    expect(unique.size).toBe(versions.length);
+  });
+
+  it("runBatch with editHistory creates entries for each call", { timeout: 15000 }, async () => {
+    await setupEmulator();
+    const testCol = collection(sharedFirestore.firestore, "edithistory_docs") as CollectionReference<TestDoc>;
+
+    const sb = writeBatch(sharedFirestore.firestore);
+    sb.set(doc(testCol, "target"), {
+      text: "initial",
+      value: 0,
+      createdAt: timestampForCreatedAt,
+      updatedAt: timestampForCreatedAt,
+    });
+    await sb.commit();
+    await waitForServerSync(sharedSvc);
+    await getDocOriginal(doc(testCol, "target"));
+
+    for (let i = 0; i < 3; i++) {
+      await runBatch(sharedSvc, (batch) => {
+        batch.update(testCol, { id: "target", text: `edit-${i}` });
+        return Promise.resolve();
+      });
+      await waitForServerSync(sharedSvc);
+      await getDocOriginal(doc(testCol, "target"));
+    }
+
+    const editHistoryCol = collection(sharedFirestore.firestore, "editHistory");
+    const { getDocs: getDocsOriginal } = await import("firebase/firestore");
+    const allEntries = await getDocsOriginal(editHistoryCol);
+    expect(allEntries.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it("runBatch falls back to server read when batchVersion$ is undefined", { timeout: 15000 }, async () => {
+    await setupEmulator();
+    const testCol = collection(sharedFirestore.firestore, "fallback_docs") as CollectionReference<TestDoc>;
+
+    const originalBatchVersion$ = sharedSvc.batchVersion$;
+    sharedSvc.batchVersion$ = () => undefined;
+
+    await runBatch(
+      sharedSvc,
+      (batch) => {
+        batch.set(testCol, { id: "fallbackDoc", text: "via-fallback", value: 1 });
+        return Promise.resolve();
+      },
+      { skipHistory: true },
+    );
+    await waitForServerSync(sharedSvc);
+
+    const d = await getDocOriginal(doc(testCol, "fallbackDoc"));
+    expect(d.exists()).toBe(true);
+    expect(d.data()!.text).toBe("via-fallback");
+
+    sharedSvc.batchVersion$ = originalBatchVersion$;
+  });
+});
+
+describe("buildInverseOps", () => {
+  it("builds delete as inverse of set", async (test) => {
+    const now = new Date();
+    const tid = `${test.task.id}_${now.getTime()}`;
+
+    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const wb = writeBatch(firestore);
+    const batch = new Batch(service, wb);
+
+    batch.set(col, { id: "newDoc", text: "hello", value: 42 });
+    const inverseOps = await batch.buildInverseOps();
+
+    expect(inverseOps).toEqual([{ type: "delete", collection: tid, id: "newDoc" }]);
+  });
+
+  it("builds update with old values as inverse of update", async (test) => {
+    const now = new Date();
+    const tid = `${test.task.id}_${now.getTime()}`;
+
+    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+
+    // Create doc first and ensure it's in cache
+    const setupBatch = writeBatch(firestore);
+    setupBatch.set(doc(col, "testDoc"), {
+      text: "old",
+      value: 1,
+      createdAt: timestampForCreatedAt,
+      updatedAt: timestampForCreatedAt,
+    });
+    await setupBatch.commit();
+
+    // Read to populate cache
+    await getDocOriginal(doc(col, "testDoc"));
+
+    const wb = writeBatch(firestore);
+    const batch = new Batch(service, wb);
+
+    batch.update(col, { id: "testDoc", text: "new" });
+    const inverseOps = await batch.buildInverseOps();
+
+    expect(inverseOps).toEqual([
+      {
+        type: "update",
+        collection: tid,
+        id: "testDoc",
+        data: { text: "old" },
+      },
+    ]);
+  });
+
+  it("builds set with full old data as inverse of delete", async (test) => {
+    const now = new Date();
+    const tid = `${test.task.id}_${now.getTime()}`;
+
+    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+
+    // Create doc first
+    const setupBatch = writeBatch(firestore);
+    setupBatch.set(doc(col, "testDoc"), {
+      text: "hello",
+      value: 42,
+      createdAt: timestampForCreatedAt,
+      updatedAt: timestampForCreatedAt,
+    });
+    await setupBatch.commit();
+
+    // Read to populate cache
+    await getDocOriginal(doc(col, "testDoc"));
+
+    const wb = writeBatch(firestore);
+    const batch = new Batch(service, wb);
+
+    batch.delete(col, "testDoc");
+    const inverseOps = await batch.buildInverseOps();
+
+    expect(inverseOps).toEqual([
+      {
+        type: "set",
+        collection: tid,
+        id: "testDoc",
+        data: { text: "hello", value: 42 },
+      },
+    ]);
+  });
+
+  it("builds inverse ops in reverse order", async (test) => {
+    const now = new Date();
+    const tid = `${test.task.id}_${now.getTime()}`;
+
+    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+
+    const wb = writeBatch(firestore);
+    const batch = new Batch(service, wb);
+
+    batch.set(col, { id: "doc1", text: "a", value: 1 });
+    batch.set(col, { id: "doc2", text: "b", value: 2 });
+    batch.set(col, { id: "doc3", text: "c", value: 3 });
+
+    const inverseOps = await batch.buildInverseOps();
+
+    expect(inverseOps).toHaveLength(3);
+    expect(inverseOps[0].id).toBe("doc3");
+    expect(inverseOps[1].id).toBe("doc2");
+    expect(inverseOps[2].id).toBe("doc1");
+  });
+
+  it("handles mixed set/update/delete in one batch", async (test) => {
+    const now = new Date();
+    const tid = `${test.task.id}_${now.getTime()}`;
+
+    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+
+    // Create docs for update and delete
+    const setupBatch = writeBatch(firestore);
+    setupBatch.set(doc(col, "updateDoc"), {
+      text: "before",
+      value: 10,
+      createdAt: timestampForCreatedAt,
+      updatedAt: timestampForCreatedAt,
+    });
+    setupBatch.set(doc(col, "deleteDoc"), {
+      text: "toDelete",
+      value: 99,
+      createdAt: timestampForCreatedAt,
+      updatedAt: timestampForCreatedAt,
+    });
+    await setupBatch.commit();
+
+    // Populate cache
+    await getDocOriginal(doc(col, "updateDoc"));
+    await getDocOriginal(doc(col, "deleteDoc"));
+
+    const wb = writeBatch(firestore);
+    const batch = new Batch(service, wb);
+
+    batch.set(col, { id: "newDoc", text: "created", value: 1 });
+    batch.update(col, { id: "updateDoc", text: "after" });
+    batch.delete(col, "deleteDoc");
+
+    const inverseOps = await batch.buildInverseOps();
+
+    // Reversed order: delete inverse, update inverse, set inverse
+    expect(inverseOps).toHaveLength(3);
+    expect(inverseOps[0]).toEqual({
+      type: "set",
+      collection: tid,
+      id: "deleteDoc",
+      data: { text: "toDelete", value: 99 },
+    });
+    expect(inverseOps[1]).toEqual({
+      type: "update",
+      collection: tid,
+      id: "updateDoc",
+      data: { text: "before" },
+    });
+    expect(inverseOps[2]).toEqual({
+      type: "delete",
+      collection: tid,
+      id: "newDoc",
+    });
+  });
+
+  it("handles cache miss gracefully for update", async (test) => {
+    const now = new Date();
+    const tid = `${test.task.id}_${now.getTime()}`;
+
+    // Use a collection name that has never been read — doc won't be in cache
+    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+
+    const wb = writeBatch(firestore);
+    const batch = new Batch(service, wb);
+
+    // Update a doc that doesn't exist in cache
+    batch.update(col, { id: "nonCachedDoc", text: "new" });
+    const inverseOps = await batch.buildInverseOps();
+
+    // Should return empty — can't build inverse without cached data
+    expect(inverseOps).toEqual([]);
+  });
+
+  it("handles cache miss gracefully for delete", async (test) => {
+    const now = new Date();
+    const tid = `${test.task.id}_${now.getTime()}`;
+
+    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+
+    const wb = writeBatch(firestore);
+    const batch = new Batch(service, wb);
+
+    // Delete a doc that doesn't exist in cache
+    batch.delete(col, "nonCachedDoc");
+    const inverseOps = await batch.buildInverseOps();
+
+    // Should return empty — can't build inverse without cached data
+    expect(inverseOps).toEqual([]);
+  });
+
+  it("builds partial inverse when some docs have cache miss", async (test) => {
+    const now = new Date();
+    const tid = `${test.task.id}_${now.getTime()}`;
+
+    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+
+    const wb = writeBatch(firestore);
+    const batch = new Batch(service, wb);
+
+    // set: always has inverse (delete), no cache needed
+    batch.set(col, { id: "newDoc", text: "hello", value: 1 });
+    // update: doc not in cache → inverse skipped
+    batch.update(col, { id: "uncachedUpdateDoc", text: "updated" });
+    // delete: doc not in cache → inverse skipped
+    batch.delete(col, "uncachedDeleteDoc");
+
+    const inverseOps = await batch.buildInverseOps();
+
+    // Only the set's inverse (delete) should be present
+    expect(inverseOps).toEqual([{ type: "delete", collection: tid, id: "newDoc" }]);
   });
 });

@@ -2460,4 +2460,71 @@ describe("<LifeLog />", () => {
       expect(timeRange?.textContent).not.toMatch(/\(\d+:\d{2}\)/);
     });
   });
+
+  describe("MobileToolbar undo/redo/history buttons", () => {
+    it("↺ undo button triggers undo", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+      const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+
+      // Set startAt to create a history entry
+      await userEvent.keyboard("{s}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      // Click ↺ button to undo
+      const undoButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+        (btn) => btn.textContent === "↺",
+      );
+      expect(undoButton).toBeTruthy();
+      await userEvent.click(undoButton!);
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(log3Element.textContent).not.toContain("12:00");
+      });
+    });
+
+    it("↻ redo button triggers redo", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+        initialSelectedId: "$log3",
+      });
+
+      await result.findByText("third lifelog");
+      const log3Element = result.getByText("third lifelog").closest(`.${styles.lifeLogs.listItem}`)!;
+
+      // Set startAt
+      await userEvent.keyboard("{s}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+
+      // Undo
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(log3Element.textContent).not.toContain("12:00");
+      });
+
+      // Click ↻ button to redo
+      const redoButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+        (btn) => btn.textContent === "↻",
+      );
+      expect(redoButton).toBeTruthy();
+      await userEvent.click(redoButton!);
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expect(log3Element.textContent).toContain("12:00");
+      });
+    });
+  });
 });

@@ -24,6 +24,7 @@ import { type Accessor, createContext, createSignal, type JSXElement, onCleanup,
 
 import { ServiceNotAvailable } from "@/services/error";
 import { type FirebaseService, useFirebaseService } from "@/services/firebase";
+import "@/services/firebase/firestore/editHistory/schema";
 import { type Schema } from "@/services/firebase/firestore/schema";
 import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { type StoreService, useStoreService } from "@/services/store";
@@ -39,6 +40,7 @@ export type FirestoreService = {
   setClock: (clock: boolean) => void;
   resolve: (() => void) | undefined;
   batchVersion$: Accessor<DocumentData<Schema["batchVersion"]> | undefined>;
+  editHistoryHead$: Accessor<DocumentData<Schema["editHistoryHead"]> | undefined>;
 };
 
 const context = createContext<FirestoreService>();
@@ -98,10 +100,14 @@ export function FirestoreServiceProvider(props: {
     setClock,
     resolve: undefined,
     batchVersion$: () => undefined,
+    editHistoryHead$: () => undefined,
   };
 
   const batchVersionCol = collection(firestore, "batchVersion") as CollectionReference<Schema["batchVersion"]>;
   service.batchVersion$ = createSubscribeSignal(service, () => doc(batchVersionCol, singletonDocumentId));
+
+  const editHistoryHeadCol = collection(firestore, "editHistoryHead") as CollectionReference<Schema["editHistoryHead"]>;
+  service.editHistoryHead$ = createSubscribeSignal(service, () => doc(editHistoryHeadCol, singletonDocumentId));
 
   const unsubscribe = onSnapshotsInSync(firestore, () => {
     service.resolve?.();

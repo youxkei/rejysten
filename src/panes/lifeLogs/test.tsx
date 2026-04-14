@@ -2,12 +2,14 @@ import { render } from "@solidjs/testing-library";
 import { doc, Timestamp, writeBatch } from "firebase/firestore";
 import { onMount, Suspense } from "solid-js";
 
+import { WithEditHistoryPanel } from "@/components/editHistory";
 import { LifeLogs } from "@/panes/lifeLogs";
 import "@/panes/search/actions";
 import "@/panes/search/store";
 import { ActionsServiceProvider } from "@/services/actions";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import {
+  type FirestoreService,
   FirestoreServiceProvider,
   getCollection,
   singletonDocumentId,
@@ -33,6 +35,7 @@ export interface SetupLifeLogsTestOptions {
   initialSelectedId?: string;
   skipDefaultLifeLogs?: boolean;
   includeLifeLogWithDuration?: boolean;
+  withEditHistory?: boolean;
 }
 
 export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, options?: SetupLifeLogsTestOptions) {
@@ -42,6 +45,8 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
     resolveReady = resolve;
     rejectReady = reject;
   });
+
+  let firestoreRef: FirestoreService | undefined;
 
   const result = render(() => (
     <StoreServiceProvider localStorageNamePostfix={testId}>
@@ -55,6 +60,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
             <Suspense fallback={<span>loading....</span>}>
               {(() => {
                 const firestore = useFirestoreService();
+                firestoreRef = firestore;
                 const batchVersion = getCollection(firestore, "batchVersion");
                 const lifeLogs = getCollection(firestore, "lifeLogs");
                 const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
@@ -255,8 +261,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                       });
                     } else if (!options?.skipDefaultLifeLogs) {
                       const lifeLogCount = options?.lifeLogCount ?? 3;
-                      const initialSelectedId =
-                        lifeLogCount > 3 ? `$log${Math.min(lifeLogCount, 10)}` : "$log1";
+                      const initialSelectedId = lifeLogCount > 3 ? `$log${Math.min(lifeLogCount, 10)}` : "$log1";
                       updateState((state) => {
                         state.panesLifeLogs.selectedLifeLogId = initialSelectedId;
                       });
@@ -264,7 +269,8 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                   })().then(resolveReady, rejectReady);
                 });
 
-                return <LifeLogs {...(options?.lifeLogsProps ?? {})} />;
+                const content = <LifeLogs {...(options?.lifeLogsProps ?? {})} />;
+                return options?.withEditHistory ? <WithEditHistoryPanel>{content}</WithEditHistoryPanel> : content;
               })()}
             </Suspense>
           </ActionsServiceProvider>
@@ -282,5 +288,6 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
 
   return {
     result,
+    firestore: firestoreRef!,
   };
 }

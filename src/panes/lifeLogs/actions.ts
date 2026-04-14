@@ -8,15 +8,18 @@ import { EditingField } from "@/panes/lifeLogs/schema";
 import { type Actions, actionsCreator, initialActionsContext } from "@/services/actions";
 import { getCollection, getDoc, getDocs, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
+import { buildSelection } from "@/services/firebase/firestore/editHistory/schema";
 import {
   addNextSibling,
   addPrevSibling,
   addSingle,
+  dedent,
   getAboveNode,
   getBelowNode,
   getFirstChildNode,
   getNextNode,
   getPrevNode,
+  indent,
   remove,
 } from "@/services/firebase/firestore/treeNode";
 import { useStoreService } from "@/services/store";
@@ -112,10 +115,14 @@ initialActionsContext.panes.lifeLogs = {
   preventBlurSave: () => undefined,
 };
 
-actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Actions) => {
+actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Actions) => {
   const { state, updateState } = useStoreService();
   const firestore = useFirestoreService();
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
+
+  function currentSelection() {
+    return buildSelection(state);
+  }
 
   // Navigation actions
   function navigateNext() {
@@ -196,25 +203,35 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
       const nodeId = uuidv7();
       firestore.setClock(true);
       try {
-        await runBatch(firestore, (batch) => {
-          addSingle(firestore, batch, lifeLogTreeNodesCol, lifeLog.id, {
-            id: nodeId,
-            text: "",
-            lifeLogId: lifeLog.id,
-          });
-          batch.update(lifeLogsCol, {
-            id: lifeLog.id,
-            hasTreeNodes: true,
-          });
-          return Promise.resolve();
-        });
-      } finally {
+        await runBatch(
+          firestore,
+          (batch) => {
+            addSingle(firestore, batch, lifeLogTreeNodesCol, lifeLog.id, {
+              id: nodeId,
+              text: "",
+              lifeLogId: lifeLog.id,
+            });
+            batch.update(lifeLogsCol, {
+              id: lifeLog.id,
+              hasTreeNodes: true,
+            });
+            return Promise.resolve();
+          },
+          {
+            description: "ノード作成",
+            prevSelection: currentSelection(),
+            nextSelection: { lifeLogs: lifeLog.id, lifeLogTreeNodes: nodeId },
+          },
+        );
+
         await startTransition(() => {
           updateState((s) => {
             s.panesLifeLogs.selectedLifeLogNodeId = nodeId;
           });
           firestore.setClock(false);
         });
+      } finally {
+        firestore.setClock(false);
       }
     }
   }
@@ -237,16 +254,24 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
 
     firestore.setClock(true);
     try {
-      await runBatch(firestore, (batch) => {
-        batch.set(lifeLogsCol, {
-          id: newLifeLogId,
-          text: "",
-          hasTreeNodes: false,
-          startAt: lifeLog.endAt.isEqual(noneTimestamp) ? TimestampNow() : lifeLog.endAt,
-          endAt: noneTimestamp,
-        });
-        return Promise.resolve();
-      });
+      await runBatch(
+        firestore,
+        (batch) => {
+          batch.set(lifeLogsCol, {
+            id: newLifeLogId,
+            text: "",
+            hasTreeNodes: false,
+            startAt: lifeLog.endAt.isEqual(noneTimestamp) ? TimestampNow() : lifeLog.endAt,
+            endAt: noneTimestamp,
+          });
+          return Promise.resolve();
+        },
+        {
+          description: "LifeLog作成",
+          prevSelection: currentSelection(),
+          nextSelection: { lifeLogs: newLifeLogId },
+        },
+      );
 
       await startTransition(() => {
         updateState((state) => {
@@ -274,21 +299,29 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
 
       try {
         firestore.setClock(true);
-        await runBatch(firestore, async (batch) => {
-          if (above) {
-            await addPrevSibling(firestore, batch, lifeLogTreeNodesCol, node, {
-              id: newNodeId,
-              text: "",
-              lifeLogId: state.panesLifeLogs.selectedLifeLogId,
-            });
-          } else {
-            await addNextSibling(firestore, batch, lifeLogTreeNodesCol, node, {
-              id: newNodeId,
-              text: "",
-              lifeLogId: state.panesLifeLogs.selectedLifeLogId,
-            });
-          }
-        });
+        await runBatch(
+          firestore,
+          async (batch) => {
+            if (above) {
+              await addPrevSibling(firestore, batch, lifeLogTreeNodesCol, node, {
+                id: newNodeId,
+                text: "",
+                lifeLogId: state.panesLifeLogs.selectedLifeLogId,
+              });
+            } else {
+              await addNextSibling(firestore, batch, lifeLogTreeNodesCol, node, {
+                id: newNodeId,
+                text: "",
+                lifeLogId: state.panesLifeLogs.selectedLifeLogId,
+              });
+            }
+          },
+          {
+            description: "ノード追加",
+            prevSelection: currentSelection(),
+            nextSelection: { lifeLogs: state.panesLifeLogs.selectedLifeLogId, lifeLogTreeNodes: newNodeId },
+          },
+        );
 
         await startTransition(() => {
           updateState((s) => {
@@ -311,16 +344,24 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
 
       firestore.setClock(true);
       try {
-        await runBatch(firestore, (batch) => {
-          batch.set(lifeLogsCol, {
-            id: newLifeLogId,
-            text: "",
-            hasTreeNodes: false,
-            startAt: lifeLog.endAt.isEqual(noneTimestamp) ? TimestampNow() : lifeLog.endAt,
-            endAt: noneTimestamp,
-          });
-          return Promise.resolve();
-        });
+        await runBatch(
+          firestore,
+          (batch) => {
+            batch.set(lifeLogsCol, {
+              id: newLifeLogId,
+              text: "",
+              hasTreeNodes: false,
+              startAt: lifeLog.endAt.isEqual(noneTimestamp) ? TimestampNow() : lifeLog.endAt,
+              endAt: noneTimestamp,
+            });
+            return Promise.resolve();
+          },
+          {
+            description: "LifeLog作成",
+            prevSelection: currentSelection(),
+            nextSelection: { lifeLogs: newLifeLogId },
+          },
+        );
 
         await startTransition(() => {
           updateState((state) => {
@@ -352,13 +393,17 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
 
     firestore.setClock(true);
     try {
-      await runBatch(firestore, (batch) => {
-        batch.update(lifeLogsCol, {
-          id: selectedLifeLogId,
-          startAt: newTimestamp,
-        });
-        return Promise.resolve();
-      });
+      await runBatch(
+        firestore,
+        (batch) => {
+          batch.update(lifeLogsCol, {
+            id: selectedLifeLogId,
+            startAt: newTimestamp,
+          });
+          return Promise.resolve();
+        },
+        { description: "時刻設定", prevSelection: currentSelection() },
+      );
     } finally {
       await startTransition(() => {
         firestore.setClock(false);
@@ -378,13 +423,17 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
 
     firestore.setClock(true);
     try {
-      await runBatch(firestore, (batch) => {
-        batch.update(lifeLogsCol, {
-          id: selectedLifeLogId,
-          endAt: newTimestamp,
-        });
-        return Promise.resolve();
-      });
+      await runBatch(
+        firestore,
+        (batch) => {
+          batch.update(lifeLogsCol, {
+            id: selectedLifeLogId,
+            endAt: newTimestamp,
+          });
+          return Promise.resolve();
+        },
+        { description: "時刻設定", prevSelection: currentSelection() },
+      );
     } finally {
       await startTransition(() => {
         firestore.setClock(false);
@@ -441,15 +490,26 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
       return;
     }
 
+    // Skip no-op save when text hasn't changed
+    const currentLifeLog = await getDoc(firestore, lifeLogsCol, selectedLifeLogId);
+    if (currentLifeLog && currentLifeLog.text === newText) {
+      if (stopEditing) doStopEditing();
+      return;
+    }
+
     firestore.setClock(true);
     try {
-      await runBatch(firestore, (batch) => {
-        batch.update(lifeLogsCol, {
-          id: selectedLifeLogId,
-          text: newText,
-        });
-        return Promise.resolve();
-      });
+      await runBatch(
+        firestore,
+        (batch) => {
+          batch.update(lifeLogsCol, {
+            id: selectedLifeLogId,
+            text: newText,
+          });
+          return Promise.resolve();
+        },
+        { description: "テキスト編集", prevSelection: currentSelection() },
+      );
     } finally {
       await startTransition(() => {
         if (stopEditing) doStopEditing();
@@ -478,13 +538,17 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
 
     firestore.setClock(true);
     try {
-      await runBatch(firestore, (batch) => {
-        batch.update(lifeLogsCol, {
-          id: selectedLifeLogId,
-          startAt: newTimestamp,
-        });
-        return Promise.resolve();
-      });
+      await runBatch(
+        firestore,
+        (batch) => {
+          batch.update(lifeLogsCol, {
+            id: selectedLifeLogId,
+            startAt: newTimestamp,
+          });
+          return Promise.resolve();
+        },
+        { description: "時刻編集", prevSelection: currentSelection() },
+      );
     } finally {
       await startTransition(() => {
         if (stopEditing) doStopEditing();
@@ -513,13 +577,17 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
 
     firestore.setClock(true);
     try {
-      await runBatch(firestore, (batch) => {
-        batch.update(lifeLogsCol, {
-          id: selectedLifeLogId,
-          endAt: newTimestamp,
-        });
-        return Promise.resolve();
-      });
+      await runBatch(
+        firestore,
+        (batch) => {
+          batch.update(lifeLogsCol, {
+            id: selectedLifeLogId,
+            endAt: newTimestamp,
+          });
+          return Promise.resolve();
+        },
+        { description: "時刻編集", prevSelection: currentSelection() },
+      );
     } finally {
       await startTransition(() => {
         if (stopEditing) doStopEditing();
@@ -554,10 +622,18 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
 
     firestore.setClock(true);
     try {
-      await runBatch(firestore, (batch) => {
-        batch.delete(lifeLogsCol, selectedLifeLogId);
-        return Promise.resolve();
-      });
+      await runBatch(
+        firestore,
+        (batch) => {
+          batch.delete(lifeLogsCol, selectedLifeLogId);
+          return Promise.resolve();
+        },
+        {
+          description: "LifeLog削除",
+          prevSelection: currentSelection(),
+          nextSelection: { lifeLogs: targetId },
+        },
+      );
 
       await startTransition(() => {
         updateState((state) => {
@@ -602,10 +678,18 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     // Delete current LifeLog and select previous
     firestore.setClock(true);
     try {
-      await runBatch(firestore, (batch) => {
-        batch.delete(lifeLogsCol, selectedLifeLogId);
-        return Promise.resolve();
-      });
+      await runBatch(
+        firestore,
+        (batch) => {
+          batch.delete(lifeLogsCol, selectedLifeLogId);
+          return Promise.resolve();
+        },
+        {
+          description: "LifeLog削除",
+          prevSelection: currentSelection(),
+          nextSelection: { lifeLogs: context.prevId },
+        },
+      );
 
       context.setLifeLogCursorInfo({ lifeLogId: context.prevId, cursorPosition });
       // Save setIsEditing reference before updateState triggers onCleanup which resets it
@@ -650,10 +734,18 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     // Delete current LifeLog and select next with cursor at start
     firestore.setClock(true);
     try {
-      await runBatch(firestore, (batch) => {
-        batch.delete(lifeLogsCol, selectedLifeLogId);
-        return Promise.resolve();
-      });
+      await runBatch(
+        firestore,
+        (batch) => {
+          batch.delete(lifeLogsCol, selectedLifeLogId);
+          return Promise.resolve();
+        },
+        {
+          description: "LifeLog削除",
+          prevSelection: currentSelection(),
+          nextSelection: { lifeLogs: context.nextId },
+        },
+      );
 
       context.setLifeLogCursorInfo({ lifeLogId: context.nextId, cursorPosition: 0 });
       // Save setIsEditing reference before updateState triggers onCleanup which resets it
@@ -677,16 +769,24 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
 
     firestore.setClock(true);
     try {
-      await runBatch(firestore, (batch) => {
-        batch.set(lifeLogsCol, {
-          id: newLifeLogId,
-          text: "",
-          hasTreeNodes: false,
-          startAt: TimestampNow(),
-          endAt: noneTimestamp,
-        });
-        return Promise.resolve();
-      });
+      await runBatch(
+        firestore,
+        (batch) => {
+          batch.set(lifeLogsCol, {
+            id: newLifeLogId,
+            text: "",
+            hasTreeNodes: false,
+            startAt: TimestampNow(),
+            endAt: noneTimestamp,
+          });
+          return Promise.resolve();
+        },
+        {
+          description: "LifeLog作成",
+          prevSelection: currentSelection(),
+          nextSelection: { lifeLogs: newLifeLogId },
+        },
+      );
 
       await startTransition(() => {
         updateState((state) => {
@@ -716,15 +816,26 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
       return;
     }
 
+    // Skip no-op save when text hasn't changed
+    const currentNode = await getDoc(firestore, lifeLogTreeNodesCol, selectedNodeId);
+    if (currentNode && currentNode.text === newText) {
+      if (stopEditing) doStopEditing();
+      return;
+    }
+
     firestore.setClock(true);
     try {
-      await runBatch(firestore, (batch) => {
-        batch.update(lifeLogTreeNodesCol, {
-          id: selectedNodeId,
-          text: newText,
-        });
-        return Promise.resolve();
-      });
+      await runBatch(
+        firestore,
+        (batch) => {
+          batch.update(lifeLogTreeNodesCol, {
+            id: selectedNodeId,
+            text: newText,
+          });
+          return Promise.resolve();
+        },
+        { description: "ノードテキスト編集", prevSelection: currentSelection() },
+      );
     } finally {
       await startTransition(() => {
         if (stopEditing) doStopEditing();
@@ -742,23 +853,8 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     const beforeCursor = text.slice(0, cursorPos);
     const afterCursor = text.slice(cursorPos);
 
-    // Save current node with text before cursor
-    firestore.setClock(true);
-    try {
-      await runBatch(firestore, (batch) => {
-        batch.update(lifeLogTreeNodesCol, {
-          id: selectedNodeId,
-          text: beforeCursor,
-        });
-        return Promise.resolve();
-      });
-    } finally {
-      await startTransition(() => {
-        firestore.setClock(false);
-      });
-    }
-
-    // Create new sibling node with afterCursor
+    // Read node BEFORE the batch — parentId/order are needed by addNextSibling
+    // and don't change during text update
     const node = await getDoc(firestore, lifeLogTreeNodesCol, selectedNodeId);
     if (!node) return;
 
@@ -767,13 +863,25 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
 
     firestore.setClock(true);
     try {
-      await runBatch(firestore, async (batch) => {
-        await addNextSibling(firestore, batch, lifeLogTreeNodesCol, node, {
-          id: newNodeId,
-          text: afterCursor,
-          lifeLogId: state.panesLifeLogs.selectedLifeLogId,
-        });
-      });
+      await runBatch(
+        firestore,
+        async (batch) => {
+          batch.update(lifeLogTreeNodesCol, {
+            id: selectedNodeId,
+            text: beforeCursor,
+          });
+          await addNextSibling(firestore, batch, lifeLogTreeNodesCol, node, {
+            id: newNodeId,
+            text: afterCursor,
+            lifeLogId: state.panesLifeLogs.selectedLifeLogId,
+          });
+        },
+        {
+          description: "ノード分割",
+          prevSelection: currentSelection(),
+          nextSelection: { lifeLogs: state.panesLifeLogs.selectedLifeLogId, lifeLogTreeNodes: newNodeId },
+        },
+      );
 
       // Save setIsEditing reference before updateState triggers onCleanup which resets it
       const setIsEditing = context.setIsEditing;
@@ -813,14 +921,22 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     ) {
       firestore.setClock(true);
       try {
-        await runBatch(firestore, async (batch) => {
-          await remove(firestore, batch, lifeLogTreeNodesCol, node);
-          // Set hasTreeNodes to false when removing the last node
-          batch.update(lifeLogsCol, {
-            id: lifeLogId,
-            hasTreeNodes: false,
-          });
-        });
+        await runBatch(
+          firestore,
+          async (batch) => {
+            await remove(firestore, batch, lifeLogTreeNodesCol, node);
+            // Set hasTreeNodes to false when removing the last node
+            batch.update(lifeLogsCol, {
+              id: lifeLogId,
+              hasTreeNodes: false,
+            });
+          },
+          {
+            description: "ノード削除",
+            prevSelection: currentSelection(),
+            nextSelection: { lifeLogs: lifeLogId },
+          },
+        );
 
         context.setLifeLogCursorInfo({ lifeLogId, cursorPosition: context.lifeLogTextLength });
         const setEditingField = context.setEditingField;
@@ -848,13 +964,21 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
 
     firestore.setClock(true);
     try {
-      await runBatch(firestore, async (batch) => {
-        batch.update(lifeLogTreeNodesCol, {
-          id: aboveNode.id,
-          text: mergedText,
-        });
-        await remove(firestore, batch, lifeLogTreeNodesCol, node);
-      });
+      await runBatch(
+        firestore,
+        async (batch) => {
+          batch.update(lifeLogTreeNodesCol, {
+            id: aboveNode.id,
+            text: mergedText,
+          });
+          await remove(firestore, batch, lifeLogTreeNodesCol, node);
+        },
+        {
+          description: "ノード統合",
+          prevSelection: currentSelection(),
+          nextSelection: { lifeLogs: state.panesLifeLogs.selectedLifeLogId, lifeLogTreeNodes: aboveNode.id },
+        },
+      );
 
       const setIsEditing = context.setIsEditing;
       const setMergeCursorInfo = context.setMergeCursorInfo;
@@ -892,13 +1016,17 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
 
     firestore.setClock(true);
     try {
-      await runBatch(firestore, async (batch) => {
-        batch.update(lifeLogTreeNodesCol, {
-          id: node.id,
-          text: mergedText,
-        });
-        await remove(firestore, batch, lifeLogTreeNodesCol, belowNode);
-      });
+      await runBatch(
+        firestore,
+        async (batch) => {
+          batch.update(lifeLogTreeNodesCol, {
+            id: node.id,
+            text: mergedText,
+          });
+          await remove(firestore, batch, lifeLogTreeNodesCol, belowNode);
+        },
+        { description: "ノード統合", prevSelection: currentSelection() },
+      );
 
       context.updateNodeInput(mergedText, cursorPosition);
 
@@ -915,8 +1043,34 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     const selectedNodeId = state.panesLifeLogs.selectedLifeLogNodeId;
     if (selectedNodeId === "") return;
 
-    await saveTreeNode(false);
-    actions.components.tree.indentNode();
+    const node = await getDoc(firestore, lifeLogTreeNodesCol, selectedNodeId);
+    if (!node) return;
+
+    const newText = context.pendingNodeText;
+
+    firestore.setClock(true);
+    try {
+      await runBatch(
+        firestore,
+        async (batch) => {
+          if (newText !== undefined) {
+            batch.update(lifeLogTreeNodesCol, {
+              id: selectedNodeId,
+              text: newText,
+            });
+          }
+          await indent(firestore, batch, lifeLogTreeNodesCol, node);
+        },
+        { description: "インデント変更", prevSelection: currentSelection() },
+      );
+
+      await startTransition(() => {
+        firestore.setClock(false);
+      });
+    } finally {
+      firestore.setClock(false);
+    }
+
     context.setTabCursorInfo({ nodeId: selectedNodeId, cursorPosition });
   }
 
@@ -925,8 +1079,34 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, actions: Acti
     const selectedNodeId = state.panesLifeLogs.selectedLifeLogNodeId;
     if (selectedNodeId === "") return;
 
-    await saveTreeNode(false);
-    actions.components.tree.dedentNode();
+    const node = await getDoc(firestore, lifeLogTreeNodesCol, selectedNodeId);
+    if (!node) return;
+
+    const newText = context.pendingNodeText;
+
+    firestore.setClock(true);
+    try {
+      await runBatch(
+        firestore,
+        async (batch) => {
+          if (newText !== undefined) {
+            batch.update(lifeLogTreeNodesCol, {
+              id: selectedNodeId,
+              text: newText,
+            });
+          }
+          await dedent(firestore, batch, lifeLogTreeNodesCol, node);
+        },
+        { description: "インデント変更", prevSelection: currentSelection() },
+      );
+
+      await startTransition(() => {
+        firestore.setClock(false);
+      });
+    } finally {
+      firestore.setClock(false);
+    }
+
     context.setTabCursorInfo({ nodeId: selectedNodeId, cursorPosition });
   }
 

@@ -95,27 +95,58 @@ export async function handleShare(
       const lastChild = await getLastChildNode(firestore, treeNodesCol, matchingLog, fromServer);
       if (lastChild) {
         nodeId = uuidv7();
-        await runTransaction(firestore, async (batch) => {
-          if (otherLog) {
-            batch.update(lifeLogsCol, { id: otherLog.id, endAt: now });
-          }
-          await addNextSibling(
-            firestore,
-            batch,
-            treeNodesCol,
-            lastChild,
-            {
-              id: nodeId,
-              text: markdownLink,
-              lifeLogId: matchingLog.id,
-            },
-            fromServer,
-          );
-        });
+        await runTransaction(
+          firestore,
+          async (batch) => {
+            if (otherLog) {
+              batch.update(lifeLogsCol, { id: otherLog.id, endAt: now });
+            }
+            await addNextSibling(
+              firestore,
+              batch,
+              treeNodesCol,
+              lastChild,
+              {
+                id: nodeId,
+                text: markdownLink,
+                lifeLogId: matchingLog.id,
+              },
+              fromServer,
+            );
+          },
+          {
+            description: "共有からノード追加",
+            prevSelection: {},
+            nextSelection: { lifeLogs: matchingLog.id, lifeLogTreeNodes: nodeId },
+          },
+        );
       } else {
         // Shouldn't happen, but handle gracefully
         nodeId = uuidv7();
-        await runTransaction(firestore, (batch) => {
+        await runTransaction(
+          firestore,
+          (batch) => {
+            if (otherLog) {
+              batch.update(lifeLogsCol, { id: otherLog.id, endAt: now });
+            }
+            addSingle(firestore, batch, treeNodesCol, matchingLog.id, {
+              id: nodeId,
+              text: markdownLink,
+              lifeLogId: matchingLog.id,
+            });
+          },
+          {
+            description: "共有からノード追加",
+            prevSelection: {},
+            nextSelection: { lifeLogs: matchingLog.id, lifeLogTreeNodes: nodeId },
+          },
+        );
+      }
+    } else {
+      nodeId = uuidv7();
+      await runTransaction(
+        firestore,
+        (batch) => {
           if (otherLog) {
             batch.update(lifeLogsCol, { id: otherLog.id, endAt: now });
           }
@@ -124,24 +155,17 @@ export async function handleShare(
             text: markdownLink,
             lifeLogId: matchingLog.id,
           });
-        });
-      }
-    } else {
-      nodeId = uuidv7();
-      await runTransaction(firestore, (batch) => {
-        if (otherLog) {
-          batch.update(lifeLogsCol, { id: otherLog.id, endAt: now });
-        }
-        addSingle(firestore, batch, treeNodesCol, matchingLog.id, {
-          id: nodeId,
-          text: markdownLink,
-          lifeLogId: matchingLog.id,
-        });
-        batch.update(lifeLogsCol, {
-          id: matchingLog.id,
-          hasTreeNodes: true,
-        });
-      });
+          batch.update(lifeLogsCol, {
+            id: matchingLog.id,
+            hasTreeNodes: true,
+          });
+        },
+        {
+          description: "共有からノード追加",
+          prevSelection: {},
+          nextSelection: { lifeLogs: matchingLog.id, lifeLogTreeNodes: nodeId },
+        },
+      );
     }
   } else {
     const newLogId = uuidv7();
@@ -159,23 +183,31 @@ export async function handleShare(
       startAt = latestLogs.length > 0 ? latestLogs[0].endAt : now;
     }
 
-    await runTransaction(firestore, (batch) => {
-      if (otherLog) {
-        batch.update(lifeLogsCol, { id: otherLog.id, endAt: now });
-      }
-      batch.set(lifeLogsCol, {
-        id: newLogId,
-        text: category,
-        hasTreeNodes: true,
-        startAt,
-        endAt: noneTimestamp,
-      });
-      addSingle(firestore, batch, treeNodesCol, newLogId, {
-        id: nodeId,
-        text: markdownLink,
-        lifeLogId: newLogId,
-      });
-    });
+    await runTransaction(
+      firestore,
+      (batch) => {
+        if (otherLog) {
+          batch.update(lifeLogsCol, { id: otherLog.id, endAt: now });
+        }
+        batch.set(lifeLogsCol, {
+          id: newLogId,
+          text: category,
+          hasTreeNodes: true,
+          startAt,
+          endAt: noneTimestamp,
+        });
+        addSingle(firestore, batch, treeNodesCol, newLogId, {
+          id: nodeId,
+          text: markdownLink,
+          lifeLogId: newLogId,
+        });
+      },
+      {
+        description: "共有からノード追加",
+        prevSelection: {},
+        nextSelection: { lifeLogs: newLogId, lifeLogTreeNodes: nodeId },
+      },
+    );
   }
 
   return { lifeLogId, nodeId, added: true };

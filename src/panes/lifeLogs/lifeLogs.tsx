@@ -179,8 +179,14 @@ export function TimeRangedLifeLogs(props: {
 
   const originalSlideOlder = props.slideOlder;
   const originalSlideNewer = props.slideNewer;
-  const trackingSlideOlder = async () => { lastSlideDirection = "older"; await originalSlideOlder(); };
-  const trackingSlideNewer = async () => { lastSlideDirection = "newer"; await originalSlideNewer(); };
+  const trackingSlideOlder = async () => {
+    lastSlideDirection = "older";
+    await originalSlideOlder();
+  };
+  const trackingSlideNewer = async () => {
+    lastSlideDirection = "newer";
+    await originalSlideNewer();
+  };
 
   createEffect(
     on(
