@@ -1,5 +1,4 @@
 import {
-  type CollectionReference,
   type Firestore,
   collection,
   writeBatch,
@@ -7,20 +6,20 @@ import {
   getDoc as getDocOriginal,
   doc,
   onSnapshotsInSync,
+  type Timestamp,
 } from "firebase/firestore";
 import { createComputed, createRoot, createSignal } from "solid-js";
 import { describe, it, vi, beforeAll, afterAll, expect } from "vitest";
 
 import {
   singletonDocumentId,
-  type Timestamps,
   type FirestoreService,
+  type SchemaCollectionReference,
   waitForServerSync,
 } from "@/services/firebase/firestore";
 import { Batch, runBatch, runTransaction } from "@/services/firebase/firestore/batch";
 import "@/services/firebase/firestore/editHistory/schema";
 import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
-import { type Schema } from "@/services/firebase/firestore/schema";
 import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import {
   createTestFirestoreService,
@@ -29,7 +28,15 @@ import {
 } from "@/services/firebase/firestore/test";
 import { acquireEmulator, releaseEmulator, getEmulatorPort } from "@/test";
 
-type TestDoc = Timestamps & { text: string; value: number };
+declare module "@/services/firebase/firestore/schema" {
+  interface Schema {
+    __test__: { text: string; value: number; createdAt: Timestamp; updatedAt: Timestamp };
+  }
+}
+
+function testCollection(fs: Firestore, name: string): SchemaCollectionReference<"__test__"> {
+  return collection(fs, name) as SchemaCollectionReference<"__test__">;
+}
 
 let service: FirestoreService;
 let firestore: Firestore;
@@ -61,7 +68,7 @@ describe("batch", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const col = testCollection(firestore, tid);
       const setupBatch = writeBatch(firestore);
 
       // First create a document
@@ -97,7 +104,7 @@ describe("batch", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const col = testCollection(firestore, tid);
       const ngramsCol = collection(firestore, "ngrams");
 
       // Enable ngram for this collection
@@ -136,7 +143,7 @@ describe("batch", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const col = testCollection(firestore, tid);
       const setupBatch = writeBatch(firestore);
 
       // First create a document
@@ -173,7 +180,7 @@ describe("batch", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const col = testCollection(firestore, tid);
       const setupBatch = writeBatch(firestore);
 
       // First create a singleton document
@@ -210,7 +217,7 @@ describe("batch", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const col = testCollection(firestore, tid);
       const wb = writeBatch(firestore);
       const batch = new Batch(service, wb);
 
@@ -234,7 +241,7 @@ describe("batch", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const col = testCollection(firestore, tid);
       const ngramsCol = collection(firestore, "ngrams");
 
       // Enable ngram for this collection
@@ -260,7 +267,7 @@ describe("batch", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const col = testCollection(firestore, tid);
 
       // First create a document
       const batch1 = writeBatch(firestore);
@@ -298,7 +305,7 @@ describe("batch", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const col = testCollection(firestore, tid);
       const wb = writeBatch(firestore);
       const batch = new Batch(service, wb);
 
@@ -321,7 +328,7 @@ describe("batch", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const col = testCollection(firestore, tid);
       const ngramsCol = collection(firestore, "ngrams");
 
       // Enable ngram for this collection
@@ -350,7 +357,7 @@ describe("transaction", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const col = testCollection(firestore, tid);
 
       await firebaseRunTransaction(firestore, async (transaction) => {
         const batch = new Batch(service, transaction);
@@ -374,7 +381,7 @@ describe("transaction", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const col = testCollection(firestore, tid);
       const setupBatch = writeBatch(firestore);
       setupBatch.set(doc(col, "txDoc"), {
         text: "original",
@@ -406,7 +413,7 @@ describe("transaction", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const col = testCollection(firestore, tid);
       const setupBatch = writeBatch(firestore);
       setupBatch.set(doc(col, "txDoc"), {
         text: "to delete",
@@ -429,7 +436,7 @@ describe("transaction", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const col = testCollection(firestore, tid);
       const setupBatch = writeBatch(firestore);
       setupBatch.set(doc(col, "txDoc"), {
         text: "start",
@@ -460,7 +467,7 @@ describe("transaction", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const col = testCollection(firestore, tid);
       const setupBatch = writeBatch(firestore);
       setupBatch.set(doc(col, "histDoc"), {
         text: "before",
@@ -497,7 +504,7 @@ describe("transaction", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const col = testCollection(firestore, tid);
       const setupBatch = writeBatch(firestore);
       setupBatch.set(doc(col, "skipDoc"), {
         text: "before",
@@ -536,7 +543,7 @@ describe("transaction", () => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
-      const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+      const col = testCollection(firestore, tid);
       const setupBatch = writeBatch(firestore);
       setupBatch.set(doc(col, "helperDoc"), {
         text: "before",
@@ -573,7 +580,7 @@ describe("Batch operation recording", () => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
     const wb = writeBatch(firestore);
     const batch = new Batch(service, wb);
 
@@ -597,7 +604,7 @@ describe("Batch operation recording", () => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
     const setupBatch = writeBatch(firestore);
     setupBatch.set(doc(col, "testDoc"), {
       text: "original",
@@ -629,7 +636,7 @@ describe("Batch operation recording", () => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
     const wb = writeBatch(firestore);
     const batch = new Batch(service, wb);
 
@@ -645,10 +652,10 @@ describe("Batch operation recording", () => {
   });
 
   it("does not record operations on excluded collections", () => {
-    const batchVersionCol = collection(firestore, "batchVersion") as CollectionReference<TestDoc>;
-    const editHistoryCol = collection(firestore, "editHistory") as CollectionReference<TestDoc>;
-    const editHistoryHeadCol = collection(firestore, "editHistoryHead") as CollectionReference<TestDoc>;
-    const ngramsCol = collection(firestore, "ngrams") as CollectionReference<TestDoc>;
+    const batchVersionCol = testCollection(firestore, "batchVersion");
+    const editHistoryCol = testCollection(firestore, "editHistory");
+    const editHistoryHeadCol = testCollection(firestore, "editHistoryHead");
+    const ngramsCol = testCollection(firestore, "ngrams");
 
     const wb = writeBatch(firestore);
     const batch = new Batch(service, wb);
@@ -665,7 +672,7 @@ describe("Batch operation recording", () => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
     const setupBatch = writeBatch(firestore);
     setupBatch.set(doc(col, "existingDoc"), {
       text: "existing",
@@ -702,12 +709,14 @@ describe("runBatch stability", () => {
       createRoot((dispose) => {
         disposeRoot = dispose;
 
-        const batchVersionCol = collection(sharedFirestore.firestore, "batchVersion") as CollectionReference<
-          Schema["batchVersion"]
-        >;
-        const editHistoryHeadCol = collection(sharedFirestore.firestore, "editHistoryHead") as CollectionReference<
-          Schema["editHistoryHead"]
-        >;
+        const batchVersionCol = collection(
+          sharedFirestore.firestore,
+          "batchVersion",
+        ) as SchemaCollectionReference<"batchVersion">;
+        const editHistoryHeadCol = collection(
+          sharedFirestore.firestore,
+          "editHistoryHead",
+        ) as SchemaCollectionReference<"editHistoryHead">;
 
         const [clock$] = createSignal(false);
         let lock = false;
@@ -764,9 +773,10 @@ describe("runBatch stability", () => {
       method: "DELETE",
     });
 
-    const batchVersionCol = collection(sharedFirestore.firestore, "batchVersion") as CollectionReference<
-      Schema["batchVersion"]
-    >;
+    const batchVersionCol = collection(
+      sharedFirestore.firestore,
+      "batchVersion",
+    ) as SchemaCollectionReference<"batchVersion">;
     const setupBatch = writeBatch(sharedFirestore.firestore);
     setupBatch.set(doc(batchVersionCol, singletonDocumentId), {
       version: "__INITIAL__",
@@ -787,7 +797,7 @@ describe("runBatch stability", () => {
 
   it("sequential runBatch calls all commit successfully", { timeout: 15000 }, async () => {
     await setupEmulator();
-    const testCol = collection(sharedFirestore.firestore, "sequential_docs") as CollectionReference<TestDoc>;
+    const testCol = testCollection(sharedFirestore.firestore, "sequential_docs");
 
     for (let i = 0; i < 5; i++) {
       await runBatch(
@@ -810,7 +820,7 @@ describe("runBatch stability", () => {
 
   it("sequential runBatch calls produce distinct batchVersions", { timeout: 15000 }, async () => {
     await setupEmulator();
-    const testCol = collection(sharedFirestore.firestore, "distinct_docs") as CollectionReference<TestDoc>;
+    const testCol = testCollection(sharedFirestore.firestore, "distinct_docs");
     const versions: (string | undefined)[] = [];
 
     for (let i = 0; i < 5; i++) {
@@ -832,7 +842,7 @@ describe("runBatch stability", () => {
 
   it("runBatch with editHistory creates entries for each call", { timeout: 15000 }, async () => {
     await setupEmulator();
-    const testCol = collection(sharedFirestore.firestore, "edithistory_docs") as CollectionReference<TestDoc>;
+    const testCol = testCollection(sharedFirestore.firestore, "edithistory_docs");
 
     const sb = writeBatch(sharedFirestore.firestore);
     sb.set(doc(testCol, "target"), {
@@ -862,7 +872,7 @@ describe("runBatch stability", () => {
 
   it("runBatch falls back to server read when batchVersion$ is undefined", { timeout: 15000 }, async () => {
     await setupEmulator();
-    const testCol = collection(sharedFirestore.firestore, "fallback_docs") as CollectionReference<TestDoc>;
+    const testCol = testCollection(sharedFirestore.firestore, "fallback_docs");
 
     const originalBatchVersion$ = sharedSvc.batchVersion$;
     sharedSvc.batchVersion$ = () => undefined;
@@ -890,7 +900,7 @@ describe("buildInverseOps", () => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
     const wb = writeBatch(firestore);
     const batch = new Batch(service, wb);
 
@@ -904,7 +914,7 @@ describe("buildInverseOps", () => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Create doc first and ensure it's in cache
     const setupBatch = writeBatch(firestore);
@@ -939,7 +949,7 @@ describe("buildInverseOps", () => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Create doc first
     const setupBatch = writeBatch(firestore);
@@ -974,7 +984,7 @@ describe("buildInverseOps", () => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     const wb = writeBatch(firestore);
     const batch = new Batch(service, wb);
@@ -995,7 +1005,7 @@ describe("buildInverseOps", () => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Create docs for update and delete
     const setupBatch = writeBatch(firestore);
@@ -1052,7 +1062,7 @@ describe("buildInverseOps", () => {
     const tid = `${test.task.id}_${now.getTime()}`;
 
     // Use a collection name that has never been read — doc won't be in cache
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     const wb = writeBatch(firestore);
     const batch = new Batch(service, wb);
@@ -1069,7 +1079,7 @@ describe("buildInverseOps", () => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     const wb = writeBatch(firestore);
     const batch = new Batch(service, wb);
@@ -1086,7 +1096,7 @@ describe("buildInverseOps", () => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     const wb = writeBatch(firestore);
     const batch = new Batch(service, wb);

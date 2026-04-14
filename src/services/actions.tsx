@@ -9,11 +9,11 @@ type ActionsToActionsCreator<T extends object> = {
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- intended for module augmentation
 export interface PanesActionsContext {}
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- intended for module augmentation
-export interface ComponentnsActionsContext {}
+export interface ComponentsActionsContext {}
 
 export interface ActionsContext {
   panes: PanesActionsContext;
-  components: ComponentnsActionsContext;
+  components: ComponentsActionsContext;
 }
 
 export const initialActionsContext = {
@@ -25,11 +25,11 @@ export const initialActionsContext = {
 export interface PanesActions {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- intended for module augmentation
-export interface ComponentnsActions {}
+export interface ComponentsActions {}
 
 export interface ActionsCreator {
   panes: ActionsToActionsCreator<PanesActions>;
-  components: ActionsToActionsCreator<ComponentnsActions>;
+  components: ActionsToActionsCreator<ComponentsActions>;
 }
 
 export const actionsCreator = {
@@ -39,13 +39,13 @@ export const actionsCreator = {
 
 export interface Actions {
   panes: PanesActions;
-  components: ComponentnsActions;
+  components: ComponentsActions;
 }
 
 function createActions(context: ActionsContext): Actions {
   const actions: Actions = {
     panes: {} as PanesActions,
-    components: {} as ComponentnsActions,
+    components: {} as ComponentsActions,
   };
 
   // Populate actions - creators can reference other actions via the actions parameter

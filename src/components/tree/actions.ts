@@ -1,33 +1,32 @@
-import { type CollectionReference } from "firebase/firestore";
 import { startTransition } from "solid-js";
 
 import { awaitable } from "@/awaitableCallback";
 import { actionsCreator, initialActionsContext } from "@/services/actions";
-import { getDoc, useFirestoreService } from "@/services/firebase/firestore";
+import { type SchemaCollectionReference, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
 import { buildSelection } from "@/services/firebase/firestore/editHistory/schema";
 import {
+  type TreeNodeCollection,
   dedent,
   getAboveNode,
   getBelowNode,
   getBottomNodeExclusive,
   getFirstChildNode,
   indent,
-  type TreeNode,
 } from "@/services/firebase/firestore/treeNode";
 import { useStoreService } from "@/services/store";
 
 declare module "@/services/actions" {
-  interface ComponentnsActionsContext {
+  interface ComponentsActionsContext {
     tree: {
       selectedId: string;
       rootParentId: string;
-      col: CollectionReference | null;
+      col: SchemaCollectionReference<TreeNodeCollection> | null;
       setSelectedId: (id: string) => void;
     };
   }
 
-  interface ComponentnsActions {
+  interface ComponentsActions {
     tree: {
       navigateDown: () => void;
       navigateUp: () => void;
@@ -57,10 +56,10 @@ actionsCreator.components.tree = ({ components: { tree: context } }, _actions) =
   async function navigateDown() {
     if (!context.col || context.selectedId === "") return;
 
-    const node = await getDoc(firestore, context.col as CollectionReference<TreeNode>, context.selectedId);
+    const node = await getDoc(firestore, context.col, context.selectedId);
     if (!node) return;
 
-    const belowNode = await getBelowNode(firestore, context.col as CollectionReference<TreeNode>, node);
+    const belowNode = await getBelowNode(firestore, context.col, node);
     if (!belowNode) return;
 
     context.setSelectedId(belowNode.id);
@@ -69,10 +68,10 @@ actionsCreator.components.tree = ({ components: { tree: context } }, _actions) =
   async function navigateUp() {
     if (!context.col || context.selectedId === "") return;
 
-    const node = await getDoc(firestore, context.col as CollectionReference<TreeNode>, context.selectedId);
+    const node = await getDoc(firestore, context.col, context.selectedId);
     if (!node) return;
 
-    const aboveNode = await getAboveNode(firestore, context.col as CollectionReference<TreeNode>, node);
+    const aboveNode = await getAboveNode(firestore, context.col, node);
     if (!aboveNode) return;
 
     context.setSelectedId(aboveNode.id);
@@ -81,7 +80,7 @@ actionsCreator.components.tree = ({ components: { tree: context } }, _actions) =
   async function goToFirst() {
     if (!context.col || context.rootParentId === "") return;
 
-    const firstNode = await getFirstChildNode(firestore, context.col as CollectionReference<TreeNode>, {
+    const firstNode = await getFirstChildNode(firestore, context.col, {
       id: context.rootParentId,
     });
     if (!firstNode || firstNode.id === context.selectedId) return;
@@ -92,7 +91,7 @@ actionsCreator.components.tree = ({ components: { tree: context } }, _actions) =
   async function goToLast() {
     if (!context.col || context.rootParentId === "") return;
 
-    const lastNode = await getBottomNodeExclusive(firestore, context.col as CollectionReference<TreeNode>, {
+    const lastNode = await getBottomNodeExclusive(firestore, context.col, {
       id: context.rootParentId,
     });
     if (!lastNode || lastNode.id === context.selectedId) return;
@@ -102,8 +101,9 @@ actionsCreator.components.tree = ({ components: { tree: context } }, _actions) =
 
   async function indentNode() {
     if (!context.col || context.selectedId === "") return;
+    const col = context.col;
 
-    const node = await getDoc(firestore, context.col as CollectionReference<TreeNode>, context.selectedId);
+    const node = await getDoc(firestore, col, context.selectedId);
     if (!node) return;
 
     try {
@@ -111,7 +111,7 @@ actionsCreator.components.tree = ({ components: { tree: context } }, _actions) =
       await runBatch(
         firestore,
         async (batch) => {
-          await indent(firestore, batch, context.col as CollectionReference<TreeNode>, node);
+          await indent(firestore, batch, col, node);
         },
         { description: "インデント変更", prevSelection: currentSelection() },
       );
@@ -126,8 +126,9 @@ actionsCreator.components.tree = ({ components: { tree: context } }, _actions) =
 
   async function dedentNode() {
     if (!context.col || context.selectedId === "") return;
+    const col = context.col;
 
-    const node = await getDoc(firestore, context.col as CollectionReference<TreeNode>, context.selectedId);
+    const node = await getDoc(firestore, col, context.selectedId);
     if (!node) return;
 
     try {
@@ -135,7 +136,7 @@ actionsCreator.components.tree = ({ components: { tree: context } }, _actions) =
       await runBatch(
         firestore,
         async (batch) => {
-          await dedent(firestore, batch, context.col as CollectionReference<TreeNode>, node);
+          await dedent(firestore, batch, col, node);
         },
         { description: "インデント変更", prevSelection: currentSelection() },
       );

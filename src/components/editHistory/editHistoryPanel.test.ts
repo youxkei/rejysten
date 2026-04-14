@@ -7,6 +7,12 @@ import { describe, it, expect } from "vitest";
 import { buildGraphRows, continuationPrefix, findInverseOp } from "@/components/editHistory/editHistoryPanel";
 import "@/services/firebase/firestore/editHistory/schema";
 
+declare module "@/services/firebase/firestore/schema" {
+  interface Schema {
+    col: { text: string; createdAt: Timestamp; updatedAt: Timestamp };
+  }
+}
+
 type HistoryEntry = DocumentData<Schema["editHistory"]>;
 
 const ts = Timestamp.fromDate(new Date("2026-01-01T00:00:00Z"));

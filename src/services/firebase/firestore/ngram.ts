@@ -1,7 +1,8 @@
-import { type CollectionReference, doc } from "firebase/firestore";
+import { doc } from "firebase/firestore";
 
-import { type FirestoreService, getCollection } from ".";
+import { type FirestoreService, type SchemaCollectionReference, getCollection } from ".";
 import { analyzeTextForNgrams } from "@/ngram";
+import { type Schema } from "@/services/firebase/firestore/schema";
 import { type Writer } from "@/services/firebase/firestore/writer";
 
 declare module "@/services/firebase/firestore/schema" {
@@ -17,10 +18,10 @@ declare module "@/services/firebase/firestore/schema" {
 
 export const collectionNgramConfig: Partial<Record<string, true>> = {};
 
-export function setNgram<T>(
+export function setNgram<C extends keyof Schema>(
   service: FirestoreService,
   writer: Writer,
-  col: CollectionReference<T>,
+  col: SchemaCollectionReference<C>,
   id: string,
   text: string,
 ) {
@@ -40,7 +41,12 @@ export function setNgram<T>(
   });
 }
 
-export function deleteNgram<T>(service: FirestoreService, writer: Writer, col: CollectionReference<T>, id: string) {
+export function deleteNgram<C extends keyof Schema>(
+  service: FirestoreService,
+  writer: Writer,
+  col: SchemaCollectionReference<C>,
+  id: string,
+) {
   if (!collectionNgramConfig[col.id]) return;
 
   const colId = col.id;

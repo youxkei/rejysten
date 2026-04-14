@@ -1,27 +1,31 @@
-import { type CollectionReference, limit, orderBy, query, where } from "firebase/firestore";
+import { limit, orderBy, query, where } from "firebase/firestore";
 import { generateKeyBetween } from "fractional-indexing";
 
 import { ErrorWithFields } from "@/error";
 import {
   type DocumentData,
   type FirestoreService,
+  type SchemaCollectionReference,
   type Timestamps,
   getDoc,
   getDocs,
 } from "@/services/firebase/firestore";
 import { type Batch } from "@/services/firebase/firestore/batch";
+import { type Schema } from "@/services/firebase/firestore/schema";
 
 export type TreeNode = {
   parentId: string;
   order: string;
 } & Timestamps;
 
-export async function getPrevNode<T extends TreeNode>(
+export type TreeNodeCollection = { [C in keyof Schema]: Schema[C] extends TreeNode ? C : never }[keyof Schema];
+
+export async function getPrevNode<C extends TreeNodeCollection>(
   service: FirestoreService,
-  col: CollectionReference<T>,
-  baseNode: DocumentData<T>,
+  col: SchemaCollectionReference<C>,
+  baseNode: DocumentData<Schema[C]>,
   options?: { fromServer?: boolean },
-): Promise<DocumentData<T> | undefined> {
+): Promise<DocumentData<Schema[C]> | undefined> {
   const prevNodes = await getDocs(
     service,
     query(
@@ -37,12 +41,12 @@ export async function getPrevNode<T extends TreeNode>(
   return prevNodes[0];
 }
 
-export async function getNextNode<T extends TreeNode>(
+export async function getNextNode<C extends TreeNodeCollection>(
   service: FirestoreService,
-  col: CollectionReference<T>,
-  baseNode: DocumentData<T>,
+  col: SchemaCollectionReference<C>,
+  baseNode: DocumentData<Schema[C]>,
   options?: { fromServer?: boolean },
-): Promise<DocumentData<T> | undefined> {
+): Promise<DocumentData<Schema[C]> | undefined> {
   const nextNodes = await getDocs(
     service,
     query(
@@ -58,12 +62,12 @@ export async function getNextNode<T extends TreeNode>(
   return nextNodes[0];
 }
 
-export async function getParentNode<T extends TreeNode>(
+export async function getParentNode<C extends TreeNodeCollection>(
   service: FirestoreService,
-  col: CollectionReference<T>,
-  baseNode: DocumentData<T>,
+  col: SchemaCollectionReference<C>,
+  baseNode: DocumentData<Schema[C]>,
   options?: { fromServer?: boolean },
-): Promise<DocumentData<T> | undefined> {
+): Promise<DocumentData<Schema[C]> | undefined> {
   if (baseNode.parentId === "") {
     return undefined;
   }
@@ -78,12 +82,12 @@ export async function getParentNode<T extends TreeNode>(
   return parentNode;
 }
 
-export async function getFirstChildNode<T extends TreeNode, U extends object>(
+export async function getFirstChildNode<C extends TreeNodeCollection>(
   service: FirestoreService,
-  col: CollectionReference<T>,
-  baseNode: DocumentData<U>,
+  col: SchemaCollectionReference<C>,
+  baseNode: { id: string },
   options?: { fromServer?: boolean },
-): Promise<DocumentData<T> | undefined> {
+): Promise<DocumentData<Schema[C]> | undefined> {
   const children = await getDocs(
     service,
     query(col, where("parentId", "==", baseNode.id), orderBy("order", "asc"), limit(1)),
@@ -92,12 +96,12 @@ export async function getFirstChildNode<T extends TreeNode, U extends object>(
   return children[0];
 }
 
-export async function getLastChildNode<T extends TreeNode, U extends object>(
+export async function getLastChildNode<C extends TreeNodeCollection>(
   service: FirestoreService,
-  col: CollectionReference<T>,
-  baseNode: DocumentData<U>,
+  col: SchemaCollectionReference<C>,
+  baseNode: { id: string },
   options?: { fromServer?: boolean },
-): Promise<DocumentData<T> | undefined> {
+): Promise<DocumentData<Schema[C]> | undefined> {
   const children = await getDocs(
     service,
     query(col, where("parentId", "==", baseNode.id), orderBy("order", "desc"), limit(1)),
@@ -106,12 +110,12 @@ export async function getLastChildNode<T extends TreeNode, U extends object>(
   return children[0];
 }
 
-export async function getBottomNodeInclusive<T extends TreeNode>(
+export async function getBottomNodeInclusive<C extends TreeNodeCollection>(
   service: FirestoreService,
-  col: CollectionReference<T>,
-  baseNode: DocumentData<T>,
+  col: SchemaCollectionReference<C>,
+  baseNode: DocumentData<Schema[C]>,
   options?: { fromServer?: boolean },
-): Promise<DocumentData<T>> {
+): Promise<DocumentData<Schema[C]>> {
   let currentNode = baseNode;
   for (;;) {
     const lastChildNode = await getLastChildNode(service, col, currentNode, options);
@@ -121,12 +125,12 @@ export async function getBottomNodeInclusive<T extends TreeNode>(
   }
 }
 
-export async function getBottomNodeExclusive<T extends TreeNode, U extends object>(
+export async function getBottomNodeExclusive<C extends TreeNodeCollection>(
   service: FirestoreService,
-  col: CollectionReference<T>,
-  baseNode: DocumentData<U>,
+  col: SchemaCollectionReference<C>,
+  baseNode: { id: string },
   options?: { fromServer?: boolean },
-): Promise<DocumentData<T> | undefined> {
+): Promise<DocumentData<Schema[C]> | undefined> {
   const lastChildNode = await getLastChildNode(service, col, baseNode, options);
   if (!lastChildNode) return;
 
@@ -139,12 +143,12 @@ export async function getBottomNodeExclusive<T extends TreeNode, U extends objec
   }
 }
 
-export async function getAboveNode<T extends TreeNode>(
+export async function getAboveNode<C extends TreeNodeCollection>(
   service: FirestoreService,
-  col: CollectionReference<T>,
-  baseNode: DocumentData<T>,
+  col: SchemaCollectionReference<C>,
+  baseNode: DocumentData<Schema[C]>,
   options?: { fromServer?: boolean },
-): Promise<DocumentData<T> | undefined> {
+): Promise<DocumentData<Schema[C]> | undefined> {
   // Check if there's a previous sibling
   const prevNode = await getPrevNode(service, col, baseNode, options);
   if (prevNode) {
@@ -156,12 +160,12 @@ export async function getAboveNode<T extends TreeNode>(
   return getParentNode(service, col, baseNode, options);
 }
 
-export async function getBelowNode<T extends TreeNode>(
+export async function getBelowNode<C extends TreeNodeCollection>(
   service: FirestoreService,
-  col: CollectionReference<T>,
-  baseNode: DocumentData<T>,
+  col: SchemaCollectionReference<C>,
+  baseNode: DocumentData<Schema[C]>,
   options?: { fromServer?: boolean },
-): Promise<DocumentData<T> | undefined> {
+): Promise<DocumentData<Schema[C]> | undefined> {
   // Check if there's a first child
   const firstChild = await getFirstChildNode(service, col, baseNode, options);
   if (firstChild) {
@@ -191,12 +195,12 @@ export async function getBelowNode<T extends TreeNode>(
   }
 }
 
-export function addSingle<T extends TreeNode>(
+export function addSingle<C extends TreeNodeCollection>(
   service: FirestoreService,
   batch: Batch,
-  col: CollectionReference<T>,
+  col: SchemaCollectionReference<C>,
   parentId: string,
-  newNode: Omit<DocumentData<T>, keyof TreeNode>,
+  newNode: Omit<DocumentData<Schema[C]>, keyof TreeNode>,
 ) {
   if (newNode.id === "") {
     throw new ErrorWithFields("new node must have a valid id", { newNode });
@@ -205,18 +209,18 @@ export function addSingle<T extends TreeNode>(
   const order = generateKeyBetween(null, null);
 
   batch.set(col, {
-    ...(newNode as Omit<DocumentData<T>, keyof Timestamps>),
+    ...(newNode as Omit<DocumentData<Schema[C]>, keyof Timestamps>),
     parentId,
     order,
   });
 }
 
-export async function addPrevSibling<T extends TreeNode>(
+export async function addPrevSibling<C extends TreeNodeCollection>(
   service: FirestoreService,
   batch: Batch,
-  col: CollectionReference<T>,
-  baseNode: DocumentData<T>,
-  newNode: Omit<DocumentData<T>, keyof TreeNode>,
+  col: SchemaCollectionReference<C>,
+  baseNode: DocumentData<Schema[C]>,
+  newNode: Omit<DocumentData<Schema[C]>, keyof TreeNode>,
   options?: { fromServer?: boolean },
 ): Promise<void> {
   if (newNode.id === "") {
@@ -227,18 +231,18 @@ export async function addPrevSibling<T extends TreeNode>(
   const newOrder = generateKeyBetween(prevNode?.order ?? null, baseNode.order);
 
   batch.set(col, {
-    ...(newNode as Omit<DocumentData<T>, keyof Timestamps>),
+    ...(newNode as Omit<DocumentData<Schema[C]>, keyof Timestamps>),
     parentId: baseNode.parentId,
     order: newOrder,
   });
 }
 
-export async function addNextSibling<T extends TreeNode>(
+export async function addNextSibling<C extends TreeNodeCollection>(
   service: FirestoreService,
   batch: Batch,
-  col: CollectionReference<T>,
-  baseNode: DocumentData<T>,
-  newNode: Omit<DocumentData<T>, keyof TreeNode>,
+  col: SchemaCollectionReference<C>,
+  baseNode: DocumentData<Schema[C]>,
+  newNode: Omit<DocumentData<Schema[C]>, keyof TreeNode>,
   options?: { fromServer?: boolean },
 ): Promise<void> {
   if (newNode.id === "") {
@@ -249,17 +253,17 @@ export async function addNextSibling<T extends TreeNode>(
   const newOrder = generateKeyBetween(baseNode.order, nextNode?.order ?? null);
 
   batch.set(col, {
-    ...(newNode as Omit<DocumentData<T>, keyof Timestamps>),
+    ...(newNode as Omit<DocumentData<Schema[C]>, keyof Timestamps>),
     parentId: baseNode.parentId,
     order: newOrder,
   });
 }
 
-export async function indent<T extends TreeNode>(
+export async function indent<C extends TreeNodeCollection>(
   service: FirestoreService,
   batch: Batch,
-  col: CollectionReference<T>,
-  node: DocumentData<T>,
+  col: SchemaCollectionReference<C>,
+  node: DocumentData<Schema[C]>,
   options?: { fromServer?: boolean },
 ): Promise<void> {
   const prevNode = await getPrevNode(service, col, node, options);
@@ -270,18 +274,18 @@ export async function indent<T extends TreeNode>(
   const lastChildOfPrevNode = await getLastChildNode(service, col, prevNode, options);
   const newOrder = generateKeyBetween(lastChildOfPrevNode?.order ?? null, null);
 
-  batch.update<TreeNode>(col, {
+  batch.update(col, {
     id: node.id,
     parentId: prevNode.id,
     order: newOrder,
-  });
+  } as DocumentData<Omit<Partial<Schema[C]>, keyof Timestamps>>);
 }
 
-export async function dedent<T extends TreeNode>(
+export async function dedent<C extends TreeNodeCollection>(
   service: FirestoreService,
   batch: Batch,
-  col: CollectionReference<T>,
-  node: DocumentData<T>,
+  col: SchemaCollectionReference<C>,
+  node: DocumentData<Schema[C]>,
   options?: { fromServer?: boolean },
 ): Promise<void> {
   const parentNode = await getParentNode(service, col, node, options);
@@ -292,18 +296,18 @@ export async function dedent<T extends TreeNode>(
   const nextOfParent = await getNextNode(service, col, parentNode, options);
   const newOrder = generateKeyBetween(parentNode.order, nextOfParent?.order ?? null);
 
-  batch.update<TreeNode>(col, {
+  batch.update(col, {
     id: node.id,
     parentId: parentNode.parentId,
     order: newOrder,
-  });
+  } as DocumentData<Omit<Partial<Schema[C]>, keyof Timestamps>>);
 }
 
-export async function movePrev<T extends TreeNode>(
+export async function movePrev<C extends TreeNodeCollection>(
   service: FirestoreService,
   batch: Batch,
-  col: CollectionReference<T>,
-  node: DocumentData<T>,
+  col: SchemaCollectionReference<C>,
+  node: DocumentData<Schema[C]>,
   options?: { fromServer?: boolean },
 ): Promise<void> {
   const prevNode = await getPrevNode(service, col, node, options);
@@ -314,17 +318,17 @@ export async function movePrev<T extends TreeNode>(
   const prevPrevNode = await getPrevNode(service, col, prevNode, options);
   const newOrder = generateKeyBetween(prevPrevNode?.order ?? null, prevNode.order);
 
-  batch.update<TreeNode>(col, {
+  batch.update(col, {
     id: node.id,
     order: newOrder,
-  });
+  } as DocumentData<Omit<Partial<Schema[C]>, keyof Timestamps>>);
 }
 
-export async function moveNext<T extends TreeNode>(
+export async function moveNext<C extends TreeNodeCollection>(
   service: FirestoreService,
   batch: Batch,
-  col: CollectionReference<T>,
-  node: DocumentData<T>,
+  col: SchemaCollectionReference<C>,
+  node: DocumentData<Schema[C]>,
   options?: { fromServer?: boolean },
 ): Promise<void> {
   const nextNode = await getNextNode(service, col, node, options);
@@ -335,17 +339,17 @@ export async function moveNext<T extends TreeNode>(
   const nextNextNode = await getNextNode(service, col, nextNode, options);
   const newOrder = generateKeyBetween(nextNode.order, nextNextNode?.order ?? null);
 
-  batch.update<TreeNode>(col, {
+  batch.update(col, {
     id: node.id,
     order: newOrder,
-  });
+  } as DocumentData<Omit<Partial<Schema[C]>, keyof Timestamps>>);
 }
 
-export async function remove<T extends TreeNode>(
+export async function remove<C extends TreeNodeCollection>(
   service: FirestoreService,
   batch: Batch,
-  col: CollectionReference<T>,
-  node: DocumentData<T>,
+  col: SchemaCollectionReference<C>,
+  node: DocumentData<Schema[C]>,
   options?: { fromServer?: boolean },
 ): Promise<void> {
   const firstChildNode = await getFirstChildNode(service, col, node, options);

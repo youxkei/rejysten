@@ -12,11 +12,11 @@ import {
 import { useStoreService } from "@/services/store";
 
 declare module "@/services/actions" {
-  interface ComponentnsActionsContext {
+  interface ComponentsActionsContext {
     editHistory: Record<string, never>;
   }
 
-  interface ComponentnsActions {
+  interface ComponentsActions {
     editHistory: {
       undo: () => void;
       redo: () => void;

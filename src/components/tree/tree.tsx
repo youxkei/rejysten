@@ -1,24 +1,30 @@
 import "@/components/tree/actions";
 
 import equals from "fast-deep-equal";
-import { type CollectionReference, doc, orderBy, query, where } from "firebase/firestore";
+import { doc, orderBy, query, where } from "firebase/firestore";
 import { type Accessor, createEffect, createMemo, For, type JSXElement, onCleanup, Show } from "solid-js";
 
 import { useActionsService } from "@/services/actions";
-import { type DocumentData, useFirestoreService } from "@/services/firebase/firestore";
+import {
+  type DocumentData,
+  type SchemaCollectionReference,
+  useFirestoreService,
+  widenSchemaCollectionRef,
+} from "@/services/firebase/firestore";
+import { type Schema } from "@/services/firebase/firestore/schema";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
-import { type TreeNode } from "@/services/firebase/firestore/treeNode";
+import { type TreeNode, type TreeNodeCollection } from "@/services/firebase/firestore/treeNode";
 import { addKeyDownEventListener } from "@/solid/event";
 import { scrollWithOffset } from "@/solid/scroll";
 
-export function ChildrenNodes<T extends TreeNode>(props: {
-  col: CollectionReference<T>;
+export function ChildrenNodes<C extends TreeNodeCollection>(props: {
+  col: SchemaCollectionReference<C>;
   parentId: string;
   rootParentId: string;
   selectedId: string;
   setSelectedId: (selectedID: string) => void;
-  showNode: (node$: Accessor<DocumentData<T>>, isSelected$: Accessor<boolean>) => JSXElement;
-  createNewNode: (newId: string, initialText?: string) => Omit<DocumentData<T>, keyof TreeNode>;
+  showNode: (node$: Accessor<DocumentData<Schema[C]>>, isSelected$: Accessor<boolean>) => JSXElement;
+  createNewNode: (newId: string, initialText?: string) => Omit<DocumentData<Schema[C]>, keyof TreeNode>;
 }) {
   const firestore = useFirestoreService();
 
@@ -58,14 +64,14 @@ export function ChildrenNodes<T extends TreeNode>(props: {
   );
 }
 
-export function Node<T extends TreeNode>(props: {
-  col: CollectionReference<T>;
+export function Node<C extends TreeNodeCollection>(props: {
+  col: SchemaCollectionReference<C>;
   id: string;
   rootParentId: string;
   selectedId: string;
   setSelectedId: (selectedId: string) => void;
-  showNode: (node$: Accessor<DocumentData<T>>, isSelected$: Accessor<boolean>) => JSXElement;
-  createNewNode: (newId: string, initialText?: string) => Omit<DocumentData<T>, keyof TreeNode>;
+  showNode: (node$: Accessor<DocumentData<Schema[C]>>, isSelected$: Accessor<boolean>) => JSXElement;
+  createNewNode: (newId: string, initialText?: string) => Omit<DocumentData<Schema[C]>, keyof TreeNode>;
 }) {
   const firestore = useFirestoreService();
   const actionsService = useActionsService();
@@ -90,7 +96,7 @@ export function Node<T extends TreeNode>(props: {
       actionsService.updateContext((ctx) => {
         ctx.components.tree.selectedId = props.id;
         ctx.components.tree.rootParentId = props.rootParentId;
-        ctx.components.tree.col = props.col;
+        ctx.components.tree.col = widenSchemaCollectionRef<TreeNodeCollection, C>(props.col);
         ctx.components.tree.setSelectedId = props.setSelectedId;
       });
     }

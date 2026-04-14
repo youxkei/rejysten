@@ -1,11 +1,17 @@
 import { type Timestamp } from "firebase/firestore";
 
-import { type Schema } from "@/services/firebase/firestore/schema";
+import { type Schema, type Timestamps } from "@/services/firebase/firestore/schema";
 
-export type HistoryOperation =
-  | { type: "set"; collection: string; id: string; data: Record<string, unknown> }
-  | { type: "update"; collection: string; id: string; data: Record<string, unknown> }
-  | { type: "delete"; collection: string; id: string };
+export type HistoryOperationCollection = Exclude<keyof Schema, "editHistory" | "editHistoryHead">;
+
+export type HistoryOperationOf<C extends HistoryOperationCollection> =
+  | { type: "set"; collection: C; id: string; data: Omit<Schema[C], keyof Timestamps> }
+  | { type: "update"; collection: C; id: string; data: Partial<Omit<Schema[C], keyof Timestamps>> }
+  | { type: "delete"; collection: C; id: string };
+
+export type HistoryOperation = {
+  [C in HistoryOperationCollection]: HistoryOperationOf<C>;
+}[HistoryOperationCollection];
 
 export type HistorySelection = Partial<Record<keyof Schema, string>>;
 

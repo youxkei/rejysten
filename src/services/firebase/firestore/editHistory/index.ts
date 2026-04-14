@@ -1,7 +1,8 @@
-import { collection, type CollectionReference, query, where } from "firebase/firestore";
+import { query, where } from "firebase/firestore";
 
 import {
   type FirestoreService,
+  type SchemaCollectionReference,
   getCollection,
   getDoc,
   getDocs,
@@ -13,15 +14,14 @@ import { type Schema } from "@/services/firebase/firestore/schema";
 
 function applyOperations(service: FirestoreService, batch: Batch, operations: HistoryOperation[]): void {
   for (const op of operations) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const col = collection(service.firestore, op.collection) as CollectionReference<any>;
+    const col = getCollection(service, op.collection);
 
     switch (op.type) {
       case "set":
-        batch.set(col, { id: op.id, ...op.data });
+        batch.set(col, { id: op.id, ...op.data } as never);
         break;
       case "update":
-        batch.update(col, { id: op.id, ...op.data });
+        batch.update(col, { id: op.id, ...op.data } as never);
         break;
       case "delete":
         batch.delete(col, op.id);
@@ -98,7 +98,7 @@ export async function redo(service: FirestoreService, childId?: string): Promise
 
 async function buildAncestorChain(
   service: FirestoreService,
-  col: CollectionReference<Schema["editHistory"]>,
+  col: SchemaCollectionReference<"editHistory">,
   entryId: string,
 ): Promise<DocumentData<Schema["editHistory"]>[]> {
   const chain: DocumentData<Schema["editHistory"]>[] = [];

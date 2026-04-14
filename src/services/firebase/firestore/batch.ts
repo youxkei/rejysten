@@ -1,7 +1,6 @@
 import type { Schema } from "@/services/firebase/firestore/schema";
 
 import {
-  type CollectionReference,
   doc,
   getDocFromCache,
   runTransaction as firebaseRunTransaction,
@@ -16,13 +15,21 @@ import { uuidv7 } from "uuidv7";
 
 import {
   type DocumentData,
+  extractData,
+  withId,
   getCollection,
   getSingletonDoc,
   singletonDocumentId,
   type FirestoreService,
   type Timestamps,
+  type SchemaCollectionReference,
 } from "@/services/firebase/firestore";
-import { type HistoryOperation, type HistorySelection } from "@/services/firebase/firestore/editHistory/schema";
+import {
+  type HistoryOperation,
+  type HistoryOperationCollection,
+  type HistoryOperationOf,
+  type HistorySelection,
+} from "@/services/firebase/firestore/editHistory/schema";
 import { TransactionAborted } from "@/services/firebase/firestore/error";
 import { deleteNgram, setNgram } from "@/services/firebase/firestore/ngram";
 import { type Writer } from "@/services/firebase/firestore/writer";
@@ -54,11 +61,15 @@ declare module "@/services/firebase/firestore/schema" {
 
 const excludedCollections = new Set(["batchVersion", "editHistory", "editHistoryHead", "ngrams"]);
 
+function isHistoryOperationCollection(name: keyof Schema): name is HistoryOperationCollection {
+  return !excludedCollections.has(name);
+}
+
 export class Batch {
   private readonly service: FirestoreService;
   private readonly writer: Writer;
   private readonly _forwardOps: HistoryOperation[] = [];
-  private readonly _docReadsNeeded: { collection: string; id: string; opType: "update" | "delete" }[] = [];
+  private readonly _docReadsNeeded: { collection: keyof Schema; id: string; opType: "update" | "delete" }[] = [];
 
   constructor(service: FirestoreService, writer: Writer) {
     this.service = service;
@@ -69,45 +80,52 @@ export class Batch {
     return this._forwardOps;
   }
 
-  update<T extends Timestamps>(
-    col: CollectionReference<T>,
-    newDocData: DocumentData<Omit<Partial<T>, keyof Timestamps>>,
+  private pushForwardOp<C extends HistoryOperationCollection>(op: HistoryOperationOf<C>): void {
+    this._forwardOps.push(op as HistoryOperation);
+  }
+
+  update<C extends keyof Schema>(
+    col: SchemaCollectionReference<C>,
+    newDocData: DocumentData<Partial<Omit<Schema[C], keyof Timestamps>>>,
   ) {
-    const { id, ...newDocDataContent } = newDocData;
+    const { id, data } = extractData(newDocData);
 
-    this.writer.update<T>(doc(col, id), {
-      ...newDocDataContent,
+    this.writer.update(doc(col, id), {
+      ...data,
       updatedAt: serverTimestamp(),
-    } as UpdateData<T>);
+    } as UpdateData<Schema[C]>);
 
-    if ("text" in newDocDataContent && typeof newDocDataContent.text === "string") {
-      setNgram(this.service, this.writer, col, id, newDocDataContent.text);
+    if ("text" in data && typeof data.text === "string") {
+      setNgram(this.service, this.writer, col, id, data.text);
     }
 
-    if (!excludedCollections.has(col.id)) {
-      this._forwardOps.push({
+    if (isHistoryOperationCollection(col.id)) {
+      this.pushForwardOp({
         type: "update",
         collection: col.id,
         id,
-        data: newDocDataContent as Record<string, unknown>,
+        data,
       });
       this._docReadsNeeded.push({ collection: col.id, id, opType: "update" });
     }
   }
 
-  updateSingleton<T extends Timestamps>(col: CollectionReference<T>, newDocData: Omit<Partial<T>, keyof Timestamps>) {
+  updateSingleton<C extends keyof Schema>(
+    col: SchemaCollectionReference<C>,
+    newDocData: Omit<Partial<Schema[C]>, keyof Timestamps>,
+  ) {
     this.update(col, {
       id: singletonDocumentId,
       ...newDocData,
     });
   }
 
-  delete<T extends Timestamps>(col: CollectionReference<T>, id: string) {
-    this.writer.delete<T>(doc(col, id));
+  delete<C extends keyof Schema>(col: SchemaCollectionReference<C>, id: string) {
+    this.writer.delete(doc(col, id));
     deleteNgram(this.service, this.writer, col, id);
 
-    if (!excludedCollections.has(col.id)) {
-      this._forwardOps.push({
+    if (isHistoryOperationCollection(col.id)) {
+      this.pushForwardOp({
         type: "delete",
         collection: col.id,
         id,
@@ -116,34 +134,37 @@ export class Batch {
     }
   }
 
-  set<T extends Timestamps>(col: CollectionReference<T>, newDocData: Omit<DocumentData<T>, keyof Timestamps>) {
-    const { id, ...newDocDataContent } = newDocData;
+  set<C extends keyof Schema>(
+    col: SchemaCollectionReference<C>,
+    newDocData: DocumentData<Omit<Schema[C], keyof Timestamps>>,
+  ) {
+    const { id, data } = extractData(newDocData);
 
-    this.writer.set<T>(doc(col, id), {
-      ...newDocDataContent,
+    this.writer.set(doc(col, id), {
+      ...data,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    } as WithFieldValue<T>);
+    } as WithFieldValue<Schema[C]>);
 
-    if ("text" in newDocDataContent && typeof newDocDataContent.text === "string") {
-      setNgram(this.service, this.writer, col, id, newDocDataContent.text);
+    if ("text" in data && typeof data.text === "string") {
+      setNgram(this.service, this.writer, col, id, data.text);
     }
 
-    if (!excludedCollections.has(col.id)) {
-      this._forwardOps.push({
+    if (isHistoryOperationCollection(col.id)) {
+      this.pushForwardOp({
         type: "set",
         collection: col.id,
         id,
-        data: newDocDataContent as Record<string, unknown>,
+        data,
       });
     }
   }
 
-  setSingleton<T extends Timestamps>(col: CollectionReference<T>, newDocData: Omit<T, keyof Timestamps>) {
-    this.set(col, {
-      ...(newDocData as Omit<DocumentData<T>, keyof Timestamps>),
-      id: singletonDocumentId,
-    });
+  setSingleton<C extends keyof Schema>(
+    col: SchemaCollectionReference<C>,
+    newDocData: Omit<Schema[C], keyof Timestamps>,
+  ) {
+    this.set(col, withId(singletonDocumentId, newDocData));
   }
 
   async recordHistory(options?: BatchOptions): Promise<void> {
@@ -182,7 +203,7 @@ export class Batch {
       if (oldValues.has(key)) continue;
 
       try {
-        const colRef = getCollection(this.service, read.collection as keyof Schema);
+        const colRef = getCollection(this.service, read.collection);
         const snap = await getDocFromCache(doc(colRef, read.id));
         if (snap.exists()) {
           const data = snap.data() as Record<string, unknown>;
@@ -201,7 +222,7 @@ export class Batch {
 
       switch (fwd.type) {
         case "set":
-          inverseOps.push({ type: "delete", collection: fwd.collection, id: fwd.id });
+          inverseOps.push({ type: "delete", collection: fwd.collection, id: fwd.id } as HistoryOperation);
           break;
 
         case "update": {
@@ -213,7 +234,12 @@ export class Batch {
                 inverseData[field] = oldData[field];
               }
             }
-            inverseOps.push({ type: "update", collection: fwd.collection, id: fwd.id, data: inverseData });
+            inverseOps.push({
+              type: "update",
+              collection: fwd.collection,
+              id: fwd.id,
+              data: inverseData,
+            } as HistoryOperation);
           }
           break;
         }
@@ -221,7 +247,12 @@ export class Batch {
         case "delete": {
           const oldData = oldValues.get(key);
           if (oldData) {
-            inverseOps.push({ type: "set", collection: fwd.collection, id: fwd.id, data: oldData });
+            inverseOps.push({
+              type: "set",
+              collection: fwd.collection,
+              id: fwd.id,
+              data: oldData,
+            } as HistoryOperation);
           }
           break;
         }

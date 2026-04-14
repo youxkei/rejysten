@@ -1,5 +1,4 @@
 import {
-  type CollectionReference,
   type Firestore,
   setDoc,
   doc,
@@ -10,6 +9,9 @@ import {
   memoryLocalCache,
   connectFirestoreEmulator,
 } from "firebase/firestore";
+
+import { type SchemaCollectionReference } from "@/services/firebase/firestore";
+import { type Schema } from "@/services/firebase/firestore/schema";
 import { initializeApp, getApps } from "firebase/app";
 
 export function createTestFirestoreService(
@@ -50,7 +52,10 @@ export function createTestFirestoreService(
   return { firestore, editHistoryHead$: () => undefined };
 }
 
-export async function setDocs<T extends { text: string }>(col: CollectionReference<T>, treeNodes: T[]) {
+export async function setDocs<C extends keyof Schema>(
+  col: SchemaCollectionReference<C>,
+  treeNodes: (Schema[C] & { text: string })[],
+) {
   for (const treeNode of treeNodes) {
     await setDoc(doc(col, treeNode.text), treeNode);
   }

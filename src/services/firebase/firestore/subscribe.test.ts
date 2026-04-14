@@ -1,13 +1,23 @@
-import { type CollectionReference, type Firestore, collection, writeBatch, doc, query } from "firebase/firestore";
+import { type Firestore, type Timestamp, collection, writeBatch, doc, query } from "firebase/firestore";
 import { createRoot, createSignal } from "solid-js";
 import { describe, it, beforeAll, afterAll } from "vitest";
 
-import { type Timestamps, type FirestoreService } from "@/services/firebase/firestore";
+import { type Timestamps, type FirestoreService, type SchemaCollectionReference } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { createTestFirestoreService, timestampForCreatedAt } from "@/services/firebase/firestore/test";
 import { acquireEmulator, releaseEmulator, getEmulatorPort } from "@/test";
 
 type TestDoc = Timestamps & { text: string; value: number };
+
+declare module "@/services/firebase/firestore/schema" {
+  interface Schema {
+    __subscribeTest__: { text: string; value: number; createdAt: Timestamp; updatedAt: Timestamp };
+  }
+}
+
+function testCollection(fs: Firestore, name: string): SchemaCollectionReference<"__subscribeTest__"> {
+  return collection(fs, name) as SchemaCollectionReference<"__subscribeTest__">;
+}
 
 let service: FirestoreService;
 let firestore: Firestore;
@@ -45,7 +55,7 @@ describe("createSubscribeAllSignal", () => {
   it("should return results when query$ returns valid query", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Setup test data
     const batch = writeBatch(firestore);
@@ -82,7 +92,7 @@ describe("createSubscribeAllSignal", () => {
   it("should return empty array when query$ changes from valid query to undefined", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Setup test data
     const batch = writeBatch(firestore);
@@ -146,7 +156,7 @@ describe("createSubscribeSignal", () => {
   it("should return document when query$ returns valid document reference", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Setup test data
     const batch = writeBatch(firestore);
@@ -177,7 +187,7 @@ describe("createSubscribeSignal", () => {
   it("should return undefined when query$ changes from valid reference to undefined", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Setup test data
     const batch = writeBatch(firestore);

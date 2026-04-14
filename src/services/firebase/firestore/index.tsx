@@ -1,6 +1,5 @@
 import { FirebaseError } from "firebase/app";
 import {
-  type CollectionReference,
   type DocumentSnapshot,
   type Query,
   collection,
@@ -18,14 +17,18 @@ import {
   onSnapshot,
   onSnapshotsInSync,
   connectFirestoreEmulator,
-  type Timestamp,
 } from "firebase/firestore";
 import { type Accessor, createContext, createSignal, type JSXElement, onCleanup, useContext } from "solid-js";
 
 import { ServiceNotAvailable } from "@/services/error";
 import { type FirebaseService, useFirebaseService } from "@/services/firebase";
 import "@/services/firebase/firestore/editHistory/schema";
-import { type Schema } from "@/services/firebase/firestore/schema";
+import {
+  type DocumentData,
+  type Schema,
+  type SchemaCollectionReference,
+  extractData,
+} from "@/services/firebase/firestore/schema";
 import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { type StoreService, useStoreService } from "@/services/store";
 
@@ -103,10 +106,10 @@ export function FirestoreServiceProvider(props: {
     editHistoryHead$: () => undefined,
   };
 
-  const batchVersionCol = collection(firestore, "batchVersion") as CollectionReference<Schema["batchVersion"]>;
+  const batchVersionCol = collection(firestore, "batchVersion") as SchemaCollectionReference<"batchVersion">;
   service.batchVersion$ = createSubscribeSignal(service, () => doc(batchVersionCol, singletonDocumentId));
 
-  const editHistoryHeadCol = collection(firestore, "editHistoryHead") as CollectionReference<Schema["editHistoryHead"]>;
+  const editHistoryHeadCol = collection(firestore, "editHistoryHead") as SchemaCollectionReference<"editHistoryHead">;
   service.editHistoryHead$ = createSubscribeSignal(service, () => doc(editHistoryHeadCol, singletonDocumentId));
 
   const unsubscribe = onSnapshotsInSync(firestore, () => {
@@ -126,7 +129,7 @@ export function useFirestoreService() {
 }
 
 export function waitForServerSync(service: FirestoreService): Promise<void> {
-  const batchVersionCol = collection(service.firestore, "batchVersion") as CollectionReference<Schema["batchVersion"]>;
+  const batchVersionCol = collection(service.firestore, "batchVersion") as SchemaCollectionReference<"batchVersion">;
   return new Promise<void>((resolve) => {
     const unsubscribe = onSnapshot(
       doc(batchVersionCol, singletonDocumentId),
@@ -141,16 +144,16 @@ export function waitForServerSync(service: FirestoreService): Promise<void> {
   });
 }
 
-export function getCollection<Name extends keyof Schema>(service: FirestoreService, name: Name) {
-  return collection(service.firestore, name) as CollectionReference<Schema[Name]>;
+export { type SchemaCollectionReference, widenSchemaCollectionRef, withId } from "@/services/firebase/firestore/schema";
+
+export function getCollection<C extends keyof Schema>(
+  service: FirestoreService,
+  name: C,
+): SchemaCollectionReference<C> {
+  return collection(service.firestore, name) as SchemaCollectionReference<C>;
 }
 
-export interface Timestamps {
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-}
-
-export type DocumentData<T extends object> = T & { id: string };
+export { type Timestamps, type DocumentData, extractData } from "@/services/firebase/firestore/schema";
 
 export function getDocumentData<T extends object>(documentSnapshot: DocumentSnapshot<T>): DocumentData<T> | undefined {
   const data = documentSnapshot.data();
@@ -165,12 +168,12 @@ export function getDocumentData<T extends object>(documentSnapshot: DocumentSnap
   };
 }
 
-export async function getDoc<T extends object>(
+export async function getDoc<C extends keyof Schema>(
   _service: FirestoreService,
-  col: CollectionReference<T>,
+  col: SchemaCollectionReference<C>,
   id: string,
   options?: { fromServer?: boolean },
-): Promise<DocumentData<T> | undefined> {
+): Promise<DocumentData<Schema[C]> | undefined> {
   if (options?.fromServer) {
     return getDocumentData(await getDocFromServer(doc(col, id)));
   }
@@ -188,17 +191,15 @@ export async function getDoc<T extends object>(
 
 export const singletonDocumentId = "singleton";
 
-export async function getSingletonDoc<T extends object>(
+export async function getSingletonDoc<C extends keyof Schema>(
   service: FirestoreService,
-  col: CollectionReference<T>,
+  col: SchemaCollectionReference<C>,
   options?: { fromServer?: boolean },
-): Promise<T | undefined> {
-  const data = await getDoc(service, col, singletonDocumentId, options);
-  if (!data) return;
+): Promise<Schema[C] | undefined> {
+  const docData = await getDoc(service, col, singletonDocumentId, options);
+  if (!docData) return;
 
-  const { id: _, ...dataWithoutId } = data;
-
-  return dataWithoutId as T;
+  return extractData(docData).data;
 }
 
 export async function getDocs<T extends object>(

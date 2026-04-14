@@ -1,6 +1,6 @@
 import {
-  type CollectionReference,
   type Firestore,
+  type Timestamp,
   collection,
   doc,
   getDoc as getDocOriginal,
@@ -10,9 +10,9 @@ import { describe, it, vi, beforeAll, afterAll, expect } from "vitest";
 
 import {
   singletonDocumentId,
-  type Timestamps,
   type FirestoreService,
   type DocumentData,
+  type SchemaCollectionReference,
 } from "@/services/firebase/firestore";
 import { runBatch, runTransaction } from "@/services/firebase/firestore/batch";
 import { undo, redo, jumpTo, getChildren } from "@/services/firebase/firestore/editHistory";
@@ -21,7 +21,15 @@ import { type Schema } from "@/services/firebase/firestore/schema";
 import { createTestFirestoreService, timestampForServerTimestamp } from "@/services/firebase/firestore/test";
 import { acquireEmulator, releaseEmulator, getEmulatorPort } from "@/test";
 
-type TestDoc = Timestamps & { text: string; value: number };
+declare module "@/services/firebase/firestore/schema" {
+  interface Schema {
+    __editHistoryTest__: { text: string; value: number; createdAt: Timestamp; updatedAt: Timestamp };
+  }
+}
+
+function testCollection(fs: Firestore, name: string): SchemaCollectionReference<"__editHistoryTest__"> {
+  return collection(fs, name) as SchemaCollectionReference<"__editHistoryTest__">;
+}
 
 let baseService: ReturnType<typeof createTestFirestoreService>;
 let firestore: Firestore;
@@ -68,13 +76,14 @@ function createFullTestService(base: ReturnType<typeof createTestFirestoreServic
     },
     // Refresh cached values from Firestore
     async _refreshSignals() {
-      const batchVersionCol = collection(base.firestore, "batchVersion") as CollectionReference<Schema["batchVersion"]>;
+      const batchVersionCol = collection(base.firestore, "batchVersion") as SchemaCollectionReference<"batchVersion">;
       const snap = await getDocOriginal(doc(batchVersionCol, singletonDocumentId));
       batchVersion = snap.exists() ? { ...snap.data(), id: singletonDocumentId } : undefined;
 
-      const editHistoryHeadCol = collection(base.firestore, "editHistoryHead") as CollectionReference<
-        Schema["editHistoryHead"]
-      >;
+      const editHistoryHeadCol = collection(
+        base.firestore,
+        "editHistoryHead",
+      ) as SchemaCollectionReference<"editHistoryHead">;
       const headSnap = await getDocOriginal(doc(editHistoryHeadCol, singletonDocumentId));
       editHistoryHead = headSnap.exists() ? { ...headSnap.data(), id: singletonDocumentId } : undefined;
     },
@@ -107,13 +116,13 @@ async function refreshSignals() {
 }
 
 async function getEditHistoryEntries(): Promise<DocumentData<Schema["editHistory"]>[]> {
-  const col = collection(firestore, "editHistory") as CollectionReference<Schema["editHistory"]>;
+  const col = collection(firestore, "editHistory") as SchemaCollectionReference<"editHistory">;
   const snap = await getDocsOriginal(col);
   return snap.docs.map((d) => ({ ...d.data(), id: d.id }));
 }
 
 async function getEditHistoryHead(): Promise<DocumentData<Schema["editHistoryHead"]> | undefined> {
-  const col = collection(firestore, "editHistoryHead") as CollectionReference<Schema["editHistoryHead"]>;
+  const col = collection(firestore, "editHistoryHead") as SchemaCollectionReference<"editHistoryHead">;
   const snap = await getDocOriginal(doc(col, singletonDocumentId));
   return snap.exists() ? { ...snap.data(), id: singletonDocumentId } : undefined;
 }
@@ -123,7 +132,7 @@ describe("editHistory creation in runBatch", () => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     await refreshSignals();
     await runBatch(service, async (batch) => {
@@ -143,7 +152,7 @@ describe("editHistory creation in runBatch", () => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     await refreshSignals();
     await runBatch(service, async (batch) => {
@@ -163,7 +172,7 @@ describe("editHistory creation in runBatch", () => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     await refreshSignals();
     await runBatch(service, async (batch) => {
@@ -191,7 +200,7 @@ describe("editHistory creation in runBatch", () => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     const entriesBefore = await getEditHistoryEntries();
 
@@ -212,7 +221,7 @@ describe("editHistory creation in runBatch", () => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     await refreshSignals();
     await runBatch(
@@ -234,7 +243,7 @@ describe("undo", () => {
   it("undoes a set by deleting the created document", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     await refreshSignals();
     const headBefore = await getEditHistoryHead();
@@ -263,7 +272,7 @@ describe("undo", () => {
   it("undoes an update by restoring old field values", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Create initial doc
     await refreshSignals();
@@ -291,7 +300,7 @@ describe("undo", () => {
   it("undoes a delete by recreating the document", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Create doc
     await refreshSignals();
@@ -321,7 +330,7 @@ describe("undo", () => {
   it("does not create a new editHistory entry (skipHistory)", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     const entriesBefore = await getEditHistoryEntries();
 
@@ -343,7 +352,7 @@ describe("undo", () => {
   it("moves head to parent after undo", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Record starting head
     await refreshSignals();
@@ -381,7 +390,7 @@ describe("redo", () => {
   it("redoes an undone set", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     await refreshSignals();
     await runBatch(service, async (batch) => {
@@ -403,7 +412,7 @@ describe("redo", () => {
   it("redoes an undone update", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     await refreshSignals();
     await runBatch(service, async (batch) => {
@@ -427,7 +436,7 @@ describe("redo", () => {
   it("does nothing when no children exist at current head", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Create an entry — this is the head, it has no children
     await refreshSignals();
@@ -450,7 +459,7 @@ describe("branching", () => {
   it("new edit after undo creates a branch", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Create entry A
     await refreshSignals();
@@ -488,7 +497,7 @@ describe("jumpTo", () => {
   it("jumps backward in linear history", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Create chain: A → B → C
     await refreshSignals();
@@ -535,7 +544,7 @@ describe("jumpTo", () => {
   it("jumps forward in linear history", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     await refreshSignals();
     await runBatch(service, async (batch) => {
@@ -576,7 +585,7 @@ describe("jumpTo", () => {
   it("jumps across branches", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Create A
     await refreshSignals();
@@ -619,7 +628,7 @@ describe("jumpTo", () => {
   it("returns target's nextSelection for selection restore", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Create A with explicit nextSelection
     await refreshSignals();
@@ -662,7 +671,7 @@ describe("getChildren", () => {
   it("returns children sorted ascending by ID", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Create parent entry (E1)
     await refreshSignals();
@@ -703,7 +712,7 @@ describe("getChildren", () => {
   it("returns empty array for leaf node", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     await refreshSignals();
     await runBatch(service, async (batch) => {
@@ -735,7 +744,7 @@ describe("editHistory creation in runTransaction", () => {
   it("creates editHistory entry in transaction", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Create doc first for update
     await refreshSignals();
@@ -761,7 +770,7 @@ describe("editHistory creation in runTransaction", () => {
   it("does not create editHistory when skipHistory is true in transaction", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Create doc first
     await refreshSignals();
@@ -803,7 +812,7 @@ describe("undo - edge cases", () => {
   it("undoes multiple operations in a single batch", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Create initial docs
     await refreshSignals();
@@ -836,7 +845,7 @@ describe("redo - edge cases", () => {
   it("redoes an undone delete", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     await refreshSignals();
     await runBatch(service, async (batch) => {
@@ -862,7 +871,7 @@ describe("redo - edge cases", () => {
   it("picks latest child when multiple branches exist", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Record starting head
     // Create branch A
@@ -899,7 +908,7 @@ describe("redo - edge cases", () => {
   it("redo with specific childId picks that branch", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Create branch A
     await refreshSignals();
@@ -937,7 +946,7 @@ describe("branching - edge cases", () => {
   it("original branch remains accessible via redo with childId", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
-    const col = collection(firestore, tid) as CollectionReference<TestDoc>;
+    const col = testCollection(firestore, tid);
 
     // Create A
     await refreshSignals();

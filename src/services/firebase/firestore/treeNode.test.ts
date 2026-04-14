@@ -1,6 +1,6 @@
 import {
-  type CollectionReference,
   type Firestore,
+  type Timestamp,
   collection,
   writeBatch,
   getDoc as getDocFromFirebase,
@@ -9,9 +9,14 @@ import {
 import { generateKeyBetween } from "fractional-indexing";
 import { describe, it, vi, beforeAll, afterAll } from "vitest";
 
-import { type FirestoreService, type DocumentData } from "@/services/firebase/firestore";
+import {
+  type FirestoreService,
+  type DocumentData,
+  type SchemaCollectionReference,
+} from "@/services/firebase/firestore";
 import { Batch } from "@/services/firebase/firestore/batch";
 import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
+import { type Schema } from "@/services/firebase/firestore/schema";
 import {
   createTestFirestoreService,
   setDocs,
@@ -54,11 +59,14 @@ afterAll(async () => {
   await releaseEmulator();
 });
 
-async function getDoc<T extends object>(col: CollectionReference<T>, id: string): Promise<DocumentData<T>> {
+async function getDoc<C extends keyof Schema>(
+  col: SchemaCollectionReference<C>,
+  id: string,
+): Promise<DocumentData<Schema[C]>> {
   const snap = await getDocFromFirebase(doc(col, id));
   const data = snap.data();
   if (!data) throw new Error(`Document ${id} not found`);
-  return { ...data, id: snap.id } as DocumentData<T>;
+  return { ...data, id: snap.id } as DocumentData<Schema[C]>;
 }
 
 async function runTestBatch(fn: (batch: Batch) => Promise<void>) {
@@ -69,6 +77,16 @@ async function runTestBatch(fn: (batch: Batch) => Promise<void>) {
 }
 
 type TreeNodeWithText = TreeNode & { text: string };
+
+declare module "@/services/firebase/firestore/schema" {
+  interface Schema {
+    __treeNodeTest__: { text: string; parentId: string; order: string; createdAt: Timestamp; updatedAt: Timestamp };
+  }
+}
+
+function testCollection(fs: Firestore, name: string): SchemaCollectionReference<"__treeNodeTest__"> {
+  return collection(fs, name) as SchemaCollectionReference<"__treeNodeTest__">;
+}
 type TreeNodeFixture = [string, TreeNodeFixture[]?];
 
 function makeTreeNodes(
@@ -118,7 +136,7 @@ vi.mock(import("firebase/firestore"), async (importOriginal) => {
 describe.concurrent("treeNode", () => {
   describe("getPrevNode", () => {
     it("no prev node", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["base"]]));
 
@@ -126,7 +144,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("prev node exists", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["prev"], ["base"]]));
 
@@ -136,7 +154,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("no prev node when parentId is empty", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       const nodes = makeTreeNodes("", [["base"]]);
       nodes[0].parentId = "";
@@ -148,7 +166,7 @@ describe.concurrent("treeNode", () => {
 
   describe("getNextNode", () => {
     it("no next node", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["base"]]));
 
@@ -156,7 +174,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("next node exists", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["base"], ["next"]]));
 
@@ -168,7 +186,7 @@ describe.concurrent("treeNode", () => {
 
   describe("getParentNode", () => {
     it("no parent node", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       const nodes = makeTreeNodes("", [["base"]]);
       nodes[0].parentId = "";
@@ -178,7 +196,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("parent node exists", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["parent", [["child"]]]]));
 
@@ -188,7 +206,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("parentId refers to a node of another collection", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       // Create a node with parentId pointing to a non-existent node
       const nodes = makeTreeNodes("", [["child"]]);
@@ -202,7 +220,7 @@ describe.concurrent("treeNode", () => {
 
   describe("getFirstChildNode", () => {
     it("no children", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["base"]]));
 
@@ -210,7 +228,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("first child exists", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["parent", [["first"], ["second"]]]]));
 
@@ -222,7 +240,7 @@ describe.concurrent("treeNode", () => {
 
   describe("getLastChildNode", () => {
     it("no children", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["base"]]));
 
@@ -230,7 +248,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("last child exists", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["parent", [["first"], ["last"]]]]));
 
@@ -242,7 +260,7 @@ describe.concurrent("treeNode", () => {
 
   describe("getAboveNode", () => {
     it("first sibling - returns parent", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["parent", [["child"]]]]));
 
@@ -252,7 +270,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("has prev sibling - returns bottom of prev sibling", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["parent", [["prev", [["prevChild"]]], ["current"]]]]));
 
@@ -262,7 +280,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("has prev sibling without children - returns prev sibling", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["parent", [["prev"], ["current"]]]]));
 
@@ -274,7 +292,7 @@ describe.concurrent("treeNode", () => {
 
   describe("getBelowNode", () => {
     it("has children - returns first child", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["parent", [["child"]]]]));
 
@@ -284,7 +302,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("no children but has next sibling - returns next sibling", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["parent", [["current"], ["next"]]]]));
 
@@ -294,7 +312,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("no children no next sibling - returns parent's next sibling", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["parent", [["current"]]], ["uncle"]]));
 
@@ -304,7 +322,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("last node in tree - returns undefined", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["parent", [["child"]]]]));
 
@@ -316,7 +334,7 @@ describe.concurrent("treeNode", () => {
 
   describe("getBottomNodeExclusive", () => {
     it("no children", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["base"]]));
 
@@ -324,7 +342,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("has children", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["parent", [["child1"], ["child2", [["grandchild"]]]]]]));
 
@@ -334,7 +352,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("has great-grandchildren", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("", [["parent", [["child", [["grandchild", [["great-grandchild"]]]]]]]]));
 
@@ -346,7 +364,7 @@ describe.concurrent("treeNode", () => {
 
   describe("addSingle", () => {
     it("adds a single node", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await runTestBatch(async (batch) => {
         addSingle(service, batch, col, "parent", { id: "child", text: "child" });
@@ -366,7 +384,7 @@ describe.concurrent("treeNode", () => {
 
   describe("addPrevSibling", () => {
     it("adds a node before base node", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("parent", [["base"]]));
 
@@ -389,7 +407,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("adds a node between two nodes", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("parent", [["first"], ["second"]]));
 
@@ -416,7 +434,7 @@ describe.concurrent("treeNode", () => {
 
   describe("addNextSibling", () => {
     it("adds a node after base node", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("parent", [["base"]]));
 
@@ -439,7 +457,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("adds a node between two nodes", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("parent", [["first"], ["second"]]));
 
@@ -466,7 +484,7 @@ describe.concurrent("treeNode", () => {
 
   describe("indent", () => {
     it("indents node under previous sibling", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("parent", [["prev"], ["current"]]));
 
@@ -490,7 +508,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("indents after last child of prev sibling", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("parent", [["prev", [["prevChild"]]], ["current"]]));
 
@@ -516,7 +534,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("does nothing when no prev sibling", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("parent", [["current"]]));
 
@@ -530,7 +548,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("indents node with children", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("parent", [["prev"], ["current", [["child"]]]]));
 
@@ -558,7 +576,7 @@ describe.concurrent("treeNode", () => {
 
   describe("dedent", () => {
     it("dedents node to parent's sibling", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("grandparent", [["parent", [["current"]]]]));
 
@@ -582,7 +600,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("does nothing when no parent", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       const nodes = makeTreeNodes("", [["current"]]);
       nodes[0].parentId = "";
@@ -598,7 +616,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("dedents node with children", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("grandparent", [["parent", [["current", [["child"]]]]]]));
 
@@ -626,7 +644,7 @@ describe.concurrent("treeNode", () => {
 
   describe("movePrev", () => {
     it("moves node before prev sibling", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("parent", [["first"], ["second"]]));
 
@@ -650,7 +668,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("does nothing when no prev sibling", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("parent", [["current"]]));
 
@@ -664,7 +682,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("moves node with children", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("parent", [["first"], ["second", [["child"]]]]));
 
@@ -692,7 +710,7 @@ describe.concurrent("treeNode", () => {
 
   describe("moveNext", () => {
     it("moves node after next sibling", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("parent", [["first"], ["second"]]));
 
@@ -716,7 +734,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("does nothing when no next sibling", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("parent", [["current"]]));
 
@@ -730,7 +748,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("moves node with children", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("parent", [["first", [["child"]]], ["second"]]));
 
@@ -758,7 +776,7 @@ describe.concurrent("treeNode", () => {
 
   describe("remove", () => {
     it("removes a node without children", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("parent", [["toRemove"]]));
 
@@ -772,7 +790,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("throws error when node has children", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
 
       await setDocs(col, makeTreeNodes("parent", [["toRemove", [["child"]]]]));
 
@@ -788,7 +806,7 @@ describe.concurrent("treeNode", () => {
     });
 
     it("removes ngram when node is deleted and collection is ngram-enabled", async (ctx) => {
-      const col = collection(firestore, ctx.task.id) as CollectionReference<TreeNodeWithText>;
+      const col = testCollection(firestore, ctx.task.id);
       const ngramsCol = collection(firestore, "ngrams");
 
       // Enable ngram for this collection

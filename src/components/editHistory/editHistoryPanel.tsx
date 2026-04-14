@@ -1,11 +1,11 @@
 import type { HistoryOperation } from "@/services/firebase/firestore/editHistory/schema";
 import type { Schema } from "@/services/firebase/firestore/schema";
 
-import { collection, type CollectionReference, query } from "firebase/firestore";
+import { query } from "firebase/firestore";
 import { createMemo, For, Show } from "solid-js";
 
 import { useActionsService } from "@/services/actions";
-import { type DocumentData, useFirestoreService } from "@/services/firebase/firestore";
+import { type DocumentData, getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import "@/services/firebase/firestore/editHistory/schema";
 import { createSubscribeAllSignal } from "@/services/firebase/firestore/subscribe";
 import { useStoreService } from "@/services/store";
@@ -172,7 +172,11 @@ export function buildGraphRows(entries: Map<string, HistoryEntry>, headId: strin
 
 // --- Components ---
 
-export function findInverseOp(entry: HistoryEntry, fwdOp: HistoryOperation, fwdIndex: number): HistoryOperation | undefined {
+export function findInverseOp(
+  entry: HistoryEntry,
+  fwdOp: HistoryOperation,
+  fwdIndex: number,
+): HistoryOperation | undefined {
   const invIndex = entry.inverseOperations.length - 1 - fwdIndex;
   if (invIndex < 0 || invIndex >= entry.inverseOperations.length) return undefined;
   const candidate = entry.inverseOperations[invIndex];
@@ -198,8 +202,8 @@ function OperationDetail(props: { entry: HistoryEntry; op: HistoryOperation; ind
         <For each={Object.keys("data" in props.op ? props.op.data : {})}>
           {(field) => {
             const inv = inverseOp();
-            const oldVal = inv && "data" in inv ? inv.data[field] : undefined;
-            const newVal = "data" in props.op ? props.op.data[field] : undefined;
+            const oldVal = inv && "data" in inv ? (inv.data as Record<string, unknown>)[field] : undefined;
+            const newVal = "data" in props.op ? (props.op.data as Record<string, unknown>)[field] : undefined;
             return (
               <span>
                 {field}: <span class={styles.editHistory.graphOldValue}>{formatValue(oldVal)}</span> →{" "}
@@ -287,7 +291,7 @@ export function EditHistoryPanel() {
     components: { editHistory: editHistoryActions },
   } = useActionsService();
 
-  const editHistoryCol = collection(firestore.firestore, "editHistory") as CollectionReference<Schema["editHistory"]>;
+  const editHistoryCol = getCollection(firestore, "editHistory");
 
   const currentHeadId = () => firestore.editHistoryHead$()?.entryId ?? "";
 
