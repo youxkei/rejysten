@@ -190,6 +190,9 @@ export const styles = {
     main: style({
       flex: 1,
       minHeight: 0,
+      overflow: "hidden",
+      display: "flex",
+      flexDirection: "column",
     }),
   },
   lifeLogs: {
@@ -321,6 +324,7 @@ export const styles = {
       borderBottom: `1px solid ${nord[2]}`,
     }),
     input: style({
+      boxSizing: "border-box",
       width: "100%",
       padding: "0.75rem",
       backgroundColor: nord[1],
