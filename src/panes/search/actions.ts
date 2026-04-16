@@ -1,6 +1,7 @@
 import { startTransition } from "solid-js";
 
 import { awaitable } from "@/awaitableCallback";
+import "@/panes/store";
 import { type Actions, actionsCreator, initialActionsContext } from "@/services/actions";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
 import { useStoreService } from "@/services/store";
@@ -42,7 +43,7 @@ actionsCreator.panes.search = ({ panes: { search: context } }, _actions: Actions
   async function openSearch() {
     await startTransition(() => {
       updateState((s) => {
-        s.panesSearch.isActive = true;
+        s.activePane = "search";
         s.panesSearch.query = "";
         s.panesSearch.selectedResultIndex = 0;
       });
@@ -56,7 +57,7 @@ actionsCreator.panes.search = ({ panes: { search: context } }, _actions: Actions
   async function closeSearch() {
     await startTransition(() => {
       updateState((s) => {
-        s.panesSearch.isActive = false;
+        s.activePane = "lifeLogs";
         s.panesSearch.query = "";
         s.panesSearch.selectedResultIndex = 0;
       });
@@ -122,7 +123,7 @@ actionsCreator.panes.search = ({ panes: { search: context } }, _actions: Actions
         updateState((s) => {
           s.panesLifeLogs.selectedLifeLogId = docId;
           s.panesLifeLogs.selectedLifeLogNodeId = "";
-          s.panesSearch.isActive = false;
+          s.activePane = "lifeLogs";
           s.panesSearch.query = "";
           s.panesSearch.selectedResultIndex = 0;
         });
@@ -136,7 +137,7 @@ actionsCreator.panes.search = ({ panes: { search: context } }, _actions: Actions
         updateState((s) => {
           s.panesLifeLogs.selectedLifeLogId = treeNode.lifeLogId;
           s.panesLifeLogs.selectedLifeLogNodeId = docId;
-          s.panesSearch.isActive = false;
+          s.activePane = "lifeLogs";
           s.panesSearch.query = "";
           s.panesSearch.selectedResultIndex = 0;
         });

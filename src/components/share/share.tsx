@@ -5,7 +5,7 @@ import { uuidv7 } from "uuidv7";
 import { DateNow } from "@/date";
 import { fetchOGPTitle } from "@/ogp";
 import "@/panes/lifeLogs/schema";
-import "@/panes/share/store";
+import "@/components/share/store";
 import { type FirestoreService, getCollection, getDocs, useFirestoreService } from "@/services/firebase/firestore";
 import { runTransaction } from "@/services/firebase/firestore/batch";
 import { addNextSibling, addSingle, getLastChildNode } from "@/services/firebase/firestore/treeNode";
@@ -223,7 +223,7 @@ export function Share() {
         const result = await handleShare(firestore);
 
         updateState((state) => {
-          state.panesShare.isActive = false;
+          state.share.isActive = false;
           if (result) {
             state.panesLifeLogs.selectedLifeLogId = result.lifeLogId;
             state.panesLifeLogs.selectedLifeLogNodeId = result.nodeId;
@@ -237,7 +237,7 @@ export function Share() {
         console.error("Share error:", e);
 
         updateState((state) => {
-          state.panesShare.isActive = false;
+          state.share.isActive = false;
         });
 
         const message = e instanceof Error ? e.message : String(e);

@@ -1,10 +1,10 @@
 import { doc, Timestamp, writeBatch } from "firebase/firestore";
-import { onMount, Show, Suspense, type JSXElement, createSignal } from "solid-js";
+import { onMount, Suspense, type JSXElement, createSignal } from "solid-js";
 import { type Meta, type StoryObj } from "storybook-solidjs-vite";
 
 import { WithEditHistoryPanel } from "@/components/editHistory";
+import { WithShare } from "@/components/share";
 import { LifeLogs } from "@/panes/lifeLogs";
-import { Share } from "@/panes/share";
 import { ActionsServiceProvider } from "@/services/actions";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import {
@@ -322,15 +322,7 @@ function ShareStory() {
   const lifeLogs = getCollection(firestore, "lifeLogs");
   const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
 
-  const { state, updateState } = useStoreService();
-
-  // Detect share params on load
-  const params = new URLSearchParams(window.location.search);
-  if (params.has("title") || params.has("url") || params.has("text")) {
-    updateState((s) => {
-      s.panesShare.isActive = true;
-    });
-  }
+  const { updateState } = useStoreService();
 
   const initialize = async () => {
     await fetch("http://localhost:8080/emulator/v1/projects/demo/databases/(default)/documents", {
@@ -387,9 +379,9 @@ function ShareStory() {
           Open with Share
         </button>
       </div>
-      <Show when={state.panesShare.isActive} fallback={<LifeLogs />}>
-        <Share />
-      </Show>
+      <WithShare>
+        <LifeLogs />
+      </WithShare>
       <Toast />
     </>
   );

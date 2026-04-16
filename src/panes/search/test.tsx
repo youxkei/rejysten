@@ -6,6 +6,7 @@ import { WithEditHistoryPanel } from "@/components/editHistory";
 import { analyzeTextForNgrams } from "@/ngram";
 import "@/panes/lifeLogs/store";
 import { Search } from "@/panes/search";
+import "@/panes/store";
 import { ActionsServiceProvider } from "@/services/actions";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import {
@@ -151,7 +152,7 @@ export async function setupSearchTest(testId: string, db: DatabaseInfo, options?
                     // Set initial state
                     updateState((s) => {
                       s.panesLifeLogs.selectedLifeLogId = "$log1";
-                      s.panesSearch.isActive = options?.isActive ?? true;
+                      s.activePane = (options?.isActive ?? true) ? "search" : "lifeLogs";
                       s.panesSearch.query = options?.initialQuery ?? "";
                       s.panesSearch.selectedResultIndex = 0;
                     });
@@ -159,7 +160,7 @@ export async function setupSearchTest(testId: string, db: DatabaseInfo, options?
                 });
 
                 const content = (
-                  <Show when={state.panesSearch.isActive}>
+                  <Show when={state.activePane === "search"}>
                     <Search />
                   </Show>
                 );

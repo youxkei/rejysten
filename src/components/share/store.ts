@@ -2,12 +2,12 @@ import { initialState } from "@/services/store";
 
 declare module "@/services/store" {
   interface State {
-    panesShare: {
+    share: {
       isActive: boolean;
     };
   }
 }
 
-initialState.panesShare = {
+initialState.share = {
   isActive: false,
 };

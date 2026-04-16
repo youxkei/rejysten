@@ -1,7 +1,8 @@
 import { Show, type JSXElement } from "solid-js";
 
 import { EditHistoryPanel } from "@/components/editHistory/editHistoryPanel";
-import "@/panes/search/store";
+import "@/components/share/store";
+import "@/panes/store";
 import { useActionsService } from "@/services/actions";
 import { useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
@@ -15,7 +16,7 @@ export function WithEditHistoryPanel(props: { children: JSXElement }) {
 
   addKeyDownEventListener((event) => {
     if (event.isComposing || event.ctrlKey) return;
-    if (state.panesSearch.isActive) return;
+    if (state.activePane !== "lifeLogs" || state.share.isActive) return;
     if (document.activeElement instanceof HTMLInputElement) return;
     if (document.activeElement instanceof HTMLTextAreaElement) return;
 

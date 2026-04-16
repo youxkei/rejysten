@@ -5,6 +5,7 @@ import { Show, createEffect, createMemo, createSignal, on, onCleanup, onMount, s
 import { analyzeTextForNgrams } from "@/ngram";
 import { SearchMobileToolbar } from "@/panes/search/mobileToolbar";
 import { SearchResult } from "@/panes/search/searchResult";
+import "@/panes/store";
 import { useActionsService } from "@/services/actions";
 import { getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { createSubscribeAllSignal } from "@/services/firebase/firestore/subscribe";
@@ -107,7 +108,7 @@ export function Search() {
   // Keyboard handlers for results navigation
   addKeyDownEventListener((event) => {
     if (event.isComposing || event.ctrlKey) return;
-    if (!state.panesSearch.isActive) return;
+    if (state.activePane !== "search") return;
 
     // Only handle navigation keys when input is not focused
     const inputFocused = document.activeElement === inputRef;

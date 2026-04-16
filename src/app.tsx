@@ -1,9 +1,10 @@
-import { createSignal, Show, Suspense } from "solid-js";
+import { createSignal, Match, Show, Suspense, Switch } from "solid-js";
 
 import { WithEditHistoryPanel } from "@/components/editHistory";
+import { WithShare } from "@/components/share";
 import { LifeLogs } from "@/panes/lifeLogs";
 import { Search } from "@/panes/search";
-import { Share } from "@/panes/share";
+import "@/panes/store";
 import { ActionsServiceProvider, useActionsService } from "@/services/actions";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import { FirestoreServiceProvider } from "@/services/firebase/firestore";
@@ -15,24 +16,16 @@ import { styles } from "@/styles.css";
 import { dayMs } from "@/timestamp";
 
 function MainContent() {
-  const { state, updateState } = useStoreService();
+  const { state } = useStoreService();
   const {
     panes: { search: searchActions },
   } = useActionsService();
   const isMobile = createIsMobile();
 
-  // Detect share target params and activate share pane
-  const params = new URLSearchParams(window.location.search);
-  if (params.has("title") || params.has("url") || params.has("text")) {
-    updateState((s) => {
-      s.panesShare.isActive = true;
-    });
-  }
-
   // "/" key handler to open search (when not editing)
   addKeyDownEventListener((event) => {
     if (event.isComposing || event.ctrlKey) return;
-    if (state.panesSearch.isActive) return;
+    if (state.activePane !== "lifeLogs" || state.share.isActive) return;
     if (document.activeElement instanceof HTMLInputElement) return;
     if (document.activeElement instanceof HTMLTextAreaElement) return;
 
@@ -45,16 +38,13 @@ function MainContent() {
   return (
     <>
       <WithEditHistoryPanel>
-        <Show
-          when={state.panesShare.isActive}
-          fallback={
-            <Show when={state.panesSearch.isActive} fallback={<LifeLogs rangeMs={isMobile() ? dayMs / 2 : dayMs} />}>
+        <WithShare>
+          <Switch fallback={<LifeLogs rangeMs={isMobile() ? dayMs / 2 : dayMs} />}>
+            <Match when={state.activePane === "search"}>
               <Search />
-            </Show>
-          }
-        >
-          <Share />
-        </Show>
+            </Match>
+          </Switch>
+        </WithShare>
       </WithEditHistoryPanel>
       <Toast />
     </>

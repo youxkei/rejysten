@@ -4,9 +4,9 @@ import { onMount, Suspense } from "solid-js";
 import { afterAll, afterEach, beforeAll, describe, expect, vi } from "vitest";
 
 import { awaitPendingCallbacks } from "@/awaitableCallback";
+import { handleShare } from "@/components/share";
 import { fetchOGPTitle } from "@/ogp";
 import { baseTime } from "@/panes/lifeLogs/test";
-import { handleShare } from "@/panes/share";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import {
   FirestoreServiceProvider,
