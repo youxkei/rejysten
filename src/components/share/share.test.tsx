@@ -5,7 +5,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, vi } from "vitest";
 
 import { awaitPendingCallbacks } from "@/awaitableCallback";
 import { handleShare } from "@/components/share";
-import { fetchOGPTitle } from "@/ogp";
+import { fetchOGPMeta } from "@/ogp";
 import { baseTime } from "@/panes/lifeLogs/test";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import {
@@ -31,7 +31,7 @@ vi.mock(import("@/date"), async () => {
 
 vi.mock(import("@/ogp"), async () => {
   return {
-    fetchOGPTitle: vi.fn().mockResolvedValue(null),
+    fetchOGPMeta: vi.fn().mockResolvedValue({ title: null, description: null }),
   };
 });
 
@@ -947,7 +947,7 @@ describe("share", () => {
 
   it("uses OGP title when share title is not provided", async ({ db, task }) => {
     history.replaceState(null, "", "/?url=https://example.com");
-    vi.mocked(fetchOGPTitle).mockResolvedValueOnce("OGP Title");
+    vi.mocked(fetchOGPMeta).mockResolvedValueOnce({ title: "OGP Title", description: null });
 
     const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
@@ -1010,7 +1010,7 @@ describe("share", () => {
 
   it("falls back to URL when OGP fetch rejects", async ({ db, task }) => {
     history.replaceState(null, "", "/?url=https://example.com");
-    vi.mocked(fetchOGPTitle).mockRejectedValueOnce(new Error("network"));
+    vi.mocked(fetchOGPMeta).mockRejectedValueOnce(new Error("network"));
 
     const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
@@ -1038,6 +1038,239 @@ describe("share", () => {
     const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")), { fromServer: true });
     expect(allNodes).toHaveLength(1);
     expect(allNodes[0].text).toBe("[https://example.com](https://example.com)");
+  });
+
+  it("combines og:title and og:description for X URL", async ({ db, task }) => {
+    const xUrl = "https://x.com/claudeai/status/2044785261393977612";
+    history.replaceState(null, "", `/?url=${encodeURIComponent(xUrl)}`);
+    vi.mocked(fetchOGPMeta).mockResolvedValueOnce({
+      title: "XユーザーのClaude（@claudeai）さん",
+      description: "Hello world",
+    });
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")), { fromServer: true });
+    expect(allNodes).toHaveLength(1);
+    expect(allNodes[0].text).toBe(`[XユーザーのClaude（@claudeai）さん: Hello world](${xUrl})`);
+  });
+
+  it("uses og:title alone for X URL when og:description is missing", async ({ db, task }) => {
+    const xUrl = "https://x.com/someone/status/1";
+    history.replaceState(null, "", `/?url=${encodeURIComponent(xUrl)}`);
+    vi.mocked(fetchOGPMeta).mockResolvedValueOnce({ title: "Just the title", description: null });
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")), { fromServer: true });
+    expect(allNodes).toHaveLength(1);
+    expect(allNodes[0].text).toBe(`[Just the title](${xUrl})`);
+  });
+
+  it("treats *.x.com subdomain as X", async ({ db, task }) => {
+    const xUrl = "https://mobile.x.com/user/status/1";
+    history.replaceState(null, "", `/?url=${encodeURIComponent(xUrl)}`);
+    vi.mocked(fetchOGPMeta).mockResolvedValueOnce({ title: "T", description: "D" });
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")), { fromServer: true });
+    expect(allNodes).toHaveLength(1);
+    expect(allNodes[0].text).toBe(`[T: D](${xUrl})`);
+  });
+
+  it("ignores og:description for non-X URL even when present", async ({ db, task }) => {
+    history.replaceState(null, "", "/?url=https://example.com");
+    vi.mocked(fetchOGPMeta).mockResolvedValueOnce({ title: "Only Title", description: "Should be ignored" });
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")), { fromServer: true });
+    expect(allNodes).toHaveLength(1);
+    expect(allNodes[0].text).toBe("[Only Title](https://example.com)");
+  });
+
+  it("normalizes [ and ] in OGP title to full-width", async ({ db, task }) => {
+    history.replaceState(null, "", "/?url=https://example.com");
+    vi.mocked(fetchOGPMeta).mockResolvedValueOnce({ title: "[連載] My Article [第1話]", description: null });
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")), { fromServer: true });
+    expect(allNodes).toHaveLength(1);
+    expect(allNodes[0].text).toBe("[［連載］ My Article ［第1話］](https://example.com)");
+  });
+
+  it("normalizes [ and ] in user-provided title param", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=%5B%E5%91%8A%E7%9F%A5%5D&url=https://example.com");
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")), { fromServer: true });
+    expect(allNodes).toHaveLength(1);
+    expect(allNodes[0].text).toBe("[［告知］](https://example.com)");
+  });
+
+  it("normalizes [ and ] in both halves of X combined label", async ({ db, task }) => {
+    const xUrl = "https://x.com/user/status/1";
+    history.replaceState(null, "", `/?url=${encodeURIComponent(xUrl)}`);
+    vi.mocked(fetchOGPMeta).mockResolvedValueOnce({
+      title: "Title[with]brackets",
+      description: "Desc[also]brackets",
+    });
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")), { fromServer: true });
+    expect(allNodes).toHaveLength(1);
+    expect(allNodes[0].text).toBe(`[Title［with］brackets: Desc［also］brackets](${xUrl})`);
   });
 
   it("does not add duplicate when same URL already exists in running lifeLog", async ({ db, task }) => {

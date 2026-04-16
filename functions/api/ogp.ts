@@ -1,36 +1,26 @@
-const FIREBASE_OGP_URL = "https://ogp-7qz7lfkdoa-an.a.run.app";
-
-async function fetchFromFirebase(targetUrl: string): Promise<Response> {
-  try {
-    const res = await fetch(`${FIREBASE_OGP_URL}?url=${encodeURIComponent(targetUrl)}`, {
-      signal: AbortSignal.timeout(10000),
-    });
-    const data = (await res.json()) as { title: string | null };
-    return Response.json({ title: data.title });
-  } catch {
-    return Response.json({ title: null });
-  }
-}
-
 interface Env {}
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
-  const requestUrl = new URL(context.request.url);
-  const targetUrl = requestUrl.searchParams.get("url");
-
-  if (!targetUrl) {
-    return Response.json({ error: "Missing url parameter" }, { status: 400 });
+export const onRequestPost: PagesFunction<Env> = async (context) => {
+  let body: unknown;
+  try {
+    body = await context.request.json();
+  } catch {
+    return Response.json({ success: false, reason: "Invalid JSON body" });
   }
+
+  const targetUrl =
+    typeof body === "object" && body !== null && "url" in body && typeof body.url === "string" ? body.url : null;
+  if (!targetUrl) return Response.json({ success: false, reason: "Missing url" });
 
   let parsed: URL;
   try {
     parsed = new URL(targetUrl);
   } catch {
-    return Response.json({ error: "Invalid URL" }, { status: 400 });
+    return Response.json({ success: false, reason: "Invalid URL" });
   }
 
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    return Response.json({ error: "Only http/https URLs are supported" }, { status: 400 });
+    return Response.json({ success: false, reason: "Only http/https URLs are supported" });
   }
 
   try {
@@ -45,23 +35,40 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       redirect: "follow",
     });
 
-    if (response.status === 403) {
-      return await fetchFromFirebase(targetUrl);
+    if (!response.ok) {
+      return Response.json({ success: false, reason: `HTTP ${response.status}` });
     }
 
     const contentType = response.headers.get("content-type") ?? "";
     if (!contentType.includes("text/html")) {
-      return Response.json({ title: null });
+      return Response.json({
+        success: true,
+        result: { title: null, description: null, ogp: {} },
+      });
     }
 
     let ogTitle: string | null = null;
+    let ogDescription: string | null = null;
     let htmlTitle: string | null = null;
+    let metaDescription: string | null = null;
 
     const rewriter = new HTMLRewriter()
       .on('meta[property="og:title"]', {
         element(el) {
           const content = el.getAttribute("content");
           if (content) ogTitle = content;
+        },
+      })
+      .on('meta[property="og:description"]', {
+        element(el) {
+          const content = el.getAttribute("content");
+          if (content) ogDescription = content;
+        },
+      })
+      .on('meta[name="description"]', {
+        element(el) {
+          const content = el.getAttribute("content");
+          if (content) metaDescription = content;
         },
       })
       .on("title", {
@@ -73,9 +80,19 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     const transformed = rewriter.transform(response);
     await transformed.text();
 
-    const title = ogTitle ?? (htmlTitle?.trim() || null);
-    return Response.json({ title });
+    const ogp: Record<string, string[]> = {};
+    if (ogTitle) ogp["og:title"] = [ogTitle];
+    if (ogDescription) ogp["og:description"] = [ogDescription];
+
+    return Response.json({
+      success: true,
+      result: {
+        title: htmlTitle?.trim() || null,
+        description: metaDescription ?? null,
+        ogp,
+      },
+    });
   } catch {
-    return Response.json({ title: null });
+    return Response.json({ success: false, reason: "fetch failed" });
   }
 };

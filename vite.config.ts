@@ -47,7 +47,7 @@ export default defineConfig({
     "import.meta.vitest": false,
   },
   test: {
-    exclude: ["functions/**", "node_modules/**", "firebase-functions/**", "firestore.rules.test.ts"],
+    exclude: ["functions/**", "node_modules/**", "firestore.rules.test.ts"],
     globalSetup: "./test/globalSetup.ts",
     browser: {
       provider: playwright(),

@@ -3,7 +3,7 @@ import { onMount } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
 import { DateNow } from "@/date";
-import { fetchOGPTitle } from "@/ogp";
+import { fetchOGPMeta } from "@/ogp";
 import "@/panes/lifeLogs/schema";
 import "@/components/share/store";
 import { type FirestoreService, getCollection, getDocs, useFirestoreService } from "@/services/firebase/firestore";
@@ -46,12 +46,16 @@ export async function handleShare(
     ? "読書"
     : "ネットサーフィン";
   const otherCategory = category === "読書" ? "ネットサーフィン" : "読書";
+  const isX = hostname === "x.com" || hostname.endsWith(".x.com");
 
   // Determine title: prefer title param, then OGP title, then URL
   let linkTitle = title;
   if (!linkTitle) {
     try {
-      linkTitle = await fetchOGPTitle(url);
+      const meta = await fetchOGPMeta(url);
+      if (meta.title) {
+        linkTitle = isX && meta.description ? `${meta.title}: ${meta.description}` : meta.title;
+      }
     } catch {
       // fall through
     }
@@ -59,7 +63,7 @@ export async function handleShare(
   if (!linkTitle) {
     linkTitle = url;
   }
-  const markdownLink = `[${linkTitle}](${url})`;
+  const markdownLink = `[${linkTitle.replaceAll("[", "［").replaceAll("]", "］")}](${url})`;
 
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
   const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");

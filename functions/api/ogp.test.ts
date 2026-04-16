@@ -1,10 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { onRequestGet } from "./ogp";
+import { onRequestPost } from "./ogp";
 
-function createContext(url: string) {
+function createContext(body: unknown, opts: { invalidJson?: boolean } = {}) {
+  const requestBody = opts.invalidJson ? "not json" : JSON.stringify(body);
   return {
-    request: new Request(url),
+    request: new Request("https://localhost/api/ogp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: requestBody,
+    }),
     env: {},
     params: {},
     waitUntil: () => {},
@@ -12,8 +17,18 @@ function createContext(url: string) {
     next: () => new Response(),
     data: {},
     functionPath: "",
-  } as unknown as Parameters<typeof onRequestGet>[0];
+  } as unknown as Parameters<typeof onRequestPost>[0];
 }
+
+type SuccessResponse = {
+  success: true;
+  result: {
+    title: string | null;
+    description: string | null;
+    ogp: Record<string, string[] | undefined>;
+  };
+};
+type FailureResponse = { success: false; reason: string };
 
 const originalFetch = globalThis.fetch;
 
@@ -35,79 +50,136 @@ describe("OGP function", () => {
       "content-type": "text/html; charset=utf-8",
     });
 
-    const response = await onRequestGet(createContext("https://localhost/api/ogp?url=https://example.com/"));
-    const data: { title: string | null } = await response.json();
-    expect(data.title).toBe("Example Title");
+    const response = await onRequestPost(createContext({ url: "https://example.com/" }));
+    const data = (await response.json()) as SuccessResponse;
+    expect(data.success).toBe(true);
+    expect(data.result.ogp["og:title"]).toEqual(["Example Title"]);
+    expect(data.result.ogp["og:description"]).toBeUndefined();
+    expect(data.result.title).toBeNull();
+    expect(data.result.description).toBeNull();
   });
 
-  it("falls back to <title> when no og:title", async () => {
+  it("extracts <title> tag", async () => {
     mockFetch(200, "<html><head><title>HTML Title</title></head></html>", {
       "content-type": "text/html",
     });
 
-    const response = await onRequestGet(createContext("https://localhost/api/ogp?url=https://example.com/"));
-    const data: { title: string | null } = await response.json();
-    expect(data.title).toBe("HTML Title");
+    const response = await onRequestPost(createContext({ url: "https://example.com/" }));
+    const data = (await response.json()) as SuccessResponse;
+    expect(data.result.title).toBe("HTML Title");
+    expect(data.result.ogp).toEqual({});
   });
 
-  it("prefers og:title over <title>", async () => {
+  it("returns both og:title and <title> when both are present", async () => {
     mockFetch(
       200,
       '<html><head><meta property="og:title" content="OG Title"><title>HTML Title</title></head></html>',
       { "content-type": "text/html" },
     );
 
-    const response = await onRequestGet(createContext("https://localhost/api/ogp?url=https://example.com/"));
-    const data: { title: string | null } = await response.json();
-    expect(data.title).toBe("OG Title");
+    const response = await onRequestPost(createContext({ url: "https://example.com/" }));
+    const data = (await response.json()) as SuccessResponse;
+    expect(data.result.ogp["og:title"]).toEqual(["OG Title"]);
+    expect(data.result.title).toBe("HTML Title");
   });
 
-  it("returns 400 when url parameter is missing", async () => {
-    const response = await onRequestGet(createContext("https://localhost/api/ogp"));
-    expect(response.status).toBe(400);
+  it("extracts og:description", async () => {
+    mockFetch(
+      200,
+      '<html><head><meta property="og:description" content="Example Description"></head></html>',
+      { "content-type": "text/html" },
+    );
+
+    const response = await onRequestPost(createContext({ url: "https://example.com/" }));
+    const data = (await response.json()) as SuccessResponse;
+    expect(data.result.ogp["og:description"]).toEqual(["Example Description"]);
   });
 
-  it("returns 400 for invalid URL", async () => {
-    const response = await onRequestGet(createContext("https://localhost/api/ogp?url=not-a-url"));
-    expect(response.status).toBe(400);
+  it("extracts <meta name=\"description\">", async () => {
+    mockFetch(
+      200,
+      '<html><head><meta name="description" content="Meta desc"></head></html>',
+      { "content-type": "text/html" },
+    );
+
+    const response = await onRequestPost(createContext({ url: "https://example.com/" }));
+    const data = (await response.json()) as SuccessResponse;
+    expect(data.result.description).toBe("Meta desc");
   });
 
-  it("returns 400 for non-http/https URL", async () => {
-    const response = await onRequestGet(createContext("https://localhost/api/ogp?url=ftp://example.com/file"));
-    expect(response.status).toBe(400);
+  it("returns {success:false} when url body field is missing", async () => {
+    const response = await onRequestPost(createContext({}));
+    const data = (await response.json()) as FailureResponse;
+    expect(data.success).toBe(false);
+    expect(data.reason).toBe("Missing url");
   });
 
-  it("returns null for non-HTML content type", async () => {
+  it("returns {success:false} for invalid URL", async () => {
+    const response = await onRequestPost(createContext({ url: "not-a-url" }));
+    const data = (await response.json()) as FailureResponse;
+    expect(data.success).toBe(false);
+    expect(data.reason).toBe("Invalid URL");
+  });
+
+  it("returns {success:false} for non-http/https URL", async () => {
+    const response = await onRequestPost(createContext({ url: "ftp://example.com/file" }));
+    const data = (await response.json()) as FailureResponse;
+    expect(data.success).toBe(false);
+    expect(data.reason).toBe("Only http/https URLs are supported");
+  });
+
+  it("returns {success:false} for invalid JSON body", async () => {
+    const response = await onRequestPost(createContext(null, { invalidJson: true }));
+    const data = (await response.json()) as FailureResponse;
+    expect(data.success).toBe(false);
+    expect(data.reason).toBe("Invalid JSON body");
+  });
+
+  it("returns empty result for non-HTML content type", async () => {
     mockFetch(200, '{"key": "value"}', { "content-type": "application/json" });
 
-    const response = await onRequestGet(createContext("https://localhost/api/ogp?url=https://example.com/data.json"));
-    const data: { title: string | null } = await response.json();
-    expect(data.title).toBeNull();
+    const response = await onRequestPost(createContext({ url: "https://example.com/data.json" }));
+    const data = (await response.json()) as SuccessResponse;
+    expect(data.success).toBe(true);
+    expect(data.result.title).toBeNull();
+    expect(data.result.description).toBeNull();
+    expect(data.result.ogp).toEqual({});
   });
 
-  it("returns null when fetch fails", async () => {
+  it("returns {success:false} when fetch throws", async () => {
     mockFetchError();
 
-    const response = await onRequestGet(
-      createContext("https://localhost/api/ogp?url=https://unreachable.example.com/"),
-    );
-    const data: { title: string | null } = await response.json();
-    expect(data.title).toBeNull();
+    const response = await onRequestPost(createContext({ url: "https://unreachable.example.com/" }));
+    const data = (await response.json()) as FailureResponse;
+    expect(data.success).toBe(false);
+    expect(data.reason).toBe("fetch failed");
+  });
+
+  it("returns {success:false} when upstream returns non-OK", async () => {
+    mockFetch(500, "", { "content-type": "text/html" });
+
+    const response = await onRequestPost(createContext({ url: "https://example.com/" }));
+    const data = (await response.json()) as FailureResponse;
+    expect(data.success).toBe(false);
+    expect(data.reason).toBe("HTTP 500");
   });
 
   it("extracts og:title from a real page (ogp.me)", async () => {
-    const response = await onRequestGet(createContext("https://localhost/api/ogp?url=https://ogp.me/"));
-    const data: { title: string | null } = await response.json();
-    expect(data.title).toBe("Open Graph protocol");
+    const response = await onRequestPost(createContext({ url: "https://ogp.me/" }));
+    const data = (await response.json()) as SuccessResponse;
+    expect(data.success).toBe(true);
+    expect(data.result.ogp["og:title"]).toEqual(["Open Graph protocol"]);
   });
 
-  it("returns null when HTML has no title", async () => {
-    mockFetch(200, "<html><head></head><body>No title here</body></html>", {
+  it("returns empty result when HTML has no title or meta", async () => {
+    mockFetch(200, "<html><head></head><body>nothing here</body></html>", {
       "content-type": "text/html",
     });
 
-    const response = await onRequestGet(createContext("https://localhost/api/ogp?url=https://example.com/empty"));
-    const data: { title: string | null } = await response.json();
-    expect(data.title).toBeNull();
+    const response = await onRequestPost(createContext({ url: "https://example.com/empty" }));
+    const data = (await response.json()) as SuccessResponse;
+    expect(data.result.title).toBeNull();
+    expect(data.result.description).toBeNull();
+    expect(data.result.ogp).toEqual({});
   });
 });
