@@ -27,12 +27,6 @@ vi.mock(import("@/date"), async () => {
   };
 });
 
-vi.mock(import("virtual:pwa-register"), async () => {
-  return {
-    registerSW: () => () => Promise.resolve(),
-  };
-});
-
 beforeAll(async () => {
   await acquireEmulator();
 });

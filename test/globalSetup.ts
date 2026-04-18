@@ -1,9 +1,12 @@
 import http from "http";
 import net from "net";
+import fs from "fs";
+import os from "os";
+import path from "path";
+import { fileURLToPath } from "url";
 import { spawn, type ChildProcess } from "child_process";
 import type { TestProject } from "vitest/node";
 
-const CONTAINER_PORT = 8080;
 const POOL_SIZE = 2;
 
 let server: http.Server | undefined;
@@ -11,7 +14,7 @@ let httpPort: number;
 
 interface EmulatorInstance {
   port: number;
-  containerName: string;
+  tmpDir: string;
   process: ChildProcess;
 }
 
@@ -35,7 +38,7 @@ async function findFreePort(): Promise<number> {
   });
 }
 
-async function waitForEmulator(port: number, maxAttempts = 60): Promise<void> {
+async function waitForEmulator(port: number, maxAttempts = 120): Promise<void> {
   for (let i = 0; i < maxAttempts; i++) {
     try {
       const res = await fetch(`http://localhost:${port}/`);
@@ -50,29 +53,31 @@ async function waitForEmulator(port: number, maxAttempts = 60): Promise<void> {
   throw new Error(`Emulator did not start within ${maxAttempts} seconds`);
 }
 
+const firebaseBin = fileURLToPath(new URL("../node_modules/.bin/firebase", import.meta.url));
+
 async function startEmulator(): Promise<EmulatorInstance> {
   const port = await findFreePort();
-  const containerName = `firebase-emulator-test-${crypto.randomUUID()}`;
+  const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "firebase-emu-"));
+  const rulesPath = path.resolve(process.cwd(), "firestore.local.rules");
+  const configPath = path.join(tmpDir, "firebase.json");
+  await fs.promises.writeFile(
+    configPath,
+    JSON.stringify({
+      firestore: { rules: rulesPath },
+      emulators: { firestore: { host: "127.0.0.1", port } },
+    }),
+  );
 
-  console.log(`[globalSetup] Starting emulator on port ${port}, container: ${containerName}`);
+  console.log(`[globalSetup] Starting emulator on port ${port}, tmpDir: ${tmpDir}`);
 
   const emulatorProcess = spawn(
-    "podman",
-    [
-      "run",
-      "--rm",
-      "--name",
-      containerName,
-      "-p",
-      `${port}:${CONTAINER_PORT}`,
-      "-v",
-      `${process.cwd()}/firebase.local.json:/firebase/firebase.json`,
-      "-v",
-      `${process.cwd()}/firestore.local.rules:/firebase/firestore.rules`,
-      "firebase-emulator",
-    ],
+    firebaseBin,
+    ["emulators:start", "--only", "firestore", "--config", configPath, "--project", "demo"],
     {
+      cwd: tmpDir,
       stdio: ["ignore", "pipe", "pipe"],
+      detached: true,
+      env: { ...process.env, JAVA_TOOL_OPTIONS: "-XX:+UseZGC" },
     },
   );
 
@@ -80,7 +85,7 @@ async function startEmulator(): Promise<EmulatorInstance> {
     console.error(`[emulator:${port}] ${data.toString().trim()}`);
   });
 
-  const instance: EmulatorInstance = { port, containerName, process: emulatorProcess };
+  const instance: EmulatorInstance = { port, tmpDir, process: emulatorProcess };
 
   console.log(`[globalSetup] Waiting for emulator on port ${port} to be ready...`);
   try {
@@ -96,15 +101,38 @@ async function startEmulator(): Promise<EmulatorInstance> {
 }
 
 async function stopEmulator(instance: EmulatorInstance): Promise<void> {
-  console.log(`[globalSetup] Stopping emulator on port ${instance.port}, container: ${instance.containerName}`);
+  console.log(`[globalSetup] Stopping emulator on port ${instance.port}, tmpDir: ${instance.tmpDir}`);
 
-  const rmProcess = spawn("podman", ["rm", "-f", instance.containerName], {
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  const pid = instance.process.pid;
+  if (pid !== undefined && instance.process.exitCode === null) {
+    try {
+      process.kill(-pid, "SIGTERM");
+    } catch {
+      // Process already gone
+    }
 
-  await new Promise<void>((resolve) => {
-    rmProcess.on("close", () => resolve());
-  });
+    await Promise.race([
+      new Promise<void>((resolve) => {
+        if (instance.process.exitCode !== null) {
+          resolve();
+          return;
+        }
+        instance.process.once("exit", () => resolve());
+      }),
+      new Promise<void>((resolve) =>
+        setTimeout(() => {
+          try {
+            process.kill(-pid, "SIGKILL");
+          } catch {
+            // Process already gone
+          }
+          resolve();
+        }, 3000),
+      ),
+    ]);
+  }
+
+  await fs.promises.rm(instance.tmpDir, { recursive: true, force: true });
 
   console.log(`[globalSetup] Emulator on port ${instance.port} stopped`);
 }
