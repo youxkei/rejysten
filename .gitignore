@@ -5,5 +5,8 @@ node_modules
 *storybook.log
 storybook-static
 
+firebase-debug.log
+firestore-debug.log
+
 __screenshots__
 .vitest-attachments
