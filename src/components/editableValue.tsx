@@ -103,10 +103,8 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
               setEditTrigger(undefined);
 
               if (cursorPos !== undefined) {
-                requestAnimationFrame(() => {
-                  inputRef.setSelectionRange(cursorPos, cursorPos);
-                  props.onSelectionChange?.(cursorPos);
-                });
+                inputRef.setSelectionRange(cursorPos, cursorPos);
+                props.onSelectionChange?.(cursorPos);
               } else {
                 props.onSelectionChange?.(inputRef.selectionStart ?? 0);
               }
