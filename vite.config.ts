@@ -5,6 +5,7 @@ import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 // @ts-ignore
 import { VitePWA } from "vite-plugin-pwa";
 import { playwright } from "@vitest/browser-playwright";
+import FlakyReporter from "./test/flakyReporter";
 
 export default defineConfig({
   server: {
@@ -56,9 +57,10 @@ export default defineConfig({
       instances: [{ browser: "chromium" }],
     },
     setupFiles: ["node_modules/@testing-library/jest-dom/vitest.js"],
+    reporters: ["default", new FlakyReporter({ configName: "main" })],
     fileParallelism: true,
-    retry: 3,
-    bail: 1,
+    retry: 0,
+    bail: 0,
     testTimeout: 5_000,
     hookTimeout: 120_000,
   },

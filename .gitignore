@@ -10,3 +10,4 @@ firestore-debug.log
 
 __screenshots__
 .vitest-attachments
+.flaky-tests

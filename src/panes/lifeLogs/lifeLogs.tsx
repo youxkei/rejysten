@@ -126,9 +126,22 @@ export function TimeRangedLifeLogs(props: {
     props.scrollFocusDebounceMs ?? 300,
   );
 
+  // 初回スナップショット到着までは resetRange を判定しない。
+  // onSnapshot が走る前の currentIds=[] を見て誤って resetToLifeLog を
+  // 呼ぶのを防ぐ（レンジが不要に拡張される／テストが flaky 化する原因）。
+  const [hasLoadedOnce$, setHasLoadedOnce] = createSignal(false);
+  createEffect(
+    on(
+      () => lifeLogs$(),
+      () => setHasLoadedOnce(true),
+      { defer: true },
+    ),
+  );
+
   createEffect(() => {
     const selectedId = state.panesLifeLogs.selectedLifeLogId;
     if (!selectedId) return;
+    if (!hasLoadedOnce$()) return;
     const currentIds = untrack(() => lifeLogs$().map((l) => l.id));
     if (currentIds.includes(selectedId) && !untrack(() => props.isExpanded)) return;
     debouncedResetToSelected(selectedId);

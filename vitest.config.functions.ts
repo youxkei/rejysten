@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import { cloudflareTest } from "@cloudflare/vitest-pool-workers";
+import FlakyReporter from "./test/flakyReporter";
 
 export default defineConfig({
   plugins: [
@@ -11,5 +12,6 @@ export default defineConfig({
   ],
   test: {
     include: ["functions/**/*.test.ts"],
+    reporters: ["default", new FlakyReporter({ configName: "functions" })],
   },
 });

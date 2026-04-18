@@ -1,6 +1,6 @@
 import { render } from "@solidjs/testing-library";
 import { doc, Timestamp, writeBatch } from "firebase/firestore";
-import { onMount, Suspense } from "solid-js";
+import { createSignal, onMount, Show, Suspense } from "solid-js";
 
 import { WithEditHistoryPanel } from "@/components/editHistory";
 import { LifeLogs } from "@/panes/lifeLogs";
@@ -66,6 +66,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                 const lifeLogs = getCollection(firestore, "lifeLogs");
                 const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
                 const { updateState } = useStoreService();
+                const [dataReady$, setDataReady] = createSignal(false);
 
                 onMount(() => {
                   (async () => {
@@ -254,6 +255,12 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
 
                     await batch.commit();
 
+                    // Mount <LifeLogs> only after batch.commit() so onSnapshot
+                    // subscribes to a query whose data is already server-confirmed.
+                    // Subscribing before the batch commits produces stale server-state
+                    // snapshots that miss some of the batch docs (flaky tests).
+                    setDataReady(true);
+
                     // Select the first LifeLog that exists in the query results
                     // When lifeLogCount > 3, earlier LifeLogs might be filtered out by the time-based query
                     if (options?.initialSelectedId) {
@@ -270,7 +277,11 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                   })().then(resolveReady, rejectReady);
                 });
 
-                const content = <LifeLogs {...(options?.lifeLogsProps ?? {})} />;
+                const content = (
+                  <Show when={dataReady$()} fallback={<span>setup loading...</span>}>
+                    <LifeLogs {...(options?.lifeLogsProps ?? {})} />
+                  </Show>
+                );
                 return options?.withEditHistory ? <WithEditHistoryPanel>{content}</WithEditHistoryPanel> : content;
               })()}
             </Suspense>
