@@ -21,6 +21,7 @@ import {
 } from "firebase/firestore";
 import { type Accessor, createContext, createSignal, type JSXElement, onCleanup, useContext } from "solid-js";
 
+import { awaitable } from "@/awaitableCallback";
 import { ServiceNotAvailable } from "@/services/error";
 import { type FirebaseService, useFirebaseService } from "@/services/firebase";
 import "@/services/firebase/firestore/editHistory/schema";
@@ -123,8 +124,9 @@ export function FirestoreServiceProvider(props: {
   // (batch.commit, listener snapshots) reject with "client terminated"
   // instead of running against a detached component. Prevents hung
   // callbacks from bleeding into the next test case.
+  const awaitableTerminate = awaitable(() => terminate(firestore));
   onCleanup(() => {
-    void terminate(firestore);
+    awaitableTerminate();
   });
 
   return <context.Provider value={service}>{props.children}</context.Provider>;
