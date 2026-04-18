@@ -1,7 +1,12 @@
 const pendingCallbacks: Promise<void>[] = [];
 
-export async function awaitPendingCallbacks() {
-  await Promise.all(pendingCallbacks);
+export async function awaitPendingCallbacks(options?: { timeoutMs?: number }) {
+  const all = Promise.all(pendingCallbacks).then(() => undefined);
+  if (options?.timeoutMs !== undefined) {
+    await Promise.race([all, new Promise<void>((resolve) => setTimeout(resolve, options.timeoutMs))]);
+  } else {
+    await all;
+  }
   pendingCallbacks.length = 0;
   await new Promise((resolve) => setTimeout(resolve, 1));
 }

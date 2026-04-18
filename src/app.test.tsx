@@ -36,8 +36,8 @@ afterAll(async () => {
 });
 
 afterEach(async () => {
-  await awaitPendingCallbacks();
   cleanup();
+  await awaitPendingCallbacks({ timeoutMs: 2000 });
 });
 
 const testConfigYAML = `{ apiKey: "apiKey", authDomain: "authDomain", projectId: "demo", storageBucket: "", messagingSenderId: "", appId: "", measurementId: "", projectNumber: "", version: "2" }`;

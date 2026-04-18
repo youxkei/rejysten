@@ -17,6 +17,7 @@ import {
   onSnapshot,
   onSnapshotsInSync,
   connectFirestoreEmulator,
+  terminate,
 } from "firebase/firestore";
 import { type Accessor, createContext, createSignal, type JSXElement, onCleanup, useContext } from "solid-js";
 
@@ -117,6 +118,14 @@ export function FirestoreServiceProvider(props: {
     service.resolve = undefined;
   });
   onCleanup(unsubscribe);
+
+  // Terminate the Firestore client on unmount so in-flight operations
+  // (batch.commit, listener snapshots) reject with "client terminated"
+  // instead of running against a detached component. Prevents hung
+  // callbacks from bleeding into the next test case.
+  onCleanup(() => {
+    void terminate(firestore);
+  });
 
   return <context.Provider value={service}>{props.children}</context.Provider>;
 }

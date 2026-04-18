@@ -27,8 +27,8 @@ afterAll(async () => {
 });
 
 afterEach(async () => {
-  await awaitPendingCallbacks();
   cleanup();
+  await awaitPendingCallbacks({ timeoutMs: 2000 });
 });
 
 describe("<LifeLogs />", () => {
