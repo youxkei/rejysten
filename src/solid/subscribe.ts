@@ -1,4 +1,4 @@
-import { createSignal, createEffect, createResource, createComputed, startTransition } from "solid-js";
+import { createSignal, createEffect, createResource, createComputed, onCleanup, startTransition } from "solid-js";
 
 export function createSubscribeWithResource<Source, Value, InitialValue>(
   source$: () => Source | undefined,
@@ -32,6 +32,19 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
         }
 
         mutateResource?.(value);
+      });
+
+      // Resolve any still-pending fetcher Promise with initialValue on cleanup.
+      // Otherwise, when an owner is disposed mid-subscribe (e.g. a test times
+      // out before onSnapshot delivers), the Promise stays pending forever and
+      // SolidJS's Suspense/transition scheduler blocks subsequent startTransition
+      // commits (cascade flaky tests).
+      onCleanup(() => {
+        activeVersion++;
+        if (setResource) {
+          setResource(initialValue as unknown as Value);
+          setResource = undefined;
+        }
       });
 
       if (firstValue) {
