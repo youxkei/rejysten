@@ -175,7 +175,17 @@ export class Batch {
     const editHistoryHeadCol = getCollection(this.service, "editHistoryHead");
 
     const historyEntryId = uuidv7();
-    const currentHead = this.service.editHistoryHead$();
+    // Read head from signal first, fall back to Firestore cache if the signal
+    // hasn't caught up after a previous action's commit. Without the fallback,
+    // rapid successive actions can record history entries with parentId="" and
+    // fracture the history tree into disjoint roots.
+    let currentHead = this.service.editHistoryHead$();
+    if (!currentHead) {
+      const cached = await getSingletonDoc(this.service, editHistoryHeadCol);
+      if (cached) {
+        currentHead = { ...cached, id: singletonDocumentId };
+      }
+    }
     const parentId = currentHead?.entryId ?? "";
 
     this.set(editHistoryCol, {
