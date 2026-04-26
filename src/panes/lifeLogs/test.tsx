@@ -40,6 +40,8 @@ export interface SetupLifeLogsTestOptions {
 }
 
 export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, options?: SetupLifeLogsTestOptions) {
+  window.localStorage.removeItem(`rejysten.service.store.state${testId}`);
+
   let resolveReady: () => void;
   let rejectReady: (error: unknown) => void;
   const ready = new Promise<void>((resolve, reject) => {

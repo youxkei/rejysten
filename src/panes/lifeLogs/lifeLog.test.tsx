@@ -43,6 +43,31 @@ async function waitForCurrentPendingCommits() {
   }
 }
 
+type LifeLogsTestResult = Awaited<ReturnType<typeof setupLifeLogsTestBase>>["result"];
+
+async function waitForSelectedTreeText(result: LifeLogsTestResult, text: string) {
+  return await waitFor(() => {
+    const element = result.getByText(text);
+    expect(element.className).toContain(styles.lifeLogTree.selected);
+    return element;
+  });
+}
+
+async function waitForInput(result: LifeLogsTestResult) {
+  return await waitFor(() => {
+    const input = result.container.querySelector<HTMLInputElement>("input");
+    expect(input).toBeTruthy();
+    return input as HTMLInputElement;
+  });
+}
+
+async function focusInput(input: HTMLInputElement) {
+  input.focus();
+  await waitFor(() => {
+    expect(document.activeElement).toBe(input);
+  });
+}
+
 afterEach(async () => {
   await awaitPendingCallbacks();
   await waitForCurrentPendingCommits();
@@ -341,8 +366,7 @@ describe("<LifeLog />", () => {
     await awaitPendingCallbacks();
 
     // Initial state: child1 is selected
-    const child1Element = result.getByText("first child");
-    expect(child1Element.className).toContain(styles.lifeLogTree.selected);
+    await waitForSelectedTreeText(result, "first child");
 
     // Press "o" to add a new node below
     const start = performance.now();
@@ -350,8 +374,7 @@ describe("<LifeLog />", () => {
     await awaitPendingCallbacks();
 
     // Verify input appeared (editing mode)
-    const input = result.container.querySelector("input")!;
-    expect(input).toBeTruthy();
+    const input = await waitForInput(result);
     const end = performance.now();
     const duration = end - start;
 
@@ -359,8 +382,11 @@ describe("<LifeLog />", () => {
     expect(duration, `Add node below took ${duration.toFixed(2)}ms`).toBeLessThan(150);
 
     // Type text for the new node
-    input.focus();
+    await focusInput(input);
     await userEvent.keyboard("new node below");
+    await waitFor(() => {
+      expect(input.value).toBe("new node below");
+    });
     await awaitPendingCallbacks();
 
     // Press Escape to save and exit editing
@@ -368,7 +394,7 @@ describe("<LifeLog />", () => {
     await awaitPendingCallbacks();
 
     // Verify the new node is displayed
-    expect(result.getByText("new node below")).toBeTruthy();
+    await result.findByText("new node below");
 
     // Verify the order: first child should come before new node below
     const firstChildLi = result.getByText("first child").closest("li")!;
@@ -396,17 +422,17 @@ describe("<LifeLog />", () => {
     await userEvent.keyboard("{j}");
     await awaitPendingCallbacks();
 
-    expect(result.getByText("grandchild").className).toContain(styles.lifeLogTree.selected);
+    await waitForSelectedTreeText(result, "grandchild");
 
     await userEvent.keyboard("{j}");
     await awaitPendingCallbacks();
 
-    expect(result.getByText("great-grandchild").className).toContain(styles.lifeLogTree.selected);
+    await waitForSelectedTreeText(result, "great-grandchild");
 
     await userEvent.keyboard("{j}");
     await awaitPendingCallbacks();
 
-    expect(result.getByText("second child").className).toContain(styles.lifeLogTree.selected);
+    await waitForSelectedTreeText(result, "second child");
 
     // Press Shift+O to add a new node above
     const start = performance.now();
@@ -414,16 +440,18 @@ describe("<LifeLog />", () => {
     await awaitPendingCallbacks();
 
     // Verify input appeared (editing mode)
-    const input = result.container.querySelector("input")!;
-    expect(input).toBeTruthy();
+    const input = await waitForInput(result);
     const end = performance.now();
     const duration = end - start;
 
     expect(duration, `Add node above took ${duration.toFixed(2)}ms`).toBeLessThan(150);
 
     // Type text for the new node
-    input.focus();
+    await focusInput(input);
     await userEvent.keyboard("new node above");
+    await waitFor(() => {
+      expect(input.value).toBe("new node above");
+    });
     await awaitPendingCallbacks();
 
     // Press Escape to save and exit editing
@@ -431,7 +459,7 @@ describe("<LifeLog />", () => {
     await awaitPendingCallbacks();
 
     // Verify the new node is displayed
-    expect(result.getByText("new node above")).toBeTruthy();
+    await result.findByText("new node above");
 
     // Verify the order: new node above should come before second child
     const newNodeLi = result.getByText("new node above").closest("li")!;
