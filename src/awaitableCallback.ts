@@ -1,13 +1,25 @@
 const pendingCallbacks: Promise<void>[] = [];
 
 export async function awaitPendingCallbacks(options?: { timeoutMs?: number }) {
-  const all = Promise.all(pendingCallbacks).then(() => undefined);
-  if (options?.timeoutMs !== undefined) {
-    await Promise.race([all, new Promise<void>((resolve) => setTimeout(resolve, options.timeoutMs))]);
-  } else {
-    await all;
+  const deadline = options?.timeoutMs === undefined ? undefined : Date.now() + options.timeoutMs;
+
+  await new Promise((resolve) => setTimeout(resolve, 1));
+
+  while (pendingCallbacks.length > 0) {
+    const pending = [...pendingCallbacks];
+    const all = Promise.allSettled(pending).then(() => undefined);
+
+    if (deadline === undefined) {
+      await all;
+    } else {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) break;
+      await Promise.race([all, new Promise<void>((resolve) => setTimeout(resolve, remainingMs))]);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1));
   }
-  pendingCallbacks.length = 0;
+
   await new Promise((resolve) => setTimeout(resolve, 1));
 }
 
@@ -21,12 +33,12 @@ export function awaitable<Args extends unknown[]>(callback: (...args: Args) => P
       promise = Promise.all(currentPending)
         .then(() => callback(...args))
         .catch((e: unknown) => {
-          console.error("Error in awaitable callback:", e);
+          console.error(`Error in awaitable callback "${callback.name}":`, e);
         });
     } else {
       // No pending callbacks - execute directly (synchronously starts the callback)
       promise = callback(...args).catch((e: unknown) => {
-        console.error("Error in awaitable callback:", e);
+        console.error(`Error in awaitable callback "${callback.name}":`, e);
       });
     }
 

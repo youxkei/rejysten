@@ -1,12 +1,13 @@
 import type { HistoryOperation } from "@/services/firebase/firestore/editHistory/schema";
 import type { Schema } from "@/services/firebase/firestore/schema";
 
-import { query } from "firebase/firestore";
+import { Key } from "@solid-primitives/keyed";
 import { createMemo, For, Show } from "solid-js";
 
 import { useActionsService } from "@/services/actions";
 import { type DocumentData, getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import "@/services/firebase/firestore/editHistory/schema";
+import { query } from "@/services/firebase/firestore/query";
 import { createSubscribeAllSignal } from "@/services/firebase/firestore/subscribe";
 import { useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
@@ -54,6 +55,15 @@ export interface GraphRow {
   isHead: boolean;
   isRoot: boolean;
   prefix: string;
+}
+
+export type KeyedGraphRow = GraphRow & { key: string };
+
+export function buildKeyedGraphRows(rows: GraphRow[]): KeyedGraphRow[] {
+  return rows.map((row, index) => ({
+    ...row,
+    key: row.entry?.id ?? (row.isRoot ? "__root__" : `separator:${index}:${row.prefix}`),
+  }));
 }
 
 export function buildGraphRows(entries: Map<string, HistoryEntry>, headId: string): GraphRow[] {
@@ -153,15 +163,17 @@ export function buildGraphRows(entries: Map<string, HistoryEntry>, headId: strin
       rows.push({ entry: undefined, isHead: false, isRoot: false, prefix: "|/  " });
     }
 
-    // If this is the last main-line entry, show root-level siblings as branches above it
+    rows.push({ entry, isHead, isRoot, prefix: "* " });
+
+    // Root-level siblings share the virtual "initial state" parent, not the
+    // oldest main-line entry. Draw them below that entry so the branch visually
+    // joins at the virtual root row.
     if (isLastInMain && rootSiblings.length > 0) {
       for (const sibling of rootSiblings) {
         emitSubtree(sibling, 0);
         rows.push({ entry: undefined, isHead: false, isRoot: false, prefix: "|/  " });
       }
     }
-
-    rows.push({ entry, isHead, isRoot, prefix: "* " });
   }
 
   // Add virtual root node at the bottom (represents HEAD="" state)
@@ -306,6 +318,7 @@ export function EditHistoryPanel() {
     }
     return buildGraphRows(map, currentHeadId());
   });
+  const keyedGraphRows = createMemo(() => buildKeyedGraphRows(graphRows()));
 
   addKeyDownEventListener((event) => {
     if (!state.editHistory.isPanelOpen) return;
@@ -329,17 +342,17 @@ export function EditHistoryPanel() {
         </button>
       </div>
       <div class={styles.editHistory.treeContainer}>
-        <For each={graphRows()}>
+        <Key each={keyedGraphRows()} by={(row) => row.key}>
           {(row) => (
             <GraphRowView
-              row={row}
+              row={row()}
               currentHeadId={currentHeadId()}
               onJump={(id) => {
                 editHistoryActions.jumpToNode(id);
               }}
             />
           )}
-        </For>
+        </Key>
       </div>
     </div>
   );

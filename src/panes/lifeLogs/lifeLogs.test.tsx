@@ -4,10 +4,11 @@ import { afterAll, afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 
 import { awaitPendingCallbacks } from "@/awaitableCallback";
-import { baseTime, setupLifeLogsTest } from "@/panes/lifeLogs/test";
-import { getCollection, getSingletonDoc } from "@/services/firebase/firestore";
+import { baseTime, setupLifeLogsTest as setupLifeLogsTestBase } from "@/panes/lifeLogs/test";
+import { type FirestoreService, getCollection, getSingletonDoc } from "@/services/firebase/firestore";
+import { waitForPendingCommitsForTest } from "@/services/firebase/firestore/batch";
 import { styles } from "@/styles.css";
-import { acquireEmulator, releaseEmulator, testWithDb as it } from "@/test";
+import { acquireEmulator, createTestWithDb, releaseEmulator } from "@/test";
 import { dayMs } from "@/timestamp";
 
 vi.mock(import("@/date"), async () => {
@@ -18,17 +19,38 @@ vi.mock(import("@/date"), async () => {
   };
 });
 
+let emulatorPort: number;
+const it = createTestWithDb(() => emulatorPort);
+
 beforeAll(async () => {
-  await acquireEmulator();
+  emulatorPort = await acquireEmulator();
 });
 
 afterAll(async () => {
-  await releaseEmulator();
+  await releaseEmulator(emulatorPort);
 });
 
+let firestoreForCleanup: FirestoreService | undefined;
+
+async function setupLifeLogsTest(...args: Parameters<typeof setupLifeLogsTestBase>) {
+  const setup = await setupLifeLogsTestBase(...args);
+  firestoreForCleanup = setup.firestore;
+  return setup;
+}
+
+async function waitForCurrentPendingCommits() {
+  if (firestoreForCleanup) {
+    await waitForPendingCommitsForTest({ service: firestoreForCleanup });
+  }
+}
+
 afterEach(async () => {
+  await awaitPendingCallbacks();
+  await waitForCurrentPendingCommits();
   cleanup();
-  await awaitPendingCallbacks({ timeoutMs: 2000 });
+  await awaitPendingCallbacks();
+  await waitForCurrentPendingCommits();
+  firestoreForCleanup = undefined;
 });
 
 describe("<LifeLogs />", () => {
@@ -113,6 +135,42 @@ describe("<LifeLogs />", () => {
 
     expect(duration, `Edit text took ${duration.toFixed(2)}ms`).toBeLessThan(150);
     expect(result.queryByText("first lifelog")).toBeNull();
+  });
+
+  it("i and a keys typed inside an input do not trigger global edit shortcuts", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db);
+
+    await result.findByText("first lifelog");
+    await userEvent.keyboard("{a}");
+    await awaitPendingCallbacks();
+
+    const input = result.container.querySelector("input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+    input.focus();
+    await userEvent.keyboard("ia");
+    await awaitPendingCallbacks();
+
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe("first lifelogia");
+  });
+
+  it("Escape exits editing mode when focus is outside an input", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db);
+
+    await result.findByText("first lifelog");
+    await userEvent.keyboard("{a}");
+    await awaitPendingCallbacks();
+
+    const input = result.container.querySelector("input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+    input.blur();
+    await awaitPendingCallbacks();
+
+    await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
+
+    expect(result.container.querySelector("input")).toBeNull();
+    expect(result.getByText("first lifelog")).toBeTruthy();
   });
 
   it("can navigate to startAt and endAt fields with Tab key during editing", async ({ db, task }) => {

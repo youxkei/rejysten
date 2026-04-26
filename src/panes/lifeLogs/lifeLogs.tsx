@@ -1,7 +1,7 @@
 import { Key } from "@solid-primitives/keyed";
 import { debounce } from "@solid-primitives/scheduled";
 import equal from "fast-deep-equal";
-import { orderBy, query, type Timestamp, where } from "firebase/firestore";
+import { type Timestamp } from "firebase/firestore";
 import { createEffect, createMemo, createSignal, on, onCleanup, onMount, untrack } from "solid-js";
 
 interface VirtualKeyboard extends EventTarget {
@@ -24,6 +24,7 @@ import { useScrollFocus } from "@/panes/lifeLogs/useScrollFocus";
 import { useScrollRange } from "@/panes/lifeLogs/useScrollRange";
 import { useActionsService } from "@/services/actions";
 import { getCollection, useFirestoreService } from "@/services/firebase/firestore";
+import { orderBy, query, where } from "@/services/firebase/firestore/query";
 import { createSubscribeAllSignal } from "@/services/firebase/firestore/subscribe";
 import { useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
@@ -91,6 +92,14 @@ export function TimeRangedLifeLogs(props: {
 
   const [editingField$, setEditingField] = createSignal<EditingField>(EditingField.Text);
   const [isEditing$, setIsEditing] = createSignal(false);
+
+  addKeyDownEventListener((event) => {
+    if (event.code !== "Escape" || !isEditing$()) return;
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+    event.preventDefault();
+    setEditingField(EditingField.Text);
+    setIsEditing(false);
+  });
 
   // Track cursor position for LifeLog text after deletion
   const [lifeLogCursorInfo$, setLifeLogCursorInfo] = createSignal<
@@ -274,6 +283,7 @@ export function TimeRangedLifeLogs(props: {
 
       const lifeLogsWithNeighborIds = lifeLogs.map((lifeLog) => ({
         id: lifeLog.id,
+        lifeLog,
         prevId: "",
         nextId: "",
       }));
@@ -289,7 +299,8 @@ export function TimeRangedLifeLogs(props: {
 
       return lifeLogsWithNeighborIds;
     },
-    { equal },
+    undefined,
+    { equals: equal },
   );
 
   const firstLifeLogId$ = createMemo(() => {
@@ -306,14 +317,15 @@ export function TimeRangedLifeLogs(props: {
     <ul class={styles.lifeLogs.list}>
       <Key each={lifeLogIdWithNeighborIds$()} by={(item) => item.id}>
         {(lifeLogWithNeighborIds$) => {
-          const id$ = createMemo(() => lifeLogWithNeighborIds$().id);
+          const id = untrack(lifeLogWithNeighborIds$).id;
+          const lifeLog$ = createMemo(() => lifeLogWithNeighborIds$().lifeLog);
           const prevId$ = createMemo(() => lifeLogWithNeighborIds$().prevId);
           const nextId$ = createMemo(() => lifeLogWithNeighborIds$().nextId);
 
           return (
-            <li id={id$()} class={styles.lifeLogs.listItem}>
+            <li id={id} class={styles.lifeLogs.listItem}>
               <LifeLog
-                id={id$()}
+                id={id}
                 prevId={prevId$()}
                 nextId={nextId$()}
                 firstId={firstLifeLogId$()}
@@ -324,6 +336,7 @@ export function TimeRangedLifeLogs(props: {
                 setEditingField={setEditingField}
                 lifeLogCursorInfo$={lifeLogCursorInfo$}
                 setLifeLogCursorInfo={setLifeLogCursorInfo}
+                fallbackLifeLog={lifeLog$()}
               />
             </li>
           );

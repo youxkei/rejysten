@@ -4,12 +4,14 @@ import { onMount, Show, Suspense } from "solid-js";
 
 import { WithEditHistoryPanel } from "@/components/editHistory";
 import { analyzeTextForNgrams } from "@/ngram";
+import "@/panes/lifeLogs/schema";
 import "@/panes/lifeLogs/store";
 import { Search } from "@/panes/search";
 import "@/panes/store";
 import { ActionsServiceProvider } from "@/services/actions";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import {
+  type FirestoreService,
   FirestoreServiceProvider,
   getCollection,
   singletonDocumentId,
@@ -35,6 +37,8 @@ export async function setupSearchTest(testId: string, db: DatabaseInfo, options?
     rejectReady = reject;
   });
 
+  let firestoreRef: FirestoreService | undefined;
+
   const result = render(() => (
     <StoreServiceProvider localStorageNamePostfix={testId}>
       <FirebaseServiceProvider
@@ -47,6 +51,7 @@ export async function setupSearchTest(testId: string, db: DatabaseInfo, options?
             <Suspense fallback={<span>loading....</span>}>
               {(() => {
                 const firestore = useFirestoreService();
+                firestoreRef = firestore;
                 const batchVersion = getCollection(firestore, "batchVersion");
                 const lifeLogs = getCollection(firestore, "lifeLogs");
                 const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
@@ -177,5 +182,6 @@ export async function setupSearchTest(testId: string, db: DatabaseInfo, options?
 
   return {
     result,
+    firestore: firestoreRef!,
   };
 }

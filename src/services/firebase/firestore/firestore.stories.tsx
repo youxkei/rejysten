@@ -2,14 +2,10 @@ import {
   doc,
   getDocs,
   runTransaction,
-  query,
-  where,
-  FieldPath,
   writeBatch,
   Timestamp,
   disableNetwork,
   enableNetwork,
-  orderBy,
 } from "firebase/firestore";
 import {
   For,
@@ -27,6 +23,7 @@ import XRegExp from "xregexp";
 
 import { FirebaseServiceProvider } from "@/services/firebase";
 import { FirestoreServiceProvider, getCollection, useFirestoreService } from "@/services/firebase/firestore";
+import { orderBy, query, where } from "@/services/firebase/firestore/query";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { StoreServiceProvider } from "@/services/store";
 import { dumpSignal } from "@/solid/signal";
@@ -121,7 +118,7 @@ export const FirestoreNgram: StoryObj = {
               const itemCollection = getCollection(firestore, "pocFirestoreNgramItems");
               const bigramCollection = getCollection(firestore, "pocFirestoreNgrams");
 
-              const items$ = createSubscribeAllSignal(firestore, () => itemCollection);
+              const items$ = createSubscribeAllSignal(firestore, () => query(itemCollection));
 
               const serchedItems$ = createSubscribeAllSignal(firestore, () => {
                 const searchTextChars = searchTextChars$();
@@ -129,11 +126,10 @@ export const FirestoreNgram: StoryObj = {
 
                 const bigram = calcBigram(searchTextChars);
 
-                return Object.keys(bigram).reduce(
-                  (q, bigramKey) => {
-                    return query(q, where(new FieldPath("ngram", bigramKey), "==", true));
-                  },
-                  query(bigramCollection, where("collection", "==", "pocFirestoreNgramItems")),
+                return query(
+                  bigramCollection,
+                  where("collection", "==", "pocFirestoreNgramItems"),
+                  ...Object.keys(bigram).map((bigramKey) => where(`ngram.${bigramKey}`, "==", true)),
                 );
               });
 
@@ -291,7 +287,7 @@ export const FirestoreSubscribe: StoryObj = {
             {(() => {
               const firestore = useFirestoreService();
               const itemCollection = getCollection(firestore, "pocFirestorePubsub");
-              const items$ = dumpSignal(createSubscribeAllSignal(firestore, () => itemCollection));
+              const items$ = dumpSignal(createSubscribeAllSignal(firestore, () => query(itemCollection)));
               return (
                 <>
                   <p>items:</p>
@@ -404,7 +400,7 @@ export const FirestoreRules: StoryObj = {
               const itemCollection = getCollection(firestore, "pocFirestoreRulesItems");
 
               const version$ = createSubscribeSignal(firestore, () => doc(versionCollection, "version"));
-              const items$ = createSubscribeAllSignal(firestore, () => itemCollection);
+              const items$ = createSubscribeAllSignal(firestore, () => query(itemCollection));
 
               return (
                 <>
@@ -525,16 +521,9 @@ export const FirestoreSnapshotTiming: StoryObj = {
 
                       console.timeStamp("before set A and B commit");
 
-                      await Promise.race([
-                        new Promise<void>((resolve) => {
-                          firestore.resolve = resolve;
-                        }).then(() => {
-                          console.timeStamp("global onSnapshotsInSync fired");
-                        }),
-                        batch.commit().then(() => {
-                          console.timeStamp("write batch promise resolved");
-                        }),
-                      ]);
+                      await batch.commit().then(() => {
+                        console.timeStamp("write batch promise resolved");
+                      });
 
                       console.timeStamp("after set A and B process");
                     }}
@@ -635,7 +624,7 @@ export const IndexOrder: StoryObj = {
                   orderBy("endAt"),
                 );
 
-                const snapshot = await getDocs(q);
+                const snapshot = await getDocs(q.query);
                 const docs = snapshot.docs.map((doc) => ({
                   id: doc.id,
                   ...doc.data(),
@@ -654,7 +643,7 @@ export const IndexOrder: StoryObj = {
                   orderBy("startAt"),
                 );
 
-                const snapshot = await getDocs(q);
+                const snapshot = await getDocs(q.query);
                 const docs = snapshot.docs.map((doc) => ({
                   id: doc.id,
                   ...doc.data(),
@@ -667,7 +656,7 @@ export const IndexOrder: StoryObj = {
                 const collectionRef = getCollection(firestoreService, "pocFirestoreIndexOrderItems");
                 const q = query(collectionRef, where("startAt", ">=", 1), where("endAt", "<=", 10));
 
-                const snapshot = await getDocs(q);
+                const snapshot = await getDocs(q.query);
                 const docs = snapshot.docs.map((doc) => ({
                   id: doc.id,
                   ...doc.data(),
@@ -686,7 +675,7 @@ export const IndexOrder: StoryObj = {
                   orderBy("startAt"),
                 );
 
-                const snapshot = await getDocs(q);
+                const snapshot = await getDocs(q.query);
                 const docs = snapshot.docs.map((doc) => ({
                   id: doc.id,
                   ...doc.data(),
@@ -699,7 +688,7 @@ export const IndexOrder: StoryObj = {
                 const collectionRef = getCollection(firestoreService, "pocFirestoreIndexOrderItems");
                 const q = query(collectionRef, where("endAt", "<=", 10), where("startAt", ">=", 1));
 
-                const snapshot = await getDocs(q);
+                const snapshot = await getDocs(q.query);
                 const docs = snapshot.docs.map((doc) => ({
                   id: doc.id,
                   ...doc.data(),
@@ -836,7 +825,7 @@ export const SingleFieldIndexOrder: StoryObj = {
                     orderBy("__name__"),
                   );
 
-                  const snapshot = await getDocs(q);
+                  const snapshot = await getDocs(q.query);
                   const docs = snapshot.docs.map((doc) => ({
                     id: doc.id,
                     ...doc.data(),
@@ -861,7 +850,7 @@ export const SingleFieldIndexOrder: StoryObj = {
                     orderBy("__name__", "desc"),
                   );
 
-                  const snapshot = await getDocs(q);
+                  const snapshot = await getDocs(q.query);
                   const docs = snapshot.docs.map((doc) => ({
                     id: doc.id,
                     ...doc.data(),
@@ -881,7 +870,7 @@ export const SingleFieldIndexOrder: StoryObj = {
                   // Query with multiple equality conditions without ordering
                   const q = query(collectionRef, where("field1", "==", "apple"), where("field2", "==", "red"));
 
-                  const snapshot = await getDocs(q);
+                  const snapshot = await getDocs(q.query);
                   const docs = snapshot.docs.map((doc) => ({
                     id: doc.id,
                     ...doc.data(),
@@ -906,7 +895,7 @@ export const SingleFieldIndexOrder: StoryObj = {
                     orderBy("value"),
                   );
 
-                  const snapshot = await getDocs(q);
+                  const snapshot = await getDocs(q.query);
                   const docs = snapshot.docs.map((doc) => ({
                     id: doc.id,
                     ...doc.data(),

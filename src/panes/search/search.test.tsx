@@ -1,12 +1,14 @@
-import { cleanup, waitFor } from "@solidjs/testing-library";
+import { cleanup, fireEvent, waitFor } from "@solidjs/testing-library";
 import { Timestamp } from "firebase/firestore";
 import { afterAll, afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 
 import { awaitPendingCallbacks } from "@/awaitableCallback";
-import { baseTime, setupSearchTest } from "@/panes/search/test";
+import { baseTime, setupSearchTest as setupSearchTestBase } from "@/panes/search/test";
+import { type FirestoreService, getCollection } from "@/services/firebase/firestore";
+import { runBatch, waitForPendingCommitsForTest } from "@/services/firebase/firestore/batch";
 import { styles } from "@/styles.css";
-import { acquireEmulator, releaseEmulator, testWithDb as it } from "@/test";
+import { acquireEmulator, createTestWithDb, releaseEmulator } from "@/test";
 
 vi.mock(import("@/date"), async () => {
   return {
@@ -16,17 +18,38 @@ vi.mock(import("@/date"), async () => {
   };
 });
 
+let emulatorPort: number;
+const it = createTestWithDb(() => emulatorPort);
+
 beforeAll(async () => {
-  await acquireEmulator();
+  emulatorPort = await acquireEmulator();
 });
 
 afterAll(async () => {
-  await releaseEmulator();
+  await releaseEmulator(emulatorPort);
 });
 
+let firestoreForCleanup: FirestoreService | undefined;
+
+async function setupSearchTest(...args: Parameters<typeof setupSearchTestBase>) {
+  const setup = await setupSearchTestBase(...args);
+  firestoreForCleanup = setup.firestore;
+  return setup;
+}
+
+async function waitForCurrentPendingCommits() {
+  if (firestoreForCleanup) {
+    await waitForPendingCommitsForTest({ service: firestoreForCleanup });
+  }
+}
+
 afterEach(async () => {
+  await awaitPendingCallbacks();
+  await waitForCurrentPendingCommits();
   cleanup();
-  await awaitPendingCallbacks({ timeoutMs: 2000 });
+  await awaitPendingCallbacks();
+  await waitForCurrentPendingCommits();
+  firestoreForCleanup = undefined;
 });
 
 describe("<Search />", () => {
@@ -250,6 +273,254 @@ describe("<Search />", () => {
     await waitFor(() => {
       results = result.container.querySelectorAll(`.${styles.search.result}`);
       expect(results.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("removes a text update from the old ngram query optimistically", async ({ db, task }) => {
+    const { result, firestore } = await setupSearchTest(task.id, db, { initialQuery: "searchable" });
+
+    await waitFor(() => {
+      const results = result.container.querySelectorAll(`.${styles.search.result}`);
+      expect(results.length).toBe(2);
+    });
+
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    await runBatch(
+      firestore,
+      (batch) => {
+        batch.update(lifeLogsCol, { id: "$log1", text: "renamed without old token" });
+        return Promise.resolve();
+      },
+      { skipHistory: true },
+    );
+
+    await waitFor(() => {
+      const results = Array.from(result.container.querySelectorAll(`.${styles.search.result}`));
+      expect(results).toHaveLength(1);
+      expect(results[0].textContent).toContain("tree node searchable");
+    });
+
+    await waitForPendingCommitsForTest({ service: firestore, timeoutMs: 2000 });
+  });
+
+  it("removes an empty text update from the old ngram query optimistically and after commit", async ({ db, task }) => {
+    const { result, firestore } = await setupSearchTest(task.id, db, { initialQuery: "searchable" });
+
+    await waitFor(() => {
+      const results = result.container.querySelectorAll(`.${styles.search.result}`);
+      expect(results.length).toBe(2);
+    });
+
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    await runBatch(
+      firestore,
+      (batch) => {
+        batch.update(lifeLogsCol, { id: "$log1", text: "" });
+        return Promise.resolve();
+      },
+      { skipHistory: true },
+    );
+
+    await waitFor(() => {
+      const results = Array.from(result.container.querySelectorAll(`.${styles.search.result}`));
+      expect(results).toHaveLength(1);
+      expect(results[0].textContent).toContain("tree node searchable");
+    });
+
+    await waitForPendingCommitsForTest({ service: firestore });
+
+    await waitFor(() => {
+      const results = Array.from(result.container.querySelectorAll(`.${styles.search.result}`));
+      expect(results).toHaveLength(1);
+      expect(results[0].textContent).toContain("tree node searchable");
+    });
+  });
+
+  it("removes updates to one-character and whitespace-only text from the old query", async ({ db, task }) => {
+    const { result, firestore } = await setupSearchTest(task.id, db, { initialQuery: "searchable" });
+
+    await waitFor(() => {
+      expect(result.container.querySelectorAll(`.${styles.search.result}`)).toHaveLength(2);
+    });
+
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    await runBatch(
+      firestore,
+      (batch) => {
+        batch.update(lifeLogsCol, { id: "$log1", text: "x" });
+        batch.update(lifeLogsCol, { id: "$log2", text: "   " });
+        return Promise.resolve();
+      },
+      { skipHistory: true },
+    );
+
+    await waitFor(() => {
+      const results = Array.from(result.container.querySelectorAll(`.${styles.search.result}`));
+      expect(results).toHaveLength(1);
+      expect(results[0].textContent).toContain("tree node searchable");
+    });
+    await waitForPendingCommitsForTest({ service: firestore });
+  });
+
+  it("can search emoji-only and punctuation text after an optimistic update", async ({ db, task }) => {
+    const { result, firestore } = await setupSearchTest(task.id, db, { initialQuery: "searchable" });
+
+    await waitFor(() => {
+      expect(result.container.querySelectorAll(`.${styles.search.result}`)).toHaveLength(2);
+    });
+
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    await runBatch(
+      firestore,
+      (batch) => {
+        batch.update(lifeLogsCol, { id: "$log1", text: "😀😀" });
+        batch.update(lifeLogsCol, { id: "$log2", text: "hello, world!" });
+        return Promise.resolve();
+      },
+      { skipHistory: true },
+    );
+
+    const input = result.container.querySelector(`.${styles.search.input}`) as HTMLInputElement;
+    fireEvent.input(input, { target: { value: "😀😀" } });
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      const results = Array.from(result.container.querySelectorAll(`.${styles.search.result}`));
+      expect(results).toHaveLength(1);
+      expect(results[0].textContent).toContain("😀😀");
+    });
+
+    fireEvent.input(input, { target: { value: "hello," } });
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      const results = Array.from(result.container.querySelectorAll(`.${styles.search.result}`));
+      expect(results).toHaveLength(1);
+      expect(results[0].textContent).toContain("hello, world!");
+    });
+    await waitForPendingCommitsForTest({ service: firestore });
+  });
+
+  it("can search text containing a dot through the real Search UI", async ({ db, task }) => {
+    const { result, firestore } = await setupSearchTest(task.id, db, { initialQuery: "searchable" });
+
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    await runBatch(
+      firestore,
+      (batch) => {
+        batch.update(lifeLogsCol, { id: "$log1", text: "a.b dotted text" });
+        return Promise.resolve();
+      },
+      { skipHistory: true },
+    );
+    await waitForPendingCommitsForTest({ service: firestore });
+
+    const input = result.container.querySelector(`.${styles.search.input}`) as HTMLInputElement;
+    fireEvent.input(input, { target: { value: "a." } });
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      const results = Array.from(result.container.querySelectorAll(`.${styles.search.result}`));
+      expect(results).toHaveLength(1);
+      expect(results[0].textContent).toContain("a.b dotted text");
+    });
+  });
+
+  it("removes a deleted ngram from search results optimistically", async ({ db, task }) => {
+    const { result, firestore } = await setupSearchTest(task.id, db, { initialQuery: "searchable" });
+
+    await waitFor(() => {
+      const results = result.container.querySelectorAll(`.${styles.search.result}`);
+      expect(results.length).toBe(2);
+    });
+
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    await runBatch(
+      firestore,
+      (batch) => {
+        batch.delete(lifeLogsCol, "$log1");
+        return Promise.resolve();
+      },
+      { skipHistory: true },
+    );
+
+    await waitFor(() => {
+      const results = Array.from(result.container.querySelectorAll(`.${styles.search.result}`));
+      expect(results).toHaveLength(1);
+      expect(results[0].textContent).toContain("tree node searchable");
+    });
+
+    await waitForPendingCommitsForTest({ service: firestore, timeoutMs: 2000 });
+  });
+
+  it("restores search results after a failed optimistic ngram update rolls back", async ({ db, task }) => {
+    const { result, firestore } = await setupSearchTest(task.id, db, { initialQuery: "searchable" });
+
+    await waitFor(() => {
+      const results = result.container.querySelectorAll(`.${styles.search.result}`);
+      expect(results.length).toBe(2);
+    });
+
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await runBatch(
+        firestore,
+        (batch) => {
+          batch.update(lifeLogsCol, { id: "$log1", text: "temporary rollback text" });
+          batch.update(lifeLogsCol, { id: "missing", text: "forces commit failure" });
+          return Promise.resolve();
+        },
+        { skipHistory: true },
+      );
+
+      await waitForPendingCommitsForTest({ service: firestore, timeoutMs: 5000 });
+    } finally {
+      consoleError.mockRestore();
+    }
+
+    await waitFor(() => {
+      const results = Array.from(result.container.querySelectorAll(`.${styles.search.result}`));
+      expect(results).toHaveLength(2);
+      expect(results.map((r) => r.textContent).join("\n")).toContain("first lifelog searchable");
+    });
+  });
+
+  it("does not leave stale old-query overlay after commit when switching old and new queries", async ({ db, task }) => {
+    const { result, firestore } = await setupSearchTest(task.id, db, { initialQuery: "searchable" });
+
+    await waitFor(() => {
+      expect(result.container.querySelectorAll(`.${styles.search.result}`)).toHaveLength(2);
+    });
+
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    await runBatch(
+      firestore,
+      (batch) => {
+        batch.update(lifeLogsCol, { id: "$log1", text: "brand new token" });
+        return Promise.resolve();
+      },
+      { skipHistory: true },
+    );
+    await waitForPendingCommitsForTest({ service: firestore });
+
+    const input = result.container.querySelector(`.${styles.search.input}`) as HTMLInputElement;
+    fireEvent.input(input, { target: { value: "new token" } });
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      const results = Array.from(result.container.querySelectorAll(`.${styles.search.result}`));
+      expect(results).toHaveLength(1);
+      expect(results[0].textContent).toContain("brand new token");
+    });
+
+    fireEvent.input(input, { target: { value: "searchable" } });
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      const results = Array.from(result.container.querySelectorAll(`.${styles.search.result}`));
+      expect(results).toHaveLength(1);
+      expect(results[0].textContent).toContain("tree node searchable");
     });
   });
 

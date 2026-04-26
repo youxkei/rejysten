@@ -1,5 +1,5 @@
 import { debounce } from "@solid-primitives/scheduled";
-import { createEffect, createSignal, on, Show, type JSX, onMount } from "solid-js";
+import { createEffect, createSignal, on, onCleanup, Show, type JSX, onMount } from "solid-js";
 
 import { addKeyDownEventListener } from "@/solid/event";
 
@@ -56,6 +56,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
 
   // Handle 'i' key to enter editing mode with cursor at start, 'a' for cursor at end
   addKeyDownEventListener((event) => {
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
     if (event.isComposing || event.ctrlKey || event.shiftKey) return;
     if (!props.isSelected || props.isEditing) return;
 
@@ -80,6 +81,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
       >
         {(() => {
           let inputRef: HTMLInputElement | undefined;
+          let isUnmounting = false;
 
           onMount(() => {
             const initialText = (props.toEditText ?? props.toText)(props.value);
@@ -127,6 +129,11 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
             ),
           );
 
+          onCleanup(() => {
+            isUnmounting = true;
+            debouncedSaveChanges.clear();
+          });
+
           return (
             <input
               ref={inputRef}
@@ -171,6 +178,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                 }
               }}
               onBlur={() => {
+                if (isUnmounting) return;
                 if (blurSavePrevented()) {
                   setBlurSavePrevented(false);
                   return;

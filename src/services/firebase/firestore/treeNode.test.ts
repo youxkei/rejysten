@@ -16,6 +16,7 @@ import {
 } from "@/services/firebase/firestore";
 import { Batch } from "@/services/firebase/firestore/batch";
 import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
+import { createOptimisticOverlay } from "@/services/firebase/firestore/overlay";
 import { type Schema } from "@/services/firebase/firestore/schema";
 import {
   createTestFirestoreService,
@@ -42,21 +43,21 @@ import {
   getBottomNodeExclusive,
   addSingle,
 } from "@/services/firebase/firestore/treeNode";
-import { acquireEmulator, releaseEmulator, getEmulatorPort } from "@/test";
+import { acquireEmulator, releaseEmulator } from "@/test";
 
 let service: FirestoreService;
 let firestore: Firestore;
+let emulatorPort: number;
 
 beforeAll(async () => {
-  await acquireEmulator();
-  const emulatorPort = await getEmulatorPort();
+  emulatorPort = await acquireEmulator();
   const result = createTestFirestoreService(emulatorPort, "treeNode-test");
-  service = result as FirestoreService;
+  service = { ...result, overlay: createOptimisticOverlay() } as FirestoreService;
   firestore = result.firestore;
 });
 
 afterAll(async () => {
-  await releaseEmulator();
+  await releaseEmulator(emulatorPort);
 });
 
 async function getDoc<C extends keyof Schema>(
@@ -153,6 +154,48 @@ describe.concurrent("treeNode", () => {
       ctx.expect(prevNode?.text).toBe("prev");
     });
 
+    it("returns the nearest previous node when multiple candidates exist", async (ctx) => {
+      const col = testCollection(firestore, ctx.task.id);
+
+      await setDocs(col, makeTreeNodes("", [["older"], ["nearest"], ["base"]]));
+
+      const baseNode = await getDoc(col, "base");
+      const prevNode = await getPrevNode(service, col, baseNode);
+      ctx.expect(prevNode?.text).toBe("nearest");
+    });
+
+    it("includes a pending sibling inserted before the base node", async (ctx) => {
+      const col = testCollection(firestore, ctx.task.id);
+      await setDocs(col, makeTreeNodes("", [["prev"], ["base"]]));
+      const prevNode = await getDoc(col, "prev");
+      const baseNode = await getDoc(col, "base");
+      const batchId = `${ctx.task.id}:pending-prev`;
+
+      service.overlay.apply(batchId, [
+        {
+          type: "set",
+          batchId: "",
+          collection: col.id,
+          id: "pending",
+          path: `${col.id}/pending`,
+          data: {
+            text: "pending",
+            parentId: "",
+            order: generateKeyBetween(prevNode.order, baseNode.order),
+            createdAt: timestampForCreatedAt,
+            updatedAt: timestampForCreatedAt,
+          },
+        },
+      ]);
+
+      try {
+        const result = await getPrevNode(service, col, baseNode);
+        ctx.expect(result?.text).toBe("pending");
+      } finally {
+        service.overlay.rollback(batchId, undefined);
+      }
+    });
+
     it("no prev node when parentId is empty", async (ctx) => {
       const col = testCollection(firestore, ctx.task.id);
 
@@ -181,6 +224,44 @@ describe.concurrent("treeNode", () => {
       const baseNode = await getDoc(col, "base");
       const nextNode = await getNextNode(service, col, baseNode);
       ctx.expect(nextNode?.text).toBe("next");
+    });
+
+    it("returns the nearest next node when multiple candidates exist", async (ctx) => {
+      const col = testCollection(firestore, ctx.task.id);
+
+      await setDocs(col, makeTreeNodes("", [["base"], ["nearest"], ["farther"]]));
+
+      const baseNode = await getDoc(col, "base");
+      const nextNode = await getNextNode(service, col, baseNode);
+      ctx.expect(nextNode?.text).toBe("nearest");
+    });
+
+    it("uses a pending order update when selecting the next node", async (ctx) => {
+      const col = testCollection(firestore, ctx.task.id);
+      await setDocs(col, makeTreeNodes("", [["base"], ["nearest"], ["farther"]]));
+      const baseNode = await getDoc(col, "base");
+      const nearestNode = await getDoc(col, "nearest");
+      const batchId = `${ctx.task.id}:pending-next-update`;
+
+      service.overlay.apply(batchId, [
+        {
+          type: "update",
+          batchId: "",
+          collection: col.id,
+          id: "farther",
+          path: `${col.id}/farther`,
+          data: {
+            order: generateKeyBetween(baseNode.order, nearestNode.order),
+          },
+        },
+      ]);
+
+      try {
+        const result = await getNextNode(service, col, baseNode);
+        ctx.expect(result?.text).toBe("farther");
+      } finally {
+        service.overlay.rollback(batchId, undefined);
+      }
     });
   });
 
@@ -236,6 +317,30 @@ describe.concurrent("treeNode", () => {
       const firstChild = await getFirstChildNode(service, col, parentNode);
       ctx.expect(firstChild?.text).toBe("first");
     });
+
+    it("skips a pending deleted first child", async (ctx) => {
+      const col = testCollection(firestore, ctx.task.id);
+      await setDocs(col, makeTreeNodes("", [["parent", [["first"], ["second"]]]]));
+      const parentNode = await getDoc(col, "parent");
+      const batchId = `${ctx.task.id}:pending-first-delete`;
+
+      service.overlay.apply(batchId, [
+        {
+          type: "delete",
+          batchId: "",
+          collection: col.id,
+          id: "first",
+          path: `${col.id}/first`,
+        },
+      ]);
+
+      try {
+        const firstChild = await getFirstChildNode(service, col, parentNode);
+        ctx.expect(firstChild?.text).toBe("second");
+      } finally {
+        service.overlay.rollback(batchId, undefined);
+      }
+    });
   });
 
   describe("getLastChildNode", () => {
@@ -255,6 +360,38 @@ describe.concurrent("treeNode", () => {
       const parentNode = await getDoc(col, "parent");
       const lastChild = await getLastChildNode(service, col, parentNode);
       ctx.expect(lastChild?.text).toBe("last");
+    });
+
+    it("includes a pending last child", async (ctx) => {
+      const col = testCollection(firestore, ctx.task.id);
+      await setDocs(col, makeTreeNodes("", [["parent", [["first"]]]]));
+      const parentNode = await getDoc(col, "parent");
+      const firstNode = await getDoc(col, "first");
+      const batchId = `${ctx.task.id}:pending-last`;
+
+      service.overlay.apply(batchId, [
+        {
+          type: "set",
+          batchId: "",
+          collection: col.id,
+          id: "pending-last",
+          path: `${col.id}/pending-last`,
+          data: {
+            text: "pending-last",
+            parentId: "parent",
+            order: generateKeyBetween(firstNode.order, null),
+            createdAt: timestampForCreatedAt,
+            updatedAt: timestampForCreatedAt,
+          },
+        },
+      ]);
+
+      try {
+        const lastChild = await getLastChildNode(service, col, parentNode);
+        ctx.expect(lastChild?.text).toBe("pending-last");
+      } finally {
+        service.overlay.rollback(batchId, undefined);
+      }
     });
   });
 

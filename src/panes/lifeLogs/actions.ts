@@ -1,4 +1,4 @@
-import { limit, orderBy, query, Timestamp } from "firebase/firestore";
+import { Timestamp } from "firebase/firestore";
 import { startTransition } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
@@ -9,6 +9,7 @@ import { type Actions, actionsCreator, initialActionsContext } from "@/services/
 import { getCollection, getDoc, getDocs, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
 import { buildSelection } from "@/services/firebase/firestore/editHistory/schema";
+import { limit, orderBy, query } from "@/services/firebase/firestore/query";
 import {
   addNextSibling,
   addPrevSibling,
@@ -650,7 +651,8 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
     if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
 
     const selectedLifeLogId = state.panesLifeLogs.selectedLifeLogId;
-    if (selectedLifeLogId === "" || context.prevId === "") return;
+    const targetId = context.prevId;
+    if (selectedLifeLogId === "" || targetId === "") return;
 
     const lifeLog = await getDoc(firestore, lifeLogsCol, selectedLifeLogId);
     if (!lifeLog) return;
@@ -670,10 +672,14 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
     }
 
     // Get previous LifeLog's text length for cursor position
-    const prevLifeLog = await getDoc(firestore, lifeLogsCol, context.prevId);
+    const prevLifeLog = await getDoc(firestore, lifeLogsCol, targetId);
     if (!prevLifeLog) return;
 
     const cursorPosition = prevLifeLog.text.length;
+    const prevSelection = currentSelection();
+    const setIsEditing = context.setIsEditing;
+    const setEditingField = context.setEditingField;
+    const setLifeLogCursorInfo = context.setLifeLogCursorInfo;
 
     // Delete current LifeLog and select previous
     firestore.setClock(true);
@@ -686,20 +692,19 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
         },
         {
           description: "LifeLog削除",
-          prevSelection: currentSelection(),
-          nextSelection: { lifeLogs: context.prevId },
+          prevSelection,
+          nextSelection: { lifeLogs: targetId },
         },
       );
 
-      context.setLifeLogCursorInfo({ lifeLogId: context.prevId, cursorPosition });
-      // Save setIsEditing reference before updateState triggers onCleanup which resets it
-      const setIsEditing = context.setIsEditing;
+      setLifeLogCursorInfo({ lifeLogId: targetId, cursorPosition });
       await startTransition(() => {
         // IMPORTANT: Call setIsEditing(true) BEFORE updateState, because updateState
         // will trigger the old EditableValue to lose focus and call setIsEditing(false)
+        setEditingField(EditingField.Text);
         setIsEditing(true);
         updateState((state) => {
-          state.panesLifeLogs.selectedLifeLogId = context.prevId;
+          state.panesLifeLogs.selectedLifeLogId = targetId;
         });
         firestore.setClock(false);
       });
@@ -712,7 +717,8 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
     if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
 
     const selectedLifeLogId = state.panesLifeLogs.selectedLifeLogId;
-    if (selectedLifeLogId === "" || context.nextId === "") return;
+    const targetId = context.nextId;
+    if (selectedLifeLogId === "" || targetId === "") return;
 
     const lifeLog = await getDoc(firestore, lifeLogsCol, selectedLifeLogId);
     if (!lifeLog) return;
@@ -731,6 +737,11 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
       return; // Has tree nodes, cannot delete
     }
 
+    const prevSelection = currentSelection();
+    const setIsEditing = context.setIsEditing;
+    const setEditingField = context.setEditingField;
+    const setLifeLogCursorInfo = context.setLifeLogCursorInfo;
+
     // Delete current LifeLog and select next with cursor at start
     firestore.setClock(true);
     try {
@@ -742,20 +753,19 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
         },
         {
           description: "LifeLog削除",
-          prevSelection: currentSelection(),
-          nextSelection: { lifeLogs: context.nextId },
+          prevSelection,
+          nextSelection: { lifeLogs: targetId },
         },
       );
 
-      context.setLifeLogCursorInfo({ lifeLogId: context.nextId, cursorPosition: 0 });
-      // Save setIsEditing reference before updateState triggers onCleanup which resets it
-      const setIsEditing = context.setIsEditing;
+      setLifeLogCursorInfo({ lifeLogId: targetId, cursorPosition: 0 });
       await startTransition(() => {
         // IMPORTANT: Call setIsEditing(true) BEFORE updateState, because updateState
         // will trigger the old EditableValue to lose focus and call setIsEditing(false)
+        setEditingField(EditingField.Text);
         setIsEditing(true);
         updateState((state) => {
-          state.panesLifeLogs.selectedLifeLogId = context.nextId;
+          state.panesLifeLogs.selectedLifeLogId = targetId;
         });
         firestore.setClock(false);
       });

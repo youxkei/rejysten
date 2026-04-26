@@ -1,6 +1,6 @@
 import { Key } from "@solid-primitives/keyed";
-import { query, where } from "firebase/firestore";
-import { Show, createEffect, createMemo, createSignal, on, onCleanup, onMount, startTransition } from "solid-js";
+import equal from "fast-deep-equal";
+import { Show, createEffect, createMemo, onCleanup, onMount, startTransition, untrack } from "solid-js";
 
 import { analyzeTextForNgrams } from "@/ngram";
 import { SearchMobileToolbar } from "@/panes/search/mobileToolbar";
@@ -8,6 +8,8 @@ import { SearchResult } from "@/panes/search/searchResult";
 import "@/panes/store";
 import { useActionsService } from "@/services/actions";
 import { getCollection, useFirestoreService } from "@/services/firebase/firestore";
+import { encodeNgramKeyForFirestore } from "@/services/firebase/firestore/ngram";
+import { query, where } from "@/services/firebase/firestore/query";
 import { createSubscribeAllSignal } from "@/services/firebase/firestore/subscribe";
 import { useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
@@ -62,39 +64,29 @@ export function Search() {
       const ngrams = queryNgrams$();
       if (ngrams.length === 0) return undefined;
 
-      // Query with all ngrams
-      let q = query(ngramsCol);
-      for (const ngram of ngrams) {
-        q = query(q, where(`ngramMap.${ngram}`, "==", true));
-      }
-      return q;
+      return query(
+        ngramsCol,
+        ...ngrams.map((ngram) => where(`ngramMap.${encodeNgramKeyForFirestore(ngram)}`, "==", true)),
+      );
     },
     () => `search ngrams`,
   );
 
-  const resultIds$ = createMemo(() => {
-    return results$()
-      .map((r) => r.id)
-      .toReversed();
-  });
-
-  // Track whether we're waiting for search results
-  const [isSearchPending, setIsSearchPending] = createSignal(false);
-
-  createEffect(() => {
-    const ngrams = queryNgrams$();
-    setIsSearchPending(ngrams.length > 0);
-  });
-
-  createEffect(
-    on(
-      results$,
-      () => {
-        setIsSearchPending(false);
-      },
-      { defer: true },
-    ),
+  const resultItems$ = createMemo(
+    () => {
+      return results$()
+        .toReversed();
+    },
+    undefined,
+    { equals: equal },
   );
+  const resultIds$ = createMemo(
+    () => resultItems$().map((r) => r.id),
+    undefined,
+    { equals: equal },
+  );
+
+  const isSearchPending$ = createMemo(() => queryNgrams$().length > 0 && !results$.ready$());
 
   // Update actions context with result IDs
   createEffect(() => {
@@ -203,36 +195,41 @@ export function Search() {
           <span class={styles.search.statusText}>2文字以上入力してください</span>
         </div>
       </Show>
-      <Show when={isSearchPending() && queryNgrams$().length > 0}>
+      <Show when={isSearchPending$()}>
         <div class={styles.search.statusContainer}>
           <div class={styles.search.spinner} />
           <span class={styles.search.statusText}>検索中...</span>
         </div>
       </Show>
-      <Show when={!isSearchPending() && queryNgrams$().length > 0}>
+      <Show when={!isSearchPending$() && queryNgrams$().length > 0}>
         <div class={styles.search.statusContainer}>
           <span class={styles.search.statusText}>{resultIds$().length}件</span>
         </div>
       </Show>
       <ScrollContainer class={styles.search.resultsContainer}>
         <ul class={styles.search.resultsList}>
-          <Key each={resultIds$()} by={(id) => id}>
-            {(id, index) => (
-              <li>
-                <SearchResult
-                  ngramId={id()}
-                  isSelected={state.panesSearch.selectedResultIndex === index()}
-                  onSelect={() => {
-                    const i = index();
-                    void startTransition(() => {
-                      updateState((s) => {
-                        s.panesSearch.selectedResultIndex = i;
+          <Key each={resultItems$()} by={(item) => item.id}>
+            {(item$, index) => {
+              const ngramId = untrack(item$).id;
+              const ngram$ = createMemo(() => item$());
+              return (
+                <li>
+                  <SearchResult
+                    ngramId={ngramId}
+                    fallbackNgram={ngram$()}
+                    isSelected={state.panesSearch.selectedResultIndex === index()}
+                    onSelect={() => {
+                      const i = index();
+                      void startTransition(() => {
+                        updateState((s) => {
+                          s.panesSearch.selectedResultIndex = i;
+                        });
                       });
-                    });
-                  }}
-                />
-              </li>
-            )}
+                    }}
+                  />
+                </li>
+              );
+            }}
           </Key>
         </ul>
       </ScrollContainer>

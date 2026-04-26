@@ -3,6 +3,8 @@ import { test, inject } from "vitest";
 declare global {
   // eslint-disable-next-line no-var
   var __testEmulatorPort__: number | undefined;
+  // eslint-disable-next-line no-var
+  var __testEmulatorLeases__: Map<number, string> | undefined;
 }
 
 const shortener = /^styles_styles_(.+)__\w{8}$/;
@@ -39,24 +41,31 @@ function getTestServerUrl(): string {
   return `http://localhost:${httpPort}`;
 }
 
-export async function acquireEmulator(): Promise<void> {
+export async function acquireEmulator(): Promise<number> {
   const res = await fetch(`${getTestServerUrl()}/emulator/acquire`, {
     method: "POST",
   });
-  const { emulatorPort } = await res.json();
+  const { emulatorPort, leaseId } = await res.json();
+  globalThis.__testEmulatorLeases__ ??= new Map();
+  globalThis.__testEmulatorLeases__.set(emulatorPort, leaseId);
   globalThis.__testEmulatorPort__ = emulatorPort;
+  return emulatorPort;
 }
 
-export async function releaseEmulator(): Promise<void> {
-  const port = globalThis.__testEmulatorPort__;
+export async function releaseEmulator(emulatorPort?: number): Promise<void> {
+  const port = emulatorPort ?? globalThis.__testEmulatorPort__;
   if (port === undefined) return;
 
+  const leaseId = globalThis.__testEmulatorLeases__?.get(port);
   await fetch(`${getTestServerUrl()}/emulator/release`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ port }),
+    body: JSON.stringify({ port, leaseId }),
   });
-  globalThis.__testEmulatorPort__ = undefined;
+  globalThis.__testEmulatorLeases__?.delete(port);
+  if (globalThis.__testEmulatorPort__ === port) {
+    globalThis.__testEmulatorPort__ = undefined;
+  }
 }
 
 export type DatabaseInfo = {
@@ -71,10 +80,19 @@ export async function getEmulatorPort(): Promise<number> {
   return port;
 }
 
-async function clearDatabase(): Promise<void> {
-  const emulatorPort = await getEmulatorPort();
+async function clearDatabase(emulatorPort: number): Promise<void> {
   await fetch(`http://localhost:${emulatorPort}/emulator/v1/projects/demo/databases/(default)/documents`, {
     method: "DELETE",
+  });
+}
+
+export function createTestWithDb(getEmulatorPort: () => number) {
+  return test.extend<{ db: DatabaseInfo }>({
+    db: async ({}, use) => {
+      const emulatorPort = getEmulatorPort();
+      await use({ emulatorPort });
+      await clearDatabase(emulatorPort);
+    },
   });
 }
 
@@ -82,6 +100,6 @@ export const testWithDb = test.extend<{ db: DatabaseInfo }>({
   db: async ({}, use) => {
     const emulatorPort = await getEmulatorPort();
     await use({ emulatorPort });
-    await clearDatabase();
+    await clearDatabase(emulatorPort);
   },
 });

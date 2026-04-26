@@ -14,12 +14,18 @@ import {
   type DocumentData,
   type SchemaCollectionReference,
 } from "@/services/firebase/firestore";
-import { runBatch, runTransaction } from "@/services/firebase/firestore/batch";
+import {
+  getOptimisticHistoryHeadState,
+  runBatch,
+  runTransaction,
+  waitForPendingCommitsForTest,
+} from "@/services/firebase/firestore/batch";
 import { undo, redo, jumpTo, getChildren } from "@/services/firebase/firestore/editHistory";
 import "@/services/firebase/firestore/editHistory/schema";
+import { createOptimisticOverlay } from "@/services/firebase/firestore/overlay";
 import { type Schema } from "@/services/firebase/firestore/schema";
 import { createTestFirestoreService, timestampForServerTimestamp } from "@/services/firebase/firestore/test";
-import { acquireEmulator, releaseEmulator, getEmulatorPort } from "@/test";
+import { acquireEmulator, releaseEmulator } from "@/test";
 
 declare module "@/services/firebase/firestore/schema" {
   interface Schema {
@@ -34,6 +40,7 @@ function testCollection(fs: Firestore, name: string): SchemaCollectionReference<
 let baseService: ReturnType<typeof createTestFirestoreService>;
 let firestore: Firestore;
 let service: FirestoreService;
+let emulatorPort: number;
 
 function createFullTestService(base: ReturnType<typeof createTestFirestoreService>): FirestoreService {
   let batchVersion: DocumentData<Schema["batchVersion"]> | undefined;
@@ -42,9 +49,9 @@ function createFullTestService(base: ReturnType<typeof createTestFirestoreServic
 
   return {
     firestore: base.firestore,
+    overlay: createOptimisticOverlay(),
     clock$: () => false,
     setClock: () => undefined,
-    resolve: undefined,
     batchVersion$: () => batchVersion,
     editHistoryHead$: () => editHistoryHead,
     services: {
@@ -91,15 +98,14 @@ function createFullTestService(base: ReturnType<typeof createTestFirestoreServic
 }
 
 beforeAll(async () => {
-  await acquireEmulator();
-  const emulatorPort = await getEmulatorPort();
+  emulatorPort = await acquireEmulator();
   baseService = createTestFirestoreService(emulatorPort, "editHistory-test");
   firestore = baseService.firestore;
   service = createFullTestService(baseService);
 });
 
 afterAll(async () => {
-  await releaseEmulator();
+  await releaseEmulator(emulatorPort);
 });
 
 vi.mock(import("firebase/firestore"), async (importOriginal) => {
@@ -112,16 +118,19 @@ vi.mock(import("firebase/firestore"), async (importOriginal) => {
 });
 
 async function refreshSignals() {
+  await waitForPendingCommitsForTest({ service });
   await (service as FirestoreService & { _refreshSignals: () => Promise<void> })._refreshSignals();
 }
 
 async function getEditHistoryEntries(): Promise<DocumentData<Schema["editHistory"]>[]> {
+  await waitForPendingCommitsForTest({ service });
   const col = collection(firestore, "editHistory") as SchemaCollectionReference<"editHistory">;
   const snap = await getDocsOriginal(col);
   return snap.docs.map((d) => ({ ...d.data(), id: d.id }));
 }
 
 async function getEditHistoryHead(): Promise<DocumentData<Schema["editHistoryHead"]> | undefined> {
+  await waitForPendingCommitsForTest({ service });
   const col = collection(firestore, "editHistoryHead") as SchemaCollectionReference<"editHistoryHead">;
   const snap = await getDocOriginal(doc(col, singletonDocumentId));
   return snap.exists() ? { ...snap.data(), id: singletonDocumentId } : undefined;
@@ -252,6 +261,7 @@ describe("undo", () => {
     await runBatch(service, async (batch) => {
       batch.set(col, { id: "doc1", text: "hello", value: 1 });
     });
+    await waitForPendingCommitsForTest({ service });
 
     // Verify doc exists
     const before = await getDocOriginal(doc(col, "doc1"));
@@ -279,12 +289,14 @@ describe("undo", () => {
     await runBatch(service, async (batch) => {
       batch.set(col, { id: "doc1", text: "old", value: 1 });
     });
+    await waitForPendingCommitsForTest({ service });
 
     // Update it
     await refreshSignals();
     await runBatch(service, async (batch) => {
       batch.update(col, { id: "doc1", text: "new" });
     });
+    await waitForPendingCommitsForTest({ service });
 
     const before = await getDocOriginal(doc(col, "doc1"));
     expect(before.data()!.text).toBe("new");
@@ -307,12 +319,14 @@ describe("undo", () => {
     await runBatch(service, async (batch) => {
       batch.set(col, { id: "doc1", text: "hello", value: 42 });
     });
+    await waitForPendingCommitsForTest({ service });
 
     // Delete it
     await refreshSignals();
     await runBatch(service, async (batch) => {
       batch.delete(col, "doc1");
     });
+    await waitForPendingCommitsForTest({ service });
 
     const deleted = await getDocOriginal(doc(col, "doc1"));
     expect(deleted.exists()).toBe(false);
@@ -820,6 +834,7 @@ describe("undo - edge cases", () => {
       batch.set(col, { id: "docX", text: "x", value: 1 });
       batch.set(col, { id: "docY", text: "y", value: 2 });
     });
+    await waitForPendingCommitsForTest({ service });
 
     // Single batch with multiple ops: update one, delete the other
     await refreshSignals();
@@ -827,6 +842,7 @@ describe("undo - edge cases", () => {
       batch.update(col, { id: "docX", text: "x-updated" });
       batch.delete(col, "docY");
     });
+    await waitForPendingCommitsForTest({ service });
 
     expect((await getDocOriginal(doc(col, "docX"))).data()!.text).toBe("x-updated");
     expect((await getDocOriginal(doc(col, "docY"))).exists()).toBe(false);
@@ -842,6 +858,32 @@ describe("undo - edge cases", () => {
 });
 
 describe("redo - edge cases", () => {
+  it("undo/redo/getChildren/jumpTo can use optimistic heads without waiting for pending commits", async (test) => {
+    const now = new Date();
+    const tid = `${test.task.id}_${now.getTime()}`;
+    const col = testCollection(firestore, tid);
+    const readPending = { waitForPendingCommits: false } as const;
+
+    await refreshSignals();
+    const parentHead = (await getOptimisticHistoryHeadState(service)).entryId;
+    await runBatch(service, async (batch) => {
+      batch.set(col, { id: "optimisticDoc", text: "created", value: 1 });
+    });
+
+    const createdHead = (await getOptimisticHistoryHeadState(service)).entryId;
+    expect(createdHead).toBeTruthy();
+
+    await undo(service, readPending);
+    await redo(service, undefined, readPending);
+    const children = await getChildren(service, parentHead, readPending);
+    expect(children.some((child) => child.id === createdHead)).toBe(true);
+
+    await jumpTo(service, parentHead, readPending);
+    await waitForPendingCommitsForTest({ service });
+
+    expect((await getDocOriginal(doc(col, "optimisticDoc"))).exists()).toBe(false);
+  });
+
   it("redoes an undone delete", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;

@@ -10,7 +10,7 @@
     "dev": "vite",
     "tsc": "tsc --noEmit",
     "test": "pnpm tsc && pnpm test/nocheck",
-    "test/case": "pnpm test -t",
+    "test/case": "node scripts/test-case.mjs",
     "test/nocheck": "vitest run -c vitest.config.functions.ts && vitest run -c vitest.config.firestore-rules.ts && vitest run",
     "prepare": "git config --local core.hooksPath .githooks",
     "storybook": "storybook dev -p 6006",

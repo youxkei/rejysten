@@ -4,9 +4,11 @@ import { afterAll, afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 
 import { awaitPendingCallbacks } from "@/awaitableCallback";
-import { baseTime, setupLifeLogsTest } from "@/panes/lifeLogs/test";
+import { baseTime, setupLifeLogsTest as setupLifeLogsTestBase } from "@/panes/lifeLogs/test";
+import { type FirestoreService } from "@/services/firebase/firestore";
+import { waitForPendingCommitsForTest } from "@/services/firebase/firestore/batch";
 import { styles } from "@/styles.css";
-import { acquireEmulator, releaseEmulator, testWithDb as it } from "@/test";
+import { acquireEmulator, createTestWithDb, releaseEmulator } from "@/test";
 
 vi.mock(import("@/date"), async () => {
   return {
@@ -16,17 +18,38 @@ vi.mock(import("@/date"), async () => {
   };
 });
 
+let emulatorPort: number;
+const it = createTestWithDb(() => emulatorPort);
+
 beforeAll(async () => {
-  await acquireEmulator();
+  emulatorPort = await acquireEmulator();
 });
 
 afterAll(async () => {
-  await releaseEmulator();
+  await releaseEmulator(emulatorPort);
 });
 
+let firestoreForCleanup: FirestoreService | undefined;
+
+async function setupLifeLogsTest(...args: Parameters<typeof setupLifeLogsTestBase>) {
+  const setup = await setupLifeLogsTestBase(...args);
+  firestoreForCleanup = setup.firestore;
+  return setup;
+}
+
+async function waitForCurrentPendingCommits() {
+  if (firestoreForCleanup) {
+    await waitForPendingCommitsForTest({ service: firestoreForCleanup });
+  }
+}
+
 afterEach(async () => {
+  await awaitPendingCallbacks();
+  await waitForCurrentPendingCommits();
   cleanup();
-  await awaitPendingCallbacks({ timeoutMs: 2000 });
+  await awaitPendingCallbacks();
+  await waitForCurrentPendingCommits();
+  firestoreForCleanup = undefined;
 });
 
 describe("<LifeLog />", () => {

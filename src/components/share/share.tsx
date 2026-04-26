@@ -1,4 +1,4 @@
-import { limit, orderBy, query, Timestamp, where } from "firebase/firestore";
+import { Timestamp } from "firebase/firestore";
 import { onMount } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
@@ -8,6 +8,7 @@ import "@/panes/lifeLogs/schema";
 import "@/components/share/store";
 import { type FirestoreService, getCollection, getDocs, useFirestoreService } from "@/services/firebase/firestore";
 import { runTransaction } from "@/services/firebase/firestore/batch";
+import { limit, orderBy, query, where } from "@/services/firebase/firestore/query";
 import { addNextSibling, addSingle, getLastChildNode } from "@/services/firebase/firestore/treeNode";
 import { useStoreService } from "@/services/store";
 import { showToast } from "@/services/toast";

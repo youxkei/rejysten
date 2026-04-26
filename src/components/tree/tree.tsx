@@ -1,7 +1,7 @@
 import "@/components/tree/actions";
 
 import equals from "fast-deep-equal";
-import { doc, orderBy, query, where } from "firebase/firestore";
+import { doc } from "firebase/firestore";
 import { type Accessor, createEffect, createMemo, For, type JSXElement, onCleanup, Show } from "solid-js";
 
 import { useActionsService } from "@/services/actions";
@@ -11,6 +11,7 @@ import {
   useFirestoreService,
   widenSchemaCollectionRef,
 } from "@/services/firebase/firestore";
+import { orderBy, query, where } from "@/services/firebase/firestore/query";
 import { type Schema } from "@/services/firebase/firestore/schema";
 import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { type TreeNode, type TreeNodeCollection } from "@/services/firebase/firestore/treeNode";
@@ -78,7 +79,7 @@ export function Node<C extends TreeNodeCollection>(props: {
 
   const node$ = createSubscribeSignal(
     firestore,
-    () => doc(props.col, props.id),
+    () => (props.id === "" ? undefined : doc(props.col, props.id)),
     () => `node "${props.id}"`,
   );
   const isSelected$ = () => props.id === props.selectedId;

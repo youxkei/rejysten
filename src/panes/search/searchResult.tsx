@@ -1,20 +1,27 @@
 import { doc } from "firebase/firestore";
 import { createEffect } from "solid-js";
 
-import { getCollection, useFirestoreService } from "@/services/firebase/firestore";
+import { type DocumentData, getCollection, useFirestoreService } from "@/services/firebase/firestore";
+import { type Schema } from "@/services/firebase/firestore/schema";
 import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { scrollWithOffset } from "@/solid/scroll";
 import { styles } from "@/styles.css";
 
-export function SearchResult(props: { ngramId: string; isSelected: boolean; onSelect: () => void }) {
+export function SearchResult(props: {
+  ngramId: string;
+  isSelected: boolean;
+  onSelect: () => void;
+  fallbackNgram?: DocumentData<Schema["ngrams"]>;
+}) {
   const firestore = useFirestoreService();
   const ngramsCol = getCollection(firestore, "ngrams");
 
-  const ngram$ = createSubscribeSignal(
+  const subscribedNgram$ = createSubscribeSignal(
     firestore,
-    () => doc(ngramsCol, props.ngramId),
+    () => (props.ngramId === "" ? undefined : doc(ngramsCol, props.ngramId)),
     () => `ngram "${props.ngramId}"`,
   );
+  const ngram$ = () => subscribedNgram$() ?? props.fallbackNgram;
 
   let resultRef: HTMLDivElement | undefined;
 

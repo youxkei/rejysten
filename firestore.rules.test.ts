@@ -19,6 +19,7 @@ const WRONG_UID = "wrongUidUser123";
 
 let testEnv: RulesTestEnvironment;
 let emulatorPort: number;
+let emulatorLeaseId: string | undefined;
 
 function getTestServerUrl(): string {
   const httpPort = inject("httpPort");
@@ -28,6 +29,7 @@ function getTestServerUrl(): string {
 async function acquireEmulator(): Promise<number> {
   const res = await fetch(`${getTestServerUrl()}/emulator/acquire`, { method: "POST" });
   const data = await res.json();
+  emulatorLeaseId = data.leaseId;
   return data.emulatorPort;
 }
 
@@ -35,8 +37,9 @@ async function releaseEmulator(port: number): Promise<void> {
   await fetch(`${getTestServerUrl()}/emulator/release`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ port }),
+    body: JSON.stringify({ port, leaseId: emulatorLeaseId }),
   });
+  emulatorLeaseId = undefined;
 }
 
 beforeAll(async () => {

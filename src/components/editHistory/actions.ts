@@ -3,6 +3,7 @@ import { startTransition } from "solid-js";
 import { awaitable } from "@/awaitableCallback";
 import { actionsCreator, initialActionsContext } from "@/services/actions";
 import { useFirestoreService } from "@/services/firebase/firestore";
+import { getOptimisticHistoryHeadState } from "@/services/firebase/firestore/batch";
 import {
   undo as undoEngine,
   redo as redoEngine,
@@ -10,6 +11,8 @@ import {
   getChildren,
 } from "@/services/firebase/firestore/editHistory";
 import { useStoreService } from "@/services/store";
+
+const optimisticHistoryReadOptions = { waitForPendingCommits: false } as const;
 
 declare module "@/services/actions" {
   interface ComponentsActionsContext {
@@ -42,10 +45,14 @@ actionsCreator.components.editHistory = ({ components: { editHistory: _context }
     lastRedoChildIndex = -1;
   }
 
+  async function getCurrentHeadId(): Promise<string> {
+    return (await getOptimisticHistoryHeadState(firestore)).entryId;
+  }
+
   async function doUndo() {
     firestore.setClock(true);
     try {
-      const prevSelection = await undoEngine(firestore);
+      const prevSelection = await undoEngine(firestore, optimisticHistoryReadOptions);
       await startTransition(() => {
         if (prevSelection && (prevSelection.lifeLogs || prevSelection.lifeLogTreeNodes)) {
           updateState((s) => {
@@ -64,7 +71,7 @@ actionsCreator.components.editHistory = ({ components: { editHistory: _context }
     resetCycleState();
     firestore.setClock(true);
     try {
-      const nextSelection = await redoEngine(firestore);
+      const nextSelection = await redoEngine(firestore, undefined, optimisticHistoryReadOptions);
       await startTransition(() => {
         if (nextSelection && (nextSelection.lifeLogs || nextSelection.lifeLogTreeNodes)) {
           updateState((s) => {
@@ -98,22 +105,22 @@ actionsCreator.components.editHistory = ({ components: { editHistory: _context }
 
       if (lastRedoParentId !== null) {
         // Cycling mode: undo back to the branch point, but only if not already there
-        const currentHeadId = firestore.editHistoryHead$()?.entryId ?? "";
+        const currentHeadId = await getCurrentHeadId();
         if (currentHeadId !== lastRedoParentId) {
-          await undoEngine(firestore);
+          await undoEngine(firestore, optimisticHistoryReadOptions);
         }
         branchPointId = lastRedoParentId;
       } else {
         // First R press: we're at the branch point
-        branchPointId = firestore.editHistoryHead$()?.entryId ?? "";
+        branchPointId = await getCurrentHeadId();
       }
 
-      const children = await getChildren(firestore, branchPointId);
+      const children = await getChildren(firestore, branchPointId, optimisticHistoryReadOptions);
 
       if (children.length <= 1) {
         // 0 or 1 child: behave like normal redo
         resetCycleState();
-        const nextSelection = await redoEngine(firestore);
+        const nextSelection = await redoEngine(firestore, undefined, optimisticHistoryReadOptions);
         await startTransition(() => {
           if (nextSelection && (nextSelection.lifeLogs || nextSelection.lifeLogTreeNodes)) {
             updateState((s) => {
@@ -142,7 +149,7 @@ actionsCreator.components.editHistory = ({ components: { editHistory: _context }
       lastRedoParentId = branchPointId;
       lastRedoChildIndex = nextIndex;
 
-      const nextSelection = await redoEngine(firestore, children[nextIndex].id);
+      const nextSelection = await redoEngine(firestore, children[nextIndex].id, optimisticHistoryReadOptions);
       await startTransition(() => {
         if (nextSelection && (nextSelection.lifeLogs || nextSelection.lifeLogTreeNodes)) {
           updateState((s) => {
@@ -161,7 +168,7 @@ actionsCreator.components.editHistory = ({ components: { editHistory: _context }
     resetCycleState();
     firestore.setClock(true);
     try {
-      const selection = await jumpToEngine(firestore, nodeId);
+      const selection = await jumpToEngine(firestore, nodeId, optimisticHistoryReadOptions);
       await startTransition(() => {
         if (selection && (selection.lifeLogs || selection.lifeLogTreeNodes)) {
           updateState((s) => {

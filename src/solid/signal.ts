@@ -16,6 +16,7 @@ export function createLatchSignal<T>(
   signal$: Accessor<T>,
   clock$: Accessor<boolean>,
   initialValue: T,
+  options?: { equals?: false | ((prev: T, next: T) => boolean) },
 ): Accessor<T> {
   // Push-based latch: createComputed eagerly tracks clock$ and signal$, and
   // mirrors signal$ into latched$ whenever clock is false. Using createComputed
@@ -24,7 +25,7 @@ export function createLatchSignal<T>(
   // window. A lazy createMemo would keep its stale `prev` until read, and the
   // next read during clock=true would return that stale prev — a race that made
   // editHistoryHead$ sometimes appear empty right after an action completed.
-  const [latched$, setLatched] = createSignal<T>(initialValue);
+  const [latched$, setLatched] = createSignal<T>(initialValue, options);
   createComputed(() => {
     const clock = clock$();
     const data = signal$();

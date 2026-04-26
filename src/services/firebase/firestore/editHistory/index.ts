@@ -1,16 +1,19 @@
-import { query, where } from "firebase/firestore";
-
 import {
   type FirestoreService,
   type SchemaCollectionReference,
   getCollection,
   getDoc,
   getDocs,
-  getSingletonDoc,
   type DocumentData,
 } from "@/services/firebase/firestore";
-import { runBatch, type Batch } from "@/services/firebase/firestore/batch";
+import {
+  getOptimisticHistoryHeadState,
+  runBatch,
+  type Batch,
+  waitForPendingCommits,
+} from "@/services/firebase/firestore/batch";
 import { type HistoryOperation, type HistorySelection } from "@/services/firebase/firestore/editHistory/schema";
+import { query, where } from "@/services/firebase/firestore/query";
 import { type Schema } from "@/services/firebase/firestore/schema";
 
 function applyOperations(service: FirestoreService, batch: Batch, operations: HistoryOperation[]): void {
@@ -31,23 +34,36 @@ function applyOperations(service: FirestoreService, batch: Batch, operations: Hi
   }
 }
 
+type HistoryReadOptions = {
+  waitForPendingCommits?: boolean;
+};
+
+function shouldWaitForPendingCommits(options?: HistoryReadOptions): boolean {
+  return options?.waitForPendingCommits !== false;
+}
+
+async function getCurrentHeadState(service: FirestoreService, options?: HistoryReadOptions) {
+  if (shouldWaitForPendingCommits(options)) {
+    await waitForPendingCommits({ service });
+  }
+  return getOptimisticHistoryHeadState(service);
+}
+
 export async function getChildren(
   service: FirestoreService,
   parentEntryId: string,
+  options?: HistoryReadOptions,
 ): Promise<DocumentData<Schema["editHistory"]>[]> {
+  if (shouldWaitForPendingCommits(options)) {
+    await waitForPendingCommits({ service });
+  }
   const editHistoryCol = getCollection(service, "editHistory");
   const children = await getDocs(service, query(editHistoryCol, where("parentId", "==", parentEntryId)));
   return children.sort((a, b) => a.id.localeCompare(b.id));
 }
 
-export async function undo(service: FirestoreService): Promise<HistorySelection | undefined> {
-  // Read head from signal first, then fall back to Firestore cache. The signal
-  // can lag briefly after an action's batch commits (onSnapshot pipeline), so
-  // reading straight from the cached doc ensures we see the just-written head.
-  let headEntryId = service.editHistoryHead$()?.entryId;
-  if (!headEntryId) {
-    headEntryId = (await getSingletonDoc(service, getCollection(service, "editHistoryHead")))?.entryId;
-  }
+export async function undo(service: FirestoreService, options?: HistoryReadOptions): Promise<HistorySelection | undefined> {
+  const headEntryId = (await getCurrentHeadState(service, options)).entryId;
   if (!headEntryId) return undefined;
 
   const editHistoryCol = getCollection(service, "editHistory");
@@ -65,20 +81,22 @@ export async function undo(service: FirestoreService): Promise<HistorySelection 
     },
     { skipHistory: true },
   );
+  if (shouldWaitForPendingCommits(options)) {
+    await waitForPendingCommits({ service });
+  }
 
   return entry.prevSelection;
 }
 
-export async function redo(service: FirestoreService, childId?: string): Promise<HistorySelection | undefined> {
-  // Same signal-lag fallback as undo.
-  let headEntryId = service.editHistoryHead$()?.entryId;
-  let headExists = service.editHistoryHead$() !== undefined;
-  if (!headEntryId) {
-    const cached = await getSingletonDoc(service, getCollection(service, "editHistoryHead"));
-    headEntryId = cached?.entryId;
-    headExists = cached !== undefined;
-  }
-  const currentEntryId = headEntryId ?? "";
+export async function redo(
+  service: FirestoreService,
+  childId?: string,
+  options?: HistoryReadOptions,
+): Promise<HistorySelection | undefined> {
+  const head = await getCurrentHeadState(service, options);
+  const headEntryId = head.entryId;
+  const headExists = head.exists;
+  const currentEntryId = headEntryId;
 
   const editHistoryCol = getCollection(service, "editHistory");
   const children = await getDocs(service, query(editHistoryCol, where("parentId", "==", currentEntryId)));
@@ -106,6 +124,9 @@ export async function redo(service: FirestoreService, childId?: string): Promise
     },
     { skipHistory: true },
   );
+  if (shouldWaitForPendingCommits(options)) {
+    await waitForPendingCommits({ service });
+  }
 
   return targetChild.nextSelection;
 }
@@ -128,13 +149,14 @@ async function buildAncestorChain(
   return chain;
 }
 
-export async function jumpTo(service: FirestoreService, targetId: string): Promise<HistorySelection | undefined> {
-  // Same signal-lag fallback as undo.
-  let headEntryId = service.editHistoryHead$()?.entryId;
-  if (!headEntryId) {
-    headEntryId = (await getSingletonDoc(service, getCollection(service, "editHistoryHead")))?.entryId;
-  }
-  const currentId = headEntryId ?? "";
+export async function jumpTo(
+  service: FirestoreService,
+  targetId: string,
+  options?: HistoryReadOptions,
+): Promise<HistorySelection | undefined> {
+  const headState = await getCurrentHeadState(service, options);
+  const headEntryId = headState.entryId;
+  const currentId = headEntryId;
 
   if (currentId === targetId) return undefined;
 
@@ -172,6 +194,8 @@ export async function jumpTo(service: FirestoreService, targetId: string): Promi
       }
       if (headEntryId) {
         batch.updateSingleton(editHistoryHeadCol, { entryId: targetId });
+      } else if (headState.exists) {
+        batch.updateSingleton(editHistoryHeadCol, { entryId: targetId });
       } else {
         batch.setSingleton(editHistoryHeadCol, { entryId: targetId });
       }
@@ -179,6 +203,9 @@ export async function jumpTo(service: FirestoreService, targetId: string): Promi
     },
     { skipHistory: true },
   );
+  if (shouldWaitForPendingCommits(options)) {
+    await waitForPendingCommits({ service });
+  }
 
   // Return the selection to restore:
   // - If we ended up at the root ("" — all ancestors undone), return undefined

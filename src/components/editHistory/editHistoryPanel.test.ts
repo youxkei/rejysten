@@ -4,7 +4,12 @@ import type { Schema } from "@/services/firebase/firestore/schema";
 import { Timestamp } from "firebase/firestore";
 import { describe, it, expect } from "vitest";
 
-import { buildGraphRows, continuationPrefix, findInverseOp } from "@/components/editHistory/editHistoryPanel";
+import {
+  buildGraphRows,
+  buildKeyedGraphRows,
+  continuationPrefix,
+  findInverseOp,
+} from "@/components/editHistory/editHistoryPanel";
 import "@/services/firebase/firestore/editHistory/schema";
 
 declare module "@/services/firebase/firestore/schema" {
@@ -280,6 +285,42 @@ describe("buildGraphRows", () => {
   });
 });
 
+describe("buildKeyedGraphRows", () => {
+  it("uses entry ids for entry rows and stable distinct keys for separators and root", () => {
+    const rows = buildGraphRows(
+      toMap([
+        entry("A", "", "root"),
+        entry("B", "A", "branch"),
+        entry("C", "A", "main"),
+      ]),
+      "B",
+    );
+
+    const keyed = buildKeyedGraphRows(rows);
+    expect(keyed.map((row) => row.key)).toEqual([
+      "C",
+      "B",
+      "separator:2:|/  ",
+      "A",
+      "__root__",
+    ]);
+  });
+
+  it("keeps entry keys stable when the current head changes", () => {
+    const entries = toMap([
+      entry("A", "", "root"),
+      entry("B", "A", "branch"),
+      entry("C", "A", "main"),
+    ]);
+
+    const headB = buildKeyedGraphRows(buildGraphRows(entries, "B")).filter((row) => row.entry);
+    const headC = buildKeyedGraphRows(buildGraphRows(entries, "C")).filter((row) => row.entry);
+
+    expect(headB.map((row) => row.key)).toEqual(["C", "B", "A"]);
+    expect(headC.map((row) => row.key)).toEqual(["C", "B", "A"]);
+  });
+});
+
 describe("isRoot flag", () => {
   it("entry rows are never root, only virtual root node is", () => {
     const entries = toMap([entry("A", "", "root")]);
@@ -379,15 +420,15 @@ describe("buildGraphRows (continued)", () => {
     // Simulates undo+redo cycles where each redo creates a new root-level entry.
     const entries = toMap([entry("A", "", "first"), entry("B", "", "second"), entry("C", "", "third")]);
     const result = prefixes(buildGraphRows(entries, "C"));
-    // Main line = [C] (newest). A, B are root-level siblings shown as branches.
-    expect(result).toEqual(["| * second", "|/  ", "| * first", "|/  ", "* HEAD third", "* 初期状態"]);
+    // Main line = [C] (newest). A, B are root-level siblings shown as branches from the virtual root.
+    expect(result).toEqual(["* HEAD third", "| * second", "|/  ", "| * first", "|/  ", "* 初期状態"]);
   });
 
   it("root-level siblings: head on older sibling", () => {
     const entries = toMap([entry("A", "", "first"), entry("B", "", "second"), entry("C", "", "third")]);
     const result = prefixes(buildGraphRows(entries, "A"));
-    // Main line = [C]. A, B are siblings. HEAD label on A.
-    expect(result).toEqual(["| * second", "|/  ", "| * HEAD first", "|/  ", "* third", "* 初期状態"]);
+    // Main line = [C]. A, B are siblings from the virtual root. HEAD label on A.
+    expect(result).toEqual(["* third", "| * second", "|/  ", "| * HEAD first", "|/  ", "* 初期状態"]);
   });
 });
 

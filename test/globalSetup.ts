@@ -4,13 +4,16 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
+import { randomUUID } from "crypto";
 import { spawn, type ChildProcess } from "child_process";
 import type { TestProject } from "vitest/node";
 
 const POOL_SIZE = 2;
 
 let server: http.Server | undefined;
-let httpPort: number;
+let httpPort: number | undefined;
+let cleanupHandlersInstalled = false;
+let shutdownStarted = false;
 
 interface EmulatorInstance {
   port: number;
@@ -18,9 +21,15 @@ interface EmulatorInstance {
   process: ChildProcess;
 }
 
+interface EmulatorLease {
+  instance: EmulatorInstance;
+  leaseId: string;
+}
+
 const allEmulators: EmulatorInstance[] = [];
 const availableEmulators: EmulatorInstance[] = [];
-const waitQueue: Array<(instance: EmulatorInstance) => void> = [];
+const acquiredEmulators = new Map<number, string>();
+const waitQueue: Array<(lease: EmulatorLease) => void> = [];
 
 declare module "vitest" {
   export interface ProvidedContext {
@@ -55,6 +64,80 @@ async function waitForEmulator(port: number, maxAttempts = 120): Promise<void> {
 
 const firebaseBin = fileURLToPath(new URL("../node_modules/.bin/firebase", import.meta.url));
 
+function removeFromArray<T>(array: T[], item: T): void {
+  const index = array.indexOf(item);
+  if (index !== -1) array.splice(index, 1);
+}
+
+function createLease(instance: EmulatorInstance): EmulatorLease {
+  const leaseId = randomUUID();
+  acquiredEmulators.set(instance.port, leaseId);
+  return { instance, leaseId };
+}
+
+function killEmulatorProcess(instance: EmulatorInstance, signal: NodeJS.Signals): void {
+  const pid = instance.process.pid;
+  if (pid === undefined || instance.process.exitCode !== null) return;
+
+  try {
+    process.kill(-pid, signal);
+  } catch {
+    try {
+      instance.process.kill(signal);
+    } catch {
+      // Process already gone
+    }
+  }
+}
+
+function killAllEmulatorProcessesSync(signal: NodeJS.Signals): void {
+  for (const instance of allEmulators) {
+    killEmulatorProcess(instance, signal);
+  }
+}
+
+function cleanupAllEmulatorsSync(signal: NodeJS.Signals): void {
+  killAllEmulatorProcessesSync(signal);
+
+  for (const instance of allEmulators) {
+    try {
+      fs.rmSync(instance.tmpDir, { recursive: true, force: true });
+    } catch {
+      // The process is exiting, so best-effort cleanup is enough here.
+    }
+  }
+}
+
+function installCleanupHandlers(): void {
+  if (cleanupHandlersInstalled) return;
+  cleanupHandlersInstalled = true;
+
+  const cleanupForSignal = (signal: NodeJS.Signals) => {
+    if (shutdownStarted) return;
+    shutdownStarted = true;
+
+    void (async () => {
+      console.log(`[globalSetup] Received ${signal}, cleaning up...`);
+      try {
+        await teardown();
+      } catch (e) {
+        console.error(`[globalSetup] Cleanup after ${signal} failed`, e);
+        killAllEmulatorProcessesSync("SIGKILL");
+      } finally {
+        process.exit(signal === "SIGINT" ? 130 : 143);
+      }
+    })();
+  };
+
+  process.once("SIGINT", cleanupForSignal);
+  process.once("SIGTERM", cleanupForSignal);
+  process.once("SIGHUP", cleanupForSignal);
+
+  process.once("exit", () => {
+    cleanupAllEmulatorsSync("SIGTERM");
+  });
+}
+
 async function startEmulator(): Promise<EmulatorInstance> {
   const port = await findFreePort();
   const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "firebase-emu-"));
@@ -86,6 +169,7 @@ async function startEmulator(): Promise<EmulatorInstance> {
   });
 
   const instance: EmulatorInstance = { port, tmpDir, process: emulatorProcess };
+  allEmulators.push(instance);
 
   console.log(`[globalSetup] Waiting for emulator on port ${port} to be ready...`);
   try {
@@ -103,13 +187,8 @@ async function startEmulator(): Promise<EmulatorInstance> {
 async function stopEmulator(instance: EmulatorInstance): Promise<void> {
   console.log(`[globalSetup] Stopping emulator on port ${instance.port}, tmpDir: ${instance.tmpDir}`);
 
-  const pid = instance.process.pid;
-  if (pid !== undefined && instance.process.exitCode === null) {
-    try {
-      process.kill(-pid, "SIGTERM");
-    } catch {
-      // Process already gone
-    }
+  if (instance.process.pid !== undefined && instance.process.exitCode === null) {
+    killEmulatorProcess(instance, "SIGTERM");
 
     await Promise.race([
       new Promise<void>((resolve) => {
@@ -121,11 +200,7 @@ async function stopEmulator(instance: EmulatorInstance): Promise<void> {
       }),
       new Promise<void>((resolve) =>
         setTimeout(() => {
-          try {
-            process.kill(-pid, "SIGKILL");
-          } catch {
-            // Process already gone
-          }
+          killEmulatorProcess(instance, "SIGKILL");
           resolve();
         }, 3000),
       ),
@@ -133,32 +208,39 @@ async function stopEmulator(instance: EmulatorInstance): Promise<void> {
   }
 
   await fs.promises.rm(instance.tmpDir, { recursive: true, force: true });
+  removeFromArray(allEmulators, instance);
+  removeFromArray(availableEmulators, instance);
 
   console.log(`[globalSetup] Emulator on port ${instance.port} stopped`);
 }
 
-function acquireFromPool(): Promise<EmulatorInstance> {
+function acquireFromPool(): Promise<EmulatorLease> {
   const available = availableEmulators.shift();
   if (available) {
-    return Promise.resolve(available);
+    return Promise.resolve(createLease(available));
   }
   return new Promise((resolve) => {
-    waitQueue.push(resolve);
+    waitQueue.push((lease) => {
+      resolve(lease);
+    });
   });
 }
 
-async function releaseToPool(port: number): Promise<void> {
+async function releaseToPool(port: number, leaseId: string | undefined): Promise<void> {
+  if (leaseId === undefined || acquiredEmulators.get(port) !== leaseId) return;
+  const instance = allEmulators.find((e) => e.port === port);
+  if (!instance) return;
+
   // Clear database before returning to pool
   await fetch(`http://localhost:${port}/emulator/v1/projects/demo/databases/(default)/documents`, {
     method: "DELETE",
   });
-
-  const instance = allEmulators.find((e) => e.port === port);
-  if (!instance) return;
+  if (acquiredEmulators.get(port) !== leaseId) return;
+  acquiredEmulators.delete(port);
 
   const waiter = waitQueue.shift();
   if (waiter) {
-    waiter(instance);
+    waiter(createLease(instance));
   } else {
     availableEmulators.push(instance);
   }
@@ -177,6 +259,8 @@ function readRequestBody(req: http.IncomingMessage): Promise<string> {
 }
 
 export async function setup(project: TestProject) {
+  installCleanupHandlers();
+
   // Skip if already set up
   if (httpPort) {
     console.log(`[globalSetup] Already set up, skipping (HTTP port: ${httpPort})`);
@@ -184,23 +268,9 @@ export async function setup(project: TestProject) {
     return;
   }
 
-  // 1. Find free port for HTTP server
-  httpPort = await findFreePort();
-
-  console.log(`[globalSetup] Using HTTP port: ${httpPort}`);
-
-  // 2. Provide HTTP port to tests
-  project.provide("httpPort", httpPort);
-
-  // 3. Start emulator pool (sequentially to avoid resource contention)
-  for (let i = 0; i < POOL_SIZE; i++) {
-    const instance = await startEmulator();
-    allEmulators.push(instance);
-    availableEmulators.push(instance);
-  }
-  console.log(`[globalSetup] Emulator pool ready (${POOL_SIZE} instances)`);
-
-  // 4. Start HTTP server
+  // 1. Start HTTP server first and let the OS reserve its port. This avoids a
+  // race where a port found as "free" for HTTP is later picked by an emulator
+  // before the HTTP server has actually bound it.
   server = http.createServer(async (req, res) => {
     res.setHeader("Content-Type", "application/json");
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -216,16 +286,16 @@ export async function setup(project: TestProject) {
     const url = new URL(req.url ?? "/", `http://localhost:${httpPort}`);
 
     if (req.method === "POST" && url.pathname === "/emulator/acquire") {
-      const instance = await acquireFromPool();
+      const { instance, leaseId } = await acquireFromPool();
       res.writeHead(200);
-      res.end(JSON.stringify({ emulatorPort: instance.port }));
+      res.end(JSON.stringify({ emulatorPort: instance.port, leaseId }));
       return;
     }
 
     if (req.method === "POST" && url.pathname === "/emulator/release") {
       const body = await readRequestBody(req);
-      const { port } = JSON.parse(body);
-      await releaseToPool(port);
+      const { port, leaseId } = JSON.parse(body);
+      await releaseToPool(port, leaseId);
       res.writeHead(200);
       res.end(JSON.stringify({ success: true }));
       return;
@@ -237,6 +307,7 @@ export async function setup(project: TestProject) {
         JSON.stringify({
           status: "ok",
           total: allEmulators.length,
+          emulatorPorts: allEmulators.map((instance) => instance.port),
           available: availableEmulators.length,
           waiting: waitQueue.length,
         }),
@@ -248,18 +319,50 @@ export async function setup(project: TestProject) {
     res.end(JSON.stringify({ error: "Not found" }));
   });
 
-  server.listen(httpPort);
-  console.log(`[globalSetup] HTTP server listening on port ${httpPort}`);
+  await new Promise<void>((resolve, reject) => {
+    const currentServer = server;
+    if (!currentServer) {
+      reject(new Error("HTTP server was not created"));
+      return;
+    }
 
-  // Add signal handlers for cleanup on Ctrl+C or termination
-  const cleanup = async () => {
-    console.log(`[globalSetup] Received shutdown signal, cleaning up...`);
-    await teardown();
-    process.exit(0);
-  };
+    const onError = (error: Error) => {
+      currentServer.off("listening", onListening);
+      reject(error);
+    };
+    const onListening = () => {
+      currentServer.off("error", onError);
+      const address = currentServer.address();
+      if (!address || typeof address === "string") {
+        reject(new Error("HTTP server did not expose a TCP port"));
+        return;
+      }
+      httpPort = address.port;
+      resolve();
+    };
 
-  process.once("SIGINT", cleanup);
-  process.once("SIGTERM", cleanup);
+    currentServer.once("error", onError);
+    currentServer.once("listening", onListening);
+    currentServer.listen(0);
+  });
+
+  const providedHttpPort = httpPort;
+  if (providedHttpPort === undefined) {
+    throw new Error("HTTP server port was not assigned");
+  }
+
+  console.log(`[globalSetup] Using HTTP port: ${providedHttpPort}`);
+  console.log(`[globalSetup] HTTP server listening on port ${providedHttpPort}`);
+
+  // 2. Provide HTTP port to tests
+  project.provide("httpPort", providedHttpPort);
+
+  // 3. Start emulator pool (sequentially to avoid resource contention)
+  for (let i = 0; i < POOL_SIZE; i++) {
+    const instance = await startEmulator();
+    availableEmulators.push(instance);
+  }
+  console.log(`[globalSetup] Emulator pool ready (${POOL_SIZE} instances)`);
 
   // Return teardown function (Vitest recommended pattern)
   return async () => {
@@ -269,24 +372,37 @@ export async function setup(project: TestProject) {
 }
 
 export async function teardown() {
+  if (shutdownStarted) {
+    killAllEmulatorProcessesSync("SIGTERM");
+  } else {
+    shutdownStarted = true;
+  }
+
   console.log(`[globalSetup] Shutting down...`);
 
   // Unblock any waiters
-  for (const waiter of waitQueue) {
-    // These will get a dead emulator, but teardown is happening anyway
-    waiter(allEmulators[0]);
+  const fallbackInstance = allEmulators[0];
+  if (fallbackInstance) {
+    for (const waiter of waitQueue) {
+      // These will get a dead emulator, but teardown is happening anyway.
+      waiter({ instance: fallbackInstance, leaseId: "" });
+    }
   }
   waitQueue.length = 0;
 
   if (server) {
     server.close();
+    server = undefined;
   }
 
-  for (const instance of allEmulators) {
+  for (const instance of [...allEmulators]) {
     await stopEmulator(instance);
   }
   allEmulators.length = 0;
   availableEmulators.length = 0;
+  acquiredEmulators.clear();
+  httpPort = undefined;
+  shutdownStarted = false;
 
   console.log(`[globalSetup] Shutdown complete`);
 }

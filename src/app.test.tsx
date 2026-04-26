@@ -16,7 +16,7 @@ import {
 } from "@/services/firebase/firestore";
 import { StoreServiceProvider } from "@/services/store";
 import { styles } from "@/styles.css";
-import { acquireEmulator, releaseEmulator, testWithDb as it, type DatabaseInfo } from "@/test";
+import { acquireEmulator, createTestWithDb, releaseEmulator, type DatabaseInfo } from "@/test";
 import { noneTimestamp } from "@/timestamp";
 
 vi.mock(import("@/date"), async () => {
@@ -27,17 +27,21 @@ vi.mock(import("@/date"), async () => {
   };
 });
 
+let emulatorPort: number;
+const it = createTestWithDb(() => emulatorPort);
+
 beforeAll(async () => {
-  await acquireEmulator();
+  emulatorPort = await acquireEmulator();
 });
 
 afterAll(async () => {
-  await releaseEmulator();
+  await releaseEmulator(emulatorPort);
 });
 
 afterEach(async () => {
+  await awaitPendingCallbacks();
   cleanup();
-  await awaitPendingCallbacks({ timeoutMs: 2000 });
+  await awaitPendingCallbacks();
 });
 
 const testConfigYAML = `{ apiKey: "apiKey", authDomain: "authDomain", projectId: "demo", storageBucket: "", messagingSenderId: "", appId: "", measurementId: "", projectNumber: "", version: "2" }`;

@@ -1,4 +1,3 @@
-import { limit, orderBy, query, where } from "firebase/firestore";
 import { generateKeyBetween } from "fractional-indexing";
 
 import { ErrorWithFields } from "@/error";
@@ -11,6 +10,7 @@ import {
   getDocs,
 } from "@/services/firebase/firestore";
 import { type Batch } from "@/services/firebase/firestore/batch";
+import { orderBy, query, where } from "@/services/firebase/firestore/query";
 import { type Schema } from "@/services/firebase/firestore/schema";
 
 export type TreeNode = {
@@ -33,7 +33,6 @@ export async function getPrevNode<C extends TreeNodeCollection>(
       where("parentId", "==", baseNode.parentId),
       where("order", "<", baseNode.order),
       orderBy("order", "desc"),
-      limit(1),
     ),
     options,
   );
@@ -54,7 +53,6 @@ export async function getNextNode<C extends TreeNodeCollection>(
       where("parentId", "==", baseNode.parentId),
       where("order", ">", baseNode.order),
       orderBy("order", "asc"),
-      limit(1),
     ),
     options,
   );
@@ -90,7 +88,7 @@ export async function getFirstChildNode<C extends TreeNodeCollection>(
 ): Promise<DocumentData<Schema[C]> | undefined> {
   const children = await getDocs(
     service,
-    query(col, where("parentId", "==", baseNode.id), orderBy("order", "asc"), limit(1)),
+    query(col, where("parentId", "==", baseNode.id), orderBy("order", "asc")),
     options,
   );
   return children[0];
@@ -104,7 +102,7 @@ export async function getLastChildNode<C extends TreeNodeCollection>(
 ): Promise<DocumentData<Schema[C]> | undefined> {
   const children = await getDocs(
     service,
-    query(col, where("parentId", "==", baseNode.id), orderBy("order", "desc"), limit(1)),
+    query(col, where("parentId", "==", baseNode.id), orderBy("order", "desc")),
     options,
   );
   return children[0];

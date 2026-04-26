@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 
 import { normalize, splitToChars, analyzeTextForNgrams } from "@/ngram";
+import {
+  encodeNgramKeyForFirestore,
+  encodeNgramMapForFirestore,
+} from "@/services/firebase/firestore/ngram";
 
 describe("ngram", () => {
   describe("normalize", () => {
@@ -202,6 +206,33 @@ describe("ngram", () => {
         "🇯🇵": true,
       });
       expect(result.normalizedText).toBe("👨👩👧👦🇯🇵");
+    });
+  });
+
+  describe("Firestore ngram keys", () => {
+    it("keeps plain ASCII keys readable", () => {
+      expect(encodeNgramKeyForFirestore("se")).toBe("se");
+    });
+
+    it("does not collide for dots and underscore escape-like input", () => {
+      const keys = [".", "_2E", "%", "_25", "/", "_2F", "a._/%"].map(encodeNgramKeyForFirestore);
+      expect(new Set(keys).size).toBe(keys.length);
+      expect(encodeNgramKeyForFirestore(".")).toBe("_2E");
+      expect(encodeNgramKeyForFirestore("_2E")).toBe("_5F2E");
+    });
+
+    it("escapes dots, punctuation, Japanese, and emoji for field-path queries", () => {
+      expect(encodeNgramMapForFirestore({
+        "a.": true,
+        "o,": true,
+        検索: true,
+        "😀": true,
+      })).toEqual({
+        a_2E: true,
+        o_2C: true,
+        _E6_A4_9C_E7_B4_A2: true,
+        _F0_9F_98_80: true,
+      });
     });
   });
 });

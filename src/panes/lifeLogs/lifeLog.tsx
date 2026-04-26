@@ -6,7 +6,8 @@ import { ChildrenNodes } from "@/components/tree";
 import { LifeLogTreeNode } from "@/panes/lifeLogs/lifeLogTreeNode";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { useActionsService } from "@/services/actions";
-import { getCollection, useFirestoreService } from "@/services/firebase/firestore";
+import { type DocumentData, getCollection, useFirestoreService } from "@/services/firebase/firestore";
+import { type Schema } from "@/services/firebase/firestore/schema";
 import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
@@ -26,16 +27,18 @@ export function LifeLog(props: {
   setEditingField: (field: EditingField) => void;
   lifeLogCursorInfo$: Accessor<{ lifeLogId: string; cursorPosition: number } | undefined>;
   setLifeLogCursorInfo: (info: { lifeLogId: string; cursorPosition: number } | undefined) => void;
+  fallbackLifeLog?: DocumentData<Schema["lifeLogs"]>;
 }) {
   const firestore = useFirestoreService();
   const { state, updateState } = useStoreService();
 
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
-  const lifeLog$ = createSubscribeSignal(
+  const subscribedLifeLog$ = createSubscribeSignal(
     firestore,
-    () => doc(lifeLogsCol, props.id),
+    () => (props.id === "" ? undefined : doc(lifeLogsCol, props.id)),
     () => `life log tree "${props.id}"`,
   );
+  const lifeLog$ = () => subscribedLifeLog$() ?? props.fallbackLifeLog;
 
   // Track node ID created from Enter key split for cursor positioning
   const [enterSplitNodeId$, setEnterSplitNodeId] = createSignal<string | undefined>(undefined);

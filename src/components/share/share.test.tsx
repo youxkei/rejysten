@@ -1,5 +1,5 @@
 import { cleanup, render, waitFor } from "@solidjs/testing-library";
-import { doc, query, Timestamp, where, writeBatch } from "firebase/firestore";
+import { doc, Timestamp, writeBatch } from "firebase/firestore";
 import { onMount, Suspense } from "solid-js";
 import { afterAll, afterEach, beforeAll, describe, expect, vi } from "vitest";
 
@@ -17,8 +17,10 @@ import {
 } from "@/services/firebase/firestore";
 import "@/panes/lifeLogs/schema";
 import "@/panes/lifeLogs/store";
+import { runBatch, waitForPendingCommitsForTest } from "@/services/firebase/firestore/batch";
+import { query, where } from "@/services/firebase/firestore/query";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
-import { acquireEmulator, releaseEmulator, testWithDb as it, type DatabaseInfo } from "@/test";
+import { acquireEmulator, createTestWithDb, releaseEmulator, type DatabaseInfo } from "@/test";
 import { noneTimestamp } from "@/timestamp";
 
 vi.mock(import("@/date"), async () => {
@@ -35,17 +37,32 @@ vi.mock(import("@/ogp"), async () => {
   };
 });
 
+let emulatorPort: number;
+const it = createTestWithDb(() => emulatorPort);
+
 beforeAll(async () => {
-  await acquireEmulator();
+  emulatorPort = await acquireEmulator();
 });
 
 afterAll(async () => {
-  await releaseEmulator();
+  await releaseEmulator(emulatorPort);
 });
 
+let firestoreForCleanup: ReturnType<typeof useFirestoreService> | undefined;
+
+async function waitForCurrentPendingCommits() {
+  if (firestoreForCleanup) {
+    await waitForPendingCommitsForTest({ service: firestoreForCleanup });
+  }
+}
+
 afterEach(async () => {
+  await awaitPendingCallbacks();
+  await waitForCurrentPendingCommits();
   cleanup();
-  await awaitPendingCallbacks({ timeoutMs: 2000 });
+  await awaitPendingCallbacks();
+  await waitForCurrentPendingCommits();
+  firestoreForCleanup = undefined;
   history.replaceState(null, "", "/");
 });
 
@@ -76,6 +93,7 @@ function setupShareTest(
             {(() => {
               const firestore = useFirestoreService();
               firestoreRef = firestore;
+              firestoreForCleanup = firestore;
               storeRef = useStoreService();
 
               onMount(() => {
@@ -162,6 +180,73 @@ describe("share", () => {
     const store = getStore();
     expect(store.state.panesLifeLogs.selectedLifeLogId).toBe("$netsurf1");
     expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(newNode!.id);
+  });
+
+  it("imports share while a pending local LifeLog overlay exists", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=Example&url=https://example.com/pending-overlay");
+
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+      batch.set(doc(lifeLogs, "$netsurf-pending"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+      batch.set(doc(lifeLogTreeNodes, "$node-pending"), {
+        text: "existing node",
+        lifeLogId: "$netsurf-pending",
+        parentId: "$netsurf-pending",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+      await batch.commit();
+
+      await runBatch(
+        firestore,
+        (localBatch) => {
+          localBatch.set(lifeLogs, {
+            id: "$pending-local",
+            text: "local pending",
+            hasTreeNodes: false,
+            startAt: Timestamp.fromDate(baseTime),
+            endAt: noneTimestamp,
+          });
+          return Promise.resolve();
+        },
+        { skipHistory: true },
+      );
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+    await waitForPendingCommitsForTest({ service: getFirestore() });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf-pending")), {
+      fromServer: true,
+    });
+    const importedNode = nodes.find((n) => n.text === "[Example](https://example.com/pending-overlay)");
+
+    expect(importedNode).toBeTruthy();
+    expect(nodes.map((n) => n.text)).toContain("existing node");
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe("$netsurf-pending");
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(importedNode!.id);
   });
 
   it("adds link to existing running ネットサーフィン without tree nodes", async ({ db, task }) => {
