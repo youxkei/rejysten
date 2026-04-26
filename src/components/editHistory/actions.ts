@@ -87,8 +87,10 @@ actionsCreator.components.editHistory = ({ components: { editHistory: _context }
   }
 
   function togglePanel() {
-    updateState((state) => {
-      state.editHistory.isPanelOpen = !state.editHistory.isPanelOpen;
+    void startTransition(() => {
+      updateState((state) => {
+        state.editHistory.isPanelOpen = !state.editHistory.isPanelOpen;
+      });
     });
   }
 

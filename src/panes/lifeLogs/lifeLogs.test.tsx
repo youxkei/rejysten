@@ -3498,6 +3498,7 @@ describe("<LifeLogs />", () => {
 
       // Press t to open panel
       await userEvent.keyboard("{t}");
+      expect(result.queryByText("loading....")).toBeNull();
       await awaitPendingCallbacks();
 
       await waitFor(() => {
