@@ -309,6 +309,8 @@ export async function setup(project: TestProject) {
           total: allEmulators.length,
           emulatorPorts: allEmulators.map((instance) => instance.port),
           available: availableEmulators.length,
+          availablePorts: availableEmulators.map((instance) => instance.port),
+          acquiredPorts: Array.from(acquiredEmulators.keys()),
           waiting: waitQueue.length,
         }),
       );

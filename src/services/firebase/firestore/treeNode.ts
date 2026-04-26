@@ -9,7 +9,7 @@ import {
   getDoc,
   getDocs,
 } from "@/services/firebase/firestore";
-import { type Batch } from "@/services/firebase/firestore/batch";
+import { type OperationRecordingBatch } from "@/services/firebase/firestore/batch";
 import { orderBy, query, where } from "@/services/firebase/firestore/query";
 import { type Schema } from "@/services/firebase/firestore/schema";
 
@@ -195,7 +195,7 @@ export async function getBelowNode<C extends TreeNodeCollection>(
 
 export function addSingle<C extends TreeNodeCollection>(
   service: FirestoreService,
-  batch: Batch,
+  batch: OperationRecordingBatch,
   col: SchemaCollectionReference<C>,
   parentId: string,
   newNode: Omit<DocumentData<Schema[C]>, keyof TreeNode>,
@@ -215,7 +215,7 @@ export function addSingle<C extends TreeNodeCollection>(
 
 export async function addPrevSibling<C extends TreeNodeCollection>(
   service: FirestoreService,
-  batch: Batch,
+  batch: OperationRecordingBatch,
   col: SchemaCollectionReference<C>,
   baseNode: DocumentData<Schema[C]>,
   newNode: Omit<DocumentData<Schema[C]>, keyof TreeNode>,
@@ -237,7 +237,7 @@ export async function addPrevSibling<C extends TreeNodeCollection>(
 
 export async function addNextSibling<C extends TreeNodeCollection>(
   service: FirestoreService,
-  batch: Batch,
+  batch: OperationRecordingBatch,
   col: SchemaCollectionReference<C>,
   baseNode: DocumentData<Schema[C]>,
   newNode: Omit<DocumentData<Schema[C]>, keyof TreeNode>,
@@ -259,7 +259,7 @@ export async function addNextSibling<C extends TreeNodeCollection>(
 
 export async function indent<C extends TreeNodeCollection>(
   service: FirestoreService,
-  batch: Batch,
+  batch: OperationRecordingBatch,
   col: SchemaCollectionReference<C>,
   node: DocumentData<Schema[C]>,
   options?: { fromServer?: boolean },
@@ -281,7 +281,7 @@ export async function indent<C extends TreeNodeCollection>(
 
 export async function dedent<C extends TreeNodeCollection>(
   service: FirestoreService,
-  batch: Batch,
+  batch: OperationRecordingBatch,
   col: SchemaCollectionReference<C>,
   node: DocumentData<Schema[C]>,
   options?: { fromServer?: boolean },
@@ -303,7 +303,7 @@ export async function dedent<C extends TreeNodeCollection>(
 
 export async function movePrev<C extends TreeNodeCollection>(
   service: FirestoreService,
-  batch: Batch,
+  batch: OperationRecordingBatch,
   col: SchemaCollectionReference<C>,
   node: DocumentData<Schema[C]>,
   options?: { fromServer?: boolean },
@@ -324,7 +324,7 @@ export async function movePrev<C extends TreeNodeCollection>(
 
 export async function moveNext<C extends TreeNodeCollection>(
   service: FirestoreService,
-  batch: Batch,
+  batch: OperationRecordingBatch,
   col: SchemaCollectionReference<C>,
   node: DocumentData<Schema[C]>,
   options?: { fromServer?: boolean },
@@ -345,7 +345,7 @@ export async function moveNext<C extends TreeNodeCollection>(
 
 export async function remove<C extends TreeNodeCollection>(
   service: FirestoreService,
-  batch: Batch,
+  batch: OperationRecordingBatch,
   col: SchemaCollectionReference<C>,
   node: DocumentData<Schema[C]>,
   options?: { fromServer?: boolean },

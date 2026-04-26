@@ -86,6 +86,33 @@ describe("<LifeLog />", () => {
     expect(result.queryByText("first child")).toBeNull();
   });
 
+  it("does not show empty tree list items while entering tree mode", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db);
+
+    await result.findByText("first lifelog");
+
+    const emptyListItemSnapshots: string[] = [];
+    const recordEmptyListItems = () => {
+      const listItems = Array.from(
+        result.container.querySelectorAll<HTMLElement>(`.${styles.lifeLogTree.childrenNodes} li`),
+      );
+      const emptyListItems = listItems.filter((listItem) => listItem.textContent?.trim() === "");
+      if (emptyListItems.length > 0) {
+        emptyListItemSnapshots.push(result.container.innerHTML);
+      }
+    };
+
+    const observer = new MutationObserver(recordEmptyListItems);
+    observer.observe(result.container, { childList: true, characterData: true, subtree: true });
+
+    await userEvent.keyboard("{l}");
+    recordEmptyListItems();
+    await result.findByText("first child");
+    observer.disconnect();
+
+    expect(emptyListItemSnapshots).toEqual([]);
+  });
+
   it("can navigate between tree nodes with j/k keys", async ({ db, task }) => {
     const { result } = await setupLifeLogsTest(task.id, db);
 

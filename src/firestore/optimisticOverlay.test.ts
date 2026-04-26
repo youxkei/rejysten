@@ -1,22 +1,12 @@
 import { deleteField, increment, serverTimestamp, Timestamp } from "firebase/firestore";
-import { createRoot } from "solid-js";
 import { describe, it, expect, vi } from "vitest";
 
 import {
   createOptimisticOverlay,
   type OverlayMutation,
   type QueryMetadata,
-} from "@/services/firebase/firestore/overlay";
-import { orderBy, where } from "@/services/firebase/firestore/query";
-
-declare module "@/services/firebase/firestore/schema" {
-  interface Schema {
-    __overlayTest__: { text?: string; value?: number; parentId?: string; order?: string; tags?: string[] };
-    __overlayTestOther__: { text?: string };
-    __overlayNgramTest__: { ngramMap: Partial<Record<string, true>> };
-    __overlayRangeTest__: { ts: Timestamp };
-  }
-}
+} from "@/firestore/optimisticOverlay";
+import { orderBy, where } from "@/firestore/query";
 
 function setMutation(id: string, data: Record<string, unknown>): OverlayMutation {
   return {
@@ -196,45 +186,48 @@ describe("mergeDocument", () => {
 
 describe("batch lifecycle", () => {
   it("apply increments version$", () => {
-    createRoot((dispose) => {
-      const overlay = createOptimisticOverlay();
-      const before = overlay.version$();
-      overlay.apply("b1", [setMutation("a", { text: "x" })]);
-      expect(overlay.version$()).toBeGreaterThan(before);
-      dispose();
+    const overlay = createOptimisticOverlay();
+    const before = overlay.version$();
+    overlay.apply("b1", [setMutation("a", { text: "x" })]);
+    expect(overlay.version$()).toBeGreaterThan(before);
+  });
+
+  it("notifies subscribers when version changes", () => {
+    const overlay = createOptimisticOverlay();
+    let calls = 0;
+    const unsubscribe = overlay.subscribe(() => {
+      calls++;
     });
+
+    overlay.apply("b1", [setMutation("a", { text: "x" })]);
+    expect(calls).toBe(1);
+
+    unsubscribe();
+    overlay.rollback("b1", undefined);
+    expect(calls).toBe(1);
   });
 
   it("empty mutations apply is a no-op", () => {
-    createRoot((dispose) => {
-      const overlay = createOptimisticOverlay();
-      const before = overlay.version$();
-      overlay.apply("b1", []);
-      expect(overlay.version$()).toBe(before);
-      dispose();
-    });
+    const overlay = createOptimisticOverlay();
+    const before = overlay.version$();
+    overlay.apply("b1", []);
+    expect(overlay.version$()).toBe(before);
   });
 
   it("markCommitted on unknown batch is no-op", () => {
-    createRoot((dispose) => {
-      const overlay = createOptimisticOverlay();
-      const before = overlay.version$();
-      overlay.markCommitted("nope");
-      expect(overlay.version$()).toBe(before);
-      dispose();
-    });
+    const overlay = createOptimisticOverlay();
+    const before = overlay.version$();
+    overlay.markCommitted("nope");
+    expect(overlay.version$()).toBe(before);
   });
 
   it("markCommitted on already committed batch is a no-op", () => {
-    createRoot((dispose) => {
-      const overlay = createOptimisticOverlay();
-      overlay.apply("b1", [setMutation("a", { text: "x" })]);
-      overlay.markCommitted("b1");
-      const before = overlay.version$();
-      overlay.markCommitted("b1");
-      expect(overlay.version$()).toBe(before);
-      dispose();
-    });
+    const overlay = createOptimisticOverlay();
+    overlay.apply("b1", [setMutation("a", { text: "x" })]);
+    overlay.markCommitted("b1");
+    const before = overlay.version$();
+    overlay.markCommitted("b1");
+    expect(overlay.version$()).toBe(before);
   });
 
   it("rollback removes batch mutations", () => {
@@ -268,24 +261,18 @@ describe("batch lifecycle", () => {
   });
 
   it("rollback on unknown batch is no-op", () => {
-    createRoot((dispose) => {
-      const overlay = createOptimisticOverlay();
-      const before = overlay.version$();
-      overlay.rollback("nope", undefined);
-      expect(overlay.version$()).toBe(before);
-      dispose();
-    });
+    const overlay = createOptimisticOverlay();
+    const before = overlay.version$();
+    overlay.rollback("nope", undefined);
+    expect(overlay.version$()).toBe(before);
   });
 
   it("rollback bumps version$", () => {
-    createRoot((dispose) => {
-      const overlay = createOptimisticOverlay();
-      overlay.apply("b1", [setMutation("a", { text: "x" })]);
-      const v = overlay.version$();
-      overlay.rollback("b1", undefined);
-      expect(overlay.version$()).toBeGreaterThan(v);
-      dispose();
-    });
+    const overlay = createOptimisticOverlay();
+    overlay.apply("b1", [setMutation("a", { text: "x" })]);
+    const v = overlay.version$();
+    overlay.rollback("b1", undefined);
+    expect(overlay.version$()).toBeGreaterThan(v);
   });
 
   it("pending batch survives matching server data", () => {
@@ -440,6 +427,20 @@ describe("batch lifecycle", () => {
     });
     const result = overlay.mergeDocument("__overlayTest__", "a", { id: "a", text: "x" });
     expect(result).toEqual({ id: "a", text: "x" });
+  });
+
+  it("uses configured ignored fields during catch-up comparison", () => {
+    const overlay = createOptimisticOverlay({ ignoredFieldsForCatchUp: ["syncedAt"] });
+    overlay.apply("b1", [setMutation("a", { text: "x", syncedAt: Timestamp.fromMillis(1) })]);
+    overlay.markCommitted("b1");
+    overlay.acknowledgeDocument("__overlayTest__/a", {
+      text: "x",
+      syncedAt: Timestamp.fromMillis(999),
+    });
+
+    overlay.acknowledgeDocument("__overlayTest__/a", { text: "server-newer" });
+    const result = overlay.mergeDocument("__overlayTest__", "a", { id: "a", text: "server-newer" });
+    expect(result).toEqual({ id: "a", text: "server-newer" });
   });
 
   it("nested object and array values are compared during catch-up", () => {

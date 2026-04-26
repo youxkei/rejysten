@@ -9,10 +9,18 @@ import {
   type Timestamp,
   type UpdateData,
   type WithFieldValue,
-  writeBatch,
 } from "firebase/firestore";
 import { uuidv7 } from "uuidv7";
 
+import {
+  enqueueOptimisticCommit,
+  hasOptimisticCommitFailure,
+  waitForPendingOptimisticCommits,
+  optimisticBatch,
+  type OptimisticWriteBatch,
+} from "@/firestore/batch";
+import { type FirestoreClient } from "@/firestore/client";
+import { type OverlayMutation } from "@/firestore/optimisticOverlay";
 import {
   type DocumentData,
   extractData,
@@ -33,7 +41,6 @@ import {
 } from "@/services/firebase/firestore/editHistory/schema";
 import { TransactionAborted } from "@/services/firebase/firestore/error";
 import { deleteNgram, setNgram } from "@/services/firebase/firestore/ngram";
-import { type OverlayMutation } from "@/services/firebase/firestore/overlay";
 import { type Writer } from "@/services/firebase/firestore/writer";
 import { initialState } from "@/services/store";
 
@@ -67,7 +74,7 @@ function isHistoryOperationCollection(name: keyof Schema): name is HistoryOperat
   return !excludedCollections.has(name);
 }
 
-export class Batch {
+export class OperationRecordingBatch {
   private readonly service: FirestoreService;
   private readonly writer: Writer;
   private readonly batchId: string;
@@ -235,7 +242,6 @@ export class Batch {
     } else {
       this.setSingleton(editHistoryHeadCol, { entryId: historyEntryId });
     }
-    optimisticHistoryHeadStates.set(this.service, { exists: true, entryId: historyEntryId });
   }
 
   async buildInverseOps(): Promise<HistoryOperation[]> {
@@ -305,6 +311,35 @@ export class Batch {
 
     return inverseOps.reverse();
   }
+
+  commit(options?: BatchOptions): Promise<void> {
+    const client = getClient(this.service);
+    const writer = this.writer;
+    if (!isOptimisticWriteBatch(writer)) {
+      throw new Error("OperationRecordingBatch.commit requires an optimistic write batch.");
+    }
+
+    return enqueueOptimisticCommit(client, async () => {
+      await this.recordHistory(options);
+
+      const batchVersionCol = getCollection(this.service, "batchVersion");
+      const newBatchVersion = uuidv7();
+      const batchVersionVersion = await getOptimisticBatchVersion(this.service, batchVersionCol);
+      if (batchVersionVersion) {
+        this.updateSingleton(batchVersionCol, {
+          prevVersion: batchVersionVersion,
+          version: newBatchVersion,
+        });
+      } else {
+        this.setSingleton(batchVersionCol, {
+          prevVersion: "",
+          version: newBatchVersion,
+        });
+      }
+
+      writer.commit();
+    });
+  }
 }
 
 export interface BatchOptions {
@@ -314,78 +349,72 @@ export interface BatchOptions {
   nextSelection?: HistorySelection;
 }
 
-const commitQueues = new WeakMap<FirestoreService, Promise<void>>();
-const historyQueues = new WeakMap<FirestoreService, Promise<void>>();
-const commitFailureStates = new WeakMap<FirestoreService, boolean>();
 export type OptimisticHistoryHeadState = { exists: boolean; entryId: string };
-const optimisticHistoryHeadStates = new WeakMap<FirestoreService, OptimisticHistoryHeadState>();
-const pendingCommitTasksForTest = new Set<{
-  service: FirestoreService;
-  task: Promise<unknown>;
-}>();
+const firestoreClientFallbacks = new WeakMap<FirestoreService, FirestoreClient>();
+const ignoredFieldsForOverlay = new Set(["createdAt", "updatedAt"]);
+
+function isOptimisticWriteBatch(writer: Writer): writer is Writer & OptimisticWriteBatch {
+  return "commit" in writer && typeof writer.commit === "function";
+}
 
 export async function getOptimisticHistoryHeadState(service: FirestoreService): Promise<OptimisticHistoryHeadState> {
-  const optimistic = optimisticHistoryHeadStates.get(service);
-  if (optimistic) return optimistic;
-
-  const signaled = service.editHistoryHead$();
-  if (signaled) {
-    return { exists: true, entryId: signaled.entryId };
-  }
-
   const editHistoryHeadCol = getCollection(service, "editHistoryHead");
   const cached = await getSingletonDoc(service, editHistoryHeadCol);
   return cached ? { exists: true, entryId: cached.entryId } : { exists: false, entryId: "" };
 }
 
-function captureOptimisticHistoryHeadState(service: FirestoreService, batch: Batch): void {
-  for (const mutation of batch.overlayMutations) {
-    if (
-      mutation.collection === "editHistoryHead" &&
-      mutation.id === singletonDocumentId &&
-      mutation.type !== "delete" &&
-      typeof mutation.data.entryId === "string"
-    ) {
-      optimisticHistoryHeadStates.set(service, { exists: true, entryId: mutation.data.entryId });
-    }
+async function getOptimisticBatchVersion(
+  service: FirestoreService,
+  batchVersionCol: SchemaCollectionReference<"batchVersion">,
+): Promise<string | undefined> {
+  const client = getClient(service);
+  if (hasOptimisticCommitFailure(client)) {
+    return (await getSingletonDoc(service, batchVersionCol, { fromServer: true }))?.version;
   }
+
+  return (await getSingletonDoc(service, batchVersionCol))?.version;
+}
+
+function getClient(service: FirestoreService): FirestoreClient {
+  const client = (service as { firestoreClient?: FirestoreClient }).firestoreClient;
+  if (client) return client;
+
+  const cached = firestoreClientFallbacks.get(service);
+  if (cached?.overlay === service.overlay) return cached;
+
+  const fallbackClient: FirestoreClient = {
+    firestore: service.firestore,
+    overlay: service.overlay,
+    optimisticBatch: { ignoredFieldsForOverlay },
+  };
+  firestoreClientFallbacks.set(service, fallbackClient);
+  return fallbackClient;
 }
 
 export async function waitForPendingCommits(options?: {
   service?: FirestoreService;
   timeoutMs?: number;
 }): Promise<void> {
-  const tasks = Array.from(pendingCommitTasksForTest)
-    .filter((entry) => options?.service === undefined || entry.service === options.service)
-    .map((entry) => entry.task);
-  const all = Promise.all(tasks).then(() => undefined);
-  if (options?.timeoutMs === undefined) {
-    await all;
-    return;
-  }
-
-  await Promise.race([all, new Promise<void>((resolve) => setTimeout(resolve, options.timeoutMs))]);
+  const client = options?.service ? getClient(options.service) : undefined;
+  await waitForPendingOptimisticCommits({ client, timeoutMs: options?.timeoutMs });
 }
 
 export const waitForPendingCommitsForTest = waitForPendingCommits;
 
 export function hasCommitFailureForTest(service: FirestoreService): boolean {
-  return commitFailureStates.get(service) ?? false;
+  return hasOptimisticCommitFailure(getClient(service));
 }
 
 export async function runBatch(
   service: FirestoreService,
-  updateFunction: (batch: Batch) => Promise<void>,
+  updateFunction: (batch: OperationRecordingBatch) => Promise<void>,
   options?: BatchOptions,
 ): Promise<void> {
   const {
     services: {
       store: { updateState },
     },
-    firestore,
   } = service;
-
-  const batchVersionCol = getCollection(service, "batchVersion");
 
   try {
     console.timeStamp("batch start");
@@ -394,90 +423,11 @@ export async function runBatch(
       state.servicesFirestoreBatch.lock = true;
     });
 
-    const batchId = uuidv7();
-    const wb = writeBatch(firestore);
-    const batch = new Batch(service, wb, batchId);
+    const client = getClient(service);
+    const optimisticWriteBatch = optimisticBatch(client);
+    const batch = new OperationRecordingBatch(service, optimisticWriteBatch);
     await updateFunction(batch);
-    if (options?.skipHistory) {
-      captureOptimisticHistoryHeadState(service, batch);
-    }
-
-    service.overlay.apply(batchId, [...batch.overlayMutations]);
-    let appliedOverlayMutationCount = batch.overlayMutations.length;
-
-    const previousHistory = historyQueues.get(service) ?? Promise.resolve();
-    const historyTask = previousHistory
-      .catch(() => undefined)
-      .then(async () => {
-        await batch.recordHistory(options);
-        const unappliedOverlayMutations = batch.overlayMutations.slice(appliedOverlayMutationCount);
-        try {
-          service.overlay.apply(batchId, [...unappliedOverlayMutations]);
-        } catch {
-          // Overlay subscribers can be in transient UI states while the server
-          // commit queue continues. The Firestore write must not be rolled back
-          // just because a local optimistic notification failed.
-        }
-        appliedOverlayMutationCount = batch.overlayMutations.length;
-      });
-    historyQueues.set(
-      service,
-      historyTask.then(() => undefined),
-    );
-
-    const previousCommit = commitQueues.get(service) ?? Promise.resolve();
-    const commitTask = previousCommit
-      .catch(() => undefined)
-      .then(async () => {
-        await historyTask;
-
-        const newBatchVersion = uuidv7();
-        const batchVersionVersion = (await getSingletonDoc(service, batchVersionCol, { fromServer: true }))?.version;
-        if (batchVersionVersion) {
-          batch.updateSingleton(batchVersionCol, {
-            prevVersion: batchVersionVersion,
-            version: newBatchVersion,
-          });
-        } else {
-          batch.setSingleton(batchVersionCol, {
-            prevVersion: "",
-            version: newBatchVersion,
-          });
-        }
-
-        const unappliedOverlayMutations = batch.overlayMutations.slice(appliedOverlayMutationCount);
-        try {
-          service.overlay.apply(batchId, [...unappliedOverlayMutations]);
-        } catch {
-          // Overlay subscribers can be in transient UI states while the server
-          // commit queue continues. The Firestore write must not be rolled back
-          // just because a local optimistic notification failed.
-        }
-        appliedOverlayMutationCount = batch.overlayMutations.length;
-
-        await wb.commit();
-      })
-      .then(() => {
-        commitFailureStates.set(service, false);
-        service.overlay.markCommitted(batchId);
-        return true;
-      })
-      .catch((error: unknown) => {
-        commitFailureStates.set(service, true);
-        optimisticHistoryHeadStates.delete(service);
-        service.overlay.rollback(batchId, error);
-        return false;
-      });
-    commitQueues.set(
-      service,
-      commitTask.then(() => undefined),
-    );
-    const pendingCommitTaskForTest = { service, task: commitTask };
-    pendingCommitTasksForTest.add(pendingCommitTaskForTest);
-    void commitTask.finally(() => {
-      pendingCommitTasksForTest.delete(pendingCommitTaskForTest);
-    });
-    await historyTask.catch(() => undefined);
+    await batch.commit(options);
   } finally {
     updateState((state) => {
       state.servicesFirestoreBatch.lock = false;
@@ -489,7 +439,7 @@ export async function runBatch(
 
 export async function runTransaction(
   service: FirestoreService,
-  updateFunction: (batch: Batch, transaction: Transaction) => Promise<void> | void,
+  updateFunction: (batch: OperationRecordingBatch, transaction: Transaction) => Promise<void> | void,
   options?: BatchOptions,
 ): Promise<void> {
   await waitForPendingCommits({ service });
@@ -500,6 +450,8 @@ export async function runTransaction(
   const batchVersionDoc = batchVersionSnap.exists()
     ? withId(singletonDocumentId, batchVersionSnap.data())
     : undefined;
+  const overlayBatchId = uuidv7();
+  let committedBatch: OperationRecordingBatch | undefined;
 
   await firebaseRunTransaction(service.firestore, async (transaction) => {
     // Verify batchVersion hasn't changed since we read it (read before writes)
@@ -509,7 +461,7 @@ export async function runTransaction(
       throw new TransactionAborted();
     }
 
-    const batch = new Batch(service, transaction);
+    const batch = new OperationRecordingBatch(service, transaction);
     await updateFunction(batch, transaction);
 
     await batch.recordHistory(options);
@@ -527,5 +479,16 @@ export async function runTransaction(
         version: newBatchVersion,
       });
     }
+    committedBatch = batch;
   });
+
+  if (committedBatch && committedBatch.overlayMutations.length > 0) {
+    try {
+      service.overlay.apply(overlayBatchId, [...committedBatch.overlayMutations]);
+      service.overlay.markCommitted(overlayBatchId);
+    } catch {
+      // The transaction has already committed; local overlay notification
+      // failure must not turn the server write into an application failure.
+    }
+  }
 }

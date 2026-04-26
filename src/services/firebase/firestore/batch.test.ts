@@ -12,13 +12,12 @@ import { createRoot, createSignal } from "solid-js";
 import { describe, it, vi, beforeAll, afterAll, expect } from "vitest";
 
 import {
-  getDoc as getOverlayDoc,
   singletonDocumentId,
   type FirestoreService,
   type SchemaCollectionReference,
 } from "@/services/firebase/firestore";
 import {
-  Batch,
+  OperationRecordingBatch,
   hasCommitFailureForTest,
   runBatch,
   runTransaction,
@@ -145,7 +144,7 @@ describe("batch", () => {
 
       // Update the document
       const wb = writeBatch(firestore);
-      const batch = new Batch(service, wb);
+      const batch = new OperationRecordingBatch(service, wb);
       batch.update(col, {
         id: "testDoc",
         text: "updated text",
@@ -186,7 +185,7 @@ describe("batch", () => {
 
       // Update the document
       const wb = writeBatch(firestore);
-      const batch = new Batch(service, wb);
+      const batch = new OperationRecordingBatch(service, wb);
       batch.update(col, {
         id: "testDoc",
         text: "hello world",
@@ -224,7 +223,7 @@ describe("batch", () => {
         await setupBatch.commit();
 
         const wb = writeBatch(firestore);
-        const batch = new Batch(service, wb);
+        const batch = new OperationRecordingBatch(service, wb);
         batch.update(col, {
           id: "testDoc",
           text: "",
@@ -260,7 +259,7 @@ describe("batch", () => {
 
       // Update only the value field
       const wb = writeBatch(firestore);
-      const batch = new Batch(service, wb);
+      const batch = new OperationRecordingBatch(service, wb);
       batch.update(col, {
         id: "testDoc",
         value: 99,
@@ -297,7 +296,7 @@ describe("batch", () => {
 
       // Update the singleton document
       const wb = writeBatch(firestore);
-      const batch = new Batch(service, wb);
+      const batch = new OperationRecordingBatch(service, wb);
       batch.updateSingleton(col, {
         text: "updated singleton",
         value: 20,
@@ -318,7 +317,7 @@ describe("batch", () => {
     it("ignores empty document id without recording writes", () => {
       const col = testCollection(firestore, "empty_id_set_docs");
       const wb = writeBatch(firestore);
-      const batch = new Batch(service, wb);
+      const batch = new OperationRecordingBatch(service, wb);
 
       batch.set(col, {
         id: "",
@@ -336,7 +335,7 @@ describe("batch", () => {
 
       const col = testCollection(firestore, tid);
       const wb = writeBatch(firestore);
-      const batch = new Batch(service, wb);
+      const batch = new OperationRecordingBatch(service, wb);
 
       batch.set(col, {
         id: "newDoc",
@@ -365,7 +364,7 @@ describe("batch", () => {
       collectionNgramConfig[tid] = true;
 
       const wb = writeBatch(firestore);
-      const batch = new Batch(service, wb);
+      const batch = new OperationRecordingBatch(service, wb);
       batch.set(col, {
         id: "newDoc",
         text: "hello ngram",
@@ -387,7 +386,7 @@ describe("batch", () => {
 
       try {
         const wb = writeBatch(firestore);
-        const batch = new Batch(service, wb);
+        const batch = new OperationRecordingBatch(service, wb);
         batch.set(col, {
           id: "newDoc",
           text: "hello ngram",
@@ -422,7 +421,7 @@ describe("batch", () => {
 
       // Set (overwrite) the document
       const wb2 = writeBatch(firestore);
-      const batch2 = new Batch(service, wb2);
+      const batch2 = new OperationRecordingBatch(service, wb2);
       batch2.set(col, {
         id: "existingDoc",
         text: "new text",
@@ -447,7 +446,7 @@ describe("batch", () => {
 
       const col = testCollection(firestore, tid);
       const wb = writeBatch(firestore);
-      const batch = new Batch(service, wb);
+      const batch = new OperationRecordingBatch(service, wb);
 
       batch.setSingleton(col, {
         text: "singleton content",
@@ -475,7 +474,7 @@ describe("batch", () => {
       collectionNgramConfig[tid] = true;
 
       const wb = writeBatch(firestore);
-      const batch = new Batch(service, wb);
+      const batch = new OperationRecordingBatch(service, wb);
       batch.setSingleton(col, {
         text: "singleton ngram text",
         value: 200,
@@ -492,7 +491,7 @@ describe("batch", () => {
 });
 
 describe("transaction", () => {
-  describe("Batch with Transaction backend", () => {
+  describe("OperationRecordingBatch with Transaction backend", () => {
     it("set creates document via transaction", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
@@ -500,7 +499,7 @@ describe("transaction", () => {
       const col = testCollection(firestore, tid);
 
       await firebaseRunTransaction(firestore, async (transaction) => {
-        const batch = new Batch(service, transaction);
+        const batch = new OperationRecordingBatch(service, transaction);
         batch.set(col, {
           id: "txDoc",
           text: "transaction doc",
@@ -532,7 +531,7 @@ describe("transaction", () => {
       await setupBatch.commit();
 
       await firebaseRunTransaction(firestore, async (transaction) => {
-        const batch = new Batch(service, transaction);
+        const batch = new OperationRecordingBatch(service, transaction);
         batch.update(col, {
           id: "txDoc",
           text: "updated via tx",
@@ -564,7 +563,7 @@ describe("transaction", () => {
       await setupBatch.commit();
 
       await firebaseRunTransaction(firestore, async (transaction) => {
-        const batch = new Batch(service, transaction);
+        const batch = new OperationRecordingBatch(service, transaction);
         batch.delete(col, "txDoc");
       });
 
@@ -590,7 +589,7 @@ describe("transaction", () => {
         const snap = await transaction.get(doc(col, "txDoc"));
         const currentValue = snap.data()!.value;
 
-        const batch = new Batch(service, transaction);
+        const batch = new OperationRecordingBatch(service, transaction);
         batch.update(col, {
           id: "txDoc",
           value: currentValue + 5,
@@ -679,7 +678,7 @@ describe("transaction", () => {
       test.expect(skipEntry).toBeUndefined();
     });
 
-    it("runs update function with Batch and Transaction", async (test) => {
+    it("runs update function with OperationRecordingBatch and Transaction", async (test) => {
       const now = new Date();
       const tid = `${test.task.id}_${now.getTime()}`;
 
@@ -766,14 +765,14 @@ describe("transaction", () => {
   });
 });
 
-describe("Batch operation recording", () => {
+describe("OperationRecordingBatch operation recording", () => {
   it("records set operation as forward op", async (test) => {
     const now = new Date();
     const tid = `${test.task.id}_${now.getTime()}`;
 
     const col = testCollection(firestore, tid);
     const wb = writeBatch(firestore);
-    const batch = new Batch(service, wb);
+    const batch = new OperationRecordingBatch(service, wb);
 
     batch.set(col, {
       id: "newDoc",
@@ -806,7 +805,7 @@ describe("Batch operation recording", () => {
     await setupBatch.commit();
 
     const wb = writeBatch(firestore);
-    const batch = new Batch(service, wb);
+    const batch = new OperationRecordingBatch(service, wb);
 
     batch.update(col, {
       id: "testDoc",
@@ -829,7 +828,7 @@ describe("Batch operation recording", () => {
 
     const col = testCollection(firestore, tid);
     const wb = writeBatch(firestore);
-    const batch = new Batch(service, wb);
+    const batch = new OperationRecordingBatch(service, wb);
 
     batch.delete(col, "someDoc");
 
@@ -849,7 +848,7 @@ describe("Batch operation recording", () => {
     const ngramsCol = testCollection(firestore, "ngrams");
 
     const wb = writeBatch(firestore);
-    const batch = new Batch(service, wb);
+    const batch = new OperationRecordingBatch(service, wb);
 
     batch.set(batchVersionCol, { id: "doc1", text: "a", value: 1 });
     batch.set(editHistoryCol, { id: "doc2", text: "b", value: 2 });
@@ -874,7 +873,7 @@ describe("Batch operation recording", () => {
     await setupBatch.commit();
 
     const wb = writeBatch(firestore);
-    const batch = new Batch(service, wb);
+    const batch = new OperationRecordingBatch(service, wb);
 
     batch.set(col, { id: "newDoc", text: "new", value: 1 });
     batch.update(col, { id: "existingDoc", text: "changed" });
@@ -1039,6 +1038,40 @@ describe("runBatch stability", () => {
       expect(d.exists()).toBe(true);
       expect(d.data()!.text).toBe(`text-${i}`);
     }
+  });
+
+  it("rapid runBatch calls chain batchVersion through pending overlay without waiting for server sync", { timeout: 30000 }, async () => {
+    await setupEmulator();
+    const testCol = testCollection(sharedFirestore.firestore, "rapid_overlay_version_docs");
+
+    let previousVersion = "__INITIAL__";
+    for (let i = 0; i < 5; i++) {
+      await runBatch(
+        sharedSvc,
+        (batch) => {
+          batch.set(testCol, { id: `doc${i}`, text: `text-${i}`, value: i });
+          return Promise.resolve();
+        },
+        { skipHistory: true },
+      );
+
+      await waitForAssertion(() => {
+        const optimisticVersion = sharedSvc.batchVersion$();
+        expect(optimisticVersion?.prevVersion).toBe(previousVersion);
+        expect(optimisticVersion?.version).toBeDefined();
+        expect(optimisticVersion?.version).not.toBe(previousVersion);
+      });
+      previousVersion = sharedSvc.batchVersion$()!.version;
+    }
+
+    await waitForPendingCommitsForTest({ service: sharedSvc });
+
+    const batchVersionCol = collection(
+      sharedFirestore.firestore,
+      "batchVersion",
+    ) as SchemaCollectionReference<"batchVersion">;
+    const persisted = await getDocFromServer(doc(batchVersionCol, singletonDocumentId));
+    expect(persisted.data()?.version).toBe(previousVersion);
   });
 
   it("rapid runBatch calls keep the persisted batchVersion chain linear", { timeout: 30000 }, async () => {
@@ -1221,7 +1254,7 @@ describe("runBatch stability", () => {
     ]);
 
     try {
-      const batch = new Batch(sharedSvc, writeBatch(sharedFirestore.firestore));
+      const batch = new OperationRecordingBatch(sharedSvc, writeBatch(sharedFirestore.firestore));
       batch.update(testCol, { id: "target", text: "second", value: 3 });
 
       await expect(batch.buildInverseOps()).resolves.toEqual([
@@ -1262,7 +1295,7 @@ describe("runBatch stability", () => {
     ]);
 
     try {
-      const batch = new Batch(sharedSvc, writeBatch(sharedFirestore.firestore), batchId);
+      const batch = new OperationRecordingBatch(sharedSvc, writeBatch(sharedFirestore.firestore), batchId);
       batch.update(testCol, { id: "target", text: "second", value: 3 });
 
       await expect(batch.buildInverseOps()).resolves.toEqual([
@@ -1615,17 +1648,16 @@ describe("runBatch stability", () => {
     expect(committed.exists()).toBe(true);
   });
 
-  it("continues Firestore commit when history and batchVersion overlay applies throw", { timeout: 30000 }, async () => {
+  it("applies user, history, and batchVersion overlay in one commit apply", { timeout: 30000 }, async () => {
     await setupEmulator();
     const testCol = testCollection(sharedFirestore.firestore, "later_overlay_apply_throw_docs");
     const originalApply = sharedSvc.overlay.apply;
     let applyCount = 0;
-    const applySpy = vi.spyOn(sharedSvc.overlay, "apply").mockImplementation((...args) => {
+    let appliedPaths: string[] = [];
+    const applySpy = vi.spyOn(sharedSvc.overlay, "apply").mockImplementation((batchId, mutations) => {
       applyCount++;
-      if (applyCount === 2 || applyCount === 3) {
-        throw new Error(`later overlay boom ${applyCount}`);
-      }
-      originalApply(...args);
+      appliedPaths = mutations.map((mutation) => mutation.path);
+      originalApply(batchId, mutations);
     });
 
     try {
@@ -1641,7 +1673,15 @@ describe("runBatch stability", () => {
 
       const committed = await getDocFromServer(doc(testCol, "committedDespiteOverlayThrow"));
       expect(committed.exists()).toBe(true);
-      expect(applyCount).toBeGreaterThanOrEqual(3);
+      expect(applyCount).toBe(1);
+      expect(appliedPaths).toEqual(
+        expect.arrayContaining([
+          `${testCol.id}/committedDespiteOverlayThrow`,
+          `editHistoryHead/${singletonDocumentId}`,
+          `batchVersion/${singletonDocumentId}`,
+        ]),
+      );
+      expect(appliedPaths.some((path) => path.startsWith("editHistory/"))).toBe(true);
     } finally {
       applySpy.mockRestore();
     }
@@ -1668,138 +1708,6 @@ describe("runBatch stability", () => {
   });
 });
 
-describe("runBatch overlay integration", () => {
-  it("getDoc can explicitly ignore a pending overlay", async (test) => {
-    await waitForPendingCommitsForTest({ service });
-    const tid = `${test.task.id}_${Date.now()}_apply_overlay_false`;
-    const col = testCollection(firestore, tid);
-    const setupBatch = writeBatch(firestore);
-    setupBatch.set(doc(col, "doc1"), {
-      text: "server",
-      value: 1,
-      createdAt: timestampForCreatedAt,
-      updatedAt: timestampForCreatedAt,
-    });
-    await setupBatch.commit();
-
-    const batchId = `manual-${tid}`;
-    service.overlay.apply(batchId, [
-      {
-        type: "update",
-        batchId: "",
-        collection: col.id,
-        id: "doc1",
-        path: `${col.id}/doc1`,
-        data: { text: "overlay", value: 2 },
-      },
-    ]);
-
-    try {
-      await expect(getOverlayDoc(service, col, "doc1", { applyOverlay: false })).resolves.toMatchObject({
-        id: "doc1",
-        text: "server",
-        value: 1,
-      });
-      await expect(getOverlayDoc(service, col, "doc1")).resolves.toMatchObject({
-        id: "doc1",
-        text: "overlay",
-        value: 2,
-      });
-    } finally {
-      service.overlay.rollback(batchId, undefined);
-    }
-  });
-
-  it("applies overlay so subsequent reads see pending state before commit resolves", async (test) => {
-    const tid = `${test.task.id}_${Date.now()}_overlay_apply`;
-    const col = testCollection(firestore, tid);
-
-    const sb = writeBatch(firestore);
-    sb.set(doc(col, "doc1"), {
-      text: "before",
-      value: 1,
-      createdAt: timestampForCreatedAt,
-      updatedAt: timestampForCreatedAt,
-    });
-    await sb.commit();
-
-    let overlayHadEntry = false;
-    await runBatch(
-      service,
-      (batch) => {
-        batch.update(col, { id: "doc1", text: "after", value: 2 });
-        return Promise.resolve();
-      },
-      { skipHistory: true },
-    );
-
-    const merged = service.overlay.mergeDocument<{ text: string; value: number }>(col.id, "doc1", {
-      id: "doc1",
-      text: "before",
-      value: 1,
-    });
-    overlayHadEntry = merged?.text === "after";
-    expect(overlayHadEntry).toBe(true);
-  });
-
-  it("rollback removes overlay when commit fails", async (test) => {
-    const tid = `${test.task.id}_${Date.now()}_overlay_rollback`;
-    const col = testCollection(firestore, tid);
-
-    // Force commit failure by using terminated firestore? Simpler: simulate via direct API.
-    // Apply then rollback explicitly to verify rollback semantics.
-    const batchId = `manual-${tid}`;
-    service.overlay.apply(batchId, [
-      {
-        type: "set",
-        batchId: "",
-        collection: col.id,
-        id: "x",
-        path: `${col.id}/x`,
-        data: { text: "hi", value: 1 },
-      },
-    ]);
-    expect(
-      service.overlay.mergeDocument<{ text: string; value: number }>(col.id, "x", undefined)?.text,
-    ).toBe("hi");
-    service.overlay.rollback(batchId, new Error("simulated"));
-    expect(service.overlay.mergeDocument<{ text: string; value: number }>(col.id, "x", undefined)).toBeUndefined();
-  });
-
-  it("rolls back overlay when runBatch commit rejects", { timeout: 15000 }, async (test) => {
-    await waitForPendingCommitsForTest({ service });
-
-    const tid = `${test.task.id}_${Date.now()}_commit_rejects`;
-    const col = testCollection(firestore, tid);
-    const path = `${col.id}/missing`;
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-
-    try {
-      service.overlay.acknowledgeDocument(path, { text: "base", value: 1 });
-
-      await runBatch(
-        service,
-        (batch) => {
-          batch.update(col, { id: "missing", text: "optimistic", value: 2 });
-          return Promise.resolve();
-        },
-        { skipHistory: true },
-      );
-
-      expect(
-        service.overlay.mergeDocument<{ text: string; value: number }>(col.id, "missing", undefined),
-      ).toEqual({ id: "missing", text: "optimistic", value: 2 });
-      await waitForPendingCommitsForTest({ service });
-
-      expect(consoleError).toHaveBeenCalled();
-      expect(
-        service.overlay.mergeDocument<{ text: string; value: number }>(col.id, "missing", undefined),
-      ).toBeUndefined();
-    } finally {
-      consoleError.mockRestore();
-    }
-  });
-});
 
 describe("buildInverseOps", () => {
   it("builds delete as inverse of set", async (test) => {
@@ -1808,7 +1716,7 @@ describe("buildInverseOps", () => {
 
     const col = testCollection(firestore, tid);
     const wb = writeBatch(firestore);
-    const batch = new Batch(service, wb);
+    const batch = new OperationRecordingBatch(service, wb);
 
     batch.set(col, { id: "newDoc", text: "hello", value: 42 });
     const inverseOps = await batch.buildInverseOps();
@@ -1836,7 +1744,7 @@ describe("buildInverseOps", () => {
     await getDocOriginal(doc(col, "testDoc"));
 
     const wb = writeBatch(firestore);
-    const batch = new Batch(service, wb);
+    const batch = new OperationRecordingBatch(service, wb);
 
     batch.update(col, { id: "testDoc", text: "new" });
     const inverseOps = await batch.buildInverseOps();
@@ -1871,7 +1779,7 @@ describe("buildInverseOps", () => {
     await getDocOriginal(doc(col, "testDoc"));
 
     const wb = writeBatch(firestore);
-    const batch = new Batch(service, wb);
+    const batch = new OperationRecordingBatch(service, wb);
 
     batch.delete(col, "testDoc");
     const inverseOps = await batch.buildInverseOps();
@@ -1893,7 +1801,7 @@ describe("buildInverseOps", () => {
     const col = testCollection(firestore, tid);
 
     const wb = writeBatch(firestore);
-    const batch = new Batch(service, wb);
+    const batch = new OperationRecordingBatch(service, wb);
 
     batch.set(col, { id: "doc1", text: "a", value: 1 });
     batch.set(col, { id: "doc2", text: "b", value: 2 });
@@ -1934,7 +1842,7 @@ describe("buildInverseOps", () => {
     await getDocOriginal(doc(col, "deleteDoc"));
 
     const wb = writeBatch(firestore);
-    const batch = new Batch(service, wb);
+    const batch = new OperationRecordingBatch(service, wb);
 
     batch.set(col, { id: "newDoc", text: "created", value: 1 });
     batch.update(col, { id: "updateDoc", text: "after" });
@@ -1971,7 +1879,7 @@ describe("buildInverseOps", () => {
     const col = testCollection(firestore, tid);
 
     const wb = writeBatch(firestore);
-    const batch = new Batch(service, wb);
+    const batch = new OperationRecordingBatch(service, wb);
 
     // Update a doc that doesn't exist in cache
     batch.update(col, { id: "nonCachedDoc", text: "new" });
@@ -1988,7 +1896,7 @@ describe("buildInverseOps", () => {
     const col = testCollection(firestore, tid);
 
     const wb = writeBatch(firestore);
-    const batch = new Batch(service, wb);
+    const batch = new OperationRecordingBatch(service, wb);
 
     // Delete a doc that doesn't exist in cache
     batch.delete(col, "nonCachedDoc");
@@ -2005,7 +1913,7 @@ describe("buildInverseOps", () => {
     const col = testCollection(firestore, tid);
 
     const wb = writeBatch(firestore);
-    const batch = new Batch(service, wb);
+    const batch = new OperationRecordingBatch(service, wb);
 
     // set: always has inverse (delete), no cache needed
     batch.set(col, { id: "newDoc", text: "hello", value: 1 });

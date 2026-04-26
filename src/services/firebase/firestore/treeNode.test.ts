@@ -14,7 +14,7 @@ import {
   type DocumentData,
   type SchemaCollectionReference,
 } from "@/services/firebase/firestore";
-import { Batch } from "@/services/firebase/firestore/batch";
+import { OperationRecordingBatch } from "@/services/firebase/firestore/batch";
 import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
 import { createOptimisticOverlay } from "@/services/firebase/firestore/overlay";
 import { type Schema } from "@/services/firebase/firestore/schema";
@@ -70,9 +70,9 @@ async function getDoc<C extends keyof Schema>(
   return { ...data, id: snap.id } as DocumentData<Schema[C]>;
 }
 
-async function runTestBatch(fn: (batch: Batch) => Promise<void>) {
+async function runTestBatch(fn: (batch: OperationRecordingBatch) => Promise<void>) {
   const wb = writeBatch(firestore);
-  const batch = new Batch(service, wb);
+  const batch = new OperationRecordingBatch(service, wb);
   await fn(batch);
   await wb.commit();
 }

@@ -2,13 +2,8 @@ import { FirebaseError } from "firebase/app";
 import {
   type DocumentSnapshot,
   type Query,
-  type QuerySnapshot,
   collection,
   doc,
-  getDocFromCache,
-  getDocsFromCache,
-  getDocsFromServer,
-  getDocFromServer,
   type Firestore,
   getFirestore,
   initializeFirestore,
@@ -22,11 +17,16 @@ import {
 import { type Accessor, createContext, createSignal, type JSXElement, onCleanup, useContext } from "solid-js";
 
 import { awaitable } from "@/awaitableCallback";
+import { createFirestoreClient, type FirestoreClient } from "@/firestore/client";
+import {
+  getDoc as getFirestoreDoc,
+  getDocs as getFirestoreDocs,
+} from "@/firestore/get";
+import { type OptimisticOverlay } from "@/firestore/optimisticOverlay";
+import { type QueryWithMetadata } from "@/firestore/query";
 import { ServiceNotAvailable } from "@/services/error";
 import { type FirebaseService, useFirebaseService } from "@/services/firebase";
 import "@/services/firebase/firestore/editHistory/schema";
-import { createOptimisticOverlay, type OptimisticOverlay } from "@/services/firebase/firestore/overlay";
-import { type QueryWithMetadata } from "@/services/firebase/firestore/query";
 import {
   type DocumentData,
   type Schema,
@@ -43,6 +43,7 @@ export type FirestoreService = {
   };
 
   firestore: Firestore;
+  firestoreClient?: FirestoreClient;
   overlay: OptimisticOverlay;
   clock$: Accessor<boolean>;
   setClock: (clock: boolean) => void;
@@ -100,12 +101,20 @@ export function FirestoreServiceProvider(props: {
     setClockOriginal(clock);
   };
 
-  const overlay = createOptimisticOverlay();
+  const firestoreClient = createFirestoreClient(firestore, {
+    optimisticBatch: {
+      ignoredFieldsForOverlay: ["createdAt", "updatedAt"],
+    },
+    snapshot: {
+      ignoredFieldsForEquality: ["createdAt", "updatedAt"],
+    },
+  });
 
   const service: FirestoreService = {
     services: { firebase, store },
     firestore,
-    overlay,
+    firestoreClient,
+    overlay: firestoreClient.overlay,
     clock$,
     setClock,
     batchVersion$: () => undefined,
@@ -167,6 +176,13 @@ export function getCollection<C extends keyof Schema>(
 
 export { type Timestamps, type DocumentData, extractData } from "@/services/firebase/firestore/schema";
 
+function getClient(service: FirestoreService): FirestoreClient {
+  return (service as { firestoreClient?: FirestoreClient }).firestoreClient ?? {
+    firestore: service.firestore,
+    overlay: service.overlay,
+  };
+}
+
 export function getDocumentData<T extends object>(documentSnapshot: DocumentSnapshot<T>): DocumentData<T> | undefined {
   const data = documentSnapshot.data();
 
@@ -188,35 +204,14 @@ export async function getDoc<C extends keyof Schema>(
 ): Promise<DocumentData<Schema[C]> | undefined> {
   if (id === "") return undefined;
 
-  const ref = doc(col, id);
-  const mergeSnapshot = (snapshot: DocumentSnapshot<Schema[C]>) => {
-    const snapshotData = getDocumentData(snapshot);
-    const overlay = (service as { overlay?: OptimisticOverlay }).overlay;
-    if (!overlay || options?.applyOverlay === false) {
-      return snapshotData;
-    }
-    if (options?.fromServer) {
-      overlay.acknowledgeDocument(ref.path, snapshotData);
-      return snapshotData;
-    }
-    return overlay.mergeDocument<Schema[C]>(col.id, id, snapshotData, {
-      excludeBatchId: options?.excludeOverlayBatchId,
-    });
-  };
-
-  if (options?.fromServer) {
-    return mergeSnapshot(await getDocFromServer(ref));
-  }
-
-  try {
-    return mergeSnapshot(await getDocFromCache(ref));
-  } catch (e) {
-    if (e instanceof FirebaseError && e.code == "unavailable") {
-      return mergeSnapshot(await getDocFromServer(ref));
-    }
-
-    throw e;
-  }
+  return getFirestoreDoc({
+    client: getClient(service),
+    ref: doc(col, id),
+    getSnapshotData: getDocumentData,
+    fromServer: options?.fromServer,
+    applyOverlay: options?.applyOverlay,
+    excludeOverlayBatchId: options?.excludeOverlayBatchId,
+  });
 }
 
 export const singletonDocumentId = "singleton";
@@ -237,58 +232,10 @@ export async function getDocs<T extends object>(
   query: Query<T> | QueryWithMetadata<T>,
   options?: { fromServer?: boolean },
 ): Promise<DocumentData<T>[]> {
-  const queryMetadata = isQueryWithMetadata(query) ? query : undefined;
-  const firestoreQuery: Query<T> = queryMetadata ? queryMetadata.query : (query as Query<T>);
-  const mergeSnapshot = (snapshot: QuerySnapshot<T>) => {
-    const snapshotData = snapshot.docs.map(getDocumentData) as DocumentData<T>[];
-    const limitedSnapshotData =
-      queryMetadata?.limit === undefined ? snapshotData : snapshotData.slice(0, queryMetadata.limit);
-    const overlay = (service as { overlay?: OptimisticOverlay }).overlay;
-    if (!overlay) {
-      return limitedSnapshotData;
-    }
-    if (options?.fromServer) {
-      for (const docSnap of snapshot.docs) {
-        overlay.acknowledgeDocument(docSnap.ref.path, getDocumentData(docSnap));
-      }
-      if (queryMetadata) {
-        overlay.mergeQuery<T>(snapshotData, {
-          collection: queryMetadata.collection,
-          filters: queryMetadata.filters,
-          orderBys: queryMetadata.orderBys,
-          limit: queryMetadata.limit,
-          hasUntrackedConstraints: queryMetadata.hasUntrackedConstraints,
-        });
-      }
-      return limitedSnapshotData;
-    }
-    if (!queryMetadata) return snapshotData;
-    return overlay.mergeQuery<T>(snapshotData, {
-      collection: queryMetadata.collection,
-      filters: queryMetadata.filters,
-      orderBys: queryMetadata.orderBys,
-      limit: queryMetadata.limit,
-      hasUntrackedConstraints: queryMetadata.hasUntrackedConstraints,
-    });
-  };
-
-  if (options?.fromServer) {
-    return mergeSnapshot(await getDocsFromServer(firestoreQuery));
-  }
-
-  try {
-    // snapshot.docs must not have non-existing values
-    return mergeSnapshot(await getDocsFromCache(firestoreQuery));
-  } catch (e) {
-    if (e instanceof FirebaseError && e.code == "unavailable") {
-      // snapshot.docs must not have non-existing values
-      return mergeSnapshot(await getDocsFromServer(firestoreQuery));
-    }
-
-    throw e;
-  }
-}
-
-function isQueryWithMetadata<T extends object>(query: Query<T> | QueryWithMetadata<T>): query is QueryWithMetadata<T> {
-  return "filters" in query && "orderBys" in query && "query" in query;
+  return getFirestoreDocs({
+    client: getClient(service),
+    query,
+    getSnapshotData: getDocumentData,
+    fromServer: options?.fromServer,
+  });
 }

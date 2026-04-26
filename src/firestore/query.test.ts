@@ -1,5 +1,6 @@
 import { getApps, initializeApp } from "firebase/app";
 import {
+  type CollectionReference,
   Timestamp,
   collection,
   getFirestore,
@@ -9,16 +10,11 @@ import {
 } from "firebase/firestore";
 import { describe, it, expect } from "vitest";
 
-import { type SchemaCollectionReference } from "@/services/firebase/firestore";
-import { limit, orderBy, query, where, type QueryWithMetadata } from "@/services/firebase/firestore/query";
+import { limit, orderBy, query, where, type QueryWithMetadata } from "@/firestore/query";
 
-declare module "@/services/firebase/firestore/schema" {
-  interface Schema {
-    __queryTest__: { text: string; value: number };
-  }
-}
+type QueryTestDoc = { text: string; value: number };
 
-function makeCol(): SchemaCollectionReference<"__queryTest__"> {
+function makeCol(): CollectionReference<QueryTestDoc> & { readonly id: "__queryTest__" } {
   const appName = "query-test-app";
   let app = getApps().find((a) => a.name === appName);
   if (!app) {
@@ -30,7 +26,9 @@ function makeCol(): SchemaCollectionReference<"__queryTest__"> {
   } catch {
     firestore = getFirestore(app);
   }
-  return collection(firestore, "__queryTest__") as SchemaCollectionReference<"__queryTest__">;
+  return collection(firestore, "__queryTest__") as CollectionReference<QueryTestDoc> & {
+    readonly id: "__queryTest__";
+  };
 }
 
 describe("where", () => {
@@ -104,7 +102,7 @@ describe("orderBy", () => {
 describe("query", () => {
   it("creates query with empty filters and orderBys when no constraints", () => {
     const col = makeCol();
-    const q: QueryWithMetadata<{ text: string; value: number }> = query(col);
+    const q: QueryWithMetadata<QueryTestDoc> = query(col);
     expect(q.collection).toBe("__queryTest__");
     expect(q.filters).toEqual([]);
     expect(q.orderBys).toEqual([]);
@@ -158,6 +156,14 @@ describe("query", () => {
     const constraints = (q.query as unknown as { _query?: { explicitOrderBy?: unknown[]; limit?: number | null } })._query;
     expect(q.limit).toBe(1);
     expect(constraints?.limit).toBe(3);
+  });
+
+  it("uses configured limit overfetch count", () => {
+    const col = makeCol();
+    const q = query(col, limit(2, { overfetchCount: 5 }));
+    const constraints = (q.query as unknown as { _query?: { explicitOrderBy?: unknown[]; limit?: number | null } })._query;
+    expect(q.limit).toBe(2);
+    expect(constraints?.limit).toBe(7);
   });
 
   it("uses the last wrapper limit as metadata", () => {

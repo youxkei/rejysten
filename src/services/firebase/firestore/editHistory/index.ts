@@ -9,14 +9,14 @@ import {
 import {
   getOptimisticHistoryHeadState,
   runBatch,
-  type Batch,
+  type OperationRecordingBatch,
   waitForPendingCommits,
 } from "@/services/firebase/firestore/batch";
 import { type HistoryOperation, type HistorySelection } from "@/services/firebase/firestore/editHistory/schema";
 import { query, where } from "@/services/firebase/firestore/query";
 import { type Schema } from "@/services/firebase/firestore/schema";
 
-function applyOperations(service: FirestoreService, batch: Batch, operations: HistoryOperation[]): void {
+function applyOperations(service: FirestoreService, batch: OperationRecordingBatch, operations: HistoryOperation[]): void {
   for (const op of operations) {
     const col = getCollection(service, op.collection);
 

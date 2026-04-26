@@ -1,8 +1,8 @@
 import { doc } from "firebase/firestore";
 
 import { type FirestoreService, type SchemaCollectionReference, getCollection } from ".";
+import { type OverlayMutation } from "@/firestore/optimisticOverlay";
 import { analyzeTextForNgrams } from "@/ngram";
-import { type OverlayMutation } from "@/services/firebase/firestore/overlay";
 import { type Schema } from "@/services/firebase/firestore/schema";
 import { type Writer } from "@/services/firebase/firestore/writer";
 

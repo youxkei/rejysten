@@ -9,6 +9,8 @@ function testServerUrl(): string {
 type HealthResponse = {
   status: string;
   emulatorPorts: number[];
+  availablePorts: number[];
+  acquiredPorts: number[];
 };
 
 describe("test emulator pool", () => {
@@ -17,15 +19,11 @@ describe("test emulator pool", () => {
     await releaseEmulator(first);
     await releaseEmulator(first);
 
-    const reacquiredA = await acquireEmulator();
-    const reacquiredB = await acquireEmulator();
+    const health = await fetch(`${testServerUrl()}/health`).then((res) => res.json() as Promise<HealthResponse>);
 
-    try {
-      expect(reacquiredA).not.toBe(reacquiredB);
-    } finally {
-      await releaseEmulator(reacquiredA);
-      await releaseEmulator(reacquiredB);
-    }
+    expect(new Set(health.availablePorts).size).toBe(health.availablePorts.length);
+    expect(new Set(health.acquiredPorts).size).toBe(health.acquiredPorts.length);
+    expect(health.availablePorts.every((port) => !health.acquiredPorts.includes(port))).toBe(true);
   });
 
   it("reports distinct HTTP and emulator ports after setup", async () => {

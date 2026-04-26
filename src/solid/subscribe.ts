@@ -62,9 +62,11 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
 
   mutateResource = mutate;
 
-  // for remote changes. Use `latest` so a newly-pending subscription keeps the
-  // mirrored signal at its current/initial value instead of suspending the owner.
-  createComputed(() => startTransition(() => setSignal(() => resource$.latest)));
+  // Use resource$() so source changes enter the resource pending state instead
+  // of continuing to expose the previous subscription value.
+  // Use startTransition for remote changes so subscription updates do not block
+  // urgent UI work.
+  createComputed(() => startTransition(() => setSignal(() => resource$())));
 
   return signal$;
 }
