@@ -1,12 +1,12 @@
 import {
   type DocumentReference,
-  type DocumentSnapshot,
   type QuerySnapshot,
   Timestamp,
   onSnapshot as firestoreOnSnapshot,
 } from "firebase/firestore";
 
 import { type FirestoreClient } from "@/firestore/client";
+import { type DocumentWithId, getDocumentWithId } from "@/firestore/document";
 import { type QueryWithMetadata } from "@/firestore/query";
 
 export type SnapshotMetadata = {
@@ -46,41 +46,37 @@ function valuesEqualIgnoringFields(a: unknown, b: unknown, ignoredFields: Readon
   return true;
 }
 
-export type OnDocumentSnapshotOptions<T extends object, D extends T & { id: string }> = {
+export type OnDocumentSnapshotOptions<T extends object> = {
   client: FirestoreClient;
   ref: DocumentReference<T>;
-  getSnapshotData: (snapshot: DocumentSnapshot<T>) => D | undefined;
-  setValue: (value: D | undefined) => void;
-  shouldAcknowledge?: () => boolean;
+  setValue: (value: DocumentWithId<T> | undefined) => void;
   timestampPrefix$?: () => string;
 };
 
-export type OnQuerySnapshotOptions<T extends object, D extends T & { id: string }> = {
+export type OnQuerySnapshotOptions<T extends object> = {
   client: FirestoreClient;
   query: QueryWithMetadata<T>;
-  getSnapshotData: (snapshot: DocumentSnapshot<T>) => D | undefined;
-  setValue: (value: D[]) => void;
-  shouldAcknowledge?: () => boolean;
+  setValue: (value: DocumentWithId<T>[]) => void;
   onServerSnapshot?: (snapshot: QuerySnapshot<T>) => void;
   allowInitialEmit?: () => boolean;
   timestampPrefix$?: () => string;
 };
 
-export function onDocumentSnapshot<T extends object, D extends T & { id: string }>(
-  options: OnDocumentSnapshotOptions<T, D>,
+export function onDocumentSnapshot<T extends object>(
+  options: OnDocumentSnapshotOptions<T>,
 ): () => void {
-  const { client, ref, getSnapshotData, setValue, shouldAcknowledge, timestampPrefix$ } = options;
+  const { client, ref, setValue, timestampPrefix$ } = options;
   const { overlay } = client;
   const ignoredFieldsForEquality = client.snapshot?.ignoredFieldsForEquality ?? new Set<string>();
-  let snapshotData: D | undefined;
+  let docWithId: DocumentWithId<T> | undefined;
   let suppressOverlayEmit = false;
   let hasEmitted = false;
-  let lastEmitted: D | undefined;
+  let lastEmitted: DocumentWithId<T> | undefined;
 
   function emit(options?: { requireSnapshotOrOverlay?: boolean }): void {
-    if (options?.requireSnapshotOrOverlay && snapshotData === undefined && !overlay.hasDocumentOverlay(ref.path))
+    if (options?.requireSnapshotOrOverlay && docWithId === undefined && !overlay.hasDocumentOverlay(ref.path))
       return;
-    const value = overlay.mergeDocument<T>(ref.parent.id, ref.id, snapshotData) as D | undefined;
+    const value = overlay.mergeDocument<T>(ref.parent.id, ref.id, docWithId);
     if (hasEmitted && valuesEqualIgnoringFields(lastEmitted, value, ignoredFieldsForEquality)) return;
     hasEmitted = true;
     lastEmitted = value;
@@ -93,10 +89,10 @@ export function onDocumentSnapshot<T extends object, D extends T & { id: string 
   // previous local-write snapshot.
   const unsubscribeSnapshot = firestoreOnSnapshot(ref, { includeMetadataChanges: true }, (snapshot) => {
     console.timeStamp(`${timestampPrefix$?.() ?? "no prefix"}: onDocumentSnapshot`);
-    snapshotData = getSnapshotData(snapshot);
-    if ((shouldAcknowledge?.() ?? true) && shouldAcknowledgeSnapshotMetadata(snapshot.metadata)) {
+    docWithId = getDocumentWithId(snapshot);
+    if (shouldAcknowledgeSnapshotMetadata(snapshot.metadata)) {
       suppressOverlayEmit = true;
-      overlay.acknowledgeDocument(ref.path, snapshotData);
+      overlay.acknowledgeDocument(ref.path, docWithId);
       suppressOverlayEmit = false;
     }
     emit();
@@ -114,35 +110,33 @@ export function onDocumentSnapshot<T extends object, D extends T & { id: string 
   };
 }
 
-export function onQuerySnapshot<T extends object, D extends T & { id: string }>(
-  options: OnQuerySnapshotOptions<T, D>,
+export function onQuerySnapshot<T extends object>(
+  options: OnQuerySnapshotOptions<T>,
 ): () => void {
   const {
     client,
     query,
-    getSnapshotData,
     setValue,
-    shouldAcknowledge,
     onServerSnapshot,
     allowInitialEmit,
     timestampPrefix$,
   } = options;
   const { overlay } = client;
   const ignoredFieldsForEquality = client.snapshot?.ignoredFieldsForEquality ?? new Set<string>();
-  let snapshotData: D[] = [];
+  let docWithIds: DocumentWithId<T>[] = [];
   let suppressOverlayEmit = false;
   let hasEmitted = false;
-  let lastEmitted: D[] = [];
+  let lastEmitted: DocumentWithId<T>[] = [];
   let hasReceivedSnapshot = false;
 
   function emit(): void {
-    const value = overlay.mergeQuery<T>(snapshotData, {
+    const value = overlay.mergeQuery<T>(docWithIds, {
       collection: query.collection,
       filters: query.filters,
       orderBys: query.orderBys,
       limit: query.limit,
       hasUntrackedConstraints: query.hasUntrackedConstraints,
-    }) as D[];
+    });
     if (hasEmitted && valuesEqualIgnoringFields(lastEmitted, value, ignoredFieldsForEquality)) return;
     hasEmitted = true;
     lastEmitted = value;
@@ -152,15 +146,16 @@ export function onQuerySnapshot<T extends object, D extends T & { id: string }>(
   const unsubscribeSnapshot = firestoreOnSnapshot(query.query, { includeMetadataChanges: true }, (snapshot) => {
     console.timeStamp(`${timestampPrefix$?.() ?? "no prefix"}: onQuerySnapshot`);
     onServerSnapshot?.(snapshot);
-    snapshotData = snapshot.docs.flatMap((docSnap) => {
-      const data = getSnapshotData(docSnap);
-      return data === undefined ? [] : [data];
+    docWithIds = snapshot.docs.flatMap((docSnap) => {
+      const docWithId = getDocumentWithId(docSnap);
+      return docWithId === undefined ? [] : [docWithId];
     });
     hasReceivedSnapshot = true;
-    if ((shouldAcknowledge?.() ?? true) && shouldAcknowledgeSnapshotMetadata(snapshot.metadata)) {
+    if (shouldAcknowledgeSnapshotMetadata(snapshot.metadata)) {
       suppressOverlayEmit = true;
       for (const docSnap of snapshot.docs) {
-        overlay.acknowledgeDocument(docSnap.ref.path, getSnapshotData(docSnap));
+        const docWithId = getDocumentWithId(docSnap);
+        overlay.acknowledgeDocument(docSnap.ref.path, docWithId);
       }
       suppressOverlayEmit = false;
     }

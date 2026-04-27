@@ -11,38 +11,32 @@ import {
 } from "firebase/firestore";
 
 import { type FirestoreClient } from "@/firestore/client";
+import { type DocumentWithId, getDocumentWithId } from "@/firestore/document";
 import { type QueryWithMetadata } from "@/firestore/query";
 
-export type GetSnapshotData<T extends object, D extends T & { id: string }> = (
-  snapshot: DocumentSnapshot<T>,
-) => D | undefined;
-
-export type GetDocOptions<T extends object, D extends T & { id: string }> = {
+export type GetDocOptions<T extends object> = {
   client: FirestoreClient;
   ref: DocumentReference<T>;
-  getSnapshotData: GetSnapshotData<T, D>;
   fromServer?: boolean;
   applyOverlay?: boolean;
   excludeOverlayBatchId?: string;
 };
 
-export async function getDoc<T extends object, D extends T & { id: string }>(
-  options: GetDocOptions<T, D>,
-): Promise<D | undefined> {
-  const { client, ref, getSnapshotData } = options;
+export async function getDoc<T extends object>(options: GetDocOptions<T>): Promise<DocumentWithId<T> | undefined> {
+  const { client, ref } = options;
 
-  const mergeSnapshot = (snapshot: DocumentSnapshot<T>): D | undefined => {
-    const snapshotData = getSnapshotData(snapshot);
+  const mergeSnapshot = (snapshot: DocumentSnapshot<T>): DocumentWithId<T> | undefined => {
+    const docWithId = getDocumentWithId(snapshot);
     if (options.applyOverlay === false) {
-      return snapshotData;
+      return docWithId;
     }
     if (options.fromServer) {
-      client.overlay.acknowledgeDocument(ref.path, snapshotData);
-      return snapshotData;
+      client.overlay.acknowledgeDocument(ref.path, docWithId);
+      return docWithId;
     }
-    return client.overlay.mergeDocument<T>(ref.parent.id, ref.id, snapshotData, {
+    return client.overlay.mergeDocument<T>(ref.parent.id, ref.id, docWithId, {
       excludeBatchId: options.excludeOverlayBatchId,
-    }) as D | undefined;
+    });
   };
 
   if (options.fromServer) {
@@ -60,18 +54,15 @@ export async function getDoc<T extends object, D extends T & { id: string }>(
   }
 }
 
-export type GetDocsOptions<T extends object, D extends T & { id: string }> = {
+export type GetDocsOptions<T extends object> = {
   client: FirestoreClient;
   query: Query<T> | QueryWithMetadata<T>;
-  getSnapshotData: GetSnapshotData<T, D>;
   fromServer?: boolean;
   applyOverlay?: boolean;
 };
 
-export async function getDocs<T extends object, D extends T & { id: string }>(
-  options: GetDocsOptions<T, D>,
-): Promise<D[]> {
-  const { client, getSnapshotData } = options;
+export async function getDocs<T extends object>(options: GetDocsOptions<T>): Promise<DocumentWithId<T>[]> {
+  const { client } = options;
   const sourceQuery = options.query;
   let queryMetadata: QueryWithMetadata<T> | undefined;
   let firestoreQuery: Query<T>;
@@ -82,24 +73,25 @@ export async function getDocs<T extends object, D extends T & { id: string }>(
     firestoreQuery = sourceQuery;
   }
 
-  const mergeSnapshot = (snapshot: QuerySnapshot<T>): D[] => {
-    const snapshotData = snapshot.docs.flatMap((docSnap) => {
-      const data = getSnapshotData(docSnap);
-      return data === undefined ? [] : [data];
+  const mergeSnapshot = (snapshot: QuerySnapshot<T>): DocumentWithId<T>[] => {
+    const docWithIds = snapshot.docs.flatMap((docSnap) => {
+      const docWithId = getDocumentWithId(docSnap);
+      return docWithId === undefined ? [] : [docWithId];
     });
-    const limitedSnapshotData =
-      queryMetadata?.limit === undefined ? snapshotData : snapshotData.slice(0, queryMetadata.limit);
+    const limitedDocWithIds =
+      queryMetadata?.limit === undefined ? docWithIds : docWithIds.slice(0, queryMetadata.limit);
 
     if (options.applyOverlay === false) {
-      return limitedSnapshotData;
+      return limitedDocWithIds;
     }
 
     if (options.fromServer) {
       for (const docSnap of snapshot.docs) {
-        client.overlay.acknowledgeDocument(docSnap.ref.path, getSnapshotData(docSnap));
+        const docWithId = getDocumentWithId(docSnap);
+        client.overlay.acknowledgeDocument(docSnap.ref.path, docWithId);
       }
       if (queryMetadata) {
-        client.overlay.mergeQuery<T>(snapshotData, {
+        client.overlay.mergeQuery<T>(docWithIds, {
           collection: queryMetadata.collection,
           filters: queryMetadata.filters,
           orderBys: queryMetadata.orderBys,
@@ -107,19 +99,19 @@ export async function getDocs<T extends object, D extends T & { id: string }>(
           hasUntrackedConstraints: queryMetadata.hasUntrackedConstraints,
         });
       }
-      return limitedSnapshotData;
+      return limitedDocWithIds;
     }
 
     if (!queryMetadata) {
-      return snapshotData;
+      return docWithIds;
     }
-    return client.overlay.mergeQuery<T>(snapshotData, {
+    return client.overlay.mergeQuery<T>(docWithIds, {
       collection: queryMetadata.collection,
       filters: queryMetadata.filters,
       orderBys: queryMetadata.orderBys,
       limit: queryMetadata.limit,
       hasUntrackedConstraints: queryMetadata.hasUntrackedConstraints,
-    }) as D[];
+    });
   };
 
   if (options.fromServer) {

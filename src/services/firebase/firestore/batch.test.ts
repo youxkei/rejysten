@@ -968,6 +968,10 @@ describe("runBatch stability", () => {
 
   async function setupEmulator(): Promise<void> {
     await waitForPendingCommitsForTest({ service: sharedSvc, timeoutMs: 2000 });
+    await waitForAssertion(() => {
+      expect(testOverlay(sharedSvc).hasDocumentOverlay(`batchVersion/${singletonDocumentId}`)).toBe(false);
+      expect(testOverlay(sharedSvc).hasDocumentOverlay(`editHistoryHead/${singletonDocumentId}`)).toBe(false);
+    }, 10000);
 
     const batchVersionCol = collection(
       sharedFirestore.firestore,

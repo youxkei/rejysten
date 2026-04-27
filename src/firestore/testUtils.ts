@@ -13,6 +13,8 @@ import {
   writeBatch,
 } from "firebase/firestore";
 
+import { type DocumentWithId, getDocumentWithId } from "@/firestore/document";
+
 export type FirestoreTestDoc = {
   text: string;
   value: number;
@@ -21,7 +23,7 @@ export type FirestoreTestDoc = {
   updatedAt?: Timestamp;
 };
 
-export type FirestoreTestDocWithId = FirestoreTestDoc & { id: string };
+export type FirestoreTestDocWithId = DocumentWithId<FirestoreTestDoc>;
 
 export const timestampForCreatedAt = Timestamp.fromDate(new Date("2123-04-05T06:07:08+09:00"));
 
@@ -48,8 +50,7 @@ export function testCollection(
 }
 
 export function getSnapshotData<T extends object>(snapshot: DocumentSnapshot<T>): (T & { id: string }) | undefined {
-  const data = snapshot.data();
-  return data === undefined ? undefined : { ...data, id: snapshot.id };
+  return getDocumentWithId(snapshot);
 }
 
 export async function seedDocs(

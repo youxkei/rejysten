@@ -1,6 +1,5 @@
 import { FirebaseError } from "firebase/app";
 import {
-  type DocumentSnapshot,
   type Query,
   collection,
   doc,
@@ -187,19 +186,6 @@ function getClient(service: FirestoreService): FirestoreClient {
   return fallback;
 }
 
-export function getDocumentData<T extends object>(documentSnapshot: DocumentSnapshot<T>): DocumentData<T> | undefined {
-  const data = documentSnapshot.data();
-
-  if (data === undefined) {
-    return undefined;
-  }
-
-  return {
-    ...data,
-    id: documentSnapshot.id,
-  };
-}
-
 export async function getDoc<C extends keyof Schema>(
   service: FirestoreService,
   col: SchemaCollectionReference<C>,
@@ -211,7 +197,6 @@ export async function getDoc<C extends keyof Schema>(
   return getFirestoreDoc({
     client: getClient(service),
     ref: doc(col, id),
-    getSnapshotData: getDocumentData,
     fromServer: options?.fromServer,
     applyOverlay: options?.applyOverlay,
     excludeOverlayBatchId: options?.excludeOverlayBatchId,
@@ -239,7 +224,6 @@ export async function getDocs<T extends object>(
   return getFirestoreDocs({
     client: getClient(service),
     query,
-    getSnapshotData: getDocumentData,
     fromServer: options?.fromServer,
   });
 }

@@ -4,7 +4,8 @@ import { type Accessor, createMemo, createSignal, onCleanup } from "solid-js";
 import { createFirestoreClient, hasDocumentSetOverlay, type FirestoreClient } from "@/firestore/client";
 import { onDocumentSnapshot, onQuerySnapshot } from "@/firestore/onSnapshot";
 import { type QueryWithMetadata } from "@/firestore/query";
-import { type DocumentData, type FirestoreService, getDocumentData } from "@/services/firebase/firestore";
+import { type DocumentData, type FirestoreService } from "@/services/firebase/firestore";
+import { createLatchSignal } from "@/solid/signal";
 import { createSubscribeWithResource } from "@/solid/subscribe";
 
 export { shouldAcknowledgeSnapshotMetadata } from "@/firestore/onSnapshot";
@@ -91,9 +92,7 @@ export function createSubscribeSignal<T extends object>(
       const unsubscribe = onDocumentSnapshot({
         client: getClient(service),
         ref: source.query,
-        getSnapshotData: getDocumentData,
         setValue,
-        shouldAcknowledge: () => !service.clock$(),
         timestampPrefix$,
       });
       onCleanup(unsubscribe);
@@ -101,7 +100,8 @@ export function createSubscribeSignal<T extends object>(
     undefined,
   );
 
-  return createMemo(() => value$(), undefined, { equals: valuesEqualIgnoringServerFields });
+  const latched$ = createLatchSignal(value$, service.clock$, undefined, { equals: valuesEqualIgnoringServerFields });
+  return createMemo(() => latched$(), undefined, { equals: valuesEqualIgnoringServerFields });
 }
 
 export function createSubscribeAllSignal<T extends object>(
@@ -130,11 +130,9 @@ export function createSubscribeAllSignal<T extends object>(
       const unsubscribe = onQuerySnapshot({
         client,
         query: source.query,
-        getSnapshotData: getDocumentData,
         setValue: (value) => {
           setValue(markSnapshotReady(value));
         },
-        shouldAcknowledge: () => !service.clock$(),
         onServerSnapshot: () => setReady(true),
         allowInitialEmit: () => {
           if (options?.allowInitialEmit?.()) return true;
@@ -148,6 +146,9 @@ export function createSubscribeAllSignal<T extends object>(
     },
     [],
   );
-  const signal$ = createMemo(() => value$(), [], { equals: arraysEqualIgnoringServerFieldsAndSnapshotState });
+  const latched$ = createLatchSignal(value$, service.clock$, [], {
+    equals: arraysEqualIgnoringServerFieldsAndSnapshotState,
+  });
+  const signal$ = createMemo(() => latched$(), [], { equals: arraysEqualIgnoringServerFieldsAndSnapshotState });
   return Object.assign(signal$, { ready$ });
 }

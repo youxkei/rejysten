@@ -1,4 +1,4 @@
-import { doc, serverTimestamp, writeBatch } from "firebase/firestore";
+import { doc, getDocFromServer, serverTimestamp, writeBatch } from "firebase/firestore";
 import { afterAll, beforeAll, describe, it } from "vitest";
 
 import { optimisticBatch, waitForPendingOptimisticCommits } from "@/firestore/batch";
@@ -8,7 +8,6 @@ import { onDocumentSnapshot, onQuerySnapshot, shouldAcknowledgeSnapshotMetadata 
 import { limit, orderBy, query, where } from "@/firestore/query";
 import {
   createTestFirestore,
-  getSnapshotData,
   seedDocs,
   testCollection,
   type FirestoreTestDoc,
@@ -42,7 +41,6 @@ describe("onDocumentSnapshot optimistic overlay", () => {
     const unsubscribe = onDocumentSnapshot({
       client: localClient,
       ref: doc(col, "missing"),
-      getSnapshotData,
       setValue: (value) => {
         latest = value;
         setValueCount++;
@@ -79,7 +77,6 @@ describe("onDocumentSnapshot optimistic overlay", () => {
     const unsubscribe = onDocumentSnapshot({
       client: localClient,
       ref: doc(col, "pending"),
-      getSnapshotData,
       setValue: (value) => {
         latest = value;
       },
@@ -103,7 +100,6 @@ describe("onDocumentSnapshot optimistic overlay", () => {
     const unsubscribe = onDocumentSnapshot({
       client: localClient,
       ref: doc(col, "doc1"),
-      getSnapshotData,
       setValue: (value) => {
         latest = value;
         if (armed) {
@@ -145,7 +141,6 @@ describe("onDocumentSnapshot optimistic overlay", () => {
     const unsubscribe = onDocumentSnapshot({
       client: equalityClient,
       ref: doc(col, "doc1"),
-      getSnapshotData,
       setValue: (value) => {
         latest = value;
         if (armed) {
@@ -181,7 +176,6 @@ describe("onDocumentSnapshot optimistic overlay", () => {
       await getDoc({
         client: equalityClient,
         ref: doc(col, "doc1"),
-        getSnapshotData,
         fromServer: true,
       });
       await wait(300);
@@ -203,7 +197,6 @@ describe("onDocumentSnapshot optimistic overlay", () => {
     const unsubscribe = onDocumentSnapshot({
       client,
       ref: doc(col, "doc1"),
-      getSnapshotData,
       setValue: (value) => {
         latest = value;
       },
@@ -232,7 +225,7 @@ describe("onDocumentSnapshot optimistic overlay", () => {
         })
         .commit();
       client.overlay.markCommitted(batchId);
-      await getDoc({ client, ref: doc(col, "doc1"), getSnapshotData, fromServer: true });
+      await getDoc({ client, ref: doc(col, "doc1"), fromServer: true });
       await waitUntil(() => latest?.text === "optimistic");
 
       test.expect(latest?.text).toBe("optimistic");
@@ -243,38 +236,66 @@ describe("onDocumentSnapshot optimistic overlay", () => {
     }
   });
 
-  it("emits overlay changes even when acknowledgement is disabled", async (test) => {
-    const col = testCollection(firestore, `${test.task.id}_${Date.now()}_doc_overlay_no_ack`);
+  it("acknowledges committed overlay as soon as matching server snapshot arrives", async (test) => {
+    const localClient = createFirestoreClient(firestore, {
+      snapshot: {
+        ignoredFieldsForEquality: ["createdAt", "updatedAt"],
+      },
+    });
+    const col = testCollection(firestore, `${test.task.id}_${Date.now()}_doc_overlay_ack`);
+    await seedDocs(col, {
+      doc1: { text: "server", value: 1 },
+    });
     const batchId = `batch-${test.task.id}`;
+    let armed = false;
+    let setValueCount = 0;
     let latest: FirestoreTestDocWithId | undefined;
+    const ref = doc(col, "doc1");
 
     const unsubscribe = onDocumentSnapshot({
-      client,
-      ref: doc(col, "doc1"),
-      getSnapshotData,
+      client: localClient,
+      ref,
       setValue: (value) => {
         latest = value;
+        if (armed) {
+          setValueCount++;
+        }
       },
-      shouldAcknowledge: () => false,
     });
 
     try {
-      await wait(100);
-      client.overlay.apply(batchId, [
+      await waitUntil(() => latest?.text === "server");
+      armed = true;
+
+      localClient.overlay.apply(batchId, [
         {
-          type: "set",
+          type: "update",
           batchId: "",
           collection: col.id,
           id: "doc1",
           path: `${col.id}/doc1`,
-          data: { text: "optimistic", value: 1 },
+          data: { text: "optimistic", value: 2 },
         },
       ]);
-      await waitUntil(() => latest?.text === "optimistic");
+      await waitUntil(() => latest?.text === "optimistic" && latest.value === 2);
+
+      await writeBatch(firestore)
+        .update(ref, {
+          text: "optimistic",
+          value: 2,
+          updatedAt: serverTimestamp(),
+        })
+        .commit();
+      localClient.overlay.markCommitted(batchId);
+      await getDocFromServer(ref);
+      await waitUntil(() => !localClient.overlay.hasDocumentOverlay(`${col.id}/doc1`));
+      await wait(100);
 
       test.expect(latest?.text).toBe("optimistic");
+      test.expect(latest?.value).toBe(2);
+      test.expect(setValueCount).toBe(1);
     } finally {
-      client.overlay.rollback(batchId, undefined);
+      localClient.overlay.rollback(batchId, undefined);
       unsubscribe();
     }
   });
@@ -290,7 +311,6 @@ describe("onDocumentSnapshot optimistic overlay", () => {
     const unsubscribe = onDocumentSnapshot({
       client,
       ref: doc(col, "doc1"),
-      getSnapshotData,
       setValue: (value) => {
         latest = value;
       },
@@ -329,7 +349,6 @@ describe("onDocumentSnapshot optimistic overlay", () => {
     const unsubscribe = onDocumentSnapshot({
       client,
       ref: doc(col, "doc1"),
-      getSnapshotData,
       setValue: (value) => {
         latest = value;
       },
@@ -366,7 +385,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
     const unsubscribe = onQuerySnapshot({
       client: localClient,
       query: query(col),
-      getSnapshotData,
       setValue: (value) => {
         latest = value;
         setValueCount++;
@@ -393,7 +411,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
     const unsubscribe = onQuerySnapshot({
       client: localClient,
       query: query(col),
-      getSnapshotData,
       setValue: (value) => {
         latest = value;
         setValueCount++;
@@ -443,7 +460,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
     const unsubscribe = onQuerySnapshot({
       client: localClient,
       query: query(col),
-      getSnapshotData,
       setValue: (value) => {
         latest = value;
         setValueCount++;
@@ -471,7 +487,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
     const unsubscribe = onQuerySnapshot({
       client: localClient,
       query: query(col),
-      getSnapshotData,
       setValue: (value) => {
         latest = value;
         setValueCount++;
@@ -536,7 +551,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
       onDocumentSnapshot({
         client: localClient,
         ref: doc(colA, "created"),
-        getSnapshotData,
         setValue: (value) => {
           latest.docSet = value;
           if (armed) counts.docSet++;
@@ -545,7 +559,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
       onDocumentSnapshot({
         client: localClient,
         ref: doc(colA, "updateMe"),
-        getSnapshotData,
         setValue: (value) => {
           latest.docUpdate = value;
           if (armed) counts.docUpdate++;
@@ -554,7 +567,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
       onDocumentSnapshot({
         client: localClient,
         ref: doc(colA, "deleteMe"),
-        getSnapshotData,
         setValue: (value) => {
           latest.docDelete = value;
           if (armed) counts.docDelete++;
@@ -563,7 +575,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
       onQuerySnapshot({
         client: localClient,
         query: query(colA, orderBy("value")),
-        getSnapshotData,
         setValue: (value) => {
           latest.queryA = value;
           queryReady.queryA = true;
@@ -573,7 +584,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
       onQuerySnapshot({
         client: localClient,
         query: query(colA, where("value", "==", 1), orderBy("text")),
-        getSnapshotData,
         setValue: (value) => {
           latest.queryAValueOne = value;
           queryReady.queryAValueOne = true;
@@ -583,7 +593,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
       onQuerySnapshot({
         client: localClient,
         query: query(colB),
-        getSnapshotData,
         setValue: (value) => {
           latest.queryB = value;
           queryReady.queryB = true;
@@ -593,7 +602,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
       onQuerySnapshot({
         client: localClient,
         query: query(colC),
-        getSnapshotData,
         setValue: (value) => {
           latest.queryC = value;
           queryReady.queryC = true;
@@ -666,7 +674,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
     const unsubscribe = onQuerySnapshot({
       client: localClient,
       query: query(col),
-      getSnapshotData,
       setValue: (value) => {
         latest = value;
         queryReady = true;
@@ -738,7 +745,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
       onQuerySnapshot({
         client: localClient,
         query: query(col, orderBy("value"), limit(1)),
-        getSnapshotData,
         setValue: (value) => {
           limited = value;
           if (armed) limitedCount++;
@@ -747,7 +753,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
       onQuerySnapshot({
         client: localClient,
         query: query(col, orderBy("value", "desc"), limit(2)),
-        getSnapshotData,
         setValue: (value) => {
           limitedDesc = value;
           if (armed) limitedDescCount++;
@@ -756,7 +761,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
       onQuerySnapshot({
         client: localClient,
         query: query(otherCol, orderBy("value"), limit(1)),
-        getSnapshotData,
         setValue: (value) => {
           unrelated = value;
           if (armed) unrelatedCount++;
@@ -806,7 +810,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
     const unsubscribe = onQuerySnapshot({
       client,
       query: query(col),
-      getSnapshotData,
       setValue: (value) => {
         latest = value;
       },
@@ -846,7 +849,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
     const unsubscribe = onQuerySnapshot({
       client,
       query: query(col, where("value", "==", 1)),
-      getSnapshotData,
       setValue: (value) => {
         latest = value;
       },
@@ -880,38 +882,66 @@ describe("onQuerySnapshot optimistic overlay", () => {
     }
   });
 
-  it("emits overlay changes even when acknowledgement is disabled", async (test) => {
-    const col = testCollection(firestore, `${test.task.id}_${Date.now()}_query_overlay_no_ack`);
+  it("acknowledges committed query overlays without an external clock", async (test) => {
+    const localClient = createFirestoreClient(firestore, {
+      snapshot: {
+        ignoredFieldsForEquality: ["createdAt", "updatedAt"],
+      },
+    });
+    const col = testCollection(firestore, `${test.task.id}_${Date.now()}_query_overlay_ack`);
+    await seedDocs(col, {
+      doc1: { text: "server", value: 1 },
+    });
     const batchId = `batch-${test.task.id}`;
+    let armed = false;
+    let setValueCount = 0;
     let latest: FirestoreTestDocWithId[] = [];
+    const ref = doc(col, "doc1");
 
     const unsubscribe = onQuerySnapshot({
-      client,
+      client: localClient,
       query: query(col),
-      getSnapshotData,
       setValue: (value) => {
         latest = value;
+        if (armed) {
+          setValueCount++;
+        }
       },
-      shouldAcknowledge: () => false,
     });
 
     try {
-      await wait(100);
-      client.overlay.apply(batchId, [
+      await waitUntil(() => latest.length === 1 && latest[0].text === "server");
+      armed = true;
+
+      localClient.overlay.apply(batchId, [
         {
-          type: "set",
+          type: "update",
           batchId: "",
           collection: col.id,
           id: "doc1",
           path: `${col.id}/doc1`,
-          data: { text: "optimistic", value: 1 },
+          data: { text: "optimistic", value: 2 },
         },
       ]);
-      await waitUntil(() => latest.length === 1 && latest[0].text === "optimistic");
+      await waitUntil(() => latest.length === 1 && latest[0].text === "optimistic" && latest[0].value === 2);
+
+      await writeBatch(firestore)
+        .update(ref, {
+          text: "optimistic",
+          value: 2,
+          updatedAt: serverTimestamp(),
+        })
+        .commit();
+      localClient.overlay.markCommitted(batchId);
+      await getDocFromServer(ref);
+      await waitUntil(() => !localClient.overlay.hasDocumentOverlay(`${col.id}/doc1`));
+      await wait(100);
 
       test.expect(latest.map((docData) => docData.text)).toEqual(["optimistic"]);
+      test.expect(latest.map((docData) => docData.value)).toEqual([2]);
+      test.expect(setValueCount).toBe(1);
     } finally {
-      client.overlay.rollback(batchId, undefined);
+      localClient.overlay.rollback(batchId, undefined);
       unsubscribe();
     }
   });
@@ -935,7 +965,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
     const unsubscribe = onQuerySnapshot({
       client,
       query: query(col, where("value", "==", 1)),
-      getSnapshotData: getSnapshotData<FirestoreTestDoc>,
       setValue: (value) => {
         latest = value;
       },
@@ -977,7 +1006,6 @@ describe("onQuerySnapshot optimistic overlay", () => {
     const unsubscribe = onQuerySnapshot({
       client,
       query: query(col, where("value", "==", 1)),
-      getSnapshotData,
       setValue: (value) => {
         latest = value;
       },

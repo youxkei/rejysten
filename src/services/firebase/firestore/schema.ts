@@ -1,5 +1,7 @@
 import { type CollectionReference, type Timestamp } from "firebase/firestore";
 
+import { type DocumentWithId } from "@/firestore/document";
+
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface Schema {}
 
@@ -8,7 +10,7 @@ export interface Timestamps {
   updatedAt: Timestamp;
 }
 
-export type DocumentData<T extends object> = T & { id: string };
+export type DocumentData<T extends object> = DocumentWithId<T>;
 
 export type SchemaCollectionReference<C extends keyof Schema> = CollectionReference<Schema[C]> & { readonly id: C };
 

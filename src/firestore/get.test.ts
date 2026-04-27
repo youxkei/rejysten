@@ -10,10 +10,8 @@ import { getDoc, getDocs } from "@/firestore/get";
 import { limit, orderBy, query, where } from "@/firestore/query";
 import {
   createTestFirestore,
-  getSnapshotData,
   seedDocs,
   testCollection,
-  type FirestoreTestDoc,
 } from "@/firestore/testUtils";
 import { acquireEmulator, releaseEmulator } from "@/test";
 
@@ -52,10 +50,9 @@ describe("getDoc overlay boundary", () => {
     const fromServer = await getDoc({
       client,
       ref: doc(col, "doc1"),
-      getSnapshotData,
       fromServer: true,
     });
-    const merged = await getDoc({ client, ref: doc(col, "doc1"), getSnapshotData });
+    const merged = await getDoc({ client, ref: doc(col, "doc1") });
 
     test.expect(fromServer?.text).toBe("server");
     test.expect(fromServer?.value).toBe(1);
@@ -89,13 +86,12 @@ describe("getDoc overlay boundary", () => {
           getDoc({
             client,
             ref: doc(col, "doc1"),
-            getSnapshotData,
             applyOverlay: false,
           }),
         )
         .resolves.toMatchObject({ id: "doc1", text: "server", value: 1 });
       await test
-        .expect(getDoc({ client, ref: doc(col, "doc1"), getSnapshotData }))
+        .expect(getDoc({ client, ref: doc(col, "doc1") }))
         .resolves.toMatchObject({ id: "doc1", text: "overlay", value: 2 });
     } finally {
       client.overlay.rollback(batchId, undefined);
@@ -123,10 +119,9 @@ describe("getDoc overlay boundary", () => {
     const fromServer = await getDoc({
       client,
       ref: doc(col, "doc1"),
-      getSnapshotData,
       fromServer: true,
     });
-    const merged = await getDoc({ client, ref: doc(col, "doc1"), getSnapshotData });
+    const merged = await getDoc({ client, ref: doc(col, "doc1") });
 
     test.expect(fromServer?.text).toBe("server");
     test.expect(merged?.text).toBe("server");
@@ -154,10 +149,9 @@ describe("getDocs overlay boundary", () => {
     const fromServer = await getDocs({
       client,
       query: query(col),
-      getSnapshotData,
       fromServer: true,
     });
-    const merged = await getDocs({ client, query: query(col), getSnapshotData });
+    const merged = await getDocs({ client, query: query(col) });
 
     test.expect(fromServer.map((d) => d.id)).toEqual(["server"]);
     test.expect(merged.map((d) => d.id).sort()).toEqual(["pending", "server"]);
@@ -186,7 +180,6 @@ describe("getDocs overlay boundary", () => {
     const result = await getDocs({
       client,
       query: query(col, orderBy("value"), limit(1)),
-      getSnapshotData,
     });
 
     test.expect(result.map((d) => d.id)).toEqual(["second"]);
@@ -216,7 +209,6 @@ describe("getDocs overlay boundary", () => {
     const result = await getDocs({
       client,
       query: query(col, orderBy("value"), limit(1)),
-      getSnapshotData,
     });
 
     test.expect(result.map((d) => d.id)).toEqual(["second"]);
@@ -235,7 +227,6 @@ describe("getDocs overlay boundary", () => {
     const result = await getDocs({
       client,
       query: query(col, orderBy("value"), limit(1)),
-      getSnapshotData,
       fromServer: true,
     });
 
@@ -259,8 +250,8 @@ describe("getDocs overlay boundary", () => {
       },
     ]);
 
-    const rawResult = await getDocs({ client, query: firestoreQuery(col), getSnapshotData });
-    const wrappedResult = await getDocs({ client, query: query(col), getSnapshotData });
+    const rawResult = await getDocs({ client, query: firestoreQuery(col) });
+    const wrappedResult = await getDocs({ client, query: query(col) });
 
     test.expect(rawResult.map((d) => d.id)).toEqual(["server"]);
     test.expect(wrappedResult.map((d) => d.id).sort()).toEqual(["pending", "server"]);
@@ -288,12 +279,10 @@ describe("getDocs overlay boundary", () => {
     const mixedRawResult = await getDocs({
       client,
       query: query(col, firestoreWhere("value", "==", 1)),
-      getSnapshotData,
     });
     const wrappedResult = await getDocs({
       client,
       query: query(col, where("value", "==", 1)),
-      getSnapshotData,
     });
 
     test.expect(mixedRawResult.map((d) => d.id)).toEqual(["server"]);
@@ -322,7 +311,6 @@ describe("getDocs overlay boundary", () => {
     const result = await getDocs({
       client,
       query: query(col, where("text", "in", ["server", "pending"])),
-      getSnapshotData,
     });
 
     test.expect(result.map((d) => d.id)).toEqual(["server"]);
@@ -350,7 +338,6 @@ describe("getDocs overlay boundary", () => {
     const result = await getDocs({
       client,
       query: query(col, where("tags", "array-contains", "match")),
-      getSnapshotData,
     });
 
     test.expect(result.map((d) => d.id)).toEqual(["server"]);
@@ -377,13 +364,11 @@ describe("getDocs overlay boundary", () => {
     const fromServer = await getDocs({
       client,
       query: query(col, where("value", "==", 1)),
-      getSnapshotData: getSnapshotData<FirestoreTestDoc>,
       fromServer: true,
     });
     const merged = await getDocs({
       client,
       query: query(col, where("value", "==", 1)),
-      getSnapshotData: getSnapshotData<FirestoreTestDoc>,
     });
 
     test.expect(fromServer).toEqual([]);

@@ -2,6 +2,7 @@ import {
   type Firestore,
   type Timestamp,
   collection,
+  getDocFromServer,
   writeBatch,
   doc,
 } from "firebase/firestore";
@@ -51,6 +52,15 @@ async function waitUntil(predicate: () => boolean, timeoutMs = 2000): Promise<vo
     }
     await wait(20);
   }
+}
+
+function createClockedService(): FirestoreService {
+  const [clock$, setClock] = createSignal(false);
+  return {
+    ...service,
+    clock$,
+    setClock,
+  } as FirestoreService;
 }
 
 beforeAll(async () => {
@@ -278,6 +288,115 @@ describe("createSubscribeAllSignal", () => {
     test.expect(result.second).toEqual(["two"]);
   });
 
+  it("latches query overlay updates while clock is high", async (test) => {
+    const tid = `${test.task.id}_${Date.now()}_query_latch`;
+    const col = testCollection(firestore, tid);
+    const batch = writeBatch(firestore);
+    batch.set(doc(col, "doc1"), {
+      text: "one",
+      value: 1,
+      createdAt: timestampForCreatedAt,
+      updatedAt: timestampForCreatedAt,
+    });
+    batch.set(doc(col, "doc2"), {
+      text: "two",
+      value: 2,
+      createdAt: timestampForCreatedAt,
+      updatedAt: timestampForCreatedAt,
+    });
+    await batch.commit();
+
+    const result = await new Promise<{ duringClock: string[]; afterClock: string[] }>((resolve, reject) => {
+      createRoot((dispose) => {
+        const localService = createClockedService();
+        const signal$ = createSubscribeAllSignal<TestDoc>(localService, () => query(col));
+
+        void (async () => {
+          const batchId = `batch-${test.task.id}-query-latch`;
+          try {
+            await waitUntil(() => signal$().map((docData) => docData.text).sort().join(",") === "one,two");
+            localService.setClock(true);
+            localService.firestoreClient!.overlay.apply(batchId, [
+              {
+                type: "update",
+                batchId: "",
+                collection: col.id,
+                id: "doc2",
+                path: `${col.id}/doc2`,
+                data: { text: "two-updated", value: 20 },
+              },
+            ]);
+            await wait(100);
+            const duringClock = signal$().map((docData) => docData.text).sort();
+
+            localService.setClock(false);
+            await waitUntil(() => signal$().some((docData) => docData.text === "two-updated"));
+            const afterClock = signal$().map((docData) => docData.text).sort();
+            resolve({ duringClock, afterClock });
+          } catch (error) {
+            reject(error instanceof Error ? error : new Error(String(error)));
+          } finally {
+            localService.firestoreClient!.overlay.rollback(batchId, undefined);
+            dispose();
+          }
+        })();
+      });
+    });
+
+    test.expect(result.duringClock).toEqual(["one", "two"]);
+    test.expect(result.afterClock).toEqual(["one", "two-updated"]);
+  });
+
+  it("does not expose an empty initial value for a query switched during clock high", async (test) => {
+    const tid = `${test.task.id}_${Date.now()}_query_latch_switch`;
+    const col = testCollection(firestore, tid);
+    const batch = writeBatch(firestore);
+    batch.set(doc(col, "doc1"), {
+      text: "one",
+      value: 1,
+      createdAt: timestampForCreatedAt,
+      updatedAt: timestampForCreatedAt,
+    });
+    batch.set(doc(col, "doc2"), {
+      text: "two",
+      value: 1,
+      createdAt: timestampForCreatedAt,
+      updatedAt: timestampForCreatedAt,
+    });
+    await batch.commit();
+
+    const result = await new Promise<{ duringClock: string[]; afterClock: string[] }>((resolve, reject) => {
+      createRoot((dispose) => {
+        const localService = createClockedService();
+        const [selectedValue$, setSelectedValue] = createSignal(1);
+        const signal$ = createSubscribeAllSignal<TestDoc>(localService, () =>
+          query(col, where("value", "==", selectedValue$())),
+        );
+
+        void (async () => {
+          try {
+            await waitUntil(() => signal$().map((docData) => docData.text).sort().join(",") === "one,two");
+            localService.setClock(true);
+            setSelectedValue(2);
+            await wait(100);
+            const duringClock = signal$().map((docData) => docData.text).sort();
+
+            localService.setClock(false);
+            await waitUntil(() => signal$().length === 0);
+            resolve({ duringClock, afterClock: signal$().map((docData) => docData.text) });
+          } catch (error) {
+            reject(error instanceof Error ? error : new Error(String(error)));
+          } finally {
+            dispose();
+          }
+        })();
+      });
+    });
+
+    test.expect(result.duringClock).toEqual(["one", "two"]);
+    test.expect(result.afterClock).toEqual([]);
+  });
+
 });
 
 describe("waitForServerSync", () => {
@@ -455,5 +574,123 @@ describe("createSubscribeSignal", () => {
 
     test.expect(result.first).toBe("one");
     test.expect(result.second).toBe("two");
+  });
+
+  it("latches document overlay updates while clock is high", async (test) => {
+    const tid = `${test.task.id}_${Date.now()}_doc_latch`;
+    const col = testCollection(firestore, tid);
+    await writeBatch(firestore)
+      .set(doc(col, "doc1"), {
+        text: "server",
+        value: 1,
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForCreatedAt,
+      })
+      .commit();
+
+    const result = await new Promise<{ duringClock: string | undefined; afterClock: string | undefined }>(
+      (resolve, reject) => {
+        createRoot((dispose) => {
+          const localService = createClockedService();
+          const signal$ = createSubscribeSignal<TestDoc>(localService, () => doc(col, "doc1"));
+
+          void (async () => {
+            const batchId = `batch-${test.task.id}-doc-latch`;
+            try {
+              await waitUntil(() => signal$()?.text === "server");
+              localService.setClock(true);
+              localService.firestoreClient!.overlay.apply(batchId, [
+                {
+                  type: "update",
+                  batchId: "",
+                  collection: col.id,
+                  id: "doc1",
+                  path: `${col.id}/doc1`,
+                  data: { text: "optimistic", value: 2 },
+                },
+              ]);
+              await wait(100);
+              const duringClock = signal$()?.text;
+
+              localService.setClock(false);
+              await waitUntil(() => signal$()?.text === "optimistic");
+              resolve({ duringClock, afterClock: signal$()?.text });
+            } catch (error) {
+              reject(error instanceof Error ? error : new Error(String(error)));
+            } finally {
+              localService.firestoreClient!.overlay.rollback(batchId, undefined);
+              dispose();
+            }
+          })();
+        });
+      },
+    );
+
+    test.expect(result.duringClock).toBe("server");
+    test.expect(result.afterClock).toBe("optimistic");
+  });
+
+  it("does not gate overlay acknowledgement on clock", async (test) => {
+    const tid = `${test.task.id}_${Date.now()}_doc_ack_clock`;
+    const col = testCollection(firestore, tid);
+    const ref = doc(col, "doc1");
+    await writeBatch(firestore)
+      .set(ref, {
+        text: "server",
+        value: 1,
+        createdAt: timestampForCreatedAt,
+        updatedAt: timestampForCreatedAt,
+      })
+      .commit();
+
+    const result = await new Promise<{ duringClock: string | undefined; afterClock: string | undefined }>(
+      (resolve, reject) => {
+        createRoot((dispose) => {
+          const localService = createClockedService();
+          const signal$ = createSubscribeSignal<TestDoc>(localService, () => ref);
+
+          void (async () => {
+            const batchId = `batch-${test.task.id}-doc-ack-clock`;
+            try {
+              await waitUntil(() => signal$()?.text === "server");
+              localService.setClock(true);
+              localService.firestoreClient!.overlay.apply(batchId, [
+                {
+                  type: "update",
+                  batchId: "",
+                  collection: col.id,
+                  id: "doc1",
+                  path: `${col.id}/doc1`,
+                  data: { text: "confirmed", value: 2 },
+                },
+              ]);
+              await writeBatch(firestore)
+                .update(ref, {
+                  text: "confirmed",
+                  value: 2,
+                  updatedAt: timestampForCreatedAt,
+                })
+                .commit();
+              localService.firestoreClient!.overlay.markCommitted(batchId);
+              await getDocFromServer(ref);
+              await waitUntil(() => !localService.firestoreClient!.overlay.hasDocumentOverlay(`${col.id}/doc1`));
+              const duringClock = signal$()?.text;
+
+              localService.setClock(false);
+              await waitUntil(() => signal$()?.text === "confirmed");
+              resolve({ duringClock, afterClock: signal$()?.text });
+            } catch (error) {
+              reject(error instanceof Error ? error : new Error(String(error)));
+            } finally {
+              localService.firestoreClient!.overlay.rollback(batchId, undefined);
+              dispose();
+            }
+          })();
+        });
+      },
+    );
+
+    test.expect(result.duringClock).toBe("server");
+    test.expect(result.afterClock).toBe("confirmed");
   });
 });
