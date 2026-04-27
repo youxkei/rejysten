@@ -25,7 +25,6 @@ import {
 } from "@/services/firebase/firestore/batch";
 import "@/services/firebase/firestore/editHistory/schema";
 import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
-import { createOptimisticOverlay } from "@/services/firebase/firestore/overlay";
 import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import {
   createTestFirestoreService,
@@ -47,6 +46,10 @@ function testCollection(fs: Firestore, name: string): SchemaCollectionReference<
 let service: FirestoreService;
 let firestore: Firestore;
 let emulatorPort: number;
+
+function testOverlay(testService: FirestoreService) {
+  return testService.firestoreClient!.overlay;
+}
 
 function createMinimalStoreService(): FirestoreService["services"]["store"] {
   let lock = false;
@@ -98,9 +101,11 @@ async function waitForAssertion(assertion: () => void | Promise<void>, timeoutMs
 beforeAll(async () => {
   emulatorPort = await acquireEmulator();
   const result = createTestFirestoreService(emulatorPort, "batch-test");
+  const [clock$] = createSignal(false);
   service = {
     ...result,
-    overlay: createOptimisticOverlay(),
+    clock$,
+    setClock: () => undefined,
     batchVersion$: () => undefined,
     services: {
       firebase: {} as FirestoreService["services"]["firebase"],
@@ -232,9 +237,9 @@ describe("batch", () => {
 
         const ngramDoc = await getDocOriginal(doc(ngramsCol, `testDoc${tid}`));
         test.expect(ngramDoc.exists()).toBe(false);
-        test.expect(batch.overlayMutations.map((m) => `${m.collection}/${m.id}:${m.type}`)).toContain(
-          `ngrams/testDoc${tid}:delete`,
-        );
+        test
+          .expect(batch.overlayMutations.map((m) => `${m.collection}/${m.id}:${m.type}`))
+          .toContain(`ngrams/testDoc${tid}:delete`);
       } finally {
         Reflect.deleteProperty(collectionNgramConfig, tid);
       }
@@ -724,20 +729,26 @@ describe("transaction", () => {
       });
       await setupBatch.commit();
 
-      await runTransaction(service, async (batch, transaction) => {
-        await transaction.get(doc(col, "txNoOverlay"));
-        batch.update(col, {
-          id: "txNoOverlay",
-          text: "after",
-          value: 2,
-        });
+      await runTransaction(
+        service,
+        async (batch, transaction) => {
+          await transaction.get(doc(col, "txNoOverlay"));
+          batch.update(col, {
+            id: "txNoOverlay",
+            text: "after",
+            value: 2,
+          });
 
-        expect(service.overlay.mergeDocument(col.id, "txNoOverlay", {
-          id: "txNoOverlay",
-          text: "before",
-          value: 1,
-        })?.text).toBe("before");
-      }, { skipHistory: true });
+          expect(
+            testOverlay(service).mergeDocument(col.id, "txNoOverlay", {
+              id: "txNoOverlay",
+              text: "before",
+              value: 1,
+            })?.text,
+          ).toBe("before");
+        },
+        { skipHistory: true },
+      );
 
       const result = await getDocOriginal(doc(col, "txNoOverlay"));
       expect(result.data()?.text).toBe("after");
@@ -748,17 +759,21 @@ describe("transaction", () => {
       const col = testCollection(firestore, tid);
 
       await expect(
-        runTransaction(service, async (batch) => {
-          batch.set(col, {
-            id: "txFailed",
-            text: "not committed",
-            value: 1,
-          });
-          throw new Error("tx boom");
-        }, { skipHistory: true }),
+        runTransaction(
+          service,
+          async (batch) => {
+            batch.set(col, {
+              id: "txFailed",
+              text: "not committed",
+              value: 1,
+            });
+            throw new Error("tx boom");
+          },
+          { skipHistory: true },
+        ),
       ).rejects.toThrow("tx boom");
 
-      expect(service.overlay.mergeDocument(col.id, "txFailed", undefined)).toBeUndefined();
+      expect(testOverlay(service).mergeDocument(col.id, "txFailed", undefined)).toBeUndefined();
       const result = await getDocOriginal(doc(col, "txFailed"));
       expect(result.exists()).toBe(false);
     });
@@ -912,7 +927,7 @@ describe("runBatch stability", () => {
 
         sharedSvc = {
           firestore: sharedFirestore.firestore,
-          overlay: createOptimisticOverlay(),
+          firestoreClient: sharedFirestore.firestoreClient,
           clock$,
           setClock: () => undefined,
           batchVersion$: () => undefined,
@@ -953,7 +968,6 @@ describe("runBatch stability", () => {
 
   async function setupEmulator(): Promise<void> {
     await waitForPendingCommitsForTest({ service: sharedSvc, timeoutMs: 2000 });
-    sharedSvc.overlay = createOptimisticOverlay();
 
     const batchVersionCol = collection(
       sharedFirestore.firestore,
@@ -967,24 +981,6 @@ describe("runBatch stability", () => {
       updatedAt: timestampForCreatedAt,
     });
     await setupBatch.commit();
-
-    const setupBatchId = `setup-${Date.now()}`;
-    sharedSvc.overlay.apply(setupBatchId, [
-      {
-        type: "set",
-        batchId: setupBatchId,
-        collection: "batchVersion",
-        id: singletonDocumentId,
-        path: `batchVersion/${singletonDocumentId}`,
-        data: {
-          version: "__INITIAL__",
-          prevVersion: "",
-          createdAt: timestampForCreatedAt,
-          updatedAt: timestampForCreatedAt,
-        },
-      },
-    ]);
-    sharedSvc.overlay.markCommitted(setupBatchId);
 
     await waitForAssertion(() => {
       expect(sharedSvc.batchVersion$()?.version).toBe("__INITIAL__");
@@ -1040,39 +1036,43 @@ describe("runBatch stability", () => {
     }
   });
 
-  it("rapid runBatch calls chain batchVersion through pending overlay without waiting for server sync", { timeout: 30000 }, async () => {
-    await setupEmulator();
-    const testCol = testCollection(sharedFirestore.firestore, "rapid_overlay_version_docs");
+  it(
+    "rapid runBatch calls chain batchVersion through pending overlay without waiting for server sync",
+    { timeout: 30000 },
+    async () => {
+      await setupEmulator();
+      const testCol = testCollection(sharedFirestore.firestore, "rapid_overlay_version_docs");
 
-    let previousVersion = "__INITIAL__";
-    for (let i = 0; i < 5; i++) {
-      await runBatch(
-        sharedSvc,
-        (batch) => {
-          batch.set(testCol, { id: `doc${i}`, text: `text-${i}`, value: i });
-          return Promise.resolve();
-        },
-        { skipHistory: true },
-      );
+      let previousVersion = "__INITIAL__";
+      for (let i = 0; i < 5; i++) {
+        await runBatch(
+          sharedSvc,
+          (batch) => {
+            batch.set(testCol, { id: `doc${i}`, text: `text-${i}`, value: i });
+            return Promise.resolve();
+          },
+          { skipHistory: true },
+        );
 
-      await waitForAssertion(() => {
-        const optimisticVersion = sharedSvc.batchVersion$();
-        expect(optimisticVersion?.prevVersion).toBe(previousVersion);
-        expect(optimisticVersion?.version).toBeDefined();
-        expect(optimisticVersion?.version).not.toBe(previousVersion);
-      });
-      previousVersion = sharedSvc.batchVersion$()!.version;
-    }
+        await waitForAssertion(() => {
+          const optimisticVersion = sharedSvc.batchVersion$();
+          expect(optimisticVersion?.prevVersion).toBe(previousVersion);
+          expect(optimisticVersion?.version).toBeDefined();
+          expect(optimisticVersion?.version).not.toBe(previousVersion);
+        });
+        previousVersion = sharedSvc.batchVersion$()!.version;
+      }
 
-    await waitForPendingCommitsForTest({ service: sharedSvc });
+      await waitForPendingCommitsForTest({ service: sharedSvc });
 
-    const batchVersionCol = collection(
-      sharedFirestore.firestore,
-      "batchVersion",
-    ) as SchemaCollectionReference<"batchVersion">;
-    const persisted = await getDocFromServer(doc(batchVersionCol, singletonDocumentId));
-    expect(persisted.data()?.version).toBe(previousVersion);
-  });
+      const batchVersionCol = collection(
+        sharedFirestore.firestore,
+        "batchVersion",
+      ) as SchemaCollectionReference<"batchVersion">;
+      const persisted = await getDocFromServer(doc(batchVersionCol, singletonDocumentId));
+      expect(persisted.data()?.version).toBe(previousVersion);
+    },
+  );
 
   it("rapid runBatch calls keep the persisted batchVersion chain linear", { timeout: 30000 }, async () => {
     await setupEmulator();
@@ -1135,10 +1135,14 @@ describe("runBatch stability", () => {
 
     await Promise.all(
       Array.from({ length: 3 }, (_, i) =>
-        runBatch(sharedSvc, (batch) => {
-          batch.set(testCol, { id: `doc${i}`, text: `history-${i}`, value: i });
-          return Promise.resolve();
-        }, { description: `concurrent-history-${i}` }),
+        runBatch(
+          sharedSvc,
+          (batch) => {
+            batch.set(testCol, { id: `doc${i}`, text: `history-${i}`, value: i });
+            return Promise.resolve();
+          },
+          { description: `concurrent-history-${i}` },
+        ),
       ),
     );
     await waitForPendingCommitsForTest({ service: sharedSvc });
@@ -1147,11 +1151,7 @@ describe("runBatch stability", () => {
     const entries = await getDocsOriginal(collection(sharedFirestore.firestore, "editHistory"));
     const descriptions = entries.docs.map((entry) => String(entry.data().description));
     expect(descriptions).toEqual(
-      expect.arrayContaining([
-        "concurrent-history-0",
-        "concurrent-history-1",
-        "concurrent-history-2",
-      ]),
+      expect.arrayContaining(["concurrent-history-0", "concurrent-history-1", "concurrent-history-2"]),
     );
   });
 
@@ -1206,27 +1206,24 @@ describe("runBatch stability", () => {
     expect(allEntries.size).toBeGreaterThanOrEqual(3);
   });
 
-  it("runBatch falls back to server read when batchVersion$ is undefined", { timeout: 30000 }, async () => {
+  it("runBatch uses the subscribed batchVersion", { timeout: 30000 }, async () => {
     await setupEmulator();
-    const testCol = testCollection(sharedFirestore.firestore, "fallback_docs");
-
-    const originalBatchVersion$ = sharedSvc.batchVersion$;
-    sharedSvc.batchVersion$ = () => undefined;
+    const testCol = testCollection(sharedFirestore.firestore, "subscribed_batch_version_docs");
+    expect(sharedSvc.batchVersion$()?.version).toBe("__INITIAL__");
 
     await runBatch(
       sharedSvc,
       (batch) => {
-        batch.set(testCol, { id: "fallbackDoc", text: "via-fallback", value: 1 });
+        batch.set(testCol, { id: "subscribedDoc", text: "via-subscription", value: 1 });
         return Promise.resolve();
       },
       { skipHistory: true },
     );
-    sharedSvc.batchVersion$ = originalBatchVersion$;
     await waitForPendingCommitsForTest({ service: sharedSvc });
 
-    const d = await getDocOriginal(doc(testCol, "fallbackDoc"));
+    const d = await getDocOriginal(doc(testCol, "subscribedDoc"));
     expect(d.exists()).toBe(true);
-    expect(d.data()!.text).toBe("via-fallback");
+    expect(d.data()!.text).toBe("via-subscription");
   });
 
   it("uses previous pending overlay data as inverse history old values", { timeout: 30000 }, async () => {
@@ -1242,7 +1239,7 @@ describe("runBatch stability", () => {
     await setup.commit();
 
     const batchId = "overlay-inverse-old-value";
-    sharedSvc.overlay.apply(batchId, [
+    testOverlay(sharedSvc).apply(batchId, [
       {
         type: "update",
         batchId: "",
@@ -1266,7 +1263,7 @@ describe("runBatch stability", () => {
         },
       ]);
     } finally {
-      sharedSvc.overlay.rollback(batchId, undefined);
+      testOverlay(sharedSvc).rollback(batchId, undefined);
     }
   });
 
@@ -1283,7 +1280,7 @@ describe("runBatch stability", () => {
     await setup.commit();
 
     const batchId = "current-overlay-inverse-old-value";
-    sharedSvc.overlay.apply(batchId, [
+    testOverlay(sharedSvc).apply(batchId, [
       {
         type: "update",
         batchId: "",
@@ -1307,7 +1304,7 @@ describe("runBatch stability", () => {
         },
       ]);
     } finally {
-      sharedSvc.overlay.rollback(batchId, undefined);
+      testOverlay(sharedSvc).rollback(batchId, undefined);
     }
   });
 
@@ -1317,7 +1314,7 @@ describe("runBatch stability", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     try {
-      sharedSvc.overlay.acknowledgeDocument(`${testCol.id}/missing`, { text: "base", value: 0 });
+      testOverlay(sharedSvc).acknowledgeDocument(`${testCol.id}/missing`, { text: "base", value: 0 });
       await expect(
         runBatch(
           sharedSvc,
@@ -1359,14 +1356,22 @@ describe("runBatch stability", () => {
 
     try {
       await Promise.all([
-        runBatch(sharedSvc, (batch) => {
-          batch.set(testCol, { id: "successful", text: "committed", value: 1 });
-          return Promise.resolve();
-        }, { description: "partial-success" }),
-        runBatch(sharedSvc, (batch) => {
-          batch.update(testCol, { id: "missing", text: "forces failure", value: 2 });
-          return Promise.resolve();
-        }, { description: "partial-failure" }),
+        runBatch(
+          sharedSvc,
+          (batch) => {
+            batch.set(testCol, { id: "successful", text: "committed", value: 1 });
+            return Promise.resolve();
+          },
+          { description: "partial-success" },
+        ),
+        runBatch(
+          sharedSvc,
+          (batch) => {
+            batch.update(testCol, { id: "missing", text: "forces failure", value: 2 });
+            return Promise.resolve();
+          },
+          { description: "partial-failure" },
+        ),
       ]);
       await waitForPendingCommitsForTest({ service: sharedSvc });
 
@@ -1379,10 +1384,14 @@ describe("runBatch stability", () => {
       expect(successEntry).toBeTruthy();
       expect(sharedSvc.editHistoryHead$()?.entryId).toBe(successEntry?.id);
 
-      await runBatch(sharedSvc, (batch) => {
-        batch.set(testCol, { id: "afterPartialFailure", text: "after", value: 3 });
-        return Promise.resolve();
-      }, { description: "after-partial-failure" });
+      await runBatch(
+        sharedSvc,
+        (batch) => {
+          batch.set(testCol, { id: "afterPartialFailure", text: "after", value: 3 });
+          return Promise.resolve();
+        },
+        { description: "after-partial-failure" },
+      );
       await waitForPendingCommitsForTest({ service: sharedSvc });
 
       const entriesAfter = await getDocsOriginal(collection(sharedFirestore.firestore, "editHistory"));
@@ -1465,152 +1474,176 @@ describe("runBatch stability", () => {
     expect(sharedSvc.editHistoryHead$()?.entryId).toBe(retryEntries[0].id);
   });
 
-  it("rolls back user, ngram, history, head, and batchVersion overlay after history commit failure", { timeout: 30000 }, async () => {
-    await setupEmulator();
-    const testCol = testCollection(sharedFirestore.firestore, "history_failure_docs");
-    const ngramsCol = collection(sharedFirestore.firestore, "ngrams");
-    collectionNgramConfig[testCol.id] = true;
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  it(
+    "rolls back user, ngram, history, head, and batchVersion overlay after history commit failure",
+    { timeout: 30000 },
+    async () => {
+      await setupEmulator();
+      const testCol = testCollection(sharedFirestore.firestore, "history_failure_docs");
+      const ngramsCol = collection(sharedFirestore.firestore, "ngrams");
+      collectionNgramConfig[testCol.id] = true;
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-    try {
-      const setup = writeBatch(sharedFirestore.firestore);
-      setup.set(doc(testCol, "target"), {
-        text: "searchable",
-        value: 1,
-        createdAt: timestampForCreatedAt,
-        updatedAt: timestampForCreatedAt,
-      });
-      setup.set(doc(ngramsCol, `target${testCol.id}`), {
-        collection: testCol.id,
-        text: "searchable",
-        normalizedText: "searchable",
-        ngramMap: { se: true },
-      });
-      await setup.commit();
-      await getDocOriginal(doc(testCol, "target"));
+      try {
+        const setup = writeBatch(sharedFirestore.firestore);
+        setup.set(doc(testCol, "target"), {
+          text: "searchable",
+          value: 1,
+          createdAt: timestampForCreatedAt,
+          updatedAt: timestampForCreatedAt,
+        });
+        setup.set(doc(ngramsCol, `target${testCol.id}`), {
+          collection: testCol.id,
+          text: "searchable",
+          normalizedText: "searchable",
+          ngramMap: { se: true },
+        });
+        await setup.commit();
+        await getDocOriginal(doc(testCol, "target"));
 
-      const beforeVersion = sharedSvc.batchVersion$()?.version;
-      await runBatch(sharedSvc, (batch) => {
-        batch.update(testCol, { id: "target", text: "temporary", value: 2 });
-        batch.update(testCol, { id: "missing", text: "forces failure", value: 3 });
-        return Promise.resolve();
-      }, { description: "failed-history-batch" });
+        const beforeVersion = sharedSvc.batchVersion$()?.version;
+        await runBatch(
+          sharedSvc,
+          (batch) => {
+            batch.update(testCol, { id: "target", text: "temporary", value: 2 });
+            batch.update(testCol, { id: "missing", text: "forces failure", value: 3 });
+            return Promise.resolve();
+          },
+          { description: "failed-history-batch" },
+        );
 
-      expect(sharedSvc.overlay.mergeDocument(testCol.id, "target", {
-        id: "target",
-        text: "searchable",
-        value: 1,
-      })?.text).toBe("temporary");
+        expect(
+          testOverlay(sharedSvc).mergeDocument(testCol.id, "target", {
+            id: "target",
+            text: "searchable",
+            value: 1,
+          })?.text,
+        ).toBe("temporary");
 
-      await waitForPendingCommitsForTest({ service: sharedSvc });
+        await waitForPendingCommitsForTest({ service: sharedSvc });
 
-      expect(consoleError).toHaveBeenCalled();
-      expect(hasCommitFailureForTest(sharedSvc)).toBe(true);
-      expect(sharedSvc.overlay.mergeDocument(testCol.id, "target", {
-        id: "target",
-        text: "searchable",
-        value: 1,
-      })?.text).toBe("searchable");
-      expect(sharedSvc.overlay.mergeDocument("ngrams", `target${testCol.id}`, {
-        id: `target${testCol.id}`,
-        collection: testCol.id,
-        text: "searchable",
-        normalizedText: "searchable",
-        ngramMap: { se: true },
-      })?.text).toBe("searchable");
-      const batchVersionCol = collection(
-        sharedFirestore.firestore,
-        "batchVersion",
-      ) as SchemaCollectionReference<"batchVersion">;
-      const serverVersion = await getDocFromServer(doc(batchVersionCol, singletonDocumentId));
-      expect(serverVersion.data()?.version).toBe(beforeVersion);
-      expect(sharedSvc.overlay.mergeDocument("batchVersion", singletonDocumentId, {
-        id: singletonDocumentId,
-        ...serverVersion.data()!,
-      })?.version).toBe(beforeVersion);
+        expect(consoleError).toHaveBeenCalled();
+        expect(hasCommitFailureForTest(sharedSvc)).toBe(true);
+        expect(
+          testOverlay(sharedSvc).mergeDocument(testCol.id, "target", {
+            id: "target",
+            text: "searchable",
+            value: 1,
+          })?.text,
+        ).toBe("searchable");
+        expect(
+          testOverlay(sharedSvc).mergeDocument("ngrams", `target${testCol.id}`, {
+            id: `target${testCol.id}`,
+            collection: testCol.id,
+            text: "searchable",
+            normalizedText: "searchable",
+            ngramMap: { se: true },
+          })?.text,
+        ).toBe("searchable");
+        const batchVersionCol = collection(
+          sharedFirestore.firestore,
+          "batchVersion",
+        ) as SchemaCollectionReference<"batchVersion">;
+        const serverVersion = await getDocFromServer(doc(batchVersionCol, singletonDocumentId));
+        expect(serverVersion.data()?.version).toBe(beforeVersion);
+        expect(
+          testOverlay(sharedSvc).mergeDocument("batchVersion", singletonDocumentId, {
+            id: singletonDocumentId,
+            ...serverVersion.data()!,
+          })?.version,
+        ).toBe(beforeVersion);
 
-      await runBatch(
-        sharedSvc,
-        (batch) => {
-          batch.set(testCol, { id: "afterFailure", text: "committed", value: 4 });
-          return Promise.resolve();
-        },
-        { description: "after-failed-history-batch" },
-      );
-      await waitForPendingCommitsForTest({ service: sharedSvc });
+        await runBatch(
+          sharedSvc,
+          (batch) => {
+            batch.set(testCol, { id: "afterFailure", text: "committed", value: 4 });
+            return Promise.resolve();
+          },
+          { description: "after-failed-history-batch" },
+        );
+        await waitForPendingCommitsForTest({ service: sharedSvc });
 
-      const committed = await getDocFromServer(doc(testCol, "afterFailure"));
-      expect(committed.exists()).toBe(true);
-      expect(hasCommitFailureForTest(sharedSvc)).toBe(false);
-    } finally {
-      consoleError.mockRestore();
-      Reflect.deleteProperty(collectionNgramConfig, testCol.id);
-    }
-  });
+        const committed = await getDocFromServer(doc(testCol, "afterFailure"));
+        expect(committed.exists()).toBe(true);
+        expect(hasCommitFailureForTest(sharedSvc)).toBe(false);
+      } finally {
+        consoleError.mockRestore();
+        Reflect.deleteProperty(collectionNgramConfig, testCol.id);
+      }
+    },
+  );
 
-  it("runBatch resolves after rollback when commit rejects without throwing to caller", { timeout: 30000 }, async () => {
-    await setupEmulator();
-    const testCol = testCollection(sharedFirestore.firestore, "async_reject_docs");
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  it(
+    "runBatch resolves after rollback when commit rejects without throwing to caller",
+    { timeout: 30000 },
+    async () => {
+      await setupEmulator();
+      const testCol = testCollection(sharedFirestore.firestore, "async_reject_docs");
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-    try {
+      try {
+        await expect(
+          runBatch(
+            sharedSvc,
+            (batch) => {
+              batch.update(testCol, { id: "missing", text: "optimistic", value: 1 });
+              return Promise.resolve();
+            },
+            { skipHistory: true },
+          ),
+        ).resolves.toBeUndefined();
+
+        await waitForPendingCommitsForTest({ service: sharedSvc });
+
+        expect(consoleError).toHaveBeenCalled();
+        expect(testOverlay(sharedSvc).mergeDocument(testCol.id, "missing", undefined)).toBeUndefined();
+      } finally {
+        consoleError.mockRestore();
+      }
+    },
+  );
+
+  it(
+    "does not apply overlay or leave queued work when updateFunction throws after mutations",
+    { timeout: 30000 },
+    async () => {
+      await setupEmulator();
+      const testCol = testCollection(sharedFirestore.firestore, "throw_after_mutation_docs");
+
       await expect(
         runBatch(
           sharedSvc,
           (batch) => {
-            batch.update(testCol, { id: "missing", text: "optimistic", value: 1 });
-            return Promise.resolve();
+            batch.set(testCol, { id: "neverCommitted", text: "optimistic", value: 1 });
+            throw new Error("boom");
           },
           { skipHistory: true },
         ),
-      ).resolves.toBeUndefined();
+      ).rejects.toThrow("boom");
 
-      await waitForPendingCommitsForTest({ service: sharedSvc });
+      expect(testOverlay(sharedSvc).mergeDocument(testCol.id, "neverCommitted", undefined)).toBeUndefined();
+      await waitForPendingCommitsForTest({ service: sharedSvc, timeoutMs: 10 });
 
-      expect(consoleError).toHaveBeenCalled();
-      expect(sharedSvc.overlay.mergeDocument(testCol.id, "missing", undefined)).toBeUndefined();
-    } finally {
-      consoleError.mockRestore();
-    }
-  });
-
-  it("does not apply overlay or leave queued work when updateFunction throws after mutations", { timeout: 30000 }, async () => {
-    await setupEmulator();
-    const testCol = testCollection(sharedFirestore.firestore, "throw_after_mutation_docs");
-
-    await expect(
-      runBatch(
+      await runBatch(
         sharedSvc,
         (batch) => {
-          batch.set(testCol, { id: "neverCommitted", text: "optimistic", value: 1 });
-          throw new Error("boom");
+          batch.set(testCol, { id: "afterThrow", text: "committed", value: 2 });
+          return Promise.resolve();
         },
         { skipHistory: true },
-      ),
-    ).rejects.toThrow("boom");
+      );
+      await waitForPendingCommitsForTest({ service: sharedSvc });
 
-    expect(sharedSvc.overlay.mergeDocument(testCol.id, "neverCommitted", undefined)).toBeUndefined();
-    await waitForPendingCommitsForTest({ service: sharedSvc, timeoutMs: 10 });
-
-    await runBatch(
-      sharedSvc,
-      (batch) => {
-        batch.set(testCol, { id: "afterThrow", text: "committed", value: 2 });
-        return Promise.resolve();
-      },
-      { skipHistory: true },
-    );
-    await waitForPendingCommitsForTest({ service: sharedSvc });
-
-    const committed = await getDocFromServer(doc(testCol, "afterThrow"));
-    expect(committed.exists()).toBe(true);
-  });
+      const committed = await getDocFromServer(doc(testCol, "afterThrow"));
+      expect(committed.exists()).toBe(true);
+    },
+  );
 
   it("does not commit and unlocks when the first overlay apply throws", { timeout: 30000 }, async () => {
     await setupEmulator();
     const testCol = testCollection(sharedFirestore.firestore, "overlay_apply_throw_docs");
-    const originalApply = sharedSvc.overlay.apply;
-    const applySpy = vi.spyOn(sharedSvc.overlay, "apply").mockImplementationOnce(() => {
+    const originalApply = testOverlay(sharedSvc).apply;
+    const applySpy = vi.spyOn(testOverlay(sharedSvc), "apply").mockImplementationOnce(() => {
       throw new Error("overlay boom");
     });
 
@@ -1631,7 +1664,7 @@ describe("runBatch stability", () => {
       expect(missing.exists()).toBe(false);
     } finally {
       applySpy.mockRestore();
-      sharedSvc.overlay.apply = originalApply;
+      testOverlay(sharedSvc).apply = originalApply;
     }
 
     await runBatch(
@@ -1648,15 +1681,13 @@ describe("runBatch stability", () => {
     expect(committed.exists()).toBe(true);
   });
 
-  it("applies user, history, and batchVersion overlay in one commit apply", { timeout: 30000 }, async () => {
+  it("applies user, history, and batchVersion overlay together at commit", { timeout: 30000 }, async () => {
     await setupEmulator();
     const testCol = testCollection(sharedFirestore.firestore, "later_overlay_apply_throw_docs");
-    const originalApply = sharedSvc.overlay.apply;
-    let applyCount = 0;
-    let appliedPaths: string[] = [];
-    const applySpy = vi.spyOn(sharedSvc.overlay, "apply").mockImplementation((batchId, mutations) => {
-      applyCount++;
-      appliedPaths = mutations.map((mutation) => mutation.path);
+    const originalApply = testOverlay(sharedSvc).apply;
+    const appliedPathGroups: string[][] = [];
+    const applySpy = vi.spyOn(testOverlay(sharedSvc), "apply").mockImplementation((batchId, mutations) => {
+      appliedPathGroups.push(mutations.map((mutation) => mutation.path));
       originalApply(batchId, mutations);
     });
 
@@ -1673,15 +1704,15 @@ describe("runBatch stability", () => {
 
       const committed = await getDocFromServer(doc(testCol, "committedDespiteOverlayThrow"));
       expect(committed.exists()).toBe(true);
-      expect(applyCount).toBe(1);
-      expect(appliedPaths).toEqual(
+      expect(appliedPathGroups.length).toBe(1);
+      expect(appliedPathGroups[0]).toEqual(
         expect.arrayContaining([
           `${testCol.id}/committedDespiteOverlayThrow`,
           `editHistoryHead/${singletonDocumentId}`,
           `batchVersion/${singletonDocumentId}`,
         ]),
       );
-      expect(appliedPaths.some((path) => path.startsWith("editHistory/"))).toBe(true);
+      expect(appliedPathGroups[0].some((path) => path.startsWith("editHistory/"))).toBe(true);
     } finally {
       applySpy.mockRestore();
     }
@@ -1707,7 +1738,6 @@ describe("runBatch stability", () => {
     expect(committed.exists()).toBe(true);
   });
 });
-
 
 describe("buildInverseOps", () => {
   it("builds delete as inverse of set", async (test) => {

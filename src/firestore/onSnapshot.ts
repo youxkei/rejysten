@@ -18,11 +18,7 @@ export function shouldAcknowledgeSnapshotMetadata(metadata: SnapshotMetadata): b
   return !metadata.fromCache && !metadata.hasPendingWrites;
 }
 
-function valuesEqualIgnoringFields(
-  a: unknown,
-  b: unknown,
-  ignoredFields: ReadonlySet<string>,
-): boolean {
+function valuesEqualIgnoringFields(a: unknown, b: unknown, ignoredFields: ReadonlySet<string>): boolean {
   if (a === b) return true;
   if (typeof a === "number" && typeof b === "number" && Number.isNaN(a) && Number.isNaN(b)) return true;
   if (a instanceof Timestamp && b instanceof Timestamp) return a.valueOf() === b.valueOf();
@@ -51,22 +47,23 @@ function valuesEqualIgnoringFields(
 }
 
 export type OnDocumentSnapshotOptions<T extends object, D extends T & { id: string }> = {
-  client: FirestoreClient,
-  ref: DocumentReference<T>,
-  getSnapshotData: (snapshot: DocumentSnapshot<T>) => D | undefined,
-  setValue: (value: D | undefined) => void,
-  shouldAcknowledge?: () => boolean,
-  timestampPrefix$?: () => string,
+  client: FirestoreClient;
+  ref: DocumentReference<T>;
+  getSnapshotData: (snapshot: DocumentSnapshot<T>) => D | undefined;
+  setValue: (value: D | undefined) => void;
+  shouldAcknowledge?: () => boolean;
+  timestampPrefix$?: () => string;
 };
 
 export type OnQuerySnapshotOptions<T extends object, D extends T & { id: string }> = {
-  client: FirestoreClient,
-  query: QueryWithMetadata<T>,
-  getSnapshotData: (snapshot: DocumentSnapshot<T>) => D | undefined,
-  setValue: (value: D[]) => void,
-  shouldAcknowledge?: () => boolean,
-  onServerSnapshot?: (snapshot: QuerySnapshot<T>) => void,
-  timestampPrefix$?: () => string,
+  client: FirestoreClient;
+  query: QueryWithMetadata<T>;
+  getSnapshotData: (snapshot: DocumentSnapshot<T>) => D | undefined;
+  setValue: (value: D[]) => void;
+  shouldAcknowledge?: () => boolean;
+  onServerSnapshot?: (snapshot: QuerySnapshot<T>) => void;
+  allowInitialEmit?: () => boolean;
+  timestampPrefix$?: () => string;
 };
 
 export function onDocumentSnapshot<T extends object, D extends T & { id: string }>(
@@ -80,9 +77,10 @@ export function onDocumentSnapshot<T extends object, D extends T & { id: string 
   let hasEmitted = false;
   let lastEmitted: D | undefined;
 
-  function emit(options?: { skipInitialUndefined?: boolean }): void {
+  function emit(options?: { requireSnapshotOrOverlay?: boolean }): void {
+    if (options?.requireSnapshotOrOverlay && snapshotData === undefined && !overlay.hasDocumentOverlay(ref.path))
+      return;
     const value = overlay.mergeDocument<T>(ref.parent.id, ref.id, snapshotData) as D | undefined;
-    if (options?.skipInitialUndefined && value === undefined) return;
     if (hasEmitted && valuesEqualIgnoringFields(lastEmitted, value, ignoredFieldsForEquality)) return;
     hasEmitted = true;
     lastEmitted = value;
@@ -108,7 +106,7 @@ export function onDocumentSnapshot<T extends object, D extends T & { id: string 
     emit();
   });
 
-  emit({ skipInitialUndefined: true });
+  emit({ requireSnapshotOrOverlay: true });
 
   return () => {
     unsubscribeOverlay();
@@ -126,6 +124,7 @@ export function onQuerySnapshot<T extends object, D extends T & { id: string }>(
     setValue,
     shouldAcknowledge,
     onServerSnapshot,
+    allowInitialEmit,
     timestampPrefix$,
   } = options;
   const { overlay } = client;
@@ -134,8 +133,9 @@ export function onQuerySnapshot<T extends object, D extends T & { id: string }>(
   let suppressOverlayEmit = false;
   let hasEmitted = false;
   let lastEmitted: D[] = [];
+  let hasReceivedSnapshot = false;
 
-  function emit(options?: { skipInitialEmpty?: boolean }): void {
+  function emit(): void {
     const value = overlay.mergeQuery<T>(snapshotData, {
       collection: query.collection,
       filters: query.filters,
@@ -143,7 +143,6 @@ export function onQuerySnapshot<T extends object, D extends T & { id: string }>(
       limit: query.limit,
       hasUntrackedConstraints: query.hasUntrackedConstraints,
     }) as D[];
-    if (options?.skipInitialEmpty && value.length === 0) return;
     if (hasEmitted && valuesEqualIgnoringFields(lastEmitted, value, ignoredFieldsForEquality)) return;
     hasEmitted = true;
     lastEmitted = value;
@@ -157,6 +156,7 @@ export function onQuerySnapshot<T extends object, D extends T & { id: string }>(
       const data = getSnapshotData(docSnap);
       return data === undefined ? [] : [data];
     });
+    hasReceivedSnapshot = true;
     if ((shouldAcknowledge?.() ?? true) && shouldAcknowledgeSnapshotMetadata(snapshot.metadata)) {
       suppressOverlayEmit = true;
       for (const docSnap of snapshot.docs) {
@@ -167,11 +167,14 @@ export function onQuerySnapshot<T extends object, D extends T & { id: string }>(
     emit();
   });
   const unsubscribeOverlay = overlay.subscribe((change) => {
+    if (!hasReceivedSnapshot && !(allowInitialEmit?.() ?? false)) return;
     if (suppressOverlayEmit || !change.collections.has(query.collection)) return;
     emit();
   });
 
-  emit({ skipInitialEmpty: true });
+  if (allowInitialEmit?.() ?? false) {
+    emit();
+  }
 
   return () => {
     unsubscribeOverlay();

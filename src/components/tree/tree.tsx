@@ -26,6 +26,7 @@ export function ChildrenNodes<C extends TreeNodeCollection>(props: {
   setSelectedId: (selectedID: string) => void;
   showNode: (node$: Accessor<DocumentData<Schema[C]>>, isSelected$: Accessor<boolean>) => JSXElement;
   createNewNode: (newId: string, initialText?: string) => Omit<DocumentData<Schema[C]>, keyof TreeNode>;
+  parentIsTreeNode?: boolean;
 }) {
   const firestore = useFirestoreService();
 
@@ -33,6 +34,12 @@ export function ChildrenNodes<C extends TreeNodeCollection>(props: {
     firestore,
     () => query(props.col, where("parentId", "==", props.parentId), orderBy("order", "asc")),
     () => `children nodes of "${props.parentId}"`,
+    {
+      allowInitialEmitWhenDocumentHasSetOverlay: () =>
+        props.parentIsTreeNode && props.parentId !== ""
+          ? { collection: String(props.col.id), id: props.parentId }
+          : undefined,
+    },
   );
   const childrenIds$ = createMemo(() => childrenNodes$().map((childNode) => childNode.id), [], { equals });
 
@@ -187,6 +194,7 @@ export function Node<C extends TreeNodeCollection>(props: {
               setSelectedId={props.setSelectedId}
               showNode={props.showNode}
               createNewNode={props.createNewNode}
+              parentIsTreeNode
             />
           </>
         );

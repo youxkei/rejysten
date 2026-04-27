@@ -45,8 +45,8 @@ actionsCreator.components.editHistory = ({ components: { editHistory: _context }
     lastRedoChildIndex = -1;
   }
 
-  async function getCurrentHeadId(): Promise<string> {
-    return (await getOptimisticHistoryHeadState(firestore)).entryId;
+  function getCurrentHeadId(): string {
+    return getOptimisticHistoryHeadState(firestore).entryId;
   }
 
   async function doUndo() {
@@ -107,14 +107,14 @@ actionsCreator.components.editHistory = ({ components: { editHistory: _context }
 
       if (lastRedoParentId !== null) {
         // Cycling mode: undo back to the branch point, but only if not already there
-        const currentHeadId = await getCurrentHeadId();
+        const currentHeadId = getCurrentHeadId();
         if (currentHeadId !== lastRedoParentId) {
           await undoEngine(firestore, optimisticHistoryReadOptions);
         }
         branchPointId = lastRedoParentId;
       } else {
         // First R press: we're at the branch point
-        branchPointId = await getCurrentHeadId();
+        branchPointId = getCurrentHeadId();
       }
 
       const children = await getChildren(firestore, branchPointId, optimisticHistoryReadOptions);

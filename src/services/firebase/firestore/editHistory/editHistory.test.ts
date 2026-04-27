@@ -8,6 +8,7 @@ import {
 } from "firebase/firestore";
 import { describe, it, vi, beforeAll, afterAll, expect } from "vitest";
 
+import { mergeDocumentWithOverlay } from "@/firestore/client";
 import {
   singletonDocumentId,
   type FirestoreService,
@@ -22,7 +23,6 @@ import {
 } from "@/services/firebase/firestore/batch";
 import { undo, redo, jumpTo, getChildren } from "@/services/firebase/firestore/editHistory";
 import "@/services/firebase/firestore/editHistory/schema";
-import { createOptimisticOverlay } from "@/services/firebase/firestore/overlay";
 import { type Schema } from "@/services/firebase/firestore/schema";
 import { createTestFirestoreService, timestampForServerTimestamp } from "@/services/firebase/firestore/test";
 import { acquireEmulator, releaseEmulator } from "@/test";
@@ -49,11 +49,23 @@ function createFullTestService(base: ReturnType<typeof createTestFirestoreServic
 
   return {
     firestore: base.firestore,
-    overlay: createOptimisticOverlay(),
+    firestoreClient: base.firestoreClient,
     clock$: () => false,
     setClock: () => undefined,
-    batchVersion$: () => batchVersion,
-    editHistoryHead$: () => editHistoryHead,
+    batchVersion$: () =>
+      mergeDocumentWithOverlay<Schema["batchVersion"]>(
+        base.firestoreClient,
+        "batchVersion",
+        singletonDocumentId,
+        batchVersion,
+      ),
+    editHistoryHead$: () =>
+      mergeDocumentWithOverlay<Schema["editHistoryHead"]>(
+        base.firestoreClient,
+        "editHistoryHead",
+        singletonDocumentId,
+        editHistoryHead,
+      ),
     services: {
       firebase: {} as FirestoreService["services"]["firebase"],
       store: {
@@ -865,12 +877,12 @@ describe("redo - edge cases", () => {
     const readPending = { waitForPendingCommits: false } as const;
 
     await refreshSignals();
-    const parentHead = (await getOptimisticHistoryHeadState(service)).entryId;
+    const parentHead = getOptimisticHistoryHeadState(service).entryId;
     await runBatch(service, async (batch) => {
       batch.set(col, { id: "optimisticDoc", text: "created", value: 1 });
     });
 
-    const createdHead = (await getOptimisticHistoryHeadState(service)).entryId;
+    const createdHead = getOptimisticHistoryHeadState(service).entryId;
     expect(createdHead).toBeTruthy();
 
     await undo(service, readPending);

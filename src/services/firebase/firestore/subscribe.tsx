@@ -1,11 +1,8 @@
 import { type DocumentReference, Timestamp } from "firebase/firestore";
 import { type Accessor, createMemo, createSignal, onCleanup } from "solid-js";
 
-import { type FirestoreClient } from "@/firestore/client";
-import {
-  onDocumentSnapshot,
-  onQuerySnapshot,
-} from "@/firestore/onSnapshot";
+import { createFirestoreClient, hasDocumentSetOverlay, type FirestoreClient } from "@/firestore/client";
+import { onDocumentSnapshot, onQuerySnapshot } from "@/firestore/onSnapshot";
 import { type QueryWithMetadata } from "@/firestore/query";
 import { type DocumentData, type FirestoreService, getDocumentData } from "@/services/firebase/firestore";
 import { createSubscribeWithResource } from "@/solid/subscribe";
@@ -54,11 +51,18 @@ function markSnapshotReady<T>(items: T[]): T[] {
   return items;
 }
 
+const firestoreClientFallbacks = new WeakMap<FirestoreService, FirestoreClient>();
+
 function getClient(service: FirestoreService): FirestoreClient {
-  return (service as { firestoreClient?: FirestoreClient }).firestoreClient ?? {
-    firestore: service.firestore,
-    overlay: service.overlay,
-  };
+  const client = (service as { firestoreClient?: FirestoreClient }).firestoreClient;
+  if (client) return client;
+
+  const cached = firestoreClientFallbacks.get(service);
+  if (cached) return cached;
+
+  const fallback = createFirestoreClient(service.firestore);
+  firestoreClientFallbacks.set(service, fallback);
+  return fallback;
 }
 
 function arraysEqualIgnoringServerFieldsAndSnapshotState(a: unknown, b: unknown): boolean {
@@ -104,6 +108,10 @@ export function createSubscribeAllSignal<T extends object>(
   service: FirestoreService,
   query$: () => QueryWithMetadata<T> | undefined,
   timestampPrefix$?: () => string,
+  options?: {
+    allowInitialEmit?: () => boolean;
+    allowInitialEmitWhenDocumentHasSetOverlay?: () => { collection: string; id: string } | undefined;
+  },
 ): Accessor<DocumentData<T>[]> & { ready$: Accessor<boolean> } {
   const [ready$, setReady] = createSignal(false);
   const value$ = createSubscribeWithResource(
@@ -118,8 +126,9 @@ export function createSubscribeAllSignal<T extends object>(
         setValue([]);
         return;
       }
+      const client = getClient(service);
       const unsubscribe = onQuerySnapshot({
-        client: getClient(service),
+        client,
         query: source.query,
         getSnapshotData: getDocumentData,
         setValue: (value) => {
@@ -127,6 +136,11 @@ export function createSubscribeAllSignal<T extends object>(
         },
         shouldAcknowledge: () => !service.clock$(),
         onServerSnapshot: () => setReady(true),
+        allowInitialEmit: () => {
+          if (options?.allowInitialEmit?.()) return true;
+          const target = options?.allowInitialEmitWhenDocumentHasSetOverlay?.();
+          return target ? hasDocumentSetOverlay(client, `${target.collection}/${target.id}`) : false;
+        },
         timestampPrefix$,
       });
 

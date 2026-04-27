@@ -11,16 +11,14 @@ import { type FirestoreClient } from "@/firestore/client";
 import { type OverlayMutation } from "@/firestore/optimisticOverlay";
 
 export type OptimisticWriteBatch = {
+  readonly batchId: string;
   set<T extends object>(documentRef: DocumentReference<T>, value: WithFieldValue<T>): OptimisticWriteBatch;
   set<T extends object>(
     documentRef: DocumentReference<T>,
     value: PartialWithFieldValue<T>,
     options: SetOptions,
   ): OptimisticWriteBatch;
-  update<T extends object>(
-    documentRef: DocumentReference<T>,
-    data: UpdateData<T>,
-  ): OptimisticWriteBatch;
+  update<T extends object>(documentRef: DocumentReference<T>, data: UpdateData<T>): OptimisticWriteBatch;
   delete<T extends object>(documentRef: DocumentReference<T>): OptimisticWriteBatch;
   commit(): void;
 };
@@ -59,20 +57,22 @@ export async function waitForPendingOptimisticCommits(options?: {
 }
 
 export function hasPendingOptimisticCommits(options?: { client?: FirestoreClient }): boolean {
-  return Array.from(pendingCommitTasks).some((entry) => options?.client === undefined || entry.client === options.client);
+  return Array.from(pendingCommitTasks).some(
+    (entry) => options?.client === undefined || entry.client === options.client,
+  );
 }
 
 export function hasOptimisticCommitFailure(client: FirestoreClient): boolean {
   return commitFailureStates.get(client) ?? false;
 }
 
-export function enqueueOptimisticCommit(
-  client: FirestoreClient,
-  task: () => Promise<void> | void,
-): Promise<void> {
+export function enqueueOptimisticCommit(client: FirestoreClient, task: () => Promise<void> | void): Promise<void> {
   const previousCommit = optimisticCommitQueues.get(client) ?? Promise.resolve();
   const commitTask = previousCommit.catch(() => undefined).then(task);
-  optimisticCommitQueues.set(client, commitTask.catch(() => undefined));
+  optimisticCommitQueues.set(
+    client,
+    commitTask.catch(() => undefined),
+  );
 
   const pendingCommitTask = { client, task: commitTask };
   pendingCommitTasks.add(pendingCommitTask);
@@ -134,16 +134,13 @@ function createOptimisticBatchId(): string {
   return `optimistic-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function optimisticBatch(
-  client: FirestoreClient,
-): OptimisticWriteBatch {
+export function optimisticBatch(client: FirestoreClient): OptimisticWriteBatch {
   const { overlay } = client;
   const batch = writeBatch(client.firestore);
   const batchId = createOptimisticBatchId();
 
   const overlayMutations: OverlayMutation[] = [];
-  const ignoredFieldsForOverlay =
-    client.optimisticBatch?.ignoredFieldsForOverlay ?? emptyIgnoredFieldsForOverlay;
+  const ignoredFieldsForOverlay = client.optimisticBatch?.ignoredFieldsForOverlay ?? emptyIgnoredFieldsForOverlay;
   let commitStarted = false;
 
   function assertCanWrite(): void {
@@ -152,12 +149,8 @@ export function optimisticBatch(
     }
   }
 
-  function applyInitialOverlayMutations(): void {
-    if (overlayMutations.length === 0) return;
-    overlay.apply(batchId, [...overlayMutations]);
-  }
-
   const batchWrapper: OptimisticWriteBatch = {
+    batchId,
     set<T extends object>(
       documentRef: DocumentReference<T>,
       value: WithFieldValue<T> | PartialWithFieldValue<T>,
@@ -203,7 +196,7 @@ export function optimisticBatch(
       if (commitStarted) {
         throw new Error("Cannot commit an optimistic batch more than once.");
       }
-      applyInitialOverlayMutations();
+      overlay.apply(batchId, overlayMutations);
       commitStarted = true;
 
       const previousCommit = serverCommitQueues.get(client) ?? Promise.resolve();
@@ -222,7 +215,10 @@ export function optimisticBatch(
           overlay.rollback(batchId, error);
           return false;
         });
-      serverCommitQueues.set(client, commitTask.then(() => undefined));
+      serverCommitQueues.set(
+        client,
+        commitTask.then(() => undefined),
+      );
 
       const pendingCommitTask = { client, task: commitTask };
       pendingCommitTasks.add(pendingCommitTask);

@@ -1,17 +1,10 @@
 import { doc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { afterAll, beforeAll, describe, it } from "vitest";
 
-import {
-  optimisticBatch,
-  waitForPendingOptimisticCommits,
-} from "@/firestore/batch";
+import { optimisticBatch, waitForPendingOptimisticCommits } from "@/firestore/batch";
 import { createFirestoreClient, type FirestoreClient } from "@/firestore/client";
 import { getDoc } from "@/firestore/get";
-import {
-  onDocumentSnapshot,
-  onQuerySnapshot,
-  shouldAcknowledgeSnapshotMetadata,
-} from "@/firestore/onSnapshot";
+import { onDocumentSnapshot, onQuerySnapshot, shouldAcknowledgeSnapshotMetadata } from "@/firestore/onSnapshot";
 import { limit, orderBy, query, where } from "@/firestore/query";
 import {
   createTestFirestore,
@@ -63,6 +56,39 @@ describe("onDocumentSnapshot optimistic overlay", () => {
       await waitUntil(() => setValueCount === 1);
       test.expect(latest).toBeUndefined();
     } finally {
+      unsubscribe();
+    }
+  });
+
+  it("synchronously emits a pre-existing document overlay before the first server snapshot", async (test) => {
+    const localClient = createFirestoreClient(firestore);
+    const col = testCollection(firestore, `${test.task.id}_${Date.now()}_doc_initial_overlay`);
+    localClient.overlay.apply("batch-initial-doc-overlay", [
+      {
+        type: "set",
+        batchId: "",
+        collection: col.id,
+        id: "pending",
+        path: `${col.id}/pending`,
+        data: { text: "from-overlay", value: 1 },
+      },
+    ]);
+
+    let latest: FirestoreTestDocWithId | undefined;
+
+    const unsubscribe = onDocumentSnapshot({
+      client: localClient,
+      ref: doc(col, "pending"),
+      getSnapshotData,
+      setValue: (value) => {
+        latest = value;
+      },
+    });
+
+    try {
+      test.expect(latest).toEqual({ id: "pending", text: "from-overlay", value: 1 });
+    } finally {
+      localClient.overlay.rollback("batch-initial-doc-overlay", undefined);
       unsubscribe();
     }
   });
@@ -358,7 +384,46 @@ describe("onQuerySnapshot optimistic overlay", () => {
     }
   });
 
-  it("synchronously emits a pre-existing pending set before the first server snapshot", async (test) => {
+  it("does not emit a query overlay change before the first server snapshot", async (test) => {
+    const localClient = createFirestoreClient(firestore);
+    const col = testCollection(firestore, `${test.task.id}_${Date.now()}_query_overlay_before_snapshot`);
+    let setValueCount = 0;
+    let latest: FirestoreTestDocWithId[] | undefined;
+
+    const unsubscribe = onQuerySnapshot({
+      client: localClient,
+      query: query(col),
+      getSnapshotData,
+      setValue: (value) => {
+        latest = value;
+        setValueCount++;
+      },
+    });
+
+    try {
+      localClient.overlay.apply("batch-query-before-snapshot", [
+        {
+          type: "set",
+          batchId: "",
+          collection: col.id,
+          id: "pending",
+          path: `${col.id}/pending`,
+          data: { text: "from-overlay", value: 1 },
+        },
+      ]);
+
+      test.expect(setValueCount).toBe(0);
+      test.expect(latest).toBeUndefined();
+
+      await waitUntil(() => setValueCount === 1);
+      test.expect(latest).toEqual([{ id: "pending", text: "from-overlay", value: 1 }]);
+    } finally {
+      localClient.overlay.rollback("batch-query-before-snapshot", undefined);
+      unsubscribe();
+    }
+  });
+
+  it("waits for the first server snapshot before emitting a pre-existing query overlay", async (test) => {
     const localClient = createFirestoreClient(firestore);
     const col = testCollection(firestore, `${test.task.id}_${Date.now()}_query_initial_overlay`);
     localClient.overlay.apply("batch-initial-overlay", [
@@ -372,6 +437,7 @@ describe("onQuerySnapshot optimistic overlay", () => {
       },
     ]);
 
+    let setValueCount = 0;
     let latest: FirestoreTestDocWithId[] | undefined;
 
     const unsubscribe = onQuerySnapshot({
@@ -380,13 +446,43 @@ describe("onQuerySnapshot optimistic overlay", () => {
       getSnapshotData,
       setValue: (value) => {
         latest = value;
+        setValueCount++;
       },
     });
 
     try {
+      test.expect(setValueCount).toBe(0);
+      test.expect(latest).toBeUndefined();
+
+      await waitUntil(() => setValueCount === 1);
       test.expect(latest).toEqual([{ id: "pending", text: "from-overlay", value: 1 }]);
     } finally {
       localClient.overlay.rollback("batch-initial-overlay", undefined);
+      unsubscribe();
+    }
+  });
+
+  it("synchronously emits the initial query value when initial emit is explicitly allowed", async (test) => {
+    const localClient = createFirestoreClient(firestore);
+    const col = testCollection(firestore, `${test.task.id}_${Date.now()}_query_allowed_initial`);
+    let setValueCount = 0;
+    let latest: FirestoreTestDocWithId[] | undefined;
+
+    const unsubscribe = onQuerySnapshot({
+      client: localClient,
+      query: query(col),
+      getSnapshotData,
+      setValue: (value) => {
+        latest = value;
+        setValueCount++;
+      },
+      allowInitialEmit: () => true,
+    });
+
+    try {
+      test.expect(setValueCount).toBe(1);
+      test.expect(latest).toEqual([]);
+    } finally {
       unsubscribe();
     }
   });
@@ -429,6 +525,12 @@ describe("onQuerySnapshot optimistic overlay", () => {
       queryB: [],
       queryC: [],
     };
+    const queryReady = {
+      queryA: false,
+      queryAValueOne: false,
+      queryB: false,
+      queryC: false,
+    };
 
     const unsubscribes = [
       onDocumentSnapshot({
@@ -464,6 +566,7 @@ describe("onQuerySnapshot optimistic overlay", () => {
         getSnapshotData,
         setValue: (value) => {
           latest.queryA = value;
+          queryReady.queryA = true;
           if (armed) counts.queryA++;
         },
       }),
@@ -473,6 +576,7 @@ describe("onQuerySnapshot optimistic overlay", () => {
         getSnapshotData,
         setValue: (value) => {
           latest.queryAValueOne = value;
+          queryReady.queryAValueOne = true;
           if (armed) counts.queryAValueOne++;
         },
       }),
@@ -482,6 +586,7 @@ describe("onQuerySnapshot optimistic overlay", () => {
         getSnapshotData,
         setValue: (value) => {
           latest.queryB = value;
+          queryReady.queryB = true;
           if (armed) counts.queryB++;
         },
       }),
@@ -491,18 +596,24 @@ describe("onQuerySnapshot optimistic overlay", () => {
         getSnapshotData,
         setValue: (value) => {
           latest.queryC = value;
+          queryReady.queryC = true;
           if (armed) counts.queryC++;
         },
       }),
     ];
 
     try {
-      await waitUntil(() =>
-        latest.docUpdate?.text === "old" &&
-        latest.docDelete?.text === "delete" &&
-        latest.queryA.length === 2 &&
-        latest.queryAValueOne.length === 2 &&
-        latest.queryC.length === 1,
+      await waitUntil(
+        () =>
+          latest.docUpdate?.text === "old" &&
+          latest.docDelete?.text === "delete" &&
+          queryReady.queryA &&
+          queryReady.queryAValueOne &&
+          queryReady.queryB &&
+          queryReady.queryC &&
+          latest.queryA.length === 2 &&
+          latest.queryAValueOne.length === 2 &&
+          latest.queryC.length === 1,
       );
 
       armed = true;
@@ -549,6 +660,7 @@ describe("onQuerySnapshot optimistic overlay", () => {
     let armed = false;
     let setValueCount = 0;
     let latest: FirestoreTestDocWithId[] = [];
+    let queryReady = false;
     let finalRemoteSnapshotSeen = false;
 
     const unsubscribe = onQuerySnapshot({
@@ -557,6 +669,7 @@ describe("onQuerySnapshot optimistic overlay", () => {
       getSnapshotData,
       setValue: (value) => {
         latest = value;
+        queryReady = true;
         if (armed) {
           setValueCount++;
         }
@@ -571,7 +684,7 @@ describe("onQuerySnapshot optimistic overlay", () => {
     });
 
     try {
-      await waitUntil(() => latest.length === 0);
+      await waitUntil(() => queryReady);
       armed = true;
 
       const firstBatch = optimisticBatch(localClient);
@@ -652,10 +765,11 @@ describe("onQuerySnapshot optimistic overlay", () => {
     ];
 
     try {
-      await waitUntil(() =>
-        limited.map((docData) => docData.id).join(",") === "first" &&
-        limitedDesc.map((docData) => docData.id).join(",") === "third,second" &&
-        unrelated.map((docData) => docData.id).join(",") === "other",
+      await waitUntil(
+        () =>
+          limited.map((docData) => docData.id).join(",") === "first" &&
+          limitedDesc.map((docData) => docData.id).join(",") === "third,second" &&
+          unrelated.map((docData) => docData.id).join(",") === "other",
       );
 
       armed = true;

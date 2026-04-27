@@ -16,7 +16,6 @@ import {
 } from "@/services/firebase/firestore";
 import { OperationRecordingBatch } from "@/services/firebase/firestore/batch";
 import { collectionNgramConfig } from "@/services/firebase/firestore/ngram";
-import { createOptimisticOverlay } from "@/services/firebase/firestore/overlay";
 import { type Schema } from "@/services/firebase/firestore/schema";
 import {
   createTestFirestoreService,
@@ -49,10 +48,23 @@ let service: FirestoreService;
 let firestore: Firestore;
 let emulatorPort: number;
 
+function testOverlay(testService: FirestoreService) {
+  return testService.firestoreClient!.overlay;
+}
+
 beforeAll(async () => {
   emulatorPort = await acquireEmulator();
   const result = createTestFirestoreService(emulatorPort, "treeNode-test");
-  service = { ...result, overlay: createOptimisticOverlay() } as FirestoreService;
+  service = {
+    ...result,
+    clock$: () => false,
+    setClock: () => undefined,
+    batchVersion$: () => undefined,
+    services: {
+      firebase: {} as FirestoreService["services"]["firebase"],
+      store: {} as FirestoreService["services"]["store"],
+    },
+  } as FirestoreService;
   firestore = result.firestore;
 });
 
@@ -171,7 +183,7 @@ describe.concurrent("treeNode", () => {
       const baseNode = await getDoc(col, "base");
       const batchId = `${ctx.task.id}:pending-prev`;
 
-      service.overlay.apply(batchId, [
+      testOverlay(service).apply(batchId, [
         {
           type: "set",
           batchId: "",
@@ -192,7 +204,7 @@ describe.concurrent("treeNode", () => {
         const result = await getPrevNode(service, col, baseNode);
         ctx.expect(result?.text).toBe("pending");
       } finally {
-        service.overlay.rollback(batchId, undefined);
+        testOverlay(service).rollback(batchId, undefined);
       }
     });
 
@@ -243,7 +255,7 @@ describe.concurrent("treeNode", () => {
       const nearestNode = await getDoc(col, "nearest");
       const batchId = `${ctx.task.id}:pending-next-update`;
 
-      service.overlay.apply(batchId, [
+      testOverlay(service).apply(batchId, [
         {
           type: "update",
           batchId: "",
@@ -260,7 +272,7 @@ describe.concurrent("treeNode", () => {
         const result = await getNextNode(service, col, baseNode);
         ctx.expect(result?.text).toBe("farther");
       } finally {
-        service.overlay.rollback(batchId, undefined);
+        testOverlay(service).rollback(batchId, undefined);
       }
     });
   });
@@ -324,7 +336,7 @@ describe.concurrent("treeNode", () => {
       const parentNode = await getDoc(col, "parent");
       const batchId = `${ctx.task.id}:pending-first-delete`;
 
-      service.overlay.apply(batchId, [
+      testOverlay(service).apply(batchId, [
         {
           type: "delete",
           batchId: "",
@@ -338,7 +350,7 @@ describe.concurrent("treeNode", () => {
         const firstChild = await getFirstChildNode(service, col, parentNode);
         ctx.expect(firstChild?.text).toBe("second");
       } finally {
-        service.overlay.rollback(batchId, undefined);
+        testOverlay(service).rollback(batchId, undefined);
       }
     });
   });
@@ -369,7 +381,7 @@ describe.concurrent("treeNode", () => {
       const firstNode = await getDoc(col, "first");
       const batchId = `${ctx.task.id}:pending-last`;
 
-      service.overlay.apply(batchId, [
+      testOverlay(service).apply(batchId, [
         {
           type: "set",
           batchId: "",
@@ -390,7 +402,7 @@ describe.concurrent("treeNode", () => {
         const lastChild = await getLastChildNode(service, col, parentNode);
         ctx.expect(lastChild?.text).toBe("pending-last");
       } finally {
-        service.overlay.rollback(batchId, undefined);
+        testOverlay(service).rollback(batchId, undefined);
       }
     });
   });

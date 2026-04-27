@@ -19,7 +19,12 @@ import {
   optimisticBatch,
   type OptimisticWriteBatch,
 } from "@/firestore/batch";
-import { type FirestoreClient } from "@/firestore/client";
+import {
+  applyCommittedOverlayMutations,
+  createFirestoreClient,
+  mergeDocumentWithOverlay,
+  type FirestoreClient,
+} from "@/firestore/client";
 import { type OverlayMutation } from "@/firestore/optimisticOverlay";
 import {
   type DocumentData,
@@ -224,7 +229,7 @@ export class OperationRecordingBatch {
     const editHistoryHeadCol = getCollection(this.service, "editHistoryHead");
 
     const historyEntryId = uuidv7();
-    const currentHead = await getOptimisticHistoryHeadState(this.service);
+    const currentHead = getOptimisticHistoryHeadState(this.service);
     const parentId = currentHead.entryId;
 
     this.set(editHistoryCol, {
@@ -324,7 +329,7 @@ export class OperationRecordingBatch {
 
       const batchVersionCol = getCollection(this.service, "batchVersion");
       const newBatchVersion = uuidv7();
-      const batchVersionVersion = await getOptimisticBatchVersion(this.service, batchVersionCol);
+      const batchVersionVersion = await getOptimisticBatchVersion(this.service);
       if (batchVersionVersion) {
         this.updateSingleton(batchVersionCol, {
           prevVersion: batchVersionVersion,
@@ -357,22 +362,24 @@ function isOptimisticWriteBatch(writer: Writer): writer is Writer & OptimisticWr
   return "commit" in writer && typeof writer.commit === "function";
 }
 
-export async function getOptimisticHistoryHeadState(service: FirestoreService): Promise<OptimisticHistoryHeadState> {
-  const editHistoryHeadCol = getCollection(service, "editHistoryHead");
-  const cached = await getSingletonDoc(service, editHistoryHeadCol);
+export function getOptimisticHistoryHeadState(service: FirestoreService): OptimisticHistoryHeadState {
+  const cached = mergeDocumentWithOverlay<Schema["editHistoryHead"]>(
+    getClient(service),
+    "editHistoryHead",
+    singletonDocumentId,
+    service.editHistoryHead$(),
+  );
   return cached ? { exists: true, entryId: cached.entryId } : { exists: false, entryId: "" };
 }
 
-async function getOptimisticBatchVersion(
-  service: FirestoreService,
-  batchVersionCol: SchemaCollectionReference<"batchVersion">,
-): Promise<string | undefined> {
+async function getOptimisticBatchVersion(service: FirestoreService): Promise<string | undefined> {
   const client = getClient(service);
   if (hasOptimisticCommitFailure(client)) {
+    const batchVersionCol = getCollection(service, "batchVersion");
     return (await getSingletonDoc(service, batchVersionCol, { fromServer: true }))?.version;
   }
 
-  return (await getSingletonDoc(service, batchVersionCol))?.version;
+  return service.batchVersion$()?.version;
 }
 
 function getClient(service: FirestoreService): FirestoreClient {
@@ -380,13 +387,11 @@ function getClient(service: FirestoreService): FirestoreClient {
   if (client) return client;
 
   const cached = firestoreClientFallbacks.get(service);
-  if (cached?.overlay === service.overlay) return cached;
+  if (cached) return cached;
 
-  const fallbackClient: FirestoreClient = {
-    firestore: service.firestore,
-    overlay: service.overlay,
+  const fallbackClient = createFirestoreClient(service.firestore, {
     optimisticBatch: { ignoredFieldsForOverlay },
-  };
+  });
   firestoreClientFallbacks.set(service, fallbackClient);
   return fallbackClient;
 }
@@ -425,7 +430,7 @@ export async function runBatch(
 
     const client = getClient(service);
     const optimisticWriteBatch = optimisticBatch(client);
-    const batch = new OperationRecordingBatch(service, optimisticWriteBatch);
+    const batch = new OperationRecordingBatch(service, optimisticWriteBatch, optimisticWriteBatch.batchId);
     await updateFunction(batch);
     await batch.commit(options);
   } finally {
@@ -447,9 +452,7 @@ export async function runTransaction(
   const batchVersionCol = getCollection(service, "batchVersion");
   const batchVersionRef = doc(batchVersionCol, singletonDocumentId);
   const batchVersionSnap = await getDocFromServer(batchVersionRef);
-  const batchVersionDoc = batchVersionSnap.exists()
-    ? withId(singletonDocumentId, batchVersionSnap.data())
-    : undefined;
+  const batchVersionDoc = batchVersionSnap.exists() ? withId(singletonDocumentId, batchVersionSnap.data()) : undefined;
   const overlayBatchId = uuidv7();
   let committedBatch: OperationRecordingBatch | undefined;
 
@@ -484,8 +487,7 @@ export async function runTransaction(
 
   if (committedBatch && committedBatch.overlayMutations.length > 0) {
     try {
-      service.overlay.apply(overlayBatchId, [...committedBatch.overlayMutations]);
-      service.overlay.markCommitted(overlayBatchId);
+      applyCommittedOverlayMutations(getClient(service), overlayBatchId, [...committedBatch.overlayMutations]);
     } catch {
       // The transaction has already committed; local overlay notification
       // failure must not turn the server write into an application failure.

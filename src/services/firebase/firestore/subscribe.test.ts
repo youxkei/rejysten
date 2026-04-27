@@ -15,7 +15,6 @@ import {
   waitForServerSync,
   singletonDocumentId,
 } from "@/services/firebase/firestore";
-import { createOptimisticOverlay } from "@/services/firebase/firestore/overlay";
 import { query, where } from "@/services/firebase/firestore/query";
 import {
   createSubscribeAllSignal,
@@ -58,7 +57,16 @@ beforeAll(async () => {
   emulatorPort = await acquireEmulator();
   const result = createTestFirestoreService(emulatorPort, "subscribe-test");
   const [clock$] = createSignal(false);
-  service = { ...result, clock$, overlay: createOptimisticOverlay() } as FirestoreService;
+  service = {
+    ...result,
+    clock$,
+    setClock: () => undefined,
+    batchVersion$: () => undefined,
+    services: {
+      firebase: {} as FirestoreService["services"]["firebase"],
+      store: {} as FirestoreService["services"]["store"],
+    },
+  } as FirestoreService;
   firestore = result.firestore;
 });
 

@@ -48,7 +48,7 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
       });
 
       if (firstValue) {
-        return Promise.resolve(firstValue.value);
+        return firstValue.value;
       } else {
         return new Promise<Value | InitialValue>((resolve) => {
           setResource = resolve as (value: Value) => void;
@@ -66,7 +66,12 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
   // of continuing to expose the previous subscription value.
   // Use startTransition for remote changes so subscription updates do not block
   // urgent UI work.
-  createComputed(() => startTransition(() => setSignal(() => resource$())));
+  createComputed(() => {
+    const value = resource$();
+    void startTransition(() => {
+      setSignal(() => value);
+    });
+  });
 
   return signal$;
 }

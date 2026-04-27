@@ -60,6 +60,24 @@ describe("mergeDocument", () => {
     expect(result).toEqual({ id: "a", text: "hello" });
   });
 
+  it("reports only composed set overlays as document set overlays", () => {
+    const overlay = createOptimisticOverlay();
+
+    expect(overlay.hasDocumentSetOverlay("__overlayTest__/a")).toBe(false);
+
+    overlay.apply("b1", [setMutation("a", { text: "hello" })]);
+    expect(overlay.hasDocumentSetOverlay("__overlayTest__/a")).toBe(true);
+
+    overlay.apply("b2", [updateMutation("a", { value: 1 })]);
+    expect(overlay.hasDocumentSetOverlay("__overlayTest__/a")).toBe(true);
+
+    overlay.apply("b3", [deleteMutation("a")]);
+    expect(overlay.hasDocumentSetOverlay("__overlayTest__/a")).toBe(false);
+
+    overlay.apply("b4", [updateMutation("b", { text: "update-only" })]);
+    expect(overlay.hasDocumentSetOverlay("__overlayTest__/b")).toBe(false);
+  });
+
   it("set overlay replaces existing snapshot", () => {
     const overlay = createOptimisticOverlay();
     overlay.apply("b1", [setMutation("a", { text: "hello" })]);

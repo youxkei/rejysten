@@ -297,6 +297,8 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
       if (!node) return;
 
       const newNodeId = uuidv7();
+      const selectedLifeLogId = state.panesLifeLogs.selectedLifeLogId;
+      const setIsEditing = context.setIsEditing;
 
       try {
         firestore.setClock(true);
@@ -307,28 +309,31 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
               await addPrevSibling(firestore, batch, lifeLogTreeNodesCol, node, {
                 id: newNodeId,
                 text: "",
-                lifeLogId: state.panesLifeLogs.selectedLifeLogId,
+                lifeLogId: selectedLifeLogId,
               });
             } else {
               await addNextSibling(firestore, batch, lifeLogTreeNodesCol, node, {
                 id: newNodeId,
                 text: "",
-                lifeLogId: state.panesLifeLogs.selectedLifeLogId,
+                lifeLogId: selectedLifeLogId,
               });
             }
+
+            await startTransition(() => {
+              setIsEditing(true);
+              updateState((s) => {
+                s.panesLifeLogs.selectedLifeLogNodeId = newNodeId;
+              });
+            });
           },
           {
             description: "ノード追加",
             prevSelection: currentSelection(),
-            nextSelection: { lifeLogs: state.panesLifeLogs.selectedLifeLogId, lifeLogTreeNodes: newNodeId },
+            nextSelection: { lifeLogs: selectedLifeLogId, lifeLogTreeNodes: newNodeId },
           },
         );
 
         await startTransition(() => {
-          updateState((s) => {
-            s.panesLifeLogs.selectedLifeLogNodeId = newNodeId;
-          });
-          context.setIsEditing(true);
           firestore.setClock(false);
         });
       } finally {

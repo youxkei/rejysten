@@ -56,6 +56,8 @@ export type OptimisticOverlay = {
   markCommitted: (batchId: string) => void;
   rollback: (batchId: string, error: unknown) => void;
   acknowledgeDocument: (path: string, serverData: object | undefined) => void;
+  hasDocumentOverlay: (path: string) => boolean;
+  hasDocumentSetOverlay: (path: string) => boolean;
   mergeDocument: <T extends object>(
     collection: string,
     id: string,
@@ -80,9 +82,7 @@ type DocumentOverlayResult =
   | { kind: "delete" }
   | { kind: "none" };
 
-function composeMutationsForDocument(
-  mutations: OverlayMutation[],
-): DocumentOverlayResult {
+function composeMutationsForDocument(mutations: OverlayMutation[]): DocumentOverlayResult {
   let result: DocumentOverlayResult = { kind: "none" };
 
   for (const m of mutations) {
@@ -154,11 +154,7 @@ function valuesEqual(a: unknown, b: unknown): boolean {
   return true;
 }
 
-function getFieldValue(
-  data: Record<string, unknown> | undefined,
-  fieldPath: string,
-  id?: string,
-): unknown {
+function getFieldValue(data: Record<string, unknown> | undefined, fieldPath: string, id?: string): unknown {
   if (data === undefined) return undefined;
   if (fieldPath === "__name__") return id;
   if (!fieldPath.includes(".")) {
@@ -174,10 +170,7 @@ function getFieldValue(
   return current;
 }
 
-function applyUpdateData(
-  base: Record<string, unknown>,
-  update: Record<string, unknown>,
-): Record<string, unknown> {
+function applyUpdateData(base: Record<string, unknown>, update: Record<string, unknown>): Record<string, unknown> {
   const result = { ...base };
 
   for (const [fieldPath, value] of Object.entries(update)) {
@@ -204,11 +197,7 @@ function applyUpdateData(
 }
 
 function isFirestoreSentinel(value: unknown, methodName: string): boolean {
-  return (
-    value !== null &&
-    typeof value === "object" &&
-    (value as { _methodName?: unknown })._methodName === methodName
-  );
+  return value !== null && typeof value === "object" && (value as { _methodName?: unknown })._methodName === methodName;
 }
 
 function applyFieldValue(target: Record<string, unknown>, key: string, value: unknown): void {
@@ -222,10 +211,7 @@ function applyFieldValue(target: Record<string, unknown>, key: string, value: un
       (value as { _operand?: unknown })._operand ??
       Object.values(value as Record<string, unknown>).find((candidate) => typeof candidate === "number");
     const current = target[key];
-    target[key] =
-      typeof current === "number" && typeof operand === "number"
-        ? current + operand
-        : operand;
+    target[key] = typeof current === "number" && typeof operand === "number" ? current + operand : operand;
     return;
   }
 
@@ -334,11 +320,7 @@ function hasUnsupportedFilter(metadata: QueryMetadata): boolean {
   return false;
 }
 
-function matchesQuery(
-  data: Record<string, unknown>,
-  metadata: QueryMetadata,
-  id?: string,
-): boolean {
+function matchesQuery(data: Record<string, unknown>, metadata: QueryMetadata, id?: string): boolean {
   for (const filter of metadata.filters) {
     if (!evaluateFilter(data, filter, id)) return false;
   }
@@ -403,9 +385,7 @@ function composedMutationsCaughtUp(
   return true;
 }
 
-export function createOptimisticOverlay(
-  options?: OptimisticOverlayOptions,
-): OptimisticOverlay {
+export function createOptimisticOverlay(options?: OptimisticOverlayOptions): OptimisticOverlay {
   let version = 0;
   const ignoredFieldsForCatchUp = new Set(options?.ignoredFieldsForCatchUp ?? defaultIgnoredFieldsForCatchUp);
   const listeners = new Set<(change: OverlayChange) => void>();
@@ -450,10 +430,7 @@ export function createOptimisticOverlay(
     return -1;
   }
 
-  function getMutationsForDocumentOnly(
-    path: string,
-    options?: { excludeBatchId?: string },
-  ): OverlayMutation[] {
+  function getMutationsForDocumentOnly(path: string, options?: { excludeBatchId?: string }): OverlayMutation[] {
     return getMutationsForDocument(batches, path, options);
   }
 
@@ -616,6 +593,16 @@ export function createOptimisticOverlay(
       }
     },
 
+    hasDocumentOverlay(path) {
+      return getMutationsForDocumentOnly(path).length > 0;
+    },
+
+    hasDocumentSetOverlay(path) {
+      const mutations = getMutationsForDocumentOnly(path);
+      if (mutations.length === 0) return false;
+      return composeMutationsForDocument(mutations).kind === "set";
+    },
+
     mergeDocument<T extends object>(
       collection: string,
       id: string,
@@ -678,9 +665,7 @@ export function createOptimisticOverlay(
           if (batch.status !== "committed") continue;
           const remaining = batch.mutations.filter(
             (mutation) =>
-              mutation.collection !== metadata.collection ||
-              mutation.type !== "delete" ||
-              byPath.has(mutation.path),
+              mutation.collection !== metadata.collection || mutation.type !== "delete" || byPath.has(mutation.path),
           );
           if (remaining.length === 0) {
             batches.splice(i, 1);
@@ -751,9 +736,7 @@ export function createOptimisticOverlay(
         result.push(doc);
       }
 
-      result.sort((a, b) =>
-        compareForOrder(stripIdField(a), stripIdField(b), a.id, b.id, metadata.orderBys),
-      );
+      result.sort((a, b) => compareForOrder(stripIdField(a), stripIdField(b), a.id, b.id, metadata.orderBys));
 
       return metadata.limit === undefined ? result : result.slice(0, metadata.limit);
     },

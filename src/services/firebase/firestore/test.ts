@@ -13,6 +13,7 @@ import {
 import { type SchemaCollectionReference } from "@/services/firebase/firestore";
 import { type Schema } from "@/services/firebase/firestore/schema";
 import { initializeApp, getApps } from "firebase/app";
+import { createFirestoreClient } from "@/firestore/client";
 
 export function createTestFirestoreService(
   emulatorPort: number,
@@ -49,7 +50,18 @@ export function createTestFirestoreService(
     firestore = getFirestore(firebaseApp);
   }
 
-  return { firestore, editHistoryHead$: () => undefined };
+  return {
+    firestore,
+    firestoreClient: createFirestoreClient(firestore, {
+      optimisticBatch: {
+        ignoredFieldsForOverlay: ["createdAt", "updatedAt"],
+      },
+      snapshot: {
+        ignoredFieldsForEquality: ["createdAt", "updatedAt"],
+      },
+    }),
+    editHistoryHead$: () => undefined,
+  };
 }
 
 export async function setDocs<C extends keyof Schema>(

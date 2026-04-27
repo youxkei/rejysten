@@ -22,7 +22,6 @@ import {
   getDoc as getFirestoreDoc,
   getDocs as getFirestoreDocs,
 } from "@/firestore/get";
-import { type OptimisticOverlay } from "@/firestore/optimisticOverlay";
 import { type QueryWithMetadata } from "@/firestore/query";
 import { ServiceNotAvailable } from "@/services/error";
 import { type FirebaseService, useFirebaseService } from "@/services/firebase";
@@ -44,7 +43,6 @@ export type FirestoreService = {
 
   firestore: Firestore;
   firestoreClient?: FirestoreClient;
-  overlay: OptimisticOverlay;
   clock$: Accessor<boolean>;
   setClock: (clock: boolean) => void;
   batchVersion$: Accessor<DocumentData<Schema["batchVersion"]> | undefined>;
@@ -114,7 +112,6 @@ export function FirestoreServiceProvider(props: {
     services: { firebase, store },
     firestore,
     firestoreClient,
-    overlay: firestoreClient.overlay,
     clock$,
     setClock,
     batchVersion$: () => undefined,
@@ -176,11 +173,18 @@ export function getCollection<C extends keyof Schema>(
 
 export { type Timestamps, type DocumentData, extractData } from "@/services/firebase/firestore/schema";
 
+const firestoreClientFallbacks = new WeakMap<FirestoreService, FirestoreClient>();
+
 function getClient(service: FirestoreService): FirestoreClient {
-  return (service as { firestoreClient?: FirestoreClient }).firestoreClient ?? {
-    firestore: service.firestore,
-    overlay: service.overlay,
-  };
+  const client = (service as { firestoreClient?: FirestoreClient }).firestoreClient;
+  if (client) return client;
+
+  const cached = firestoreClientFallbacks.get(service);
+  if (cached) return cached;
+
+  const fallback = createFirestoreClient(service.firestore);
+  firestoreClientFallbacks.set(service, fallback);
+  return fallback;
 }
 
 export function getDocumentData<T extends object>(documentSnapshot: DocumentSnapshot<T>): DocumentData<T> | undefined {
