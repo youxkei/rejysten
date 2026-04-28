@@ -7,6 +7,7 @@ import { type Accessor, createEffect, createMemo, For, type JSXElement, onCleanu
 import { useActionsService } from "@/services/actions";
 import {
   type DocumentData,
+  hasDocumentSetOverlay,
   type SchemaCollectionReference,
   useFirestoreService,
   widenSchemaCollectionRef,
@@ -35,10 +36,10 @@ export function ChildrenNodes<C extends TreeNodeCollection>(props: {
     () => query(props.col, where("parentId", "==", props.parentId), orderBy("order", "asc")),
     () => `children nodes of "${props.parentId}"`,
     {
-      allowInitialEmitWhenDocumentHasSetOverlay: () =>
+      allowInitialEmit: () =>
         props.parentIsTreeNode && props.parentId !== ""
-          ? { collection: String(props.col.id), id: props.parentId }
-          : undefined,
+          ? hasDocumentSetOverlay(firestore, doc(props.col, props.parentId))
+          : false,
     },
   );
   const childrenIds$ = createMemo(() => childrenNodes$().map((childNode) => childNode.id), [], { equals });

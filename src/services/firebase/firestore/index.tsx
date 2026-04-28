@@ -1,5 +1,6 @@
 import { FirebaseError } from "firebase/app";
 import {
+  type DocumentReference,
   type Query,
   collection,
   doc,
@@ -16,7 +17,11 @@ import {
 import { type Accessor, createContext, createSignal, type JSXElement, onCleanup, useContext } from "solid-js";
 
 import { awaitable } from "@/awaitableCallback";
-import { createFirestoreClient, type FirestoreClient } from "@/firestore/client";
+import {
+  createFirestoreClient,
+  hasDocumentSetOverlay as clientHasDocumentSetOverlay,
+  type FirestoreClient,
+} from "@/firestore/client";
 import {
   getDoc as getFirestoreDoc,
   getDocs as getFirestoreDocs,
@@ -184,6 +189,13 @@ function getClient(service: FirestoreService): FirestoreClient {
   const fallback = createFirestoreClient(service.firestore);
   firestoreClientFallbacks.set(service, fallback);
   return fallback;
+}
+
+export function hasDocumentSetOverlay<T extends object>(
+  service: FirestoreService,
+  ref: DocumentReference<T>,
+): boolean {
+  return clientHasDocumentSetOverlay(getClient(service), ref.path);
 }
 
 export async function getDoc<C extends keyof Schema>(

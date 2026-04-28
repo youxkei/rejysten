@@ -1,7 +1,7 @@
 import { type DocumentReference, Timestamp } from "firebase/firestore";
 import { type Accessor, createMemo, createSignal, onCleanup } from "solid-js";
 
-import { createFirestoreClient, hasDocumentSetOverlay, type FirestoreClient } from "@/firestore/client";
+import { createFirestoreClient, type FirestoreClient } from "@/firestore/client";
 import { onDocumentSnapshot, onQuerySnapshot } from "@/firestore/onSnapshot";
 import { type QueryWithMetadata } from "@/firestore/query";
 import { type DocumentData, type FirestoreService } from "@/services/firebase/firestore";
@@ -87,7 +87,6 @@ export function createSubscribeAllSignal<T extends object>(
   timestampPrefix$?: () => string,
   options?: {
     allowInitialEmit?: () => boolean;
-    allowInitialEmitWhenDocumentHasSetOverlay?: () => { collection: string; id: string } | undefined;
   },
 ): Accessor<DocumentData<T>[]> & { ready$: Accessor<boolean> } {
   const [hasQuery$, setHasQuery] = createSignal(false);
@@ -107,11 +106,7 @@ export function createSubscribeAllSignal<T extends object>(
         client,
         query: source.query,
         setValue,
-        allowInitialEmit: () => {
-          if (options?.allowInitialEmit?.()) return true;
-          const target = options?.allowInitialEmitWhenDocumentHasSetOverlay?.();
-          return target ? hasDocumentSetOverlay(client, `${target.collection}/${target.id}`) : false;
-        },
+        allowInitialEmit: options?.allowInitialEmit,
         timestampPrefix$,
       });
 
