@@ -1,4 +1,4 @@
-import { render } from "@solidjs/testing-library";
+import { render, waitFor } from "@solidjs/testing-library";
 import { doc, Timestamp, writeBatch } from "firebase/firestore";
 import { createSignal, onMount, Show, Suspense } from "solid-js";
 
@@ -299,6 +299,11 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
   if (!options?.outOfRangeLifeLogs?.length && !options?.skipDefaultLifeLogs) {
     await result.findByText("first lifelog");
   }
+  await waitFor(() => {
+    if (firestoreRef?.batchVersion$()?.version !== "__INITIAL__") {
+      throw new Error("batchVersion$ is not ready");
+    }
+  });
 
   return {
     result,
