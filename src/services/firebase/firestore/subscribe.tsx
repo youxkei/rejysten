@@ -40,18 +40,6 @@ function valuesEqualIgnoringServerFields(a: unknown, b: unknown): boolean {
   return true;
 }
 
-const snapshotReadySymbol = Symbol("snapshotReady");
-
-type SnapshotReadyArray = unknown[] & { [snapshotReadySymbol]?: boolean };
-
-function markSnapshotReady<T>(items: T[]): T[] {
-  Object.defineProperty(items, snapshotReadySymbol, {
-    value: true,
-    enumerable: false,
-  });
-  return items;
-}
-
 const firestoreClientFallbacks = new WeakMap<FirestoreService, FirestoreClient>();
 
 function getClient(service: FirestoreService): FirestoreClient {
@@ -64,17 +52,6 @@ function getClient(service: FirestoreService): FirestoreClient {
   const fallback = createFirestoreClient(service.firestore);
   firestoreClientFallbacks.set(service, fallback);
   return fallback;
-}
-
-function arraysEqualIgnoringServerFieldsAndSnapshotState(a: unknown, b: unknown): boolean {
-  if (
-    Array.isArray(a) &&
-    Array.isArray(b) &&
-    (a as SnapshotReadyArray)[snapshotReadySymbol] !== (b as SnapshotReadyArray)[snapshotReadySymbol]
-  ) {
-    return false;
-  }
-  return valuesEqualIgnoringServerFields(a, b);
 }
 
 export function createSubscribeSignal<T extends object>(
@@ -113,15 +90,14 @@ export function createSubscribeAllSignal<T extends object>(
     allowInitialEmitWhenDocumentHasSetOverlay?: () => { collection: string; id: string } | undefined;
   },
 ): Accessor<DocumentData<T>[]> & { ready$: Accessor<boolean> } {
-  const [ready$, setReady] = createSignal(false);
+  const [hasQuery$, setHasQuery] = createSignal(false);
   const value$ = createSubscribeWithResource(
     () => {
       const q = query$();
-      if (!q) setReady(false);
+      setHasQuery(q !== undefined);
       return { query: q };
     },
     (source, setValue: (value: DocumentData<T>[]) => void) => {
-      setReady(false);
       if (source.query === undefined) {
         setValue([]);
         return;
@@ -130,10 +106,7 @@ export function createSubscribeAllSignal<T extends object>(
       const unsubscribe = onQuerySnapshot({
         client,
         query: source.query,
-        setValue: (value) => {
-          setValue(markSnapshotReady(value));
-        },
-        onServerSnapshot: () => setReady(true),
+        setValue,
         allowInitialEmit: () => {
           if (options?.allowInitialEmit?.()) return true;
           const target = options?.allowInitialEmitWhenDocumentHasSetOverlay?.();
@@ -147,8 +120,8 @@ export function createSubscribeAllSignal<T extends object>(
     [],
   );
   const latched$ = createLatchSignal(value$, service.clock$, [], {
-    equals: arraysEqualIgnoringServerFieldsAndSnapshotState,
+    equals: valuesEqualIgnoringServerFields,
   });
-  const signal$ = createMemo(() => latched$(), [], { equals: arraysEqualIgnoringServerFieldsAndSnapshotState });
-  return Object.assign(signal$, { ready$ });
+  const signal$ = createMemo(() => latched$(), [], { equals: valuesEqualIgnoringServerFields });
+  return Object.assign(signal$, { ready$: () => hasQuery$() && value$.ready$() });
 }

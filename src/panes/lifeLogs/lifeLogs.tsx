@@ -141,8 +141,10 @@ export function TimeRangedLifeLogs(props: {
   const [hasLoadedOnce$, setHasLoadedOnce] = createSignal(false);
   createEffect(
     on(
-      () => lifeLogs$(),
-      () => setHasLoadedOnce(true),
+      () => lifeLogs$.ready$(),
+      (ready) => {
+        if (ready) setHasLoadedOnce(true);
+      },
       { defer: true },
     ),
   );

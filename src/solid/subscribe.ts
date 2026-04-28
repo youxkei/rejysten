@@ -5,33 +5,40 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
   subscriber: (source: Source, setValue: (value: Value) => void) => void,
   initialValue: InitialValue,
 ) {
-  let setResource: ((value: Value) => void) | undefined;
-  let mutateResource: ((value: Value) => void) | undefined;
+  type ResourceValue<T> = { value: T; version: number; sourceVersion: number };
+
+  let setResource: ((value: ResourceValue<Value | InitialValue>) => void) | undefined;
+  let mutateResource: ((value: ResourceValue<Value | InitialValue>) => void) | undefined;
   let activeVersion = 0;
+  let emittedVersion = 0;
 
   const [signal$, setSignal] = createSignal<InitialValue | Value>(initialValue);
+  const [ready$, setReady] = createSignal(false);
 
-  const [resource$, { mutate }] = createResource<Value | InitialValue, Source>(
+  const [resource$, { mutate }] = createResource<ResourceValue<Value | InitialValue>, Source>(
     source$,
     (source) => {
-      const version = ++activeVersion;
-      let firstValue: { value: Value } | undefined;
+      const sourceVersion = ++activeVersion;
+      setReady(false);
+      let firstValue: ResourceValue<Value | InitialValue> | undefined;
 
       subscriber(source, (value) => {
-        if (version !== activeVersion) return;
+        if (sourceVersion !== activeVersion) return;
+
+        const resourceValue = { value, version: ++emittedVersion, sourceVersion };
 
         if (!firstValue) {
-          firstValue = { value };
+          firstValue = resourceValue;
         }
 
         if (setResource) {
-          setResource(value);
+          setResource(resourceValue);
           setResource = undefined;
 
           return;
         }
 
-        mutateResource?.(value);
+        mutateResource?.(resourceValue);
       });
 
       // Resolve any still-pending fetcher Promise with initialValue on cleanup.
@@ -42,21 +49,21 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
       onCleanup(() => {
         activeVersion++;
         if (setResource) {
-          setResource(initialValue as unknown as Value);
+          setResource({ value: initialValue, version: 0, sourceVersion: 0 });
           setResource = undefined;
         }
       });
 
       if (firstValue) {
-        return firstValue.value;
+        return firstValue;
       } else {
-        return new Promise<Value | InitialValue>((resolve) => {
-          setResource = resolve as (value: Value) => void;
+        return new Promise<ResourceValue<Value | InitialValue>>((resolve) => {
+          setResource = resolve as (value: ResourceValue<Value | InitialValue>) => void;
         });
       }
     },
     {
-      initialValue,
+      initialValue: { value: initialValue, version: 0, sourceVersion: 0 },
     },
   );
 
@@ -67,13 +74,17 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
   // Use startTransition for remote changes so subscription updates do not block
   // urgent UI work.
   createComputed(() => {
-    const value = resource$();
+    const resourceValue = resource$();
     void startTransition(() => {
-      setSignal(() => value);
+      setSignal(() => resourceValue.value);
+    }).then(() => {
+      if (resourceValue.version !== 0 && resourceValue.sourceVersion === activeVersion) {
+        setReady(true);
+      }
     });
   });
 
-  return signal$;
+  return Object.assign(signal$, { ready$ });
 }
 
 export function createSubscribeWithSignal<Value, InitialValue>(
