@@ -5,7 +5,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, vi } from "vitest";
 
 import { awaitPendingCallbacks } from "@/awaitableCallback";
 import { handleShare } from "@/components/share";
-import { fetchOGPMeta } from "@/ogp";
+import { fetchOGPMeta, resolveUrl } from "@/ogp";
 import { baseTime } from "@/panes/lifeLogs/test";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import {
@@ -34,6 +34,7 @@ vi.mock(import("@/date"), async () => {
 vi.mock(import("@/ogp"), async () => {
   return {
     fetchOGPMeta: vi.fn().mockResolvedValue({ title: null, description: null }),
+    resolveUrl: vi.fn().mockResolvedValue(null),
   };
 });
 
@@ -390,6 +391,93 @@ describe("share", () => {
     const netSurfLog = logs.find((l) => l.text === "ネットサーフィン");
     expect(store.state.panesLifeLogs.selectedLifeLogId).toBe(netSurfLog!.id);
     expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(allNodes[0].id);
+  });
+
+  it("normalizes Kindle progress share to book progress and resolved amazon.co.jp product link", async ({
+    db,
+    task,
+  }) => {
+    const shareText =
+      'この本を1%読みました。あなたも気に入るかもしれません - "悪役令嬢転生おじさん(10) (ヤングキングコミックス)" (上山道郎 著)\n\nこちらから無料で読み始められます: https://a.co/03dKDbGh';
+    history.replaceState(null, "", `/?title=Kindle&text=${encodeURIComponent(shareText)}`);
+    vi.mocked(resolveUrl).mockResolvedValueOnce(
+      "https://read.amazon.com/kp/kshare?asin=B0D7DPXQT8&id=fcrvf7rigjfillonun7bacncei",
+    );
+
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    const readingLog = runningLogs.find((l) => l.text === "読書");
+    expect(readingLog).toBeTruthy();
+
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", readingLog!.id)), {
+      fromServer: true,
+    });
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe(
+      "[悪役令嬢転生おじさん(10) (ヤングキングコミックス) / 上山道郎 / 1%](https://www.amazon.co.jp/dp/B0D7DPXQT8)",
+    );
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe(readingLog!.id);
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(nodes[0].id);
+    expect(resolveUrl).toHaveBeenCalledWith("https://a.co/03dKDbGh");
+    expect(fetchOGPMeta).not.toHaveBeenCalled();
+  });
+
+  it("normalizes Kindle share with ASIN URL to amazon.co.jp product link", async ({ db, task }) => {
+    const shareText =
+      'この本を12%読みました。あなたも気に入るかもしれません - "サンプル本" (著者名 著)\n\nこちらから無料で読み始められます: https://read.amazon.com/?asin=B012345678';
+    history.replaceState(null, "", `/?title=Kindle&text=${encodeURIComponent(shareText)}`);
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")), {
+      fromServer: true,
+    });
+    expect(allNodes).toHaveLength(1);
+    expect(allNodes[0].text).toBe("[サンプル本 / 著者名 / 12%](https://www.amazon.co.jp/dp/B012345678)");
   });
 
   it("creates 読書 lifeLog for ncode.syosetu.com URL", async ({ db, task }) => {

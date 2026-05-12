@@ -3,7 +3,7 @@ import { onMount } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
 import { DateNow } from "@/date";
-import { fetchOGPMeta } from "@/ogp";
+import { fetchOGPMeta, resolveUrl } from "@/ogp";
 import "@/panes/lifeLogs/schema";
 import "@/components/share/store";
 import { type FirestoreService, getCollection, getDocs, useFirestoreService } from "@/services/firebase/firestore";
@@ -14,6 +14,38 @@ import { useStoreService } from "@/services/store";
 import { showToast } from "@/services/toast";
 import { styles } from "@/styles.css";
 import { noneTimestamp } from "@/timestamp";
+
+function extractAsin(url: string | null): string | null {
+  return url?.match(/(?:\/|[?&](?:asin|ASIN)=)([A-Z0-9]{10})(?:[/?&#]|$)/)?.[1] ?? null;
+}
+
+async function toAmazonJpLink(url: string, title: string, author: string): Promise<string> {
+  let asin = extractAsin(url);
+
+  const hostname = new URL(url).hostname;
+  if (!asin && (hostname === "a.co" || hostname === "amzn.to")) {
+    asin = extractAsin(await resolveUrl(url));
+  }
+
+  if (asin) return `https://www.amazon.co.jp/dp/${asin}`;
+
+  const query = encodeURIComponent(`${title} ${author}`);
+  return `https://www.amazon.co.jp/s?k=${query}`;
+}
+
+async function parseKindleShare(text: string | null, url: string): Promise<{ title: string; url: string } | null> {
+  if (!text) return null;
+
+  const progress = text.match(/この本を([0-9０-９]+(?:\.[0-9０-９]+)?)%読みました。/)?.[1];
+  const book = text.match(/[-－]\s*["“]([^"”]+)["”]\s*[（(]([^（）()]+?)\s+著[）)]/);
+  if (!progress || !book) return null;
+
+  const [, bookTitle, author] = book;
+  return {
+    title: `${bookTitle} / ${author} / ${progress}%`,
+    url: await toAmazonJpLink(url, bookTitle, author),
+  };
+}
 
 export async function handleShare(
   firestore: FirestoreService,
@@ -34,6 +66,11 @@ export async function handleShare(
 
   if (!url) return null;
 
+  const kindleShare = await parseKindleShare(text, url);
+  if (kindleShare) {
+    url = kindleShare.url;
+  }
+
   const readingDomains = [
     "ncode.syosetu.com",
     "syosetu.org",
@@ -41,16 +78,17 @@ export async function handleShare(
     "manga.nicovideo.jp",
     "shonenjumpplus.com",
     "takecomic.jp",
+    "amazon.co.jp",
   ];
   const hostname = new URL(url).hostname;
-  const category = readingDomains.some((d) => hostname === d || hostname.endsWith("." + d))
-    ? "読書"
-    : "ネットサーフィン";
+  const isReadingShare =
+    Boolean(kindleShare) || readingDomains.some((d) => hostname === d || hostname.endsWith("." + d));
+  const category = isReadingShare ? "読書" : "ネットサーフィン";
   const otherCategory = category === "読書" ? "ネットサーフィン" : "読書";
   const isX = hostname === "x.com" || hostname.endsWith(".x.com");
 
   // Determine title: prefer title param, then OGP title, then URL
-  let linkTitle = title;
+  let linkTitle = kindleShare?.title ?? title;
   if (!linkTitle) {
     try {
       const meta = await fetchOGPMeta(url);

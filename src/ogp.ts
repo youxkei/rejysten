@@ -9,6 +9,8 @@ type OGPScannerResponse =
     }
   | { success: false; reason: string };
 
+type ResolveUrlResponse = { success: true; url: string } | { success: false; reason: string };
+
 async function callOGPEndpoint(endpoint: string, url: string): Promise<OGPScannerResponse | null> {
   try {
     const res = await fetch(endpoint, {
@@ -19,6 +21,23 @@ async function callOGPEndpoint(endpoint: string, url: string): Promise<OGPScanne
     });
     if (!res.ok) return null;
     return (await res.json()) as OGPScannerResponse;
+  } catch {
+    return null;
+  }
+}
+
+export async function resolveUrl(url: string): Promise<string | null> {
+  try {
+    const res = await fetch("/api/resolve-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as ResolveUrlResponse;
+    return data.success ? data.url : null;
   } catch {
     return null;
   }
