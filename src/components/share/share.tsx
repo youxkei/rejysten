@@ -37,12 +37,14 @@ async function parseKindleShare(text: string | null, url: string): Promise<{ tit
   if (!text) return null;
 
   const progress = text.match(/この本を([0-9０-９]+(?:\.[0-9０-９]+)?)%読みました。/)?.[1];
+  const finished = /この本を読み終えたところです。/.test(text);
   const book = text.match(/[-－]\s*["“]([^"”]+)["”]\s*[（(]([^（）()]+?)\s+著[）)]/);
-  if (!progress || !book) return null;
+  if ((!progress && !finished) || !book) return null;
 
   const [, bookTitle, author] = book;
+  const progressText = progress !== undefined ? `${progress}%` : "読了";
   return {
-    title: `${bookTitle} / ${author} / ${progress}%`,
+    title: `${bookTitle} / ${author} / ${progressText}`,
     url: await toAmazonJpLink(url, bookTitle, author),
   };
 }

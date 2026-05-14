@@ -449,6 +449,62 @@ describe("share", () => {
     expect(fetchOGPMeta).not.toHaveBeenCalled();
   });
 
+  it("normalizes Kindle finished-reading share to 読了 progress and resolved amazon.co.jp product link", async ({
+    db,
+    task,
+  }) => {
+    const shareText =
+      'この本を読み終えたところです。あなたも気に入るかもしれません - "悪役令嬢転生おじさん(10) (ヤングキングコミックス)"（上山道郎 著）\n\nこちらから無料で読み始められます: https://a.co/08vpAxiW';
+    history.replaceState(null, "", `/?title=Kindle&text=${encodeURIComponent(shareText)}`);
+    vi.mocked(resolveUrl).mockResolvedValueOnce(
+      "https://read.amazon.com/kp/kshare?asin=B0D7DPXQT8&id=fcrvf7rigjfillonun7bacncei",
+    );
+
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    const readingLog = runningLogs.find((l) => l.text === "読書");
+    expect(readingLog).toBeTruthy();
+
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", readingLog!.id)), {
+      fromServer: true,
+    });
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe(
+      "[悪役令嬢転生おじさん(10) (ヤングキングコミックス) / 上山道郎 / 読了](https://www.amazon.co.jp/dp/B0D7DPXQT8)",
+    );
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe(readingLog!.id);
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(nodes[0].id);
+    expect(resolveUrl).toHaveBeenCalledWith("https://a.co/08vpAxiW");
+    expect(fetchOGPMeta).not.toHaveBeenCalled();
+  });
+
   it("normalizes Kindle share with ASIN URL to amazon.co.jp product link", async ({ db, task }) => {
     const shareText =
       'この本を12%読みました。あなたも気に入るかもしれません - "サンプル本" (著者名 著)\n\nこちらから無料で読み始められます: https://read.amazon.com/?asin=B012345678';
