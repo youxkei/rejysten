@@ -98,6 +98,9 @@ function NavigationToolbar() {
   const handleToggleHistoryPanel = withOwner(() => {
     editHistoryActions.togglePanel();
   });
+  const handleOpenJumpDateDialog = withOwner(() => {
+    actions.openJumpDateDialog();
+  });
 
   return (
     <div class={styles.mobileToolbar.buttonGroup}>
@@ -197,6 +200,9 @@ function NavigationToolbar() {
       </button>
       <button class={styles.mobileToolbar.button} onClick={handleToggleHistoryPanel}>
         📜
+      </button>
+      <button class={styles.mobileToolbar.button} onClick={handleOpenJumpDateDialog}>
+        📅
       </button>
       <button
         class={styles.mobileToolbar.button}

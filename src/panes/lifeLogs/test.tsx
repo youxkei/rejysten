@@ -17,6 +17,7 @@ import {
   useFirestoreService,
 } from "@/services/firebase/firestore";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
+import { Toast } from "@/services/toast";
 import { type DatabaseInfo } from "@/test";
 import { dayMs, noneTimestamp } from "@/timestamp";
 import { LifeLogsProps } from "@/panes/lifeLogs/index";
@@ -37,6 +38,7 @@ export interface SetupLifeLogsTestOptions {
   skipDefaultLifeLogs?: boolean;
   includeLifeLogWithDuration?: boolean;
   withEditHistory?: boolean;
+  withToast?: boolean;
 }
 
 export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, options?: SetupLifeLogsTestOptions) {
@@ -284,7 +286,19 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                     <LifeLogs {...(options?.lifeLogsProps ?? {})} />
                   </Show>
                 );
-                return options?.withEditHistory ? <WithEditHistoryPanel>{content}</WithEditHistoryPanel> : content;
+                const contentWithToast = options?.withToast ? (
+                  <>
+                    {content}
+                    <Toast />
+                  </>
+                ) : (
+                  content
+                );
+                return options?.withEditHistory ? (
+                  <WithEditHistoryPanel>{contentWithToast}</WithEditHistoryPanel>
+                ) : (
+                  contentWithToast
+                );
               })()}
             </Suspense>
           </ActionsServiceProvider>

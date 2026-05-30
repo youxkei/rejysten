@@ -9,7 +9,7 @@ import { type Actions, actionsCreator, initialActionsContext } from "@/services/
 import { getCollection, getDoc, getDocs, useFirestoreService } from "@/services/firebase/firestore";
 import { runBatch } from "@/services/firebase/firestore/batch";
 import { buildSelection } from "@/services/firebase/firestore/editHistory/schema";
-import { limit, orderBy, query } from "@/services/firebase/firestore/query";
+import { limit, orderBy, query, where } from "@/services/firebase/firestore/query";
 import {
   addNextSibling,
   addPrevSibling,
@@ -24,6 +24,7 @@ import {
   remove,
 } from "@/services/firebase/firestore/treeNode";
 import { useStoreService } from "@/services/store";
+import { showToast } from "@/services/toast";
 import { noneTimestamp } from "@/timestamp";
 
 declare module "@/services/actions" {
@@ -65,6 +66,9 @@ declare module "@/services/actions" {
       goToFirst: () => void;
       goToLast: () => void;
       goToLatest: () => void;
+      openJumpDateDialog: () => void;
+      closeJumpDateDialog: () => void;
+      jumpToStartDate: () => void;
       enterTree: () => void;
       exitTree: () => void;
       newLifeLog: () => void;
@@ -179,6 +183,95 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
 
     updateState((s) => {
       s.panesLifeLogs.selectedLifeLogId = latestId;
+    });
+  }
+
+  function parseJumpDateText(): { startAt: Timestamp; endAt: Timestamp } | undefined {
+    const text = state.panesLifeLogs.jumpDateText.trim();
+    const now = new Date(DateNow());
+    let year = now.getFullYear();
+    let month = now.getMonth() + 1;
+    let dateOfMonth: number | undefined;
+
+    const fullDate = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const compactFullDate = text.match(/^(\d{8})$/);
+    const monthDate = text.match(/^(\d{2})-(\d{2})$/);
+    const compactMonthDate = text.match(/^(\d{4})$/);
+    const dateOnly = text.match(/^(\d{1,2})$/);
+
+    if (fullDate) {
+      year = Number(fullDate[1]);
+      month = Number(fullDate[2]);
+      dateOfMonth = Number(fullDate[3]);
+    } else if (compactFullDate) {
+      year = Number(text.substring(0, 4));
+      month = Number(text.substring(4, 6));
+      dateOfMonth = Number(text.substring(6, 8));
+    } else if (monthDate) {
+      month = Number(monthDate[1]);
+      dateOfMonth = Number(monthDate[2]);
+    } else if (compactMonthDate) {
+      month = Number(text.substring(0, 2));
+      dateOfMonth = Number(text.substring(2, 4));
+    } else if (dateOnly) {
+      dateOfMonth = Number(dateOnly[1]);
+    } else {
+      return undefined;
+    }
+
+    const start = new Date(year, month - 1, dateOfMonth, 0, 0, 0, 0);
+    if (start.getFullYear() !== year || start.getMonth() !== month - 1 || start.getDate() !== dateOfMonth) {
+      return undefined;
+    }
+
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+
+    return {
+      startAt: Timestamp.fromDate(start),
+      endAt: Timestamp.fromDate(end),
+    };
+  }
+
+  function openJumpDateDialog() {
+    updateState((s) => {
+      s.panesLifeLogs.isJumpDateDialogOpen = true;
+      s.panesLifeLogs.jumpDateText = "";
+    });
+  }
+
+  function closeJumpDateDialog() {
+    updateState((s) => {
+      s.panesLifeLogs.isJumpDateDialogOpen = false;
+      s.panesLifeLogs.jumpDateText = "";
+    });
+  }
+
+  async function jumpToStartDate() {
+    const range = parseJumpDateText();
+    if (!range) {
+      showToast(updateState, "日付の形式が不正です", "error");
+      return;
+    }
+
+    const jumpQuery = query(
+      lifeLogsCol,
+      where("startAt", ">=", range.startAt),
+      where("startAt", "<", range.endAt),
+      orderBy("startAt"),
+      limit(1),
+    );
+    const docs = await getDocs(firestore, jumpQuery);
+    if (docs.length === 0) {
+      showToast(updateState, "該当するLifeLogがありません", "error");
+      return;
+    }
+
+    updateState((s) => {
+      s.panesLifeLogs.selectedLifeLogId = docs[0].id;
+      s.panesLifeLogs.selectedLifeLogNodeId = "";
+      s.panesLifeLogs.isJumpDateDialogOpen = false;
+      s.panesLifeLogs.jumpDateText = "";
     });
   }
 
@@ -1131,6 +1224,9 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
     goToFirst,
     goToLast,
     goToLatest: awaitable(goToLatest),
+    openJumpDateDialog,
+    closeJumpDateDialog,
+    jumpToStartDate: awaitable(jumpToStartDate),
     enterTree: awaitable(enterTree),
     exitTree,
     newLifeLog: awaitable(newLifeLog),

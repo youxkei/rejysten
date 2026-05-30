@@ -54,6 +54,29 @@ afterEach(async () => {
 });
 
 describe("<LifeLogs />", () => {
+  async function openJumpDateDialog(result: Awaited<ReturnType<typeof setupLifeLogsTest>>["result"]) {
+    await userEvent.keyboard("{d}");
+    await awaitPendingCallbacks();
+    return result.getByRole("dialog", { name: "日付ジャンプ" });
+  }
+
+  async function submitJumpDate(result: Awaited<ReturnType<typeof setupLifeLogsTest>>["result"], text: string) {
+    const input = result.getByLabelText("日付");
+    input.focus();
+    await userEvent.keyboard(text);
+    await userEvent.keyboard("{Enter}");
+    await awaitPendingCallbacks();
+  }
+
+  function expectSelectedLifeLogText(
+    result: Awaited<ReturnType<typeof setupLifeLogsTest>>["result"],
+    text: string,
+  ) {
+    const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
+    expect(selected).toBeTruthy();
+    expect(selected!.textContent).toContain(text);
+  }
+
   it("renders correctly", async ({ db, task }) => {
     const { result } = await setupLifeLogsTest(task.id, db);
 
@@ -78,6 +101,203 @@ describe("<LifeLogs />", () => {
     // Test: time is displayed correctly (format: YYYY-MM-DD HH:MM:SS)
     expect(result.getByText("2026-01-10 10:30:00")).toBeTruthy();
     expect(result.getByText("2026-01-10 12:00:00")).toBeTruthy();
+  });
+
+  describe("jump to start date", () => {
+    it("opens dialog with d key and jumps to the earliest LifeLog for YYYY-MM-DD", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        initialSelectedId: "$log2",
+        lifeLogsProps: { debounceMs: 0 },
+      });
+
+      await result.findByText("second lifelog");
+      expectSelectedLifeLogText(result, "second lifelog");
+
+      expect(await openJumpDateDialog(result)).toBeTruthy();
+      await submitJumpDate(result, "2026-01-10");
+
+      await waitFor(() => {
+        expectSelectedLifeLogText(result, "first lifelog");
+      });
+      expect(result.queryByRole("dialog", { name: "日付ジャンプ" })).toBeNull();
+    });
+
+    it("jumps with compact YYYYMMDD input", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        initialSelectedId: "$log2",
+        lifeLogsProps: { debounceMs: 0 },
+      });
+
+      await openJumpDateDialog(result);
+      await submitJumpDate(result, "20260110");
+
+      await waitFor(() => {
+        expectSelectedLifeLogText(result, "first lifelog");
+      });
+    });
+
+    it("jumps with MM-DD input using the current year", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        initialSelectedId: "$log2",
+        lifeLogsProps: { debounceMs: 0 },
+      });
+
+      await openJumpDateDialog(result);
+      await submitJumpDate(result, "01-10");
+
+      await waitFor(() => {
+        expectSelectedLifeLogText(result, "first lifelog");
+      });
+    });
+
+    it("jumps with compact MMDD input using the current year", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        initialSelectedId: "$log2",
+        lifeLogsProps: { debounceMs: 0 },
+      });
+
+      await openJumpDateDialog(result);
+      await submitJumpDate(result, "0110");
+
+      await waitFor(() => {
+        expectSelectedLifeLogText(result, "first lifelog");
+      });
+    });
+
+    it("jumps with DD input using the current year and month", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        initialSelectedId: "$log2",
+        lifeLogsProps: { debounceMs: 0 },
+      });
+
+      await openJumpDateDialog(result);
+      await submitJumpDate(result, "10");
+
+      await waitFor(() => {
+        expectSelectedLifeLogText(result, "first lifelog");
+      });
+    });
+
+    it("resets range and shows a LifeLog outside the current range", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        outOfRangeLifeLogs: [{ id: "$oldStart", text: "old start lifelog", daysAgo: 18, endDaysAgo: 18 }],
+        lifeLogsProps: { debounceMs: 0 },
+      });
+
+      await result.findByText("first lifelog");
+      expect(result.queryByText("old start lifelog")).toBeNull();
+
+      await openJumpDateDialog(result);
+      await submitJumpDate(result, "2025-12-23");
+
+      await result.findByText("old start lifelog");
+      await waitFor(() => {
+        expectSelectedLifeLogText(result, "old start lifelog");
+      });
+    });
+
+    it("keeps selection and dialog open when no LifeLog exists for the date", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        initialSelectedId: "$log2",
+        lifeLogsProps: { debounceMs: 0 },
+        withToast: true,
+      });
+
+      await openJumpDateDialog(result);
+      await submitJumpDate(result, "2026-01-09");
+
+      await result.findByText("該当するLifeLogがありません");
+      expect(result.getByRole("dialog", { name: "日付ジャンプ" })).toBeTruthy();
+      expectSelectedLifeLogText(result, "second lifelog");
+      await userEvent.click(result.getByText("該当するLifeLogがありません"));
+    });
+
+    it("keeps selection and dialog open for invalid date input", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        initialSelectedId: "$log2",
+        lifeLogsProps: { debounceMs: 0 },
+        withToast: true,
+      });
+
+      await openJumpDateDialog(result);
+      await submitJumpDate(result, "2026-02-31");
+
+      await result.findByText("日付の形式が不正です");
+      expect(result.getByRole("dialog", { name: "日付ジャンプ" })).toBeTruthy();
+      expectSelectedLifeLogText(result, "second lifelog");
+      await userEvent.click(result.getByText("日付の形式が不正です"));
+    });
+
+    it("does not open with d key while editing a LifeLog", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await result.findByText("first lifelog");
+      await userEvent.keyboard("{i}");
+      await awaitPendingCallbacks();
+      const input = result.container.querySelector("input") as HTMLInputElement;
+      expect(input).toBeTruthy();
+      input.focus();
+
+      await userEvent.keyboard("{d}");
+      await awaitPendingCallbacks();
+
+      expect(result.queryByRole("dialog", { name: "日付ジャンプ" })).toBeNull();
+      expect(input.value).toBe("dfirst lifelog");
+    });
+
+    it("opens from the mobile toolbar button and jumps", async ({ db, task }) => {
+      await page.viewport(414, 896);
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        initialSelectedId: "$log2",
+        lifeLogsProps: { debounceMs: 0 },
+      });
+
+      const jumpButton = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+        (btn) => btn.textContent === "📅",
+      ) as HTMLButtonElement;
+      expect(jumpButton).toBeTruthy();
+
+      await userEvent.click(jumpButton);
+      expect(result.getByRole("dialog", { name: "日付ジャンプ" })).toBeTruthy();
+      await submitJumpDate(result, "2026-01-10");
+
+      await waitFor(() => {
+        expectSelectedLifeLogText(result, "first lifelog");
+      });
+    });
+
+    it("closes with Escape key", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await openJumpDateDialog(result);
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      expect(result.queryByRole("dialog", { name: "日付ジャンプ" })).toBeNull();
+    });
+
+    it("closes with the cancel button", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await openJumpDateDialog(result);
+      await userEvent.click(result.getByText("キャンセル"));
+      await awaitPendingCallbacks();
+
+      expect(result.queryByRole("dialog", { name: "日付ジャンプ" })).toBeNull();
+    });
+
+    it("does not close when clicking the backdrop", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await openJumpDateDialog(result);
+      const backdrop = result.container.querySelector(`.${styles.lifeLogs.jumpDateDialogBackdrop}`) as HTMLElement;
+      expect(backdrop).toBeTruthy();
+
+      await userEvent.click(backdrop);
+      await awaitPendingCallbacks();
+
+      expect(result.getByRole("dialog", { name: "日付ジャンプ" })).toBeTruthy();
+    });
   });
 
   it("can edit text with i key (cursor at start)", async ({ db, task }) => {

@@ -123,6 +123,7 @@ export function LifeLog(props: {
 
   addKeyDownEventListener((event) => {
     if (event.isComposing || event.ctrlKey || !isSelected$()) return;
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
 
     const { shiftKey } = event;
 

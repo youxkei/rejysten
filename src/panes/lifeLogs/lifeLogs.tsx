@@ -2,7 +2,7 @@ import { Key } from "@solid-primitives/keyed";
 import { debounce } from "@solid-primitives/scheduled";
 import equal from "fast-deep-equal";
 import { type Timestamp } from "firebase/firestore";
-import { createEffect, createMemo, createSignal, on, onCleanup, onMount, untrack } from "solid-js";
+import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show, untrack } from "solid-js";
 
 interface VirtualKeyboard extends EventTarget {
   overlaysContent: boolean;
@@ -63,8 +63,76 @@ export function LifeLogs(props: LifeLogsProps = {}) {
           scrollFocusDebounceMs={props.debounceMs}
         />
       </ScrollContainer>
+      <JumpDateDialog />
       <MobileToolbar />
     </div>
+  );
+}
+
+function JumpDateDialog() {
+  const actions = useActionsService().panes.lifeLogs;
+  const { state, updateState } = useStoreService();
+
+  return (
+    <Show when={state.panesLifeLogs.isJumpDateDialogOpen}>
+      <div class={styles.lifeLogs.jumpDateDialogBackdrop} role="presentation">
+        <form
+          class={styles.lifeLogs.jumpDateDialog}
+          role="dialog"
+          aria-modal="true"
+          aria-label="日付ジャンプ"
+          onSubmit={(event) => {
+            event.preventDefault();
+            actions.jumpToStartDate();
+          }}
+          onKeyDown={(event) => {
+            if (event.code === "Escape") {
+              event.preventDefault();
+              event.stopPropagation();
+              actions.closeJumpDateDialog();
+            } else if (event.code === "Enter" && !event.isComposing) {
+              event.preventDefault();
+              event.stopPropagation();
+              actions.jumpToStartDate();
+            }
+          }}
+        >
+          <label class={styles.lifeLogs.jumpDateLabel}>
+            日付
+            <input
+              ref={(el) => {
+                requestAnimationFrame(() => {
+                  el.focus();
+                });
+              }}
+              class={styles.lifeLogs.jumpDateInput}
+              type="text"
+              inputMode="numeric"
+              value={state.panesLifeLogs.jumpDateText}
+              onInput={(event) => {
+                updateState((s) => {
+                  s.panesLifeLogs.jumpDateText = event.currentTarget.value;
+                });
+              }}
+            />
+          </label>
+          <div class={styles.lifeLogs.jumpDateActions}>
+            <button
+              class={styles.lifeLogs.jumpDateButton}
+              type="button"
+              onClick={() => {
+                actions.closeJumpDateDialog();
+              }}
+            >
+              キャンセル
+            </button>
+            <button class={styles.lifeLogs.jumpDateButton} type="submit">
+              ジャンプ
+            </button>
+          </div>
+        </form>
+      </div>
+    </Show>
   );
 }
 
@@ -98,6 +166,17 @@ export function TimeRangedLifeLogs(props: {
     event.preventDefault();
     setEditingField(EditingField.Text);
     setIsEditing(false);
+  });
+
+  addKeyDownEventListener((event) => {
+    if (event.isComposing || event.ctrlKey || event.shiftKey) return;
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+    if (isEditing$() || state.panesLifeLogs.isJumpDateDialogOpen) return;
+    if (event.code !== "KeyD") return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    actions.openJumpDateDialog();
   });
 
   // Track cursor position for LifeLog text after deletion

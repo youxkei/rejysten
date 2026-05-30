@@ -5,6 +5,8 @@ declare module "@/services/store" {
     panesLifeLogs: {
       selectedLifeLogId: string;
       selectedLifeLogNodeId: string;
+      isJumpDateDialogOpen: boolean;
+      jumpDateText: string;
     };
   }
 }
@@ -12,4 +14,6 @@ declare module "@/services/store" {
 initialState.panesLifeLogs = {
   selectedLifeLogId: "",
   selectedLifeLogNodeId: "",
+  isJumpDateDialogOpen: false,
+  jumpDateText: "",
 };
