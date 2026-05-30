@@ -15,7 +15,6 @@ declare global {
   }
 }
 
-import { awaitable } from "@/awaitableCallback";
 import { DateNow, TimestampNow } from "@/date";
 import { LifeLog } from "@/panes/lifeLogs/lifeLog";
 import { MobileToolbar } from "@/panes/lifeLogs/mobileToolbar";
@@ -129,11 +128,16 @@ export function TimeRangedLifeLogs(props: {
 
   // selectedId変更時のresetRange (展開中 or 範囲外)
   const debouncedResetToSelected = debounce(
-    awaitable(async (lifeLogId: string) => {
-      await props.resetToLifeLog(lifeLogId);
-    }),
+    (lifeLogId: string) => {
+      void props.resetToLifeLog(lifeLogId).catch((error: unknown) => {
+        console.error("Error resetting LifeLogs range:", error);
+      });
+    },
     props.scrollFocusDebounceMs ?? 300,
   );
+  onCleanup(() => {
+    debouncedResetToSelected.clear();
+  });
 
   // 初回スナップショット到着までは resetRange を判定しない。
   // onSnapshot が走る前の currentIds=[] を見て誤って resetToLifeLog を
