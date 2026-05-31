@@ -81,6 +81,7 @@ function setupShareTest(
 
   let firestoreRef: ReturnType<typeof useFirestoreService>;
   let storeRef: ReturnType<typeof useStoreService>;
+  let shareResult: Awaited<ReturnType<typeof handleShare>> | undefined;
 
   const result = render(() => (
     <StoreServiceProvider localStorageNamePostfix={testId}>
@@ -101,6 +102,7 @@ function setupShareTest(
                 (async () => {
                   await setupData(firestore);
                   const result = await handleShare(firestore);
+                  shareResult = result;
                   if (result) {
                     storeRef.updateState((state) => {
                       state.panesLifeLogs.selectedLifeLogId = result.lifeLogId;
@@ -119,7 +121,13 @@ function setupShareTest(
     </StoreServiceProvider>
   ));
 
-  return { ready, result, getFirestore: () => firestoreRef, getStore: () => storeRef };
+  return {
+    ready,
+    result,
+    getFirestore: () => firestoreRef,
+    getStore: () => storeRef,
+    getShareResult: () => shareResult,
+  };
 }
 
 describe("share", () => {
@@ -534,6 +542,190 @@ describe("share", () => {
     });
     expect(allNodes).toHaveLength(1);
     expect(allNodes[0].text).toBe("[サンプル本 / 著者名 / 12%](https://www.amazon.co.jp/dp/B012345678)");
+  });
+
+  it("updates existing Kindle progress share for the same book instead of adding duplicate", async ({ db, task }) => {
+    const shareText =
+      'この本を12%読みました。あなたも気に入るかもしれません - "サンプル本" (著者名 著)\n\nこちらから無料で読み始められます: https://read.amazon.com/?asin=B012345678';
+    history.replaceState(null, "", `/?title=Kindle&text=${encodeURIComponent(shareText)}`);
+
+    const { ready, getFirestore, getStore, getShareResult } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$reading-kindle-progress"), {
+        text: "読書",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$node-kindle-progress"), {
+        text: "[サンプル本 / 著者名 / 1%](https://www.amazon.co.jp/dp/B012345678)",
+        lifeLogId: "$reading-kindle-progress",
+        parentId: "$reading-kindle-progress",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-kindle-progress"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$reading-kindle-progress")), {
+      fromServer: true,
+    });
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].id).toBe("$node-kindle-progress");
+    expect(nodes[0].text).toBe("[サンプル本 / 著者名 / 12%](https://www.amazon.co.jp/dp/B012345678)");
+
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const netSurfLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "ネットサーフィン")), {
+      fromServer: true,
+    });
+    const netSurfLog = netSurfLogs.find((l) => l.id === "$netsurf-kindle-progress");
+    expect(netSurfLog).toBeTruthy();
+    expect(netSurfLog!.endAt).toEqual(noneTimestamp);
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe("$reading-kindle-progress");
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe("$node-kindle-progress");
+    expect(getShareResult()?.status).toBe("updated");
+  });
+
+  it("updates existing Kindle percentage progress share to finished-reading progress", async ({ db, task }) => {
+    const shareText =
+      'この本を読み終えたところです。あなたも気に入るかもしれません - "サンプル本"（著者名 著）\n\nこちらから無料で読み始められます: https://read.amazon.com/?asin=B012345678';
+    history.replaceState(null, "", `/?title=Kindle&text=${encodeURIComponent(shareText)}`);
+
+    const { ready, getFirestore, getStore, getShareResult } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$reading-kindle-finished"), {
+        text: "読書",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$node-kindle-finished"), {
+        text: "[サンプル本 / 著者名 / 12%](https://www.amazon.co.jp/dp/B012345678)",
+        lifeLogId: "$reading-kindle-finished",
+        parentId: "$reading-kindle-finished",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$reading-kindle-finished")), {
+      fromServer: true,
+    });
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].id).toBe("$node-kindle-finished");
+    expect(nodes[0].text).toBe("[サンプル本 / 著者名 / 読了](https://www.amazon.co.jp/dp/B012345678)");
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe("$reading-kindle-finished");
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe("$node-kindle-finished");
+    expect(getShareResult()?.status).toBe("updated");
+  });
+
+  it("keeps existing Kindle progress share unchanged when the progress is already current", async ({ db, task }) => {
+    const shareText =
+      'この本を12%読みました。あなたも気に入るかもしれません - "サンプル本" (著者名 著)\n\nこちらから無料で読み始められます: https://read.amazon.com/?asin=B012345678';
+    history.replaceState(null, "", `/?title=Kindle&text=${encodeURIComponent(shareText)}`);
+
+    const { ready, getFirestore, getShareResult } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$reading-kindle-current"), {
+        text: "読書",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$node-kindle-current"), {
+        text: "[サンプル本 / 著者名 / 12%](https://www.amazon.co.jp/dp/B012345678)",
+        lifeLogId: "$reading-kindle-current",
+        parentId: "$reading-kindle-current",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$reading-kindle-current")), {
+      fromServer: true,
+    });
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].id).toBe("$node-kindle-current");
+    expect(nodes[0].text).toBe("[サンプル本 / 著者名 / 12%](https://www.amazon.co.jp/dp/B012345678)");
+    expect(getShareResult()?.status).toBe("duplicate");
   });
 
   it("creates 読書 lifeLog for ncode.syosetu.com URL", async ({ db, task }) => {

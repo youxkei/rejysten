@@ -49,9 +49,13 @@ async function parseKindleShare(text: string | null, url: string): Promise<{ tit
   };
 }
 
-export async function handleShare(
-  firestore: FirestoreService,
-): Promise<{ lifeLogId: string; nodeId: string; added: boolean } | null> {
+type ShareResult = {
+  lifeLogId: string;
+  nodeId: string;
+  status: "added" | "updated" | "duplicate";
+};
+
+export async function handleShare(firestore: FirestoreService): Promise<ShareResult | null> {
   const params = new URLSearchParams(window.location.search);
   const title = params.get("title");
   const text = params.get("text");
@@ -131,7 +135,24 @@ export async function handleShare(
     );
     const existingNode = existingNodes.find((node) => node.text.includes(`](${url})`));
     if (existingNode) {
-      return { lifeLogId: matchingLog.id, nodeId: existingNode.id, added: false };
+      if (kindleShare && existingNode.text !== markdownLink) {
+        await runTransaction(
+          firestore,
+          (batch) => {
+            batch.update(treeNodesCol, {
+              id: existingNode.id,
+              text: markdownLink,
+            });
+          },
+          {
+            description: "Kindle進捗更新",
+            prevSelection: {},
+            nextSelection: { lifeLogs: matchingLog.id, lifeLogTreeNodes: existingNode.id },
+          },
+        );
+        return { lifeLogId: matchingLog.id, nodeId: existingNode.id, status: "updated" };
+      }
+      return { lifeLogId: matchingLog.id, nodeId: existingNode.id, status: "duplicate" };
     }
 
     lifeLogId = matchingLog.id;
@@ -255,7 +276,7 @@ export async function handleShare(
     );
   }
 
-  return { lifeLogId, nodeId, added: true };
+  return { lifeLogId, nodeId, status: "added" };
 }
 
 export function Share() {
@@ -276,7 +297,13 @@ export function Share() {
         });
 
         if (result) {
-          showToast(updateState, result.added ? "共有から追加しました" : "共有されたURLは追加済みです", "success");
+          const message =
+            result.status === "added"
+              ? "共有から追加しました"
+              : result.status === "updated"
+                ? "Kindleの進捗を更新しました"
+                : "共有されたURLは追加済みです";
+          showToast(updateState, message, "success");
         }
       } catch (e) {
         console.error("Share error:", e);
