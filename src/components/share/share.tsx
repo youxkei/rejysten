@@ -95,10 +95,7 @@ async function findPastSharedNode(
   const ngramsCol = getCollection(firestore, "ngrams");
   const ngramDocuments = await getDocs(
     firestore,
-    query(
-      ngramsCol,
-      ...urlNgrams.map((ngram) => where(`ngramMap.${encodeNgramKeyForFirestore(ngram)}`, "==", true)),
-    ),
+    query(ngramsCol, ...urlNgrams.map((ngram) => where(`ngramMap.${encodeNgramKeyForFirestore(ngram)}`, "==", true))),
     options,
   );
 

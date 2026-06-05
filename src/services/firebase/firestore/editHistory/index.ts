@@ -16,16 +16,20 @@ import { type HistoryOperation, type HistorySelection } from "@/services/firebas
 import { query, where } from "@/services/firebase/firestore/query";
 import { type Schema } from "@/services/firebase/firestore/schema";
 
-function applyOperations(service: FirestoreService, batch: OperationRecordingBatch, operations: HistoryOperation[]): void {
+function applyOperations(
+  service: FirestoreService,
+  batch: OperationRecordingBatch,
+  operations: HistoryOperation[],
+): void {
   for (const op of operations) {
     const col = getCollection(service, op.collection);
 
     switch (op.type) {
       case "set":
-        batch.set(col, { id: op.id, ...op.data } as never);
+        batch.set(col, { id: op.id, ...op.data });
         break;
       case "update":
-        batch.update(col, { id: op.id, ...op.data } as never);
+        batch.update(col, { id: op.id, ...op.data });
         break;
       case "delete":
         batch.delete(col, op.id);
@@ -62,7 +66,10 @@ export async function getChildren(
   return children.sort((a, b) => a.id.localeCompare(b.id));
 }
 
-export async function undo(service: FirestoreService, options?: HistoryReadOptions): Promise<HistorySelection | undefined> {
+export async function undo(
+  service: FirestoreService,
+  options?: HistoryReadOptions,
+): Promise<HistorySelection | undefined> {
   const headEntryId = (await getCurrentHeadState(service, options)).entryId;
   if (!headEntryId) return undefined;
 

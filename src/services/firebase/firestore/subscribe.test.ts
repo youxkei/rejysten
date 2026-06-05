@@ -1,11 +1,4 @@
-import {
-  type Firestore,
-  type Timestamp,
-  collection,
-  getDocFromServer,
-  writeBatch,
-  doc,
-} from "firebase/firestore";
+import { type Firestore, type Timestamp, collection, getDocFromServer, writeBatch, doc } from "firebase/firestore";
 import { createRoot, createSignal } from "solid-js";
 import { describe, it, beforeAll, afterAll } from "vitest";
 
@@ -17,10 +10,7 @@ import {
   singletonDocumentId,
 } from "@/services/firebase/firestore";
 import { query, where } from "@/services/firebase/firestore/query";
-import {
-  createSubscribeAllSignal,
-  createSubscribeSignal,
-} from "@/services/firebase/firestore/subscribe";
+import { createSubscribeAllSignal, createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { createTestFirestoreService, timestampForCreatedAt } from "@/services/firebase/firestore/test";
 import { acquireEmulator, releaseEmulator } from "@/test";
 
@@ -60,7 +50,7 @@ function createClockedService(): FirestoreService {
     ...service,
     clock$,
     setClock,
-  } as FirestoreService;
+  };
 }
 
 beforeAll(async () => {
@@ -76,16 +66,13 @@ beforeAll(async () => {
       firebase: {} as FirestoreService["services"]["firebase"],
       store: {} as FirestoreService["services"]["store"],
     },
-  } as FirestoreService;
+  };
   firestore = result.firestore;
 });
 
 afterAll(async () => {
   await releaseEmulator(emulatorPort);
 });
-
-
-
 
 describe("createSubscribeAllSignal", () => {
   it("should return empty array when query$ returns undefined", async (test) => {
@@ -314,7 +301,13 @@ describe("createSubscribeAllSignal", () => {
         void (async () => {
           const batchId = `batch-${test.task.id}-query-latch`;
           try {
-            await waitUntil(() => signal$().map((docData) => docData.text).sort().join(",") === "one,two");
+            await waitUntil(
+              () =>
+                signal$()
+                  .map((docData) => docData.text)
+                  .sort()
+                  .join(",") === "one,two",
+            );
             localService.setClock(true);
             localService.firestoreClient!.overlay.apply(batchId, [
               {
@@ -327,11 +320,15 @@ describe("createSubscribeAllSignal", () => {
               },
             ]);
             await wait(100);
-            const duringClock = signal$().map((docData) => docData.text).sort();
+            const duringClock = signal$()
+              .map((docData) => docData.text)
+              .sort();
 
             localService.setClock(false);
             await waitUntil(() => signal$().some((docData) => docData.text === "two-updated"));
-            const afterClock = signal$().map((docData) => docData.text).sort();
+            const afterClock = signal$()
+              .map((docData) => docData.text)
+              .sort();
             resolve({ duringClock, afterClock });
           } catch (error) {
             reject(error instanceof Error ? error : new Error(String(error)));
@@ -375,11 +372,19 @@ describe("createSubscribeAllSignal", () => {
 
         void (async () => {
           try {
-            await waitUntil(() => signal$().map((docData) => docData.text).sort().join(",") === "one,two");
+            await waitUntil(
+              () =>
+                signal$()
+                  .map((docData) => docData.text)
+                  .sort()
+                  .join(",") === "one,two",
+            );
             localService.setClock(true);
             setSelectedValue(2);
             await wait(100);
-            const duringClock = signal$().map((docData) => docData.text).sort();
+            const duringClock = signal$()
+              .map((docData) => docData.text)
+              .sort();
 
             localService.setClock(false);
             await waitUntil(() => signal$().length === 0);
@@ -396,15 +401,11 @@ describe("createSubscribeAllSignal", () => {
     test.expect(result.duringClock).toEqual(["one", "two"]);
     test.expect(result.afterClock).toEqual([]);
   });
-
 });
 
 describe("waitForServerSync", () => {
   it("waits for the requested batchVersion and ignores other versions", async (test) => {
-    const batchVersionCol = collection(
-      firestore,
-      "batchVersion",
-    ) as SchemaCollectionReference<"batchVersion">;
+    const batchVersionCol = collection(firestore, "batchVersion") as SchemaCollectionReference<"batchVersion">;
     const firstVersion = `${test.task.id}-first-${Date.now()}`;
     const expectedVersion = `${test.task.id}-expected-${Date.now()}`;
 

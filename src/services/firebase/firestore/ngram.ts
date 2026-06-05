@@ -23,9 +23,7 @@ export function encodeNgramKeyForFirestore(ngram: string): string {
   return encodeURIComponent(ngram).replace(/_/g, "_5F").replace(/\./g, "_2E").replace(/%/g, "_");
 }
 
-export function encodeNgramMapForFirestore(
-  ngramMap: Partial<Record<string, true>>,
-): Partial<Record<string, true>> {
+export function encodeNgramMapForFirestore(ngramMap: Partial<Record<string, true>>): Partial<Record<string, true>> {
   const encoded: Partial<Record<string, true>> = {};
   for (const key of Object.keys(ngramMap)) {
     encoded[encodeNgramKeyForFirestore(key)] = true;

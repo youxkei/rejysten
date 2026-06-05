@@ -64,7 +64,7 @@ beforeAll(async () => {
       firebase: {} as FirestoreService["services"]["firebase"],
       store: {} as FirestoreService["services"]["store"],
     },
-  } as FirestoreService;
+  };
   firestore = result.firestore;
 });
 
@@ -79,7 +79,7 @@ async function getDoc<C extends keyof Schema>(
   const snap = await getDocFromFirebase(doc(col, id));
   const data = snap.data();
   if (!data) throw new Error(`Document ${id} not found`);
-  return { ...data, id: snap.id } as DocumentData<Schema[C]>;
+  return { ...data, id: snap.id };
 }
 
 async function runTestBatch(fn: (batch: OperationRecordingBatch) => Promise<void>) {

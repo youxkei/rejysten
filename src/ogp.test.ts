@@ -162,7 +162,7 @@ describe("fetchOGPMeta", () => {
     expect(getFetchCalls()).toHaveLength(2);
   });
 
-  it("sends {\"url\": targetUrl} with Content-Type: application/json to both endpoints", async () => {
+  it('sends {"url": targetUrl} with Content-Type: application/json to both endpoints', async () => {
     setupFetch((endpoint) => {
       if (endpoint === SCANNER_ENDPOINT) {
         return Response.json({ success: false, reason: "trigger fallback" });

@@ -1,18 +1,10 @@
-import {
-  doc,
-  query as firestoreQuery,
-  where as firestoreWhere,
-} from "firebase/firestore";
+import { doc, query as firestoreQuery, where as firestoreWhere } from "firebase/firestore";
 import { afterAll, beforeAll, describe, it } from "vitest";
 
 import { createFirestoreClient, type FirestoreClient } from "@/firestore/client";
 import { getDoc, getDocs } from "@/firestore/get";
 import { limit, orderBy, query, where } from "@/firestore/query";
-import {
-  createTestFirestore,
-  seedDocs,
-  testCollection,
-} from "@/firestore/testUtils";
+import { createTestFirestore, seedDocs, testCollection } from "@/firestore/testUtils";
 import { acquireEmulator, releaseEmulator } from "@/test";
 
 let emulatorPort: number;

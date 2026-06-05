@@ -206,14 +206,11 @@ export function TimeRangedLifeLogs(props: {
   });
 
   // selectedId変更時のresetRange (展開中 or 範囲外)
-  const debouncedResetToSelected = debounce(
-    (lifeLogId: string) => {
-      void props.resetToLifeLog(lifeLogId).catch((error: unknown) => {
-        console.error("Error resetting LifeLogs range:", error);
-      });
-    },
-    props.scrollFocusDebounceMs ?? 300,
-  );
+  const debouncedResetToSelected = debounce((lifeLogId: string) => {
+    void props.resetToLifeLog(lifeLogId).catch((error: unknown) => {
+      console.error("Error resetting LifeLogs range:", error);
+    });
+  }, props.scrollFocusDebounceMs ?? 300);
   onCleanup(() => {
     debouncedResetToSelected.clear();
   });

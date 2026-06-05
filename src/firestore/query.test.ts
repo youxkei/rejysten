@@ -153,7 +153,8 @@ describe("query", () => {
   it("passes limit + 2 through to the Firestore query for overlay backfill", () => {
     const col = makeCol();
     const q = query(col, limit(1));
-    const constraints = (q.query as unknown as { _query?: { explicitOrderBy?: unknown[]; limit?: number | null } })._query;
+    const constraints = (q.query as unknown as { _query?: { explicitOrderBy?: unknown[]; limit?: number | null } })
+      ._query;
     expect(q.limit).toBe(1);
     expect(constraints?.limit).toBe(3);
   });
@@ -161,7 +162,8 @@ describe("query", () => {
   it("uses configured limit overfetch count", () => {
     const col = makeCol();
     const q = query(col, limit(2, { overfetchCount: 5 }));
-    const constraints = (q.query as unknown as { _query?: { explicitOrderBy?: unknown[]; limit?: number | null } })._query;
+    const constraints = (q.query as unknown as { _query?: { explicitOrderBy?: unknown[]; limit?: number | null } })
+      ._query;
     expect(q.limit).toBe(2);
     expect(constraints?.limit).toBe(7);
   });

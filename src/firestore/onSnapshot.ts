@@ -62,9 +62,7 @@ export type OnQuerySnapshotOptions<T extends object> = {
   timestampPrefix$?: () => string;
 };
 
-export function onDocumentSnapshot<T extends object>(
-  options: OnDocumentSnapshotOptions<T>,
-): () => void {
+export function onDocumentSnapshot<T extends object>(options: OnDocumentSnapshotOptions<T>): () => void {
   const { client, ref, setValue, timestampPrefix$ } = options;
   const { overlay } = client;
   const ignoredFieldsForEquality = client.snapshot?.ignoredFieldsForEquality ?? new Set<string>();
@@ -74,8 +72,7 @@ export function onDocumentSnapshot<T extends object>(
   let lastEmitted: DocumentWithId<T> | undefined;
 
   function emit(options?: { requireSnapshotOrOverlay?: boolean }): void {
-    if (options?.requireSnapshotOrOverlay && docWithId === undefined && !overlay.hasDocumentOverlay(ref.path))
-      return;
+    if (options?.requireSnapshotOrOverlay && docWithId === undefined && !overlay.hasDocumentOverlay(ref.path)) return;
     const value = overlay.mergeDocument<T>(ref.parent.id, ref.id, docWithId);
     if (hasEmitted && valuesEqualIgnoringFields(lastEmitted, value, ignoredFieldsForEquality)) return;
     hasEmitted = true;
@@ -110,17 +107,8 @@ export function onDocumentSnapshot<T extends object>(
   };
 }
 
-export function onQuerySnapshot<T extends object>(
-  options: OnQuerySnapshotOptions<T>,
-): () => void {
-  const {
-    client,
-    query,
-    setValue,
-    onServerSnapshot,
-    allowInitialEmit,
-    timestampPrefix$,
-  } = options;
+export function onQuerySnapshot<T extends object>(options: OnQuerySnapshotOptions<T>): () => void {
+  const { client, query, setValue, onServerSnapshot, allowInitialEmit, timestampPrefix$ } = options;
   const { overlay } = client;
   const ignoredFieldsForEquality = client.snapshot?.ignoredFieldsForEquality ?? new Set<string>();
   let docWithIds: DocumentWithId<T>[] = [];

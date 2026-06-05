@@ -58,7 +58,7 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
         return firstValue;
       } else {
         return new Promise<ResourceValue<Value | InitialValue>>((resolve) => {
-          setResource = resolve as (value: ResourceValue<Value | InitialValue>) => void;
+          setResource = resolve;
         });
       }
     },

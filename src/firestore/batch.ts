@@ -100,7 +100,7 @@ function mutationFromReference<T extends object>(
     path: documentRef.path,
   };
   if (type === "delete") return base as OverlayMutation;
-  return { ...base, data: data ?? {} } as OverlayMutation;
+  return { ...base, data: data ?? {} };
 }
 
 function overlayDataFromWriteData(

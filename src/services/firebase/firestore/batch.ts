@@ -126,8 +126,8 @@ export class OperationRecordingBatch {
       batchId: "",
       collection: col.id,
       id,
-      path: `${String(col.id)}/${id}`,
-      data: data as Record<string, unknown>,
+      path: `${col.id}/${id}`,
+      data: data,
     });
 
     if ("text" in data && typeof data.text === "string") {
@@ -164,7 +164,7 @@ export class OperationRecordingBatch {
       batchId: "",
       collection: col.id,
       id,
-      path: `${String(col.id)}/${id}`,
+      path: `${col.id}/${id}`,
     });
     deleteNgram(this.service, this.writer, col, id, this.pushOverlayMutation);
 
@@ -196,8 +196,8 @@ export class OperationRecordingBatch {
       batchId: "",
       collection: col.id,
       id,
-      path: `${String(col.id)}/${id}`,
-      data: data as Record<string, unknown>,
+      path: `${col.id}/${id}`,
+      data: data,
     });
 
     if ("text" in data && typeof data.text === "string") {
@@ -277,7 +277,7 @@ export class OperationRecordingBatch {
 
       switch (fwd.type) {
         case "set":
-          inverseOps.push({ type: "delete", collection: fwd.collection, id: fwd.id } as HistoryOperation);
+          inverseOps.push({ type: "delete", collection: fwd.collection, id: fwd.id });
           break;
 
         case "update": {

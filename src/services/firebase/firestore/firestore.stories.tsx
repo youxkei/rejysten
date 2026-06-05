@@ -1,12 +1,4 @@
-import {
-  doc,
-  getDocs,
-  runTransaction,
-  writeBatch,
-  Timestamp,
-  disableNetwork,
-  enableNetwork,
-} from "firebase/firestore";
+import { doc, getDocs, runTransaction, writeBatch, Timestamp, disableNetwork, enableNetwork } from "firebase/firestore";
 import {
   For,
   Suspense,

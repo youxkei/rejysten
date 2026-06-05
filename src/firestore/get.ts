@@ -129,8 +129,6 @@ export async function getDocs<T extends object>(options: GetDocsOptions<T>): Pro
   }
 }
 
-function isQueryWithMetadata<T extends object>(
-  query: Query<T> | QueryWithMetadata<T>,
-): query is QueryWithMetadata<T> {
+function isQueryWithMetadata<T extends object>(query: Query<T> | QueryWithMetadata<T>): query is QueryWithMetadata<T> {
   return "filters" in query && "orderBys" in query && "query" in query;
 }

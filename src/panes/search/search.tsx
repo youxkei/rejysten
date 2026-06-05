@@ -74,17 +74,12 @@ export function Search() {
 
   const resultItems$ = createMemo(
     () => {
-      return results$()
-        .toReversed();
+      return results$().toReversed();
     },
     undefined,
     { equals: equal },
   );
-  const resultIds$ = createMemo(
-    () => resultItems$().map((r) => r.id),
-    undefined,
-    { equals: equal },
-  );
+  const resultIds$ = createMemo(() => resultItems$().map((r) => r.id), undefined, { equals: equal });
 
   const isSearchPending$ = createMemo(() => queryNgrams$().length > 0 && !results$.ready$());
 

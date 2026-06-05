@@ -82,9 +82,7 @@ export function query<T extends object>(
   ...constraints: QueryConstraintInput[]
 ): QueryWithMetadata<T> {
   const metadataConstraints = constraints.filter(isQueryConstraintWithMetadata);
-  const sdkConstraints = constraints.flatMap((c) =>
-    isQueryConstraintWithMetadata(c) ? [c.constraint] : [c],
-  );
+  const sdkConstraints = constraints.flatMap((c) => (isQueryConstraintWithMetadata(c) ? [c.constraint] : [c]));
   const limitConstraints = metadataConstraints.filter((c): c is LimitConstraint => c.kind === "limit");
   return {
     query: firestoreQuery(col, ...sdkConstraints),

@@ -1,11 +1,7 @@
 import { doc, getDocFromServer } from "firebase/firestore";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import {
-  hasOptimisticCommitFailure,
-  waitForPendingOptimisticCommits,
-  optimisticBatch,
-} from "@/firestore/batch";
+import { hasOptimisticCommitFailure, waitForPendingOptimisticCommits, optimisticBatch } from "@/firestore/batch";
 import { createFirestoreClient, type FirestoreClient } from "@/firestore/client";
 import {
   createTestFirestore,
@@ -52,20 +48,24 @@ describe("optimisticBatch", () => {
       text: "created",
       value: 1,
     });
-    expect(client.overlay.mergeDocument<FirestoreTestDoc>(col.id, "existing", {
-      id: "existing",
-      text: "server",
-      value: 1,
-    })).toEqual({
+    expect(
+      client.overlay.mergeDocument<FirestoreTestDoc>(col.id, "existing", {
+        id: "existing",
+        text: "server",
+        value: 1,
+      }),
+    ).toEqual({
       id: "existing",
       text: "updated",
       value: 2,
     });
-    expect(client.overlay.mergeDocument<FirestoreTestDoc>(col.id, "deleted", {
-      id: "deleted",
-      text: "server",
-      value: 1,
-    })).toBeUndefined();
+    expect(
+      client.overlay.mergeDocument<FirestoreTestDoc>(col.id, "deleted", {
+        id: "deleted",
+        text: "server",
+        value: 1,
+      }),
+    ).toBeUndefined();
 
     await waitForPendingOptimisticCommits({ client });
     expect(hasOptimisticCommitFailure(client)).toBe(false);

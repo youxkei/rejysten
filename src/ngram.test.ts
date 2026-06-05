@@ -1,10 +1,7 @@
 import { describe, it, expect } from "vitest";
 
 import { normalize, splitToChars, analyzeTextForNgrams } from "@/ngram";
-import {
-  encodeNgramKeyForFirestore,
-  encodeNgramMapForFirestore,
-} from "@/services/firebase/firestore/ngram";
+import { encodeNgramKeyForFirestore, encodeNgramMapForFirestore } from "@/services/firebase/firestore/ngram";
 
 describe("ngram", () => {
   describe("normalize", () => {
@@ -222,12 +219,14 @@ describe("ngram", () => {
     });
 
     it("escapes dots, punctuation, Japanese, and emoji for field-path queries", () => {
-      expect(encodeNgramMapForFirestore({
-        "a.": true,
-        "o,": true,
-        検索: true,
-        "😀": true,
-      })).toEqual({
+      expect(
+        encodeNgramMapForFirestore({
+          "a.": true,
+          "o,": true,
+          検索: true,
+          "😀": true,
+        }),
+      ).toEqual({
         a_2E: true,
         o_2C: true,
         _E6_A4_9C_E7_B4_A2: true,

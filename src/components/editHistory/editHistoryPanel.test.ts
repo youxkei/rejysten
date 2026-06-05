@@ -288,30 +288,16 @@ describe("buildGraphRows", () => {
 describe("buildKeyedGraphRows", () => {
   it("uses entry ids for entry rows and stable distinct keys for separators and root", () => {
     const rows = buildGraphRows(
-      toMap([
-        entry("A", "", "root"),
-        entry("B", "A", "branch"),
-        entry("C", "A", "main"),
-      ]),
+      toMap([entry("A", "", "root"), entry("B", "A", "branch"), entry("C", "A", "main")]),
       "B",
     );
 
     const keyed = buildKeyedGraphRows(rows);
-    expect(keyed.map((row) => row.key)).toEqual([
-      "C",
-      "B",
-      "separator:2:|/  ",
-      "A",
-      "__root__",
-    ]);
+    expect(keyed.map((row) => row.key)).toEqual(["C", "B", "separator:2:|/  ", "A", "__root__"]);
   });
 
   it("keeps entry keys stable when the current head changes", () => {
-    const entries = toMap([
-      entry("A", "", "root"),
-      entry("B", "A", "branch"),
-      entry("C", "A", "main"),
-    ]);
+    const entries = toMap([entry("A", "", "root"), entry("B", "A", "branch"), entry("C", "A", "main")]);
 
     const headB = buildKeyedGraphRows(buildGraphRows(entries, "B")).filter((row) => row.entry);
     const headC = buildKeyedGraphRows(buildGraphRows(entries, "C")).filter((row) => row.entry);

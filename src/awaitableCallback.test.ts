@@ -141,10 +141,7 @@ describe("awaitPendingCallbacks", () => {
       await awaitPendingCallbacks();
 
       expect(events).toEqual(["failing", "following"]);
-      expect(error).toHaveBeenCalledWith(
-        'Error in awaitable callback "failingCallback":',
-        expect.any(Error),
-      );
+      expect(error).toHaveBeenCalledWith('Error in awaitable callback "failingCallback":', expect.any(Error));
     } finally {
       error.mockRestore();
     }

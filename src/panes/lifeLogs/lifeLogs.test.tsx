@@ -68,10 +68,7 @@ describe("<LifeLogs />", () => {
     await awaitPendingCallbacks();
   }
 
-  function expectSelectedLifeLogText(
-    result: Awaited<ReturnType<typeof setupLifeLogsTest>>["result"],
-    text: string,
-  ) {
+  function expectSelectedLifeLogText(result: Awaited<ReturnType<typeof setupLifeLogsTest>>["result"], text: string) {
     const selected = result.container.querySelector(`.${styles.lifeLogTree.selected}`);
     expect(selected).toBeTruthy();
     expect(selected!.textContent).toContain(text);
@@ -6148,7 +6145,9 @@ describe("<LifeLogs />", () => {
 
       await waitFor(
         () => {
-          expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBe(initialCount + 1);
+          expect(result.container.querySelectorAll(`.${styles.lifeLogTree.childrenNodes}`).length).toBe(
+            initialCount + 1,
+          );
         },
         { timeout: 3000 },
       );

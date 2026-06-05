@@ -111,7 +111,7 @@ beforeAll(async () => {
       firebase: {} as FirestoreService["services"]["firebase"],
       store: createMinimalStoreService(),
     },
-  } as FirestoreService;
+  };
   firestore = result.firestore;
 });
 

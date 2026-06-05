@@ -1,11 +1,7 @@
 import { deleteField, increment, serverTimestamp, Timestamp } from "firebase/firestore";
 import { describe, it, expect, vi } from "vitest";
 
-import {
-  createOptimisticOverlay,
-  type OverlayMutation,
-  type QueryMetadata,
-} from "@/firestore/optimisticOverlay";
+import { createOptimisticOverlay, type OverlayMutation, type QueryMetadata } from "@/firestore/optimisticOverlay";
 import { orderBy, where } from "@/firestore/query";
 
 function setMutation(id: string, data: Record<string, unknown>): OverlayMutation {
@@ -373,10 +369,7 @@ describe("batch lifecycle", () => {
 
   it("partial document catch-up clears matched docs only", () => {
     const overlay = createOptimisticOverlay();
-    overlay.apply("b1", [
-      setMutation("a", { text: "x" }),
-      setMutation("b", { text: "y" }),
-    ]);
+    overlay.apply("b1", [setMutation("a", { text: "x" }), setMutation("b", { text: "y" })]);
     overlay.markCommitted("b1");
     overlay.acknowledgeDocument("__overlayTest__/a", { text: "x" });
     // a should now be cleared from overlay; b still present
@@ -627,10 +620,13 @@ describe("mergeQuery", () => {
       setMutation("mid", { value: 5 }),
       setMutation("high", { value: 10 }),
     ]);
-    const result = overlay.mergeQuery(emptySnap, metadata({
-      filters: [where("value", ">=", 2), where("value", "<=", 8)],
-      orderBys: [orderBy("value")],
-    }));
+    const result = overlay.mergeQuery(
+      emptySnap,
+      metadata({
+        filters: [where("value", ">=", 2), where("value", "<=", 8)],
+        orderBys: [orderBy("value")],
+      }),
+    );
     expect(result.map((r) => r.id)).toEqual(["mid"]);
   });
 
@@ -641,10 +637,13 @@ describe("mergeQuery", () => {
       setMutation("mid", { value: 5 }),
       setMutation("high", { value: 8 }),
     ]);
-    const result = overlay.mergeQuery(emptySnap, metadata({
-      filters: [where("value", ">", 2), where("value", "<", 8)],
-      orderBys: [orderBy("value")],
-    }));
+    const result = overlay.mergeQuery(
+      emptySnap,
+      metadata({
+        filters: [where("value", ">", 2), where("value", "<", 8)],
+        orderBys: [orderBy("value")],
+      }),
+    );
     expect(result.map((r) => r.id)).toEqual(["mid"]);
   });
 
@@ -655,9 +654,12 @@ describe("mergeQuery", () => {
       setMutation("b", { parentId: "p", value: 2 }),
       setMutation("c", { parentId: "q", value: 1 }),
     ]);
-    const result = overlay.mergeQuery(emptySnap, metadata({
-      filters: [where("parentId", "==", "p"), where("value", "==", 2)],
-    }));
+    const result = overlay.mergeQuery(
+      emptySnap,
+      metadata({
+        filters: [where("parentId", "==", "p"), where("value", "==", 2)],
+      }),
+    );
     expect(result.map((r) => r.id)).toEqual(["b"]);
   });
 
@@ -776,10 +778,7 @@ describe("mergeQuery", () => {
 
   it("orderBy desc uses descending document id as final tie-breaker", () => {
     const overlay = createOptimisticOverlay();
-    overlay.apply("b1", [
-      setMutation("a", { order: "same" }),
-      setMutation("b", { order: "same" }),
-    ]);
+    overlay.apply("b1", [setMutation("a", { order: "same" }), setMutation("b", { order: "same" })]);
     const result = overlay.mergeQuery(emptySnap, metadata({ orderBys: [orderBy("order", "desc")] }));
     expect(result.map((r) => r.id)).toEqual(["b", "a"]);
   });
@@ -808,13 +807,13 @@ describe("mergeQuery", () => {
 
   it('does not apply an extra tie-breaker when orderBy("__name__") already differs', () => {
     const overlay = createOptimisticOverlay();
-    overlay.apply("b1", [
-      setMutation("b", { order: "same" }),
-      setMutation("a", { order: "same" }),
-    ]);
-    const result = overlay.mergeQuery(emptySnap, metadata({
-      orderBys: [orderBy("order"), orderBy("__name__")],
-    }));
+    overlay.apply("b1", [setMutation("b", { order: "same" }), setMutation("a", { order: "same" })]);
+    const result = overlay.mergeQuery(
+      emptySnap,
+      metadata({
+        orderBys: [orderBy("order"), orderBy("__name__")],
+      }),
+    );
     expect(result.map((r) => r.id)).toEqual(["a", "b"]);
   });
 
@@ -824,9 +823,12 @@ describe("mergeQuery", () => {
       setMutation("a", { parentId: "p", order: "same" }),
       setMutation("b", { parentId: "p", order: "same" }),
     ]);
-    const result = overlay.mergeQuery(emptySnap, metadata({
-      orderBys: [orderBy("parentId", "desc"), orderBy("order")],
-    }));
+    const result = overlay.mergeQuery(
+      emptySnap,
+      metadata({
+        orderBys: [orderBy("parentId", "desc"), orderBy("order")],
+      }),
+    );
     expect(result.map((r) => r.id)).toEqual(["a", "b"]);
   });
 
@@ -837,9 +839,12 @@ describe("mergeQuery", () => {
       setMutation("b", { parentId: "q", order: "1" }),
       setMutation("c", { parentId: "p", order: "2" }),
     ]);
-    const result = overlay.mergeQuery(emptySnap, metadata({
-      orderBys: [orderBy("parentId"), orderBy("order")],
-    }));
+    const result = overlay.mergeQuery(
+      emptySnap,
+      metadata({
+        orderBys: [orderBy("parentId"), orderBy("order")],
+      }),
+    );
     expect(result.map((r) => r.id)).toEqual(["a", "c", "b"]);
   });
 
@@ -863,11 +868,7 @@ describe("mergeQuery", () => {
 
   it("missing field on orderBy is excluded like Firestore", () => {
     const overlay = createOptimisticOverlay();
-    overlay.apply("b1", [
-      setMutation("a", { value: 1 }),
-      setMutation("b", {}),
-      setMutation("c", { value: 2 }),
-    ]);
+    overlay.apply("b1", [setMutation("a", { value: 1 }), setMutation("b", {}), setMutation("c", { value: 2 })]);
     const result = overlay.mergeQuery(emptySnap, metadata({ orderBys: [orderBy("value")] }));
     expect(result.map((r) => r.id)).toEqual(["a", "c"]);
   });
@@ -930,10 +931,7 @@ describe("mergeQuery", () => {
 
   it("NaN equality filter matches NaN values", () => {
     const overlay = createOptimisticOverlay();
-    overlay.apply("b1", [
-      setMutation("nan-value", { value: Number.NaN }),
-      setMutation("number-value", { value: 1 }),
-    ]);
+    overlay.apply("b1", [setMutation("nan-value", { value: Number.NaN }), setMutation("number-value", { value: 1 })]);
     const result = overlay.mergeQuery(emptySnap, metadata({ filters: [where("value", "==", Number.NaN)] }));
     expect(result.map((r) => r.id)).toEqual(["nan-value"]);
   });
@@ -1012,9 +1010,12 @@ describe("mergeQuery", () => {
     const overlay = createOptimisticOverlay();
     overlay.apply("b1", [setMutation("a", { text: "pending" })]);
     const snap = buildSnapshot([{ id: "z", data: { text: "server" } }]);
-    const result = overlay.mergeQuery(snap, metadata({
-      filters: [where("text", "in", ["server"])],
-    }));
+    const result = overlay.mergeQuery(
+      snap,
+      metadata({
+        filters: [where("text", "in", ["server"])],
+      }),
+    );
     expect(result).toEqual([{ id: "z", text: "server" }]);
   });
 

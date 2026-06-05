@@ -22,10 +22,7 @@ import {
   hasDocumentSetOverlay as clientHasDocumentSetOverlay,
   type FirestoreClient,
 } from "@/firestore/client";
-import {
-  getDoc as getFirestoreDoc,
-  getDocs as getFirestoreDocs,
-} from "@/firestore/get";
+import { getDoc as getFirestoreDoc, getDocs as getFirestoreDocs } from "@/firestore/get";
 import { type QueryWithMetadata } from "@/firestore/query";
 import { ServiceNotAvailable } from "@/services/error";
 import { type FirebaseService, useFirebaseService } from "@/services/firebase";
@@ -157,7 +154,11 @@ export function waitForServerSync(service: FirestoreService, expectedVersion?: s
       { includeMetadataChanges: true },
       (snapshot) => {
         const serverVersion = snapshot.data()?.version;
-        if (!snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites && (!expectedVersion || serverVersion === expectedVersion)) {
+        if (
+          !snapshot.metadata.fromCache &&
+          !snapshot.metadata.hasPendingWrites &&
+          (!expectedVersion || serverVersion === expectedVersion)
+        ) {
           unsubscribe();
           resolve();
         }
@@ -191,10 +192,7 @@ function getClient(service: FirestoreService): FirestoreClient {
   return fallback;
 }
 
-export function hasDocumentSetOverlay<T extends object>(
-  service: FirestoreService,
-  ref: DocumentReference<T>,
-): boolean {
+export function hasDocumentSetOverlay<T extends object>(service: FirestoreService, ref: DocumentReference<T>): boolean {
   return clientHasDocumentSetOverlay(getClient(service), ref.path);
 }
 

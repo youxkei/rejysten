@@ -28,10 +28,7 @@ export type FirestoreClientOptions = {
   };
 };
 
-export function createFirestoreClient(
-  firestore: Firestore,
-  options?: FirestoreClientOptions,
-): FirestoreClient {
+export function createFirestoreClient(firestore: Firestore, options?: FirestoreClientOptions): FirestoreClient {
   return {
     firestore,
     overlay: createOptimisticOverlay(options?.optimisticOverlay),

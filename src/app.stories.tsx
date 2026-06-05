@@ -43,10 +43,9 @@ function Seeder(props: { onReady: () => void }) {
 
   onMount(() => {
     (async () => {
-      await fetch(
-        `http://localhost:${EMULATOR_PORT}/emulator/v1/projects/demo/databases/(default)/documents`,
-        { method: "DELETE" },
-      );
+      await fetch(`http://localhost:${EMULATOR_PORT}/emulator/v1/projects/demo/databases/(default)/documents`, {
+        method: "DELETE",
+      });
 
       const now = new Date();
       const batch = writeBatch(firestore.firestore);
@@ -101,11 +100,7 @@ export const Default: StoryObj = {
       <>
         <Show when={!ready()}>
           <StoreServiceProvider localStorageNamePostfix={seedPostfix}>
-            <FirebaseServiceProvider
-              configYAML={firebaseConfig}
-              setErrors={() => undefined}
-              appName="AppStorySeed"
-            >
+            <FirebaseServiceProvider configYAML={firebaseConfig} setErrors={() => undefined} appName="AppStorySeed">
               <FirestoreServiceProvider emulatorPort={EMULATOR_PORT} useMemoryCache>
                 <Suspense>
                   <Seeder onReady={() => setReady(true)} />

@@ -252,7 +252,7 @@ function materializeSetData(data: Record<string, unknown>): Record<string, unkno
 }
 
 function stripIdField(doc: object & { id: string }): Record<string, unknown> {
-  const { id: _id, ...rest } = doc as Record<string, unknown> & { id: string };
+  const { id: _id, ...rest } = doc;
   return rest;
 }
 
@@ -519,7 +519,7 @@ export function createOptimisticOverlay(options?: OptimisticOverlayOptions): Opt
     },
     apply(batchId, mutations) {
       if (mutations.length === 0) return;
-      const stamped = mutations.map((m) => ({ ...m, batchId }) as OverlayMutation);
+      const stamped = mutations.map((m) => ({ ...m, batchId }));
       const existingIndex = findBatchIndex(batchId);
       if (existingIndex >= 0) {
         batches[existingIndex].mutations.push(...stamped);
@@ -609,7 +609,7 @@ export function createOptimisticOverlay(options?: OptimisticOverlayOptions): Opt
       snapshotData: (T & { id: string }) | undefined,
       options?: { excludeBatchId?: string },
     ): (T & { id: string }) | undefined {
-      const path = `${String(collection)}/${id}`;
+      const path = `${collection}/${id}`;
       const mutations = getMutationsForDocumentOnly(path, options);
       if (mutations.length === 0) return snapshotData;
 
@@ -642,7 +642,7 @@ export function createOptimisticOverlay(options?: OptimisticOverlayOptions): Opt
 
       const byPath = new Map<string, T & { id: string }>();
       for (const doc of snapshotData) {
-        byPath.set(`${String(metadata.collection)}/${doc.id}`, doc);
+        byPath.set(`${metadata.collection}/${doc.id}`, doc);
       }
 
       const overlayDocs = new Map<string, T & { id: string }>();
@@ -677,7 +677,7 @@ export function createOptimisticOverlay(options?: OptimisticOverlayOptions): Opt
 
       for (const [path, mutations] of mutationsByPath) {
         const composed = composeMutationsForDocument(mutations);
-        const id = path.slice(String(metadata.collection).length + 1);
+        const id = path.slice(metadata.collection.length + 1);
         const baseDoc = byPath.get(path);
         const baseRecord = baseDoc ? stripIdField(baseDoc) : latestKnownByPath.get(path);
 
@@ -722,7 +722,7 @@ export function createOptimisticOverlay(options?: OptimisticOverlayOptions): Opt
 
       const result: (T & { id: string })[] = [];
       for (const doc of snapshotData) {
-        const path = `${String(metadata.collection)}/${doc.id}`;
+        const path = `${metadata.collection}/${doc.id}`;
         if (removed.has(path)) continue;
         const overlaid = overlayDocs.get(path);
         if (overlaid !== undefined) {

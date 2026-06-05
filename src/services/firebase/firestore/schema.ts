@@ -17,7 +17,7 @@ export type SchemaCollectionReference<C extends keyof Schema> = CollectionRefere
 export function widenSchemaCollectionRef<Wide extends keyof Schema, Narrow extends Wide>(
   col: SchemaCollectionReference<Narrow>,
 ): SchemaCollectionReference<Wide> {
-  return col as unknown as SchemaCollectionReference<Wide>;
+  return col;
 }
 
 export function extractData<X extends object>(docData: DocumentData<X>): { id: string; data: X } {
@@ -26,7 +26,7 @@ export function extractData<X extends object>(docData: DocumentData<X>): { id: s
 }
 
 export function withId<X extends object>(id: string, data: X): DocumentData<X> {
-  return { ...data, id } as DocumentData<X>;
+  return { ...data, id };
 }
 
 type EnsureNoPreservedFields<T, PreservedFields extends string> = T extends {
