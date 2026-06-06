@@ -8,6 +8,7 @@ import {
 import { type FirestoreClient } from "@/firestore/client";
 import { type DocumentWithId, getDocumentWithId } from "@/firestore/document";
 import { type QueryWithMetadata } from "@/firestore/query";
+import { lastActionLink, withCurrentSpan, withSpan } from "@/telemetry/span";
 
 export type SnapshotMetadata = {
   fromCache: boolean;
@@ -85,14 +86,34 @@ export function onDocumentSnapshot<T extends object>(options: OnDocumentSnapshot
   // catch-up logic may miss a server-confirmed snapshot whose data matches the
   // previous local-write snapshot.
   const unsubscribeSnapshot = firestoreOnSnapshot(ref, { includeMetadataChanges: true }, (snapshot) => {
-    console.timeStamp(`${timestampPrefix$?.() ?? "no prefix"}: onDocumentSnapshot`);
-    docWithId = getDocumentWithId(snapshot);
-    if (shouldAcknowledgeSnapshotMetadata(snapshot.metadata)) {
-      suppressOverlayEmit = true;
-      overlay.acknowledgeDocument(ref.path, docWithId);
-      suppressOverlayEmit = false;
-    }
-    emit();
+    // Snapshots fire outside any action lifetime; record them as their own
+    // roots linked to the most recent action so a write's echo stays findable.
+    const link = lastActionLink();
+    withSpan(
+      "snapshot.onDocumentSnapshot",
+      (span) => {
+        withCurrentSpan(span, () => {
+          docWithId = getDocumentWithId(snapshot);
+          if (shouldAcknowledgeSnapshotMetadata(snapshot.metadata)) {
+            suppressOverlayEmit = true;
+            overlay.acknowledgeDocument(ref.path, docWithId);
+            suppressOverlayEmit = false;
+          }
+          emit();
+        });
+      },
+      {
+        root: true,
+        links: link ? [link] : undefined,
+        attributes: {
+          "app.collection": ref.parent.id,
+          "app.doc_id": ref.id,
+          "app.from_cache": snapshot.metadata.fromCache,
+          "app.has_pending_writes": snapshot.metadata.hasPendingWrites,
+          "app.timestamp_prefix": timestampPrefix$?.(),
+        },
+      },
+    );
   });
   const unsubscribeOverlay = overlay.subscribe((change) => {
     if (suppressOverlayEmit || !change.paths.has(ref.path)) return;
@@ -118,13 +139,18 @@ export function onQuerySnapshot<T extends object>(options: OnQuerySnapshotOption
   let hasReceivedSnapshot = false;
 
   function emit(): void {
-    const value = overlay.mergeQuery<T>(docWithIds, {
-      collection: query.collection,
-      filters: query.filters,
-      orderBys: query.orderBys,
-      limit: query.limit,
-      hasUntrackedConstraints: query.hasUntrackedConstraints,
-    });
+    const value = withSpan(
+      "overlay.mergeQuery",
+      () =>
+        overlay.mergeQuery<T>(docWithIds, {
+          collection: query.collection,
+          filters: query.filters,
+          orderBys: query.orderBys,
+          limit: query.limit,
+          hasUntrackedConstraints: query.hasUntrackedConstraints,
+        }),
+      { attributes: { "app.collection": query.collection, "app.doc_count": docWithIds.length } },
+    );
     if (hasEmitted && valuesEqualIgnoringFields(lastEmitted, value, ignoredFieldsForEquality)) return;
     hasEmitted = true;
     lastEmitted = value;
@@ -132,22 +158,42 @@ export function onQuerySnapshot<T extends object>(options: OnQuerySnapshotOption
   }
 
   const unsubscribeSnapshot = firestoreOnSnapshot(query.query, { includeMetadataChanges: true }, (snapshot) => {
-    console.timeStamp(`${timestampPrefix$?.() ?? "no prefix"}: onQuerySnapshot`);
-    onServerSnapshot?.(snapshot);
-    docWithIds = snapshot.docs.flatMap((docSnap) => {
-      const docWithId = getDocumentWithId(docSnap);
-      return docWithId === undefined ? [] : [docWithId];
-    });
-    hasReceivedSnapshot = true;
-    if (shouldAcknowledgeSnapshotMetadata(snapshot.metadata)) {
-      suppressOverlayEmit = true;
-      for (const docSnap of snapshot.docs) {
-        const docWithId = getDocumentWithId(docSnap);
-        overlay.acknowledgeDocument(docSnap.ref.path, docWithId);
-      }
-      suppressOverlayEmit = false;
-    }
-    emit();
+    // Snapshots fire outside any action lifetime; record them as their own
+    // roots linked to the most recent action so a write's echo stays findable.
+    const link = lastActionLink();
+    withSpan(
+      "snapshot.onQuerySnapshot",
+      (span) => {
+        withCurrentSpan(span, () => {
+          onServerSnapshot?.(snapshot);
+          docWithIds = snapshot.docs.flatMap((docSnap) => {
+            const docWithId = getDocumentWithId(docSnap);
+            return docWithId === undefined ? [] : [docWithId];
+          });
+          hasReceivedSnapshot = true;
+          if (shouldAcknowledgeSnapshotMetadata(snapshot.metadata)) {
+            suppressOverlayEmit = true;
+            for (const docSnap of snapshot.docs) {
+              const docWithId = getDocumentWithId(docSnap);
+              overlay.acknowledgeDocument(docSnap.ref.path, docWithId);
+            }
+            suppressOverlayEmit = false;
+          }
+          emit();
+        });
+      },
+      {
+        root: true,
+        links: link ? [link] : undefined,
+        attributes: {
+          "app.collection": query.collection,
+          "app.doc_count": snapshot.docs.length,
+          "app.from_cache": snapshot.metadata.fromCache,
+          "app.has_pending_writes": snapshot.metadata.hasPendingWrites,
+          "app.timestamp_prefix": timestampPrefix$?.(),
+        },
+      },
+    );
   });
   const unsubscribeOverlay = overlay.subscribe((change) => {
     if (!hasReceivedSnapshot && !(allowInitialEmit?.() ?? false)) return;

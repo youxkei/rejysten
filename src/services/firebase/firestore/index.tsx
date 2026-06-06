@@ -35,6 +35,7 @@ import {
 } from "@/services/firebase/firestore/schema";
 import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { type StoreService, useStoreService } from "@/services/store";
+import { addStartupEvent } from "@/telemetry/startup";
 
 export type FirestoreService = {
   services: {
@@ -108,6 +109,8 @@ export function FirestoreServiceProvider(props: {
       ignoredFieldsForEquality: ["createdAt", "updatedAt"],
     },
   });
+
+  addStartupEvent("firestoreInitialized");
 
   const service: FirestoreService = {
     services: { firebase, store },

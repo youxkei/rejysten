@@ -3,6 +3,7 @@ import { createSignal, startTransition } from "solid-js";
 
 import { DateNow } from "@/date";
 import { getCollection, getDoc, useFirestoreService } from "@/services/firebase/firestore";
+import { beginAction } from "@/telemetry/span";
 import { dayMs, noneTimestamp } from "@/timestamp";
 
 export interface UseScrollRangeOptions {
@@ -29,9 +30,15 @@ export function useScrollRange(options: UseScrollRangeOptions) {
     if (isSliding$() || hasNoOlderData$()) return;
     setIsSliding(true);
 
-    await startTransition(() => {
-      setRangeStart((prev) => Timestamp.fromMillis(prev.toMillis() - expandMs));
-      setIsExpanded(true);
+    // Scroll-triggered, so it runs outside any user action: its own root span
+    // covering the range-expansion transition (the perceivable scroll hitch).
+    const handle = beginAction("scroll.slideOlder", { root: true, attributes: { "app.expand_ms": expandMs } });
+    await handle.runBody(async () => {
+      await startTransition(() => {
+        setRangeStart((prev) => Timestamp.fromMillis(prev.toMillis() - expandMs));
+        setIsExpanded(true);
+      });
+      handle.span.setAttribute("app.range_width_ms", rangeEnd$().toMillis() - rangeStart$().toMillis());
     });
 
     requestAnimationFrame(() => {
@@ -43,9 +50,13 @@ export function useScrollRange(options: UseScrollRangeOptions) {
     if (isSliding$() || hasNoNewerData$()) return;
     setIsSliding(true);
 
-    await startTransition(() => {
-      setRangeEnd((prev) => Timestamp.fromMillis(prev.toMillis() + expandMs));
-      setIsExpanded(true);
+    const handle = beginAction("scroll.slideNewer", { root: true, attributes: { "app.expand_ms": expandMs } });
+    await handle.runBody(async () => {
+      await startTransition(() => {
+        setRangeEnd((prev) => Timestamp.fromMillis(prev.toMillis() + expandMs));
+        setIsExpanded(true);
+      });
+      handle.span.setAttribute("app.range_width_ms", rangeEnd$().toMillis() - rangeStart$().toMillis());
     });
 
     requestAnimationFrame(() => {

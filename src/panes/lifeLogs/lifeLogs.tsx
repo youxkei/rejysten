@@ -30,6 +30,8 @@ import { addKeyDownEventListener } from "@/solid/event";
 import { createIsMobile } from "@/solid/responsive";
 import { ScrollContainer, useScrollContainer } from "@/solid/scroll";
 import { styles } from "@/styles.css";
+import { addActionEvent, beginAction, lastActionLink } from "@/telemetry/span";
+import { beginStartupPhase, endStartup } from "@/telemetry/startup";
 import { dayMs, noneTimestamp } from "@/timestamp";
 
 export interface LifeLogsProps {
@@ -207,7 +209,16 @@ export function TimeRangedLifeLogs(props: {
 
   // selectedId変更時のresetRange (展開中 or 範囲外)
   const debouncedResetToSelected = debounce((lifeLogId: string) => {
-    void props.resetToLifeLog(lifeLogId).catch((error: unknown) => {
+    // Fires after the debounce delay, outside the scheduling action; recorded
+    // as its own root linked to it. The gap between the link's end and this
+    // span's start is the debounce latency.
+    const link = lastActionLink();
+    const handle = beginAction("scroll.resetToSelected", {
+      root: true,
+      links: link ? [link] : undefined,
+      attributes: { "app.doc_id": lifeLogId },
+    });
+    handle.runBody(() => props.resetToLifeLog(lifeLogId)).catch((error: unknown) => {
       console.error("Error resetting LifeLogs range:", error);
     });
   }, props.scrollFocusDebounceMs ?? 300);
@@ -218,12 +229,18 @@ export function TimeRangedLifeLogs(props: {
   // 初回スナップショット到着までは resetRange を判定しない。
   // onSnapshot が走る前の currentIds=[] を見て誤って resetToLifeLog を
   // 呼ぶのを防ぐ（レンジが不要に拡張される／テストが flaky 化する原因）。
+  const endFirstRangeQueryPhase = beginStartupPhase("firstRangeQuery");
   const [hasLoadedOnce$, setHasLoadedOnce] = createSignal(false);
   createEffect(
     on(
       () => lifeLogs$.ready$(),
       (ready) => {
-        if (ready) setHasLoadedOnce(true);
+        if (ready) {
+          // First meaningful paint of the default pane: close the startup trace
+          endFirstRangeQueryPhase();
+          endStartup();
+          setHasLoadedOnce(true);
+        }
       },
       { defer: true },
     ),
@@ -235,6 +252,7 @@ export function TimeRangedLifeLogs(props: {
     if (!hasLoadedOnce$()) return;
     const currentIds = untrack(() => lifeLogs$().map((l) => l.id));
     if (currentIds.includes(selectedId) && !untrack(() => props.isExpanded)) return;
+    addActionEvent("scroll.resetDebounceScheduled", { "app.doc_id": selectedId });
     debouncedResetToSelected(selectedId);
   });
 

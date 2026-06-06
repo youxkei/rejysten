@@ -9,6 +9,7 @@ import {
 
 import { type FirestoreClient } from "@/firestore/client";
 import { type OverlayMutation } from "@/firestore/optimisticOverlay";
+import { type Span, endSpan, startSpan, withSpan } from "@/telemetry/span";
 
 export type OptimisticWriteBatch = {
   readonly batchId: string;
@@ -134,10 +135,11 @@ function createOptimisticBatchId(): string {
   return `optimistic-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function optimisticBatch(client: FirestoreClient): OptimisticWriteBatch {
+export function optimisticBatch(client: FirestoreClient, options?: { parentSpan?: Span }): OptimisticWriteBatch {
   const { overlay } = client;
   const batch = writeBatch(client.firestore);
   const batchId = createOptimisticBatchId();
+  const parentSpan = options?.parentSpan;
 
   const overlayMutations: OverlayMutation[] = [];
   const ignoredFieldsForOverlay = client.optimisticBatch?.ignoredFieldsForOverlay ?? emptyIgnoredFieldsForOverlay;
@@ -196,14 +198,27 @@ export function optimisticBatch(client: FirestoreClient): OptimisticWriteBatch {
       if (commitStarted) {
         throw new Error("Cannot commit an optimistic batch more than once.");
       }
-      overlay.apply(batchId, overlayMutations);
+      withSpan(
+        "overlay.apply",
+        () => {
+          overlay.apply(batchId, overlayMutations);
+        },
+        { parent: parentSpan, attributes: { "app.mutation_count": overlayMutations.length } },
+      );
       commitStarted = true;
 
       const previousCommit = serverCommitQueues.get(client) ?? Promise.resolve();
+      // The server commit usually completes after the enqueuing action span has
+      // ended; recorded as late-ending children of the same trace on purpose.
+      const serverQueueWaitSpan = startSpan("batch.serverQueueWait", { parent: parentSpan });
       const commitTask = previousCommit
         .catch(() => undefined)
         .then(async () => {
-          await batch.commit();
+          endSpan(serverQueueWaitSpan);
+          await withSpan("batch.commit", () => batch.commit(), {
+            parent: parentSpan,
+            attributes: { "app.mutation_count": overlayMutations.length },
+          });
         })
         .then(() => {
           commitFailureStates.set(client, false);

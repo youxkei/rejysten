@@ -15,6 +15,7 @@ import * as s from "superstruct";
 
 import { ServiceNotAvailable } from "@/services/error";
 import { createSubscribeWithSignal } from "@/solid/subscribe";
+import { beginStartupPhase } from "@/telemetry/startup";
 import "@/services/firebase/store";
 
 export type FirebaseService = {
@@ -131,6 +132,11 @@ export function FirebaseServiceProvider(props: {
       }
     },
   );
+
+  const endAuthResolvePhase = beginStartupPhase("authResolve");
+  createEffect(() => {
+    if (authed$() && firebaseApp$()) endAuthResolvePhase();
+  });
 
   return (
     <Show when={authed$() && firebaseApp$()} keyed>

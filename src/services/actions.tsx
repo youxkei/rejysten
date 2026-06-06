@@ -1,6 +1,7 @@
 import { createStore, produce } from "solid-js/store";
 
 import { createContextProvider } from "@/solid/context";
+import { wrapAction } from "@/telemetry/span";
 
 type ActionsToActionsCreator<T extends object> = {
   [K in keyof T]: (context: ActionsContext, actions: Actions) => T[K];
@@ -42,6 +43,17 @@ export interface Actions {
   components: ComponentsActions;
 }
 
+// Wraps every action of an area with a telemetry root span named after the
+// registry keys (e.g. "panes.lifeLogs.saveText"), which are minification-safe.
+function wrapAreaActions<T extends object>(prefix: string, areaActions: T): T {
+  return Object.fromEntries(
+    Object.entries(areaActions).map(([key, fn]) => [
+      key,
+      wrapAction(`${prefix}.${key}`, fn as (...args: unknown[]) => unknown),
+    ]),
+  ) as T;
+}
+
 function createActions(context: ActionsContext): Actions {
   const actions: Actions = {
     panes: {} as PanesActions,
@@ -51,13 +63,21 @@ function createActions(context: ActionsContext): Actions {
   // Populate actions - creators can reference other actions via the actions parameter
   Object.assign(
     actions.panes,
-    Object.fromEntries(Object.entries(actionsCreator.panes).map(([key, creator]) => [key, creator(context, actions)])),
+    Object.fromEntries(
+      Object.entries(actionsCreator.panes).map(([key, creator]) => [
+        key,
+        wrapAreaActions(`panes.${key}`, creator(context, actions)),
+      ]),
+    ),
   );
 
   Object.assign(
     actions.components,
     Object.fromEntries(
-      Object.entries(actionsCreator.components).map(([key, creator]) => [key, creator(context, actions)]),
+      Object.entries(actionsCreator.components).map(([key, creator]) => [
+        key,
+        wrapAreaActions(`components.${key}`, creator(context, actions)),
+      ]),
     ),
   );
 

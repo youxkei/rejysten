@@ -1,5 +1,7 @@
 import { createSignal, createEffect, createResource, createComputed, onCleanup, startTransition } from "solid-js";
 
+import { endSpan, startSpan } from "@/telemetry/span";
+
 export function createSubscribeWithResource<Source, Value, InitialValue>(
   source$: () => Source | undefined,
   subscriber: (source: Source, setValue: (value: Value) => void) => void,
@@ -75,9 +77,13 @@ export function createSubscribeWithResource<Source, Value, InitialValue>(
   // urgent UI work.
   createComputed(() => {
     const resourceValue = resource$();
+    // Skip the initial run (version 0) so subscription mounts don't flood the
+    // trace; real emissions measure how long the transition takes to flush.
+    const span = resourceValue.version === 0 ? undefined : startSpan("solid.transitionFlush");
     void startTransition(() => {
       setSignal(() => resourceValue.value);
     }).then(() => {
+      if (span) endSpan(span);
       if (resourceValue.version !== 0 && resourceValue.sourceVersion === activeVersion) {
         setReady(true);
       }

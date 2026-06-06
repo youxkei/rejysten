@@ -11,3 +11,6 @@ firestore-debug.log
 __screenshots__
 .vitest-attachments
 .flaky-tests
+
+# Local OTLP proxy secrets for `wrangler pages dev` (see functions/api/traces.ts)
+.dev.vars

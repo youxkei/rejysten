@@ -48,6 +48,7 @@ import { TransactionAborted } from "@/services/firebase/firestore/error";
 import { deleteNgram, setNgram } from "@/services/firebase/firestore/ngram";
 import { type Writer } from "@/services/firebase/firestore/writer";
 import { initialState } from "@/services/store";
+import { type Span, endSpan, startSpan, withSpan } from "@/telemetry/span";
 
 declare module "@/services/store" {
   interface State {
@@ -317,15 +318,17 @@ export class OperationRecordingBatch {
     return inverseOps.reverse();
   }
 
-  commit(options?: BatchOptions): Promise<void> {
+  commit(options?: BatchOptions, parentSpan?: Span): Promise<void> {
     const client = getClient(this.service);
     const writer = this.writer;
     if (!isOptimisticWriteBatch(writer)) {
       throw new Error("OperationRecordingBatch.commit requires an optimistic write batch.");
     }
 
+    const queueWaitSpan = startSpan("batch.commitQueueWait", { parent: parentSpan });
     return enqueueOptimisticCommit(client, async () => {
-      await this.recordHistory(options);
+      endSpan(queueWaitSpan);
+      await withSpan("batch.recordHistory", () => this.recordHistory(options), { parent: parentSpan });
 
       const batchVersionCol = getCollection(this.service, "batchVersion");
       const newBatchVersion = uuidv7();
@@ -421,6 +424,11 @@ export async function runBatch(
     },
   } = service;
 
+  // Ends when the optimistic commit has run (overlay applied), not when the
+  // server commit completes — the latter is recorded by the late-ending
+  // batch.serverQueueWait/batch.commit children.
+  const runSpan = startSpan("batch.run");
+  let failed = false;
   try {
     console.timeStamp("batch start");
 
@@ -429,16 +437,22 @@ export async function runBatch(
     });
 
     const client = getClient(service);
-    const optimisticWriteBatch = optimisticBatch(client);
+    const optimisticWriteBatch = optimisticBatch(client, { parentSpan: runSpan });
     const batch = new OperationRecordingBatch(service, optimisticWriteBatch, optimisticWriteBatch.batchId);
-    await updateFunction(batch);
-    await batch.commit(options);
+    await withSpan("batch.build", () => updateFunction(batch), { parent: runSpan });
+    runSpan.setAttribute("app.mutation_count", batch.overlayMutations.length);
+    await batch.commit(options, runSpan);
+  } catch (error) {
+    failed = true;
+    endSpan(runSpan, error);
+    throw error;
   } finally {
     updateState((state) => {
       state.servicesFirestoreBatch.lock = false;
     });
 
     console.timeStamp("batch end");
+    if (!failed) runSpan.end();
   }
 }
 

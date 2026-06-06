@@ -1,3 +1,5 @@
+import { takeActionHandoff } from "@/telemetry/span";
+
 const pendingCallbacks: Promise<void>[] = [];
 
 export async function awaitPendingCallbacks(options?: { timeoutMs?: number }) {
@@ -25,19 +27,29 @@ export async function awaitPendingCallbacks(options?: { timeoutMs?: number }) {
 
 export function awaitable<Args extends unknown[]>(callback: (...args: Args) => Promise<void>): (...args: Args) => void {
   return (...args: Args) => {
+    // Span handle offered by the action registry wrapper in the same tick.
+    // It records the action body (and any queue wait) and ends when the body
+    // settles. Non-action callbacks have no handle and are not traced.
+    const action = takeActionHandoff();
     const currentPending = [...pendingCallbacks];
+
+    const run = () => (action ? action.runBody(() => callback(...args)) : callback(...args));
 
     let promise: Promise<void>;
     if (currentPending.length > 0) {
       // Wait for pending callbacks before executing
+      const endQueueWait = action?.startQueueWait();
       promise = Promise.all(currentPending)
-        .then(() => callback(...args))
+        .then(() => {
+          endQueueWait?.();
+          return run();
+        })
         .catch((e: unknown) => {
           console.error(`Error in awaitable callback "${callback.name}":`, e);
         });
     } else {
       // No pending callbacks - execute directly (synchronously starts the callback)
-      promise = callback(...args).catch((e: unknown) => {
+      promise = run().catch((e: unknown) => {
         console.error(`Error in awaitable callback "${callback.name}":`, e);
       });
     }
