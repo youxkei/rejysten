@@ -3158,4 +3158,121 @@ describe("share", () => {
     expect(store.state.toast.message).toBe("共有から追加しました");
     expect(store.state.share.isConfirming).toBe(false);
   });
+
+  it("runs the past-share check while the OGP fetch is still in flight", async ({ db, task }) => {
+    // No title param, so the flow needs the OGP fetch — which is gated here
+    history.replaceState(null, "", "/?url=https://example.com/parallel-ogp");
+
+    initTelemetry({ mode: "memory" });
+
+    let releaseOGP!: (meta: { title: string | null; description: string | null }) => void;
+    vi.mocked(fetchOGPMeta).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseOGP = resolve;
+        }),
+    );
+
+    const { ready, result, getFirestore } = setupShareComponentTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+
+    try {
+      // The ngram query completes while the OGP fetch is still pending; the
+      // serial implementation would never reach it before the gate opens.
+      await waitFor(() => {
+        const ngramsSpan = getFinishedSpansForTest().find(
+          (span) => span.name === "firestore.getDocs" && span.attributes["app.collection"] === "ngrams",
+        );
+        expect(ngramsSpan).toBeTruthy();
+      });
+    } finally {
+      releaseOGP({ title: "Parallel Title", description: null });
+    }
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+    await waitFor(() => {
+      expect(result.queryByText("app-content")).not.toBeNull();
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const allNodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "!=", "")), { fromServer: true });
+    expect(allNodes).toHaveLength(1);
+    expect(allNodes[0].text).toBe("[Parallel Title](https://example.com/parallel-ogp)");
+  });
+
+  it("returns the duplicate result without waiting for the OGP fetch", async ({ db, task }) => {
+    history.replaceState(null, "", "/?url=https://example.com/dup-no-ogp");
+
+    let releaseOGP!: (meta: { title: string | null; description: string | null }) => void;
+    vi.mocked(fetchOGPMeta).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseOGP = resolve;
+        }),
+    );
+
+    const { ready, result, getStore } = setupShareComponentTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-dup-no-ogp"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$node-dup-no-ogp"), {
+        text: "[Old](https://example.com/dup-no-ogp)",
+        lifeLogId: "$netsurf-dup-no-ogp",
+        parentId: "$netsurf-dup-no-ogp",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+
+    try {
+      // The duplicate result never shows a link title, so the share completes
+      // while the OGP fetch is still pending.
+      await waitFor(() => {
+        expect(result.queryByText("app-content")).not.toBeNull();
+      });
+      expect(window.location.search).toBe("");
+      expect(getStore().state.toast.message).toBe("共有されたURLは追加済みです");
+    } finally {
+      releaseOGP({ title: null, description: null });
+    }
+  });
 });

@@ -60,6 +60,26 @@ async function parseKindleShare(text: string | null, url: string): Promise<{ tit
   };
 }
 
+// Determine the link title: prefer the share-provided title, then the OGP title, then the URL itself
+async function determineLinkTitle(preferredTitle: string | null, url: string, isX: boolean): Promise<string> {
+  if (preferredTitle) return preferredTitle;
+
+  try {
+    const meta = await fetchOGPMeta(url);
+    if (meta.title) {
+      return isX && meta.description ? `${meta.title}: ${meta.description}` : meta.title;
+    }
+  } catch {
+    // fall through
+  }
+
+  return url;
+}
+
+function buildMarkdownLink(linkTitle: string, url: string): string {
+  return `[${linkTitle.replaceAll("[", "［").replaceAll("]", "］")}](${url})`;
+}
+
 export type ShareResult = {
   lifeLogId: string;
   nodeId: string;
@@ -151,28 +171,22 @@ export async function handleShare(
   const otherCategory = category === "読書" ? "ネットサーフィン" : "読書";
   const isX = hostname === "x.com" || hostname.endsWith(".x.com");
 
-  // Determine title: prefer title param, then OGP title, then URL
-  let linkTitle = kindleShare?.title ?? title;
-  if (!linkTitle) {
-    try {
-      const meta = await fetchOGPMeta(url);
-      if (meta.title) {
-        linkTitle = isX && meta.description ? `${meta.title}: ${meta.description}` : meta.title;
-      }
-    } catch {
-      // fall through
-    }
-  }
-  if (!linkTitle) {
-    linkTitle = url;
-  }
-  const markdownLink = `[${linkTitle.replaceAll("[", "［").replaceAll("]", "］")}](${url})`;
-
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
   const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
 
   // Fetch fresh data from server
   const fromServer = { fromServer: true } as const;
+
+  // The OGP fetch and the past-share ngram query are the two dominant costs
+  // (seconds each); both depend only on the URL, so they run concurrently
+  // with each other and with the running-log queries below.
+  const linkTitlePromise = determineLinkTitle(kindleShare?.title ?? title, url, isX);
+  const pastSharedNodePromise = options.skipPastDuplicateConfirmation
+    ? undefined
+    : findPastSharedNode(firestore, url, fromServer);
+  // The duplicate path returns without consuming the past-share result; this
+  // keeps its rejection from becoming an unhandled one on that path.
+  void pastSharedNodePromise?.catch(() => undefined);
 
   // Find all running lifeLogs
   const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), fromServer);
@@ -193,39 +207,46 @@ export async function handleShare(
     );
     const existingNode = existingNodes.find((node) => node.text.includes(`](${url})`));
     if (existingNode) {
-      if (kindleShare && existingNode.text !== markdownLink) {
-        await runTransaction(
-          firestore,
-          (batch) => {
-            batch.update(treeNodesCol, {
-              id: existingNode.id,
-              text: markdownLink,
-            });
-          },
-          {
-            description: "Kindle進捗更新",
-            prevSelection: {},
-            nextSelection: { lifeLogs: matchingLog.id, lifeLogTreeNodes: existingNode.id },
-          },
-        );
-        return { lifeLogId: matchingLog.id, nodeId: existingNode.id, status: "updated" };
+      if (kindleShare) {
+        // Kindle shares carry their own title, so this never waits for OGP
+        const markdownLink = buildMarkdownLink(await linkTitlePromise, url);
+        if (existingNode.text !== markdownLink) {
+          await runTransaction(
+            firestore,
+            (batch) => {
+              batch.update(treeNodesCol, {
+                id: existingNode.id,
+                text: markdownLink,
+              });
+            },
+            {
+              description: "Kindle進捗更新",
+              prevSelection: {},
+              nextSelection: { lifeLogs: matchingLog.id, lifeLogTreeNodes: existingNode.id },
+            },
+          );
+          return { lifeLogId: matchingLog.id, nodeId: existingNode.id, status: "updated" };
+        }
       }
+      // The link title is never shown for duplicates, so the in-flight OGP fetch is abandoned
       return { lifeLogId: matchingLog.id, nodeId: existingNode.id, status: "duplicate" };
     }
   }
 
-  if (!options.skipPastDuplicateConfirmation) {
-    const pastSharedNode = await findPastSharedNode(firestore, url, fromServer);
+  if (pastSharedNodePromise) {
+    const pastSharedNode = await pastSharedNodePromise;
     if (pastSharedNode) {
       return {
         status: "needsConfirmation",
         url,
-        markdownLink,
+        markdownLink: buildMarkdownLink(await linkTitlePromise, url),
         existingNodeId: pastSharedNode.id,
         existingNodeText: pastSharedNode.text,
       };
     }
   }
+
+  const markdownLink = buildMarkdownLink(await linkTitlePromise, url);
 
   if (matchingLog) {
     lifeLogId = matchingLog.id;
