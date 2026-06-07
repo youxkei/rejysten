@@ -2611,6 +2611,82 @@ describe("share", () => {
     expect(runningLogs).toHaveLength(0);
   });
 
+  it("ignores a past long URL that matches only in the truncated ngram prefix", async ({ db, task }) => {
+    // Both URLs share their first 200 ngrams (the query filter limit), so the
+    // ngram query returns the past doc; only the exact `](url)` check rejects it.
+    const baseUrl = makeLongUrl("long-tail");
+    const pastUrl = `${baseUrl}/old-tail`;
+    const sharedUrl = `${baseUrl}/new-tail`;
+    const first200Ngrams = (url: string) => Object.keys(analyzeTextForNgrams(url).ngramMap).slice(0, 200);
+    expect(first200Ngrams(sharedUrl)).toEqual(first200Ngrams(pastUrl));
+
+    history.replaceState(null, "", `/?title=New+Tail&url=${encodeURIComponent(sharedUrl)}`);
+
+    const { ready, getFirestore, getShareResult } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-current-tail"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$node-current-tail"), {
+        text: "current node",
+        lifeLogId: "$netsurf-current-tail",
+        parentId: "$netsurf-current-tail",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      const pastNodeText = `[Old Tail](${pastUrl})`;
+      batch.set(doc(lifeLogTreeNodes, "$node-past-tail"), {
+        text: pastNodeText,
+        lifeLogId: "$netsurf-past-tail",
+        parentId: "$netsurf-past-tail",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+      setNgramDoc(batch, firestore, "$node-past-tail", "lifeLogTreeNodes", pastNodeText);
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    expect(getShareResult()?.status).toBe("added");
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const currentNodes = await getDocs(
+      firestore,
+      query(treeNodesCol, where("parentId", "==", "$netsurf-current-tail")),
+      { fromServer: true },
+    );
+    expect(currentNodes).toHaveLength(2);
+    expect(currentNodes.some((node) => node.text === `[New Tail](${sharedUrl})`)).toBe(true);
+  });
+
   it("does not end otherLog when duplicate URL detected", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Novel&url=https://ncode.syosetu.com/n1234ab/");
 
