@@ -212,6 +212,16 @@ function setNgramDoc(
   });
 }
 
+// Build a URL with more than 200 unique ngrams (the query filter limit in
+// findPastSharedNode). The path cycles letter-digit pairs (a0a1...a9b0...) so
+// almost every bigram is unique.
+function makeLongUrl(pathPrefix: string): string {
+  const path = Array.from({ length: 13 }, (_, letterIndex) =>
+    Array.from({ length: 10 }, (_, digit) => `${String.fromCharCode(97 + letterIndex)}${digit}`).join(""),
+  ).join("");
+  return `https://example.com/${pathPrefix}/${path}`;
+}
+
 describe("share", () => {
   it("adds link to existing running ネットサーフィン with tree nodes", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Example&url=https://example.com");
@@ -2476,6 +2486,129 @@ describe("share", () => {
     );
     expect(currentNodes).toHaveLength(2);
     expect(currentNodes.some((node) => node.text === "[New Example](https://example.com/new)")).toBe(true);
+  });
+
+  it("adds a long URL whose ngrams exceed the query filter limit", async ({ db, task }) => {
+    const longUrl = makeLongUrl("long-add");
+    history.replaceState(null, "", `/?title=Long+Example&url=${encodeURIComponent(longUrl)}`);
+
+    const { ready, getFirestore, getShareResult } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-long-add"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$node-long-add"), {
+        text: "existing node",
+        lifeLogId: "$netsurf-long-add",
+        parentId: "$netsurf-long-add",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    // Sanity check: the URL really has more ngrams than the query filter limit
+    expect(Object.keys(analyzeTextForNgrams(longUrl).ngramMap).length).toBeGreaterThan(200);
+
+    expect(getShareResult()?.status).toBe("added");
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("lifeLogId", "==", "$netsurf-long-add")), {
+      fromServer: true,
+    });
+    expect(nodes).toHaveLength(2);
+    expect(nodes.some((node) => node.text === `[Long Example](${longUrl})`)).toBe(true);
+  });
+
+  it("asks for confirmation when a long URL was shared in the past", async ({ db, task }) => {
+    const longUrl = makeLongUrl("long-confirm");
+    history.replaceState(null, "", `/?title=New+Long&url=${encodeURIComponent(longUrl)}`);
+
+    const { ready, getFirestore, getShareResult } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-past-long"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(new Date(2026, 0, 1, 10, 0, 0, 0)),
+        endAt: Timestamp.fromDate(new Date(2026, 0, 1, 11, 0, 0, 0)),
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      const pastNodeText = `[Old Long](${longUrl})`;
+      batch.set(doc(lifeLogTreeNodes, "$node-past-long"), {
+        text: pastNodeText,
+        lifeLogId: "$netsurf-past-long",
+        parentId: "$netsurf-past-long",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+      setNgramDoc(batch, firestore, "$node-past-long", "lifeLogTreeNodes", pastNodeText);
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    expect(getShareResult()).toEqual({
+      status: "needsConfirmation",
+      url: longUrl,
+      markdownLink: `[New Long](${longUrl})`,
+      existingNodeId: "$node-past-long",
+      existingNodeText: `[Old Long](${longUrl})`,
+    });
+
+    // Nothing should be added yet
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    expect(runningLogs).toHaveLength(0);
   });
 
   it("does not end otherLog when duplicate URL detected", async ({ db, task }) => {

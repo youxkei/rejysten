@@ -91,13 +91,18 @@ function cleanShareParams() {
   history.replaceState(null, "", cleanUrl.pathname + cleanUrl.search);
 }
 
+// 過去共有検索に使う URL ngram の上限。先頭から取るのは domain 部分を必ず含めるため。
+// 多いほど積集合の選択性が上がるが、超長 URL での filter 爆発を防ぐために
+// Firestore のクエリ filter 数への安全マージンとして 200 で打ち切る。
+const maxUrlNgrams = 200;
+
 async function findPastSharedNode(
   firestore: FirestoreService,
   url: string,
   options?: { fromServer?: boolean },
 ): Promise<{ id: string; text: string } | undefined> {
   const { ngramMap } = analyzeTextForNgrams(url);
-  const urlNgrams = Object.keys(ngramMap).slice(0, 10);
+  const urlNgrams = Object.keys(ngramMap).slice(0, maxUrlNgrams);
   if (urlNgrams.length === 0) return undefined;
 
   const ngramsCol = getCollection(firestore, "ngrams");
