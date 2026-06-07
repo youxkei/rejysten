@@ -21,6 +21,14 @@ function extractAsin(url: string | null): string | null {
   return url?.match(/(?:\/|[?&](?:asin|ASIN)=)([A-Z0-9]{10})(?:[/?&#]|$)/)?.[1] ?? null;
 }
 
+function normalizeAmazonJpUrl(url: string): string {
+  const hostname = new URL(url).hostname;
+  if (hostname !== "amazon.co.jp" && !hostname.endsWith(".amazon.co.jp")) return url;
+
+  const asin = extractAsin(url);
+  return asin ? `https://www.amazon.co.jp/dp/${asin}` : url;
+}
+
 async function toAmazonJpLink(url: string, title: string, author: string): Promise<string> {
   let asin = extractAsin(url);
 
@@ -136,6 +144,8 @@ export async function handleShare(
   const kindleShare = await parseKindleShare(text, url);
   if (kindleShare) {
     url = kindleShare.url;
+  } else {
+    url = normalizeAmazonJpUrl(url);
   }
 
   const readingDomains = [
@@ -145,7 +155,6 @@ export async function handleShare(
     "manga.nicovideo.jp",
     "shonenjumpplus.com",
     "takecomic.jp",
-    "amazon.co.jp",
   ];
   const hostname = new URL(url).hostname;
   const isReadingShare =

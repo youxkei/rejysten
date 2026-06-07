@@ -1050,6 +1050,288 @@ describe("share", () => {
     expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(newNode!.id);
   });
 
+  it("creates ネットサーフィン lifeLog for amazon.co.jp product URL and normalizes it", async ({ db, task }) => {
+    const productUrl = "https://www.amazon.co.jp/十戒-講談社文庫-夕木春央-ebook/dp/B0FHPWB4KS?ref_=cm_sw_r";
+    history.replaceState(null, "", `/?title=${encodeURIComponent("十戒")}&url=${encodeURIComponent(productUrl)}`);
+
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    const netSurfLog = logs.find((l) => l.text === "ネットサーフィン");
+    expect(netSurfLog).toBeTruthy();
+    expect(logs.find((l) => l.text === "読書")).toBeUndefined();
+
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", netSurfLog!.id)), {
+      fromServer: true,
+    });
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe("[十戒](https://www.amazon.co.jp/dp/B0FHPWB4KS)");
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe(netSurfLog!.id);
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(nodes[0].id);
+  });
+
+  it("keeps amazon.co.jp URL without ASIN as-is", async ({ db, task }) => {
+    const searchUrl = "https://www.amazon.co.jp/s?k=test";
+    history.replaceState(null, "", `/?title=Search&url=${encodeURIComponent(searchUrl)}`);
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    const netSurfLog = logs.find((l) => l.text === "ネットサーフィン");
+    expect(netSurfLog).toBeTruthy();
+
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", netSurfLog!.id)), {
+      fromServer: true,
+    });
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe("[Search](https://www.amazon.co.jp/s?k=test)");
+  });
+
+  it("detects duplicate when slug-form amazon.co.jp URL matches normalized existing node", async ({ db, task }) => {
+    const productUrl = "https://www.amazon.co.jp/十戒-講談社文庫-夕木春央-ebook/dp/B0FHPWB4KS";
+    history.replaceState(null, "", `/?title=${encodeURIComponent("十戒")}&url=${encodeURIComponent(productUrl)}`);
+
+    const { ready, getFirestore, getStore, getShareResult } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-amazon"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$node-amazon"), {
+        text: "[十戒](https://www.amazon.co.jp/dp/B0FHPWB4KS)",
+        lifeLogId: "$netsurf-amazon",
+        parentId: "$netsurf-amazon",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    expect(getShareResult()).toEqual({
+      lifeLogId: "$netsurf-amazon",
+      nodeId: "$node-amazon",
+      status: "duplicate",
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf-amazon")), {
+      fromServer: true,
+    });
+
+    // Should still have only 1 node (no duplicate added)
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe("[十戒](https://www.amazon.co.jp/dp/B0FHPWB4KS)");
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe("$netsurf-amazon");
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe("$node-amazon");
+  });
+
+  it("ends running 読書 when sharing amazon.co.jp product URL", async ({ db, task }) => {
+    // Bare hostname (no www.) also gets normalized
+    const productUrl = "https://amazon.co.jp/十戒-講談社文庫-夕木春央-ebook/dp/B0FHPWB4KS";
+    history.replaceState(null, "", `/?title=${encodeURIComponent("十戒")}&url=${encodeURIComponent(productUrl)}`);
+
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$reading-amazon"), {
+        text: "読書",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+
+    // 読書 should be ended
+    const allLogs = await getDocs(firestore, query(lifeLogsCol, where("text", "==", "読書")), { fromServer: true });
+    const endedLog = allLogs.find((l) => l.id === "$reading-amazon");
+    expect(endedLog).toBeTruthy();
+    expect(endedLog!.endAt.toMillis()).toBe(Timestamp.fromDate(baseTime).toMillis());
+
+    // New ネットサーフィン should be created
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    const netSurfLog = runningLogs.find((l) => l.text === "ネットサーフィン");
+    expect(netSurfLog).toBeTruthy();
+
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", netSurfLog!.id)), {
+      fromServer: true,
+    });
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe("[十戒](https://www.amazon.co.jp/dp/B0FHPWB4KS)");
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe(netSurfLog!.id);
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(nodes[0].id);
+  });
+
+  it("asks for confirmation when slug-form amazon.co.jp URL was shared in the past", async ({ db, task }) => {
+    const productUrl = "https://www.amazon.co.jp/十戒-講談社文庫-夕木春央-ebook/dp/B0FHPWB4KS";
+    history.replaceState(null, "", `/?title=${encodeURIComponent("十戒")}&url=${encodeURIComponent(productUrl)}`);
+
+    const { ready, getFirestore, getShareResult } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-past-amazon"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(new Date(2026, 0, 1, 10, 0, 0, 0)),
+        endAt: Timestamp.fromDate(new Date(2026, 0, 1, 11, 0, 0, 0)),
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      const pastNodeText = "[十戒](https://www.amazon.co.jp/dp/B0FHPWB4KS)";
+      batch.set(doc(lifeLogTreeNodes, "$node-past-amazon"), {
+        text: pastNodeText,
+        lifeLogId: "$netsurf-past-amazon",
+        parentId: "$netsurf-past-amazon",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+      setNgramDoc(batch, firestore, "$node-past-amazon", "lifeLogTreeNodes", pastNodeText);
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    // Past share is found by the normalized URL, asking for confirmation
+    expect(getShareResult()).toEqual({
+      status: "needsConfirmation",
+      url: "https://www.amazon.co.jp/dp/B0FHPWB4KS",
+      markdownLink: "[十戒](https://www.amazon.co.jp/dp/B0FHPWB4KS)",
+      existingNodeId: "$node-past-amazon",
+      existingNodeText: "[十戒](https://www.amazon.co.jp/dp/B0FHPWB4KS)",
+    });
+
+    // Nothing should be added yet
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    expect(runningLogs).toHaveLength(0);
+  });
+
   it("ends running ネットサーフィン when creating new 読書", async ({ db, task }) => {
     history.replaceState(null, "", "/?title=Novel&url=https://ncode.syosetu.com/n1234ab/");
 
