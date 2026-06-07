@@ -193,6 +193,50 @@ describe("<LifeLogs />", () => {
       });
     });
 
+    it("falls back to the server for a LifeLog the local cache has never seen", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        lifeLogsProps: { debounceMs: 0 },
+      });
+      await result.findByText("first lifelog");
+
+      // Write through the emulator REST API so the pane client's local cache
+      // has never seen this document.
+      const startAt = new Date(2025, 11, 1, 10, 0, 0, 0);
+      const response = await fetch(
+        `http://localhost:${db.emulatorPort}/v1/projects/demo/databases/(default)/documents:commit`,
+        {
+          method: "POST",
+          headers: { Authorization: "Bearer owner", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            writes: [
+              {
+                update: {
+                  name: "projects/demo/databases/(default)/documents/lifeLogs/$serverOnly",
+                  fields: {
+                    text: { stringValue: "server only lifelog" },
+                    hasTreeNodes: { booleanValue: false },
+                    startAt: { timestampValue: startAt.toISOString() },
+                    endAt: { timestampValue: "3000-12-31T23:59:59.000Z" },
+                    createdAt: { timestampValue: startAt.toISOString() },
+                    updatedAt: { timestampValue: startAt.toISOString() },
+                  },
+                },
+              },
+            ],
+          }),
+        },
+      );
+      expect(response.ok).toBe(true);
+
+      await openJumpDateDialog(result);
+      await submitJumpDate(result, "2025-12-01");
+
+      await result.findByText("server only lifelog");
+      await waitFor(() => {
+        expectSelectedLifeLogText(result, "server only lifelog");
+      });
+    });
+
     it("keeps selection and dialog open when no LifeLog exists for the date", async ({ db, task }) => {
       const { result } = await setupLifeLogsTest(task.id, db, {
         initialSelectedId: "$log2",

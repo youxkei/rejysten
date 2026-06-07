@@ -1,3 +1,4 @@
+import { FirebaseError } from "firebase/app";
 import { Timestamp } from "firebase/firestore";
 import { startTransition } from "solid-js";
 import { uuidv7 } from "uuidv7";
@@ -261,7 +262,16 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
       orderBy("startAt"),
       limit(1),
     );
-    const docs = await getDocs(firestore, jumpQuery);
+    let docs = await getDocs(firestore, jumpQuery);
+    if (docs.length === 0) {
+      // The local cache only holds previously synced ranges; ask the server
+      // before concluding that the date has no LifeLog.
+      try {
+        docs = await getDocs(firestore, jumpQuery, { fromServer: true });
+      } catch (error) {
+        if (!(error instanceof FirebaseError && error.code === "unavailable")) throw error;
+      }
+    }
     if (docs.length === 0) {
       showToast(updateState, "該当するLifeLogがありません", "error");
       return;
