@@ -2,6 +2,7 @@ import { Timestamp } from "firebase/firestore";
 import { onMount, Show } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
+import { normalizeUrl } from "@/components/share/normalizeUrl";
 import { selectUrlNgramsForQuery } from "@/components/share/urlNgrams";
 import { DateNow } from "@/date";
 import { fetchOGPMeta, resolveUrl } from "@/ogp";
@@ -155,6 +156,9 @@ export async function handleShare(
   } else {
     url = normalizeAmazonJpUrl(url);
   }
+
+  // extractAsin が query の ?asin= を読むので、汎用正規化は Amazon 処理の後に行う
+  url = normalizeUrl(url);
 
   const readingDomains = [
     "ncode.syosetu.com",

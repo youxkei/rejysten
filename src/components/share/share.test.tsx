@@ -1118,8 +1118,8 @@ describe("share", () => {
     expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(nodes[0].id);
   });
 
-  it("keeps amazon.co.jp URL without ASIN as-is", async ({ db, task }) => {
-    const searchUrl = "https://www.amazon.co.jp/s?k=test";
+  it("keeps amazon.co.jp search k param while stripping tracking params", async ({ db, task }) => {
+    const searchUrl = "https://www.amazon.co.jp/s?k=test&ref_=nb_sb_noss";
     history.replaceState(null, "", `/?title=Search&url=${encodeURIComponent(searchUrl)}`);
 
     const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
@@ -1343,6 +1343,297 @@ describe("share", () => {
       markdownLink: "[十戒](https://www.amazon.co.jp/dp/B0FHPWB4KS)",
       existingNodeId: "$node-past-amazon",
       existingNodeText: "[十戒](https://www.amazon.co.jp/dp/B0FHPWB4KS)",
+    });
+
+    // Nothing should be added yet
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    expect(runningLogs).toHaveLength(0);
+  });
+
+  it("strips tracking query params before storing", async ({ db, task }) => {
+    const sharedUrl = "https://example.com/page?utm_source=newsletter&utm_medium=email";
+    history.replaceState(null, "", `/?title=Example&url=${encodeURIComponent(sharedUrl)}`);
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    const netSurfLog = logs.find((l) => l.text === "ネットサーフィン");
+    expect(netSurfLog).toBeTruthy();
+
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", netSurfLog!.id)), {
+      fromServer: true,
+    });
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe("[Example](https://example.com/page)");
+  });
+
+  it("detects duplicate when re-shared with different tracking params", async ({ db, task }) => {
+    const sharedUrl = "https://example.com/page?utm_source=other&fbclid=xyz";
+    history.replaceState(null, "", `/?title=Example&url=${encodeURIComponent(sharedUrl)}`);
+
+    const { ready, getFirestore, getShareResult } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-tracking"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$node-tracking"), {
+        text: "[Example](https://example.com/page)",
+        lifeLogId: "$netsurf-tracking",
+        parentId: "$netsurf-tracking",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    expect(getShareResult()).toEqual({
+      lifeLogId: "$netsurf-tracking",
+      nodeId: "$node-tracking",
+      status: "duplicate",
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf-tracking")), {
+      fromServer: true,
+    });
+
+    // Should still have only 1 node (no duplicate added)
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe("[Example](https://example.com/page)");
+  });
+
+  it("keeps youtube.com v param while stripping tracking params", async ({ db, task }) => {
+    const sharedUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ&utm_source=foo";
+    history.replaceState(null, "", `/?title=Video&url=${encodeURIComponent(sharedUrl)}`);
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    const netSurfLog = logs.find((l) => l.text === "ネットサーフィン");
+    expect(netSurfLog).toBeTruthy();
+
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", netSurfLog!.id)), {
+      fromServer: true,
+    });
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe("[Video](https://www.youtube.com/watch?v=dQw4w9WgXcQ)");
+  });
+
+  it("strips fragment before storing", async ({ db, task }) => {
+    const sharedUrl = "https://example.com/article#section-3";
+    history.replaceState(null, "", `/?title=Article&url=${encodeURIComponent(sharedUrl)}`);
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    const netSurfLog = logs.find((l) => l.text === "ネットサーフィン");
+    expect(netSurfLog).toBeTruthy();
+
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", netSurfLog!.id)), {
+      fromServer: true,
+    });
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe("[Article](https://example.com/article)");
+  });
+
+  it("keeps hash-routing fragment while stripping query params", async ({ db, task }) => {
+    const sharedUrl = "https://example.com/?utm_source=x#/dashboard";
+    history.replaceState(null, "", `/?title=Dashboard&url=${encodeURIComponent(sharedUrl)}`);
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    const netSurfLog = logs.find((l) => l.text === "ネットサーフィン");
+    expect(netSurfLog).toBeTruthy();
+
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", netSurfLog!.id)), {
+      fromServer: true,
+    });
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe("[Dashboard](https://example.com/#/dashboard)");
+  });
+
+  it("asks for confirmation when URL was shared in the past with different tracking params", async ({ db, task }) => {
+    const sharedUrl = "https://example.com/article?utm_source=x";
+    history.replaceState(null, "", `/?title=Article&url=${encodeURIComponent(sharedUrl)}`);
+
+    const { ready, getFirestore, getShareResult } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-past-tracking"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(new Date(2026, 0, 1, 10, 0, 0, 0)),
+        endAt: Timestamp.fromDate(new Date(2026, 0, 1, 11, 0, 0, 0)),
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      const pastNodeText = "[Article](https://example.com/article)";
+      batch.set(doc(lifeLogTreeNodes, "$node-past-tracking"), {
+        text: pastNodeText,
+        lifeLogId: "$netsurf-past-tracking",
+        parentId: "$netsurf-past-tracking",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+      setNgramDoc(batch, firestore, "$node-past-tracking", "lifeLogTreeNodes", pastNodeText);
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    // Past share is found by the normalized URL, asking for confirmation
+    expect(getShareResult()).toEqual({
+      status: "needsConfirmation",
+      url: "https://example.com/article",
+      markdownLink: "[Article](https://example.com/article)",
+      existingNodeId: "$node-past-tracking",
+      existingNodeText: "[Article](https://example.com/article)",
     });
 
     // Nothing should be added yet
