@@ -2,6 +2,7 @@ import { render } from "solid-js/web";
 import { registerSW } from "virtual:pwa-register";
 
 import { App } from "@/app";
+import { markTelemetryReady } from "@/telemetry/ready";
 import { beginStartup } from "@/telemetry/startup";
 import { hourMs } from "@/timestamp";
 
@@ -10,6 +11,7 @@ import { hourMs } from "@/timestamp";
 beginStartup();
 void import("@/telemetry/provider").then(({ initTelemetry }) => {
   initTelemetry();
+  markTelemetryReady();
 });
 
 registerSW({

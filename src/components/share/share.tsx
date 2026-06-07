@@ -1,5 +1,5 @@
 import { Timestamp } from "firebase/firestore";
-import { createSignal, onMount, Show } from "solid-js";
+import { onMount, Show } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
 import { DateNow } from "@/date";
@@ -7,14 +7,15 @@ import { analyzeTextForNgrams } from "@/ngram";
 import { fetchOGPMeta, resolveUrl } from "@/ogp";
 import "@/panes/lifeLogs/schema";
 import "@/components/share/store";
-import { type FirestoreService, getCollection, getDocs, useFirestoreService } from "@/services/firebase/firestore";
+import { useActionsService } from "@/services/actions";
+import { type FirestoreService, getCollection, getDocs } from "@/services/firebase/firestore";
 import { runTransaction } from "@/services/firebase/firestore/batch";
 import { encodeNgramKeyForFirestore } from "@/services/firebase/firestore/ngram";
 import { limit, orderBy, query, where } from "@/services/firebase/firestore/query";
 import { addNextSibling, addSingle, getLastChildNode } from "@/services/firebase/firestore/treeNode";
 import { useStoreService } from "@/services/store";
-import { showToast } from "@/services/toast";
 import { styles } from "@/styles.css";
+import { telemetryReady } from "@/telemetry/ready";
 import { noneTimestamp } from "@/timestamp";
 
 function extractAsin(url: string | null): string | null {
@@ -59,13 +60,13 @@ async function parseKindleShare(text: string | null, url: string): Promise<{ tit
   };
 }
 
-type ShareResult = {
+export type ShareResult = {
   lifeLogId: string;
   nodeId: string;
   status: "added" | "updated" | "duplicate";
 };
 
-type ShareConfirmationResult = {
+export type ShareConfirmationResult = {
   status: "needsConfirmation";
   url: string;
   markdownLink: string;
@@ -73,23 +74,11 @@ type ShareConfirmationResult = {
   existingNodeText: string;
 };
 
-type HandleShareResult = ShareResult | ShareConfirmationResult;
+export type HandleShareResult = ShareResult | ShareConfirmationResult;
 
 type HandleShareOptions = {
   skipPastDuplicateConfirmation?: boolean;
 };
-
-function isShareConfirmationResult(result: HandleShareResult | null): result is ShareConfirmationResult {
-  return result?.status === "needsConfirmation";
-}
-
-function cleanShareParams() {
-  const cleanUrl = new URL(window.location.href);
-  cleanUrl.searchParams.delete("title");
-  cleanUrl.searchParams.delete("text");
-  cleanUrl.searchParams.delete("url");
-  history.replaceState(null, "", cleanUrl.pathname + cleanUrl.search);
-}
 
 // 過去共有検索に使う URL ngram の上限。先頭から取るのは domain 部分を必ず含めるため。
 // 多いほど積集合の選択性が上がるが、超長 URL での filter 爆発を防ぐために
@@ -370,87 +359,28 @@ export async function handleShare(
 }
 
 export function Share() {
-  const firestore = useFirestoreService();
-  const { updateState } = useStoreService();
-  const [confirmation$, setConfirmation] = createSignal<ShareConfirmationResult>();
-  const [isConfirming$, setIsConfirming] = createSignal(false);
-
-  function finishShare(result: ShareResult | null) {
-    updateState((state) => {
-      state.share.isActive = false;
-      if (result) {
-        state.panesLifeLogs.selectedLifeLogId = result.lifeLogId;
-        state.panesLifeLogs.selectedLifeLogNodeId = result.nodeId;
-      }
-    });
-
-    if (result) {
-      const message =
-        result.status === "added"
-          ? "共有から追加しました"
-          : result.status === "updated"
-            ? "Kindleの進捗を更新しました"
-            : "共有されたURLは追加済みです";
-      showToast(updateState, message, "success");
-    }
-
-    cleanShareParams();
-  }
-
-  function failShare(e: unknown) {
-    console.error("Share error:", e);
-
-    updateState((state) => {
-      state.share.isActive = false;
-    });
-
-    const message = e instanceof Error ? e.message : String(e);
-    showToast(updateState, `共有からの追加に失敗しました: ${message}`, "error");
-    cleanShareParams();
-  }
-
-  function cancelShare() {
-    updateState((state) => {
-      state.share.isActive = false;
-    });
-    cleanShareParams();
-  }
-
-  async function addConfirmedShare() {
-    if (isConfirming$()) return;
-
-    setIsConfirming(true);
-    try {
-      const result = await handleShare(firestore, { skipPastDuplicateConfirmation: true });
-      if (isShareConfirmationResult(result)) {
-        throw new Error("共有済み確認を完了できませんでした");
-      }
-      finishShare(result);
-    } catch (e) {
-      failShare(e);
-    } finally {
-      setIsConfirming(false);
-    }
-  }
+  const { state } = useStoreService();
+  const {
+    components: { share: shareActions },
+  } = useActionsService();
 
   onMount(() => {
     void (async () => {
-      try {
-        const result = await handleShare(firestore);
-        if (isShareConfirmationResult(result)) {
-          setConfirmation(result);
-          return;
-        }
-        finishShare(result);
-      } catch (e) {
-        failShare(e);
+      // On cold start this mount can beat the dynamically imported telemetry
+      // SDK, which would put the root span on the noop tracer and drop the
+      // trace. The timeout keeps share from blocking when the SDK chunk fails
+      // to load; vitest skips the wait to keep tests fast (same test detection
+      // as defaultMode in @/telemetry/provider).
+      if (import.meta.env.MODE !== "test" && !import.meta.env.VITEST) {
+        await Promise.race([telemetryReady, new Promise((resolve) => setTimeout(resolve, 1000))]);
       }
+      shareActions.runShare();
     })();
   });
 
   return (
     <Show
-      when={confirmation$()}
+      when={state.share.confirmation}
       fallback={
         <div class={styles.share.wrapper}>
           <div class={styles.share.spinner} />
@@ -469,7 +399,7 @@ export function Share() {
               if (event.code !== "Escape") return;
               event.preventDefault();
               event.stopPropagation();
-              cancelShare();
+              shareActions.cancelShare();
             }}
           >
             <p class={styles.share.dialogTitle}>このURLは以前共有されています</p>
@@ -485,19 +415,21 @@ export function Share() {
                 }}
                 class={styles.share.dialogButton}
                 type="button"
-                onClick={cancelShare}
+                onClick={() => {
+                  shareActions.cancelShare();
+                }}
               >
                 キャンセル
               </button>
               <button
                 class={styles.share.dialogButton}
                 type="button"
-                disabled={isConfirming$()}
+                disabled={state.share.isConfirming}
                 onClick={() => {
-                  void addConfirmedShare();
+                  shareActions.confirmShare();
                 }}
               >
-                {isConfirming$() ? "追加中..." : "追加する"}
+                {state.share.isConfirming ? "追加中..." : "追加する"}
               </button>
             </div>
           </div>

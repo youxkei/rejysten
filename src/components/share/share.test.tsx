@@ -9,6 +9,7 @@ import { handleShare, WithShare } from "@/components/share";
 import { analyzeTextForNgrams } from "@/ngram";
 import { fetchOGPMeta, resolveUrl } from "@/ogp";
 import { baseTime } from "@/panes/lifeLogs/test";
+import { ActionsServiceProvider, useActionsService } from "@/services/actions";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import {
   FirestoreServiceProvider,
@@ -23,6 +24,9 @@ import { runBatch, waitForPendingCommitsForTest } from "@/services/firebase/fire
 import { encodeNgramMapForFirestore } from "@/services/firebase/firestore/ngram";
 import { query, where } from "@/services/firebase/firestore/query";
 import { StoreServiceProvider, useStoreService } from "@/services/store";
+import { CURRENT_VERSION } from "@/services/store/migration";
+import { getFinishedSpansForTest, initTelemetry, resetTelemetryForTest } from "@/telemetry/provider";
+import { SpanStatusCode } from "@/telemetry/span";
 import { acquireEmulator, createTestWithDb, releaseEmulator, type DatabaseInfo } from "@/test";
 import { noneTimestamp } from "@/timestamp";
 
@@ -68,6 +72,8 @@ afterEach(async () => {
   await waitForCurrentPendingCommits();
   firestoreForCleanup = undefined;
   history.replaceState(null, "", "/");
+  // Tests that don't init telemetry keep the noop tracer, so this is a no-op for them.
+  await resetTelemetryForTest();
 });
 
 function setupShareTest(
@@ -147,6 +153,7 @@ function setupShareComponentTest(
 
   let firestoreRef: ReturnType<typeof useFirestoreService>;
   let storeRef: ReturnType<typeof useStoreService>;
+  let actionsRef: ReturnType<typeof useActionsService>;
 
   const result = render(() => (
     <StoreServiceProvider localStorageNamePostfix={testId}>
@@ -156,32 +163,35 @@ function setupShareComponentTest(
         appName={testId}
       >
         <FirestoreServiceProvider emulatorPort={db.emulatorPort} useMemoryCache>
-          <Suspense fallback={<span>loading...</span>}>
-            {(() => {
-              const firestore = useFirestoreService();
-              firestoreRef = firestore;
-              firestoreForCleanup = firestore;
-              storeRef = useStoreService();
-              const [isReady, setIsReady] = createSignal(false);
+          <ActionsServiceProvider>
+            <Suspense fallback={<span>loading...</span>}>
+              {(() => {
+                const firestore = useFirestoreService();
+                firestoreRef = firestore;
+                firestoreForCleanup = firestore;
+                storeRef = useStoreService();
+                actionsRef = useActionsService();
+                const [isReady, setIsReady] = createSignal(false);
 
-              onMount(() => {
-                setupData(firestore)
-                  .then(() => {
-                    setIsReady(true);
-                    resolveReady();
-                  })
-                  .catch(rejectReady);
-              });
+                onMount(() => {
+                  setupData(firestore)
+                    .then(() => {
+                      setIsReady(true);
+                      resolveReady();
+                    })
+                    .catch(rejectReady);
+                });
 
-              return (
-                <Show when={isReady()} fallback={<span>preparing...</span>}>
-                  <WithShare>
-                    <span>app-content</span>
-                  </WithShare>
-                </Show>
-              );
-            })()}
-          </Suspense>
+                return (
+                  <Show when={isReady()} fallback={<span>preparing...</span>}>
+                    <WithShare>
+                      <span>app-content</span>
+                    </WithShare>
+                  </Show>
+                );
+              })()}
+            </Suspense>
+          </ActionsServiceProvider>
         </FirestoreServiceProvider>
       </FirebaseServiceProvider>
     </StoreServiceProvider>
@@ -192,6 +202,7 @@ function setupShareComponentTest(
     result,
     getFirestore: () => firestoreRef,
     getStore: () => storeRef,
+    getActions: () => actionsRef,
   };
 }
 
@@ -2763,5 +2774,376 @@ describe("share", () => {
       fromServer: true,
     });
     expect(nodes).toHaveLength(1);
+  });
+
+  it("records runShare as a root action span with firestore spans as children", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=Example&url=https://example.com/span-run");
+
+    // Before render: the action fires on the Share component's onMount, so a
+    // later init would leave the root span on the noop tracer.
+    initTelemetry({ mode: "memory" });
+
+    const { ready, result } = setupShareComponentTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-span-run"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$node-span-run"), {
+        text: "existing node",
+        lifeLogId: "$netsurf-span-run",
+        parentId: "$netsurf-span-run",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+    await waitFor(() => {
+      expect(result.queryByText("app-content")).not.toBeNull();
+    });
+
+    const spans = getFinishedSpansForTest();
+    const root = spans.find((span) => span.name === "action:components.share.runShare");
+    expect(root).toBeTruthy();
+    expect(root!.parentSpanContext).toBeUndefined();
+
+    // One flow runs several getDocs (runningLogs / existingNodes / ngrams / lastChild);
+    // every one of them must join the action trace instead of becoming its own root.
+    const rootSpanId = root!.spanContext().spanId;
+    const rootTraceId = root!.spanContext().traceId;
+    const getDocsSpans = spans.filter((span) => span.name === "firestore.getDocs");
+    expect(getDocsSpans.length).toBeGreaterThanOrEqual(3);
+    getDocsSpans.forEach((span) => {
+      expect(span.parentSpanContext?.spanId).toBe(rootSpanId);
+      expect(span.spanContext().traceId).toBe(rootTraceId);
+    });
+  });
+
+  it("records confirmShare as a root action span when adding via the confirmation dialog", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=New+Example&url=https://example.com/span-confirm");
+
+    initTelemetry({ mode: "memory" });
+
+    const { ready, result } = setupShareComponentTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-span-confirm"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$node-span-confirm"), {
+        text: "current node",
+        lifeLogId: "$netsurf-span-confirm",
+        parentId: "$netsurf-span-confirm",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      const pastNodeText = "[Old Example](https://example.com/span-confirm)";
+      batch.set(doc(lifeLogTreeNodes, "$node-span-past"), {
+        text: pastNodeText,
+        lifeLogId: "$netsurf-span-past",
+        parentId: "$netsurf-span-past",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+      setNgramDoc(batch, firestore, "$node-span-past", "lifeLogTreeNodes", pastNodeText);
+
+      await batch.commit();
+    });
+
+    await ready;
+    expect(await result.findByRole("dialog", { name: "共有済みURLの確認" })).toBeTruthy();
+
+    await userEvent.click(result.getByText("追加する"));
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+    await waitFor(() => {
+      expect(result.queryByText("app-content")).not.toBeNull();
+    });
+    await awaitPendingCallbacks();
+
+    const spans = getFinishedSpansForTest();
+    const confirmRoot = spans.find((span) => span.name === "action:components.share.confirmShare");
+    expect(confirmRoot).toBeTruthy();
+    expect(confirmRoot!.parentSpanContext).toBeUndefined();
+
+    const confirmSpanId = confirmRoot!.spanContext().spanId;
+    const childGetDocs = spans.filter(
+      (span) => span.name === "firestore.getDocs" && span.parentSpanContext?.spanId === confirmSpanId,
+    );
+    expect(childGetDocs.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("resets stale isConfirming restored from a previous session", async ({ db, task }) => {
+    // A tab killed mid-confirmation persists isConfirming: true; unless runShare
+    // resets it, the dialog button would come back stuck on 追加中... and the
+    // confirmShare guard would reject every click. confirmation is seeded too,
+    // even though deepMerge already drops it (no initialState key) — the reset
+    // must not depend on that restore behavior.
+    window.localStorage.setItem(
+      `rejysten.service.store.state${task.id}`,
+      JSON.stringify({
+        version: CURRENT_VERSION,
+        state: {
+          share: {
+            isActive: false,
+            isConfirming: true,
+            confirmation: {
+              url: "https://example.com/stale",
+              markdownLink: "[Stale](https://example.com/stale)",
+              existingNodeId: "$stale",
+              existingNodeText: "[Stale](https://example.com/stale)",
+            },
+          },
+        },
+      }),
+    );
+
+    history.replaceState(null, "", "/?title=New+Example&url=https://example.com/stale-confirming");
+
+    const { ready, result, getFirestore, getStore } = setupShareComponentTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-current-stale"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$node-current-stale"), {
+        text: "current node",
+        lifeLogId: "$netsurf-current-stale",
+        parentId: "$netsurf-current-stale",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      const pastNodeText = "[Old Example](https://example.com/stale-confirming)";
+      batch.set(doc(lifeLogTreeNodes, "$node-past-stale"), {
+        text: pastNodeText,
+        lifeLogId: "$netsurf-past-stale",
+        parentId: "$netsurf-past-stale",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+      setNgramDoc(batch, firestore, "$node-past-stale", "lifeLogTreeNodes", pastNodeText);
+
+      await batch.commit();
+    });
+
+    await ready;
+    expect(await result.findByRole("dialog", { name: "共有済みURLの確認" })).toBeTruthy();
+
+    // With stale isConfirming the label would be 追加中... and the button disabled.
+    const confirmButton = result.getByText("追加する");
+    expect((confirmButton as HTMLButtonElement).disabled).toBe(false);
+    expect(getStore().state.share.isConfirming).toBe(false);
+
+    await userEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+    await waitFor(() => {
+      expect(result.queryByText("app-content")).not.toBeNull();
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf-current-stale")), {
+      fromServer: true,
+    });
+    expect(nodes).toHaveLength(2);
+    expect(nodes.some((node) => node.text === "[New Example](https://example.com/stale-confirming)")).toBe(true);
+  });
+
+  it("fails share gracefully and records the error on the action span", async ({ db, task }) => {
+    // "https://[" survives param extraction but new URL() inside handleShare throws.
+    history.replaceState(null, "", `/?title=Bad&url=${encodeURIComponent("https://[")}`);
+
+    initTelemetry({ mode: "memory" });
+
+    const { ready, result, getStore } = setupShareComponentTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    // failShare cleans the params and hands the screen back to the app
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+    await waitFor(() => {
+      expect(result.queryByText("app-content")).not.toBeNull();
+    });
+
+    const store = getStore();
+    expect(store.state.share.isActive).toBe(false);
+    expect(store.state.toast.type).toBe("error");
+    expect(store.state.toast.message).toContain("共有からの追加に失敗しました");
+
+    // The error is swallowed by failShare, so it must be recorded on the span explicitly
+    const spans = getFinishedSpansForTest();
+    const root = spans.find((span) => span.name === "action:components.share.runShare");
+    expect(root).toBeTruthy();
+    expect(root!.parentSpanContext).toBeUndefined();
+    expect(root!.status.code).toBe(SpanStatusCode.ERROR);
+    expect(root!.events.some((event) => event.name === "exception")).toBe(true);
+  });
+
+  it("ignores a queued second confirmShare once the first one finishes", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=New+Example&url=https://example.com/double-confirm");
+
+    const { ready, result, getFirestore, getStore, getActions } = setupShareComponentTest(
+      task.id,
+      db,
+      async (firestore) => {
+        const batch = writeBatch(firestore.firestore);
+        const batchVersion = getCollection(firestore, "batchVersion");
+        const lifeLogs = getCollection(firestore, "lifeLogs");
+        const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+        batch.set(doc(batchVersion, singletonDocumentId), {
+          version: "__INITIAL__",
+          prevVersion: "",
+          createdAt: Timestamp.fromDate(baseTime),
+          updatedAt: Timestamp.fromDate(baseTime),
+        });
+
+        batch.set(doc(lifeLogs, "$netsurf-current-double"), {
+          text: "ネットサーフィン",
+          hasTreeNodes: true,
+          startAt: Timestamp.fromDate(baseTime),
+          endAt: noneTimestamp,
+          createdAt: Timestamp.fromDate(baseTime),
+          updatedAt: Timestamp.fromDate(baseTime),
+        });
+
+        batch.set(doc(lifeLogTreeNodes, "$node-current-double"), {
+          text: "current node",
+          lifeLogId: "$netsurf-current-double",
+          parentId: "$netsurf-current-double",
+          order: "a0",
+          createdAt: Timestamp.fromDate(baseTime),
+          updatedAt: Timestamp.fromDate(baseTime),
+        });
+
+        const pastNodeText = "[Old Example](https://example.com/double-confirm)";
+        batch.set(doc(lifeLogTreeNodes, "$node-past-double"), {
+          text: pastNodeText,
+          lifeLogId: "$netsurf-past-double",
+          parentId: "$netsurf-past-double",
+          order: "a0",
+          createdAt: Timestamp.fromDate(baseTime),
+          updatedAt: Timestamp.fromDate(baseTime),
+        });
+        setNgramDoc(batch, firestore, "$node-past-double", "lifeLogTreeNodes", pastNodeText);
+
+        await batch.commit();
+      },
+    );
+
+    await ready;
+    expect(await result.findByRole("dialog", { name: "共有済みURLの確認" })).toBeTruthy();
+
+    // The dialog button disables itself on the first click, so go through the
+    // action directly: awaitable queues the second body, and the isActive guard
+    // must drop it after the first one completes the share.
+    const { share: shareActions } = getActions().components;
+    shareActions.confirmShare();
+    shareActions.confirmShare();
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+    await waitFor(() => {
+      expect(result.queryByText("app-content")).not.toBeNull();
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf-current-double")), {
+      fromServer: true,
+    });
+    expect(nodes).toHaveLength(2);
+    expect(nodes.some((node) => node.text === "[New Example](https://example.com/double-confirm)")).toBe(true);
+
+    // The second body bailed before rerunning handleShare: the success toast is
+    // still the first run's, not the duplicate notice a rerun would produce.
+    const store = getStore();
+    expect(store.state.toast.message).toBe("共有から追加しました");
+    expect(store.state.share.isConfirming).toBe(false);
   });
 });
