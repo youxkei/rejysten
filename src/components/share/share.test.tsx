@@ -6,6 +6,7 @@ import { userEvent } from "vitest/browser";
 
 import { awaitPendingCallbacks } from "@/awaitableCallback";
 import { handleShare, WithShare } from "@/components/share";
+import { maxUrlQueryNgrams, selectUrlNgramsForQuery } from "@/components/share/urlNgrams";
 import { analyzeTextForNgrams } from "@/ngram";
 import { fetchOGPMeta, resolveUrl } from "@/ogp";
 import { baseTime } from "@/panes/lifeLogs/test";
@@ -223,8 +224,8 @@ function setNgramDoc(
   });
 }
 
-// Build a URL with more than 200 unique ngrams (the query filter limit in
-// findPastSharedNode). The path cycles letter-digit pairs (a0a1...a9b0...) so
+// Build a URL with far more unique ngrams than the query filter limit in
+// findPastSharedNode. The path cycles letter-digit pairs (a0a1...a9b0...) so
 // almost every bigram is unique.
 function makeLongUrl(pathPrefix: string): string {
   const path = Array.from({ length: 13 }, (_, letterIndex) =>
@@ -2545,7 +2546,7 @@ describe("share", () => {
     });
 
     // Sanity check: the URL really has more ngrams than the query filter limit
-    expect(Object.keys(analyzeTextForNgrams(longUrl).ngramMap).length).toBeGreaterThan(200);
+    expect(Object.keys(analyzeTextForNgrams(longUrl).ngramMap).length).toBeGreaterThan(maxUrlQueryNgrams);
 
     expect(getShareResult()?.status).toBe("added");
 
@@ -2622,14 +2623,20 @@ describe("share", () => {
     expect(runningLogs).toHaveLength(0);
   });
 
-  it("ignores a past long URL that matches only in the truncated ngram prefix", async ({ db, task }) => {
-    // Both URLs share their first 200 ngrams (the query filter limit), so the
-    // ngram query returns the past doc; only the exact `](url)` check rejects it.
-    const baseUrl = makeLongUrl("long-tail");
-    const pastUrl = `${baseUrl}/old-tail`;
-    const sharedUrl = `${baseUrl}/new-tail`;
-    const first200Ngrams = (url: string) => Object.keys(analyzeTextForNgrams(url).ngramMap).slice(0, 200);
-    expect(first200Ngrams(sharedUrl)).toEqual(first200Ngrams(pastUrl));
+  it("ignores a past long URL that shares only the trailing ngrams", async ({ db, task }) => {
+    // Both URLs share the trailing ngrams the query selects (tail-priority),
+    // so the ngram query returns the past doc; only the exact `](url)` check
+    // rejects it. The tail uses letter-letter bigrams while the differing
+    // heads use letter-digit bigrams, so the selected ngrams come entirely
+    // from the shared tail.
+    const letters = "nopqrstuvw";
+    const tail = Array.from({ length: 10 }, (_, i) =>
+      Array.from({ length: 10 }, (_, j) => `${letters[i]}${letters[j]}`).join(""),
+    ).join("");
+    const pastUrl = `${makeLongUrl("tail-old")}/${tail}`;
+    const sharedUrl = `${makeLongUrl("tail-new")}/${tail}`;
+    expect(sharedUrl).not.toBe(pastUrl);
+    expect(selectUrlNgramsForQuery(sharedUrl)).toEqual(selectUrlNgramsForQuery(pastUrl));
 
     history.replaceState(null, "", `/?title=New+Tail&url=${encodeURIComponent(sharedUrl)}`);
 
@@ -2842,6 +2849,11 @@ describe("share", () => {
       expect(span.parentSpanContext?.spanId).toBe(rootSpanId);
       expect(span.spanContext().traceId).toBe(rootTraceId);
     });
+
+    // The final write joins the trace too, so the commit time is visible
+    const transactionSpan = spans.find((span) => span.name === "batch.transaction");
+    expect(transactionSpan).toBeTruthy();
+    expect(transactionSpan!.parentSpanContext?.spanId).toBe(rootSpanId);
   });
 
   it("records confirmShare as a root action span when adding via the confirmation dialog", async ({ db, task }) => {

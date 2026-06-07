@@ -2,8 +2,8 @@ import { Timestamp } from "firebase/firestore";
 import { onMount, Show } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
+import { selectUrlNgramsForQuery } from "@/components/share/urlNgrams";
 import { DateNow } from "@/date";
-import { analyzeTextForNgrams } from "@/ngram";
 import { fetchOGPMeta, resolveUrl } from "@/ogp";
 import "@/panes/lifeLogs/schema";
 import "@/components/share/store";
@@ -80,18 +80,12 @@ type HandleShareOptions = {
   skipPastDuplicateConfirmation?: boolean;
 };
 
-// 過去共有検索に使う URL ngram の上限。先頭から取るのは domain 部分を必ず含めるため。
-// 多いほど積集合の選択性が上がるが、超長 URL での filter 爆発を防ぐために
-// Firestore のクエリ filter 数への安全マージンとして 200 で打ち切る。
-const maxUrlNgrams = 200;
-
 async function findPastSharedNode(
   firestore: FirestoreService,
   url: string,
   options?: { fromServer?: boolean },
 ): Promise<{ id: string; text: string } | undefined> {
-  const { ngramMap } = analyzeTextForNgrams(url);
-  const urlNgrams = Object.keys(ngramMap).slice(0, maxUrlNgrams);
+  const urlNgrams = selectUrlNgramsForQuery(url);
   if (urlNgrams.length === 0) return undefined;
 
   const ngramsCol = getCollection(firestore, "ngrams");
