@@ -1,5 +1,6 @@
 import { createSignal, Match, Show, Suspense, Switch } from "solid-js";
 
+import { formatCommitTime } from "@/commitTime";
 import { WithEditHistoryPanel } from "@/components/editHistory";
 import { WithShare } from "@/components/share";
 import { LifeLogs } from "@/panes/lifeLogs";
@@ -77,6 +78,7 @@ export function App(props: AppProps = {}) {
             <div class={styles.app.configRow}>
               <input onInput={(e) => setInputConfigYAML(e.currentTarget.value)} value={inputConfigYAML()} />
               <button onClick={applyConfig}>Apply</button>
+              <span class={styles.app.commitTime}>{formatCommitTime(__COMMIT_TIME__)}</span>
             </div>
             <pre class={styles.app.errors}>{errors().join("\n")}</pre>
             <Show when={state.firebase.configYAML}>

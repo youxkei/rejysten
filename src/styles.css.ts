@@ -184,6 +184,13 @@ export const styles = {
       display: "flex",
       gap: "0.5rem",
     }),
+    commitTime: style({
+      marginLeft: "auto",
+      alignSelf: "center",
+      fontSize: "0.75rem",
+      color: nord[4],
+      whiteSpace: "nowrap",
+    }),
     errors: style({
       margin: "0.5rem 0",
     }),

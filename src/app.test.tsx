@@ -6,6 +6,7 @@ import { page, userEvent } from "vitest/browser";
 
 import { App } from "@/app";
 import { awaitPendingCallbacks } from "@/awaitableCallback";
+import { formatCommitTime } from "@/commitTime";
 import { baseTime } from "@/panes/lifeLogs/test";
 import { FirebaseServiceProvider } from "@/services/firebase";
 import {
@@ -150,6 +151,19 @@ describe("<App />", () => {
       // otherwise browsers auto-scroll the overflow container and shift the entire layout left.
       expect(mainEl.scrollLeft).toBe(0);
       expect(mainEl.scrollWidth).toBe(mainEl.clientWidth);
+    });
+  });
+
+  describe("commit time display", () => {
+    it("shows the build commit time at the right end of the config row", async ({ db, task }) => {
+      await page.viewport(414, 896);
+      const { result } = await setupAppTest(task.id, db);
+
+      const commitTime = result.container.querySelector<HTMLElement>(`.${styles.app.commitTime}`);
+      expect(commitTime).not.toBeNull();
+      // The vitest build embeds the repo's HEAD commit time, so the span is never empty here
+      expect(commitTime!.textContent).toBe(formatCommitTime(__COMMIT_TIME__));
+      expect(commitTime!.textContent).not.toBe("");
     });
   });
 
