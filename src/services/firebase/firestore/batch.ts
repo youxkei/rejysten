@@ -461,50 +461,64 @@ export async function runTransaction(
   updateFunction: (batch: OperationRecordingBatch, transaction: Transaction) => Promise<void> | void,
   options?: BatchOptions,
 ): Promise<void> {
-  await waitForPendingCommits({ service });
+  const transactionSpan = startSpan("batch.transaction");
+  let failed = false;
+  try {
+    await waitForPendingCommits({ service });
 
-  const batchVersionCol = getCollection(service, "batchVersion");
-  const batchVersionRef = doc(batchVersionCol, singletonDocumentId);
-  const batchVersionSnap = await getDocFromServer(batchVersionRef);
-  const batchVersionDoc = batchVersionSnap.exists() ? withId(singletonDocumentId, batchVersionSnap.data()) : undefined;
-  const overlayBatchId = uuidv7();
-  let committedBatch: OperationRecordingBatch | undefined;
+    const batchVersionCol = getCollection(service, "batchVersion");
+    const batchVersionRef = doc(batchVersionCol, singletonDocumentId);
+    const batchVersionSnap = await getDocFromServer(batchVersionRef);
+    const batchVersionDoc = batchVersionSnap.exists()
+      ? withId(singletonDocumentId, batchVersionSnap.data())
+      : undefined;
+    const overlayBatchId = uuidv7();
+    let committedBatch: OperationRecordingBatch | undefined;
 
-  await firebaseRunTransaction(service.firestore, async (transaction) => {
-    // Verify batchVersion hasn't changed since we read it (read before writes)
-    const currentSnap = await transaction.get(batchVersionRef);
-    const currentVersion = currentSnap.data()?.version;
-    if (currentVersion !== (batchVersionDoc?.version ?? undefined)) {
-      throw new TransactionAborted();
+    await firebaseRunTransaction(service.firestore, async (transaction) => {
+      // Verify batchVersion hasn't changed since we read it (read before writes)
+      const currentSnap = await transaction.get(batchVersionRef);
+      const currentVersion = currentSnap.data()?.version;
+      if (currentVersion !== (batchVersionDoc?.version ?? undefined)) {
+        throw new TransactionAborted();
+      }
+
+      const batch = new OperationRecordingBatch(service, transaction);
+      await updateFunction(batch, transaction);
+
+      await batch.recordHistory(options);
+
+      // Update batchVersion after all reads are done
+      const newBatchVersion = uuidv7();
+      if (batchVersionDoc) {
+        batch.updateSingleton(batchVersionCol, {
+          prevVersion: batchVersionDoc.version,
+          version: newBatchVersion,
+        });
+      } else {
+        batch.setSingleton(batchVersionCol, {
+          prevVersion: "",
+          version: newBatchVersion,
+        });
+      }
+      committedBatch = batch;
+    });
+
+    transactionSpan.setAttribute("app.mutation_count", committedBatch?.overlayMutations.length ?? 0);
+
+    if (committedBatch && committedBatch.overlayMutations.length > 0) {
+      try {
+        applyCommittedOverlayMutations(getClient(service), overlayBatchId, [...committedBatch.overlayMutations]);
+      } catch {
+        // The transaction has already committed; local overlay notification
+        // failure must not turn the server write into an application failure.
+      }
     }
-
-    const batch = new OperationRecordingBatch(service, transaction);
-    await updateFunction(batch, transaction);
-
-    await batch.recordHistory(options);
-
-    // Update batchVersion after all reads are done
-    const newBatchVersion = uuidv7();
-    if (batchVersionDoc) {
-      batch.updateSingleton(batchVersionCol, {
-        prevVersion: batchVersionDoc.version,
-        version: newBatchVersion,
-      });
-    } else {
-      batch.setSingleton(batchVersionCol, {
-        prevVersion: "",
-        version: newBatchVersion,
-      });
-    }
-    committedBatch = batch;
-  });
-
-  if (committedBatch && committedBatch.overlayMutations.length > 0) {
-    try {
-      applyCommittedOverlayMutations(getClient(service), overlayBatchId, [...committedBatch.overlayMutations]);
-    } catch {
-      // The transaction has already committed; local overlay notification
-      // failure must not turn the server write into an application failure.
-    }
+  } catch (error) {
+    failed = true;
+    endSpan(transactionSpan, error);
+    throw error;
+  } finally {
+    if (!failed) transactionSpan.end();
   }
 }

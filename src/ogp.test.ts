@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { fetchOGPMeta } from "@/ogp";
+import { fetchOGPMeta, resolveUrl } from "@/ogp";
+import { getFinishedSpansForTest, initTelemetry, resetTelemetryForTest } from "@/telemetry/provider";
 
 const SCANNER_ENDPOINT = "https://ogp-scanner.kunon.jp/v2/ogp_info";
 const FALLBACK_ENDPOINT = "/api/ogp";
@@ -13,9 +14,17 @@ beforeEach(() => {
   globalThis.fetch = vi.fn();
 });
 
-afterEach(() => {
+afterEach(async () => {
   globalThis.fetch = originalFetch;
+  // Tests that don't init telemetry keep the noop tracer, so this is a no-op for them.
+  await resetTelemetryForTest();
 });
+
+function findSpan(name: string) {
+  const span = getFinishedSpansForTest().find((s) => s.name === name);
+  if (!span) throw new Error(`span "${name}" not found`);
+  return span;
+}
 
 function endpointOf(input: unknown): string {
   if (typeof input === "string") return input;
@@ -185,5 +194,73 @@ describe("fetchOGPMeta", () => {
       expect(new Headers(init.headers as HeadersInit).get("Content-Type")).toBe("application/json");
       expect(init.body).toBe(JSON.stringify({ url: "https://example.com/x" }));
     }
+  });
+
+  it("records fetchMeta as the parent of one fetch span per attempted endpoint", async () => {
+    initTelemetry({ mode: "memory" });
+    setupFetch((endpoint) => {
+      if (endpoint === SCANNER_ENDPOINT) {
+        return new Response("boom", { status: 500 });
+      }
+      if (endpoint === FALLBACK_ENDPOINT) {
+        return Response.json({
+          success: true,
+          result: { title: null, description: null, ogp: { "og:title": ["ok"] } },
+        });
+      }
+      throw new Error(`unexpected endpoint ${endpoint}`);
+    });
+
+    await fetchOGPMeta("https://example.com");
+
+    const root = findSpan("ogp.fetchMeta");
+    expect(root.parentSpanContext).toBeUndefined();
+
+    const fetchSpans = getFinishedSpansForTest().filter((span) => span.name === "ogp.fetch");
+    expect(fetchSpans).toHaveLength(2);
+    fetchSpans.forEach((span) => {
+      expect(span.parentSpanContext?.spanId).toBe(root.spanContext().spanId);
+    });
+    expect(fetchSpans.map((span) => span.attributes["app.endpoint"])).toEqual([SCANNER_ENDPOINT, FALLBACK_ENDPOINT]);
+    expect(fetchSpans.map((span) => span.attributes["app.success"])).toEqual([false, true]);
+  });
+
+  it("records a single successful fetch span when the scanner answers", async () => {
+    initTelemetry({ mode: "memory" });
+    setupFetch((endpoint) => {
+      if (endpoint === SCANNER_ENDPOINT) {
+        return Response.json({ success: true, result: { title: "T", description: null, ogp: {} } });
+      }
+      throw new Error(`unexpected endpoint ${endpoint}`);
+    });
+
+    await fetchOGPMeta("https://example.com");
+
+    const fetchSpans = getFinishedSpansForTest().filter((span) => span.name === "ogp.fetch");
+    expect(fetchSpans).toHaveLength(1);
+    expect(fetchSpans[0].attributes["app.endpoint"]).toBe(SCANNER_ENDPOINT);
+    expect(fetchSpans[0].attributes["app.success"]).toBe(true);
+  });
+});
+
+describe("resolveUrl", () => {
+  it("resolves a URL and records its span", async () => {
+    initTelemetry({ mode: "memory" });
+    setupFetch(() => Response.json({ success: true, url: "https://resolved.example.com" }));
+
+    expect(await resolveUrl("https://a.co/x")).toBe("https://resolved.example.com");
+
+    const span = findSpan("ogp.resolveUrl");
+    expect(span.parentSpanContext).toBeUndefined();
+    expect(span.attributes["app.success"]).toBe(true);
+  });
+
+  it("returns null and records the failure when the endpoint errors", async () => {
+    initTelemetry({ mode: "memory" });
+    setupFetch(() => new Response("boom", { status: 500 }));
+
+    expect(await resolveUrl("https://a.co/x")).toBeNull();
+
+    expect(findSpan("ogp.resolveUrl").attributes["app.success"]).toBe(false);
   });
 });
