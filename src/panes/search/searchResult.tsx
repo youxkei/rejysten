@@ -1,5 +1,5 @@
 import { doc } from "firebase/firestore";
-import { createEffect } from "solid-js";
+import { createEffect, createMemo } from "solid-js";
 
 import { type DocumentData, getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { type Schema } from "@/services/firebase/firestore/schema";
@@ -25,8 +25,12 @@ export function SearchResult(props: {
 
   let resultRef: HTMLDivElement | undefined;
 
+  // memoで値をデデュープし、選択状態が実際に切り替わったときだけスクロールする
+  // （windowスライドによるindexの振り直しでは再スクロールさせない）
+  const isSelected$ = createMemo(() => props.isSelected);
+
   createEffect(() => {
-    if (props.isSelected && resultRef) {
+    if (isSelected$() && resultRef) {
       scrollWithOffset(resultRef);
     }
   });

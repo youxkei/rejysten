@@ -6,7 +6,7 @@ import { WithEditHistoryPanel } from "@/components/editHistory";
 import { analyzeTextForNgrams } from "@/ngram";
 import "@/panes/lifeLogs/schema";
 import "@/panes/lifeLogs/store";
-import { Search } from "@/panes/search";
+import { Search, type SearchProps } from "@/panes/search";
 import "@/panes/store";
 import { ActionsServiceProvider } from "@/services/actions";
 import { FirebaseServiceProvider } from "@/services/firebase";
@@ -27,6 +27,8 @@ export interface SetupSearchTestOptions {
   initialQuery?: string;
   isActive?: boolean;
   withEditHistory?: boolean;
+  manyResults?: { count: number };
+  searchProps?: SearchProps;
 }
 
 export async function setupSearchTest(testId: string, db: DatabaseInfo, options?: SetupSearchTestOptions) {
@@ -38,6 +40,7 @@ export async function setupSearchTest(testId: string, db: DatabaseInfo, options?
   });
 
   let firestoreRef: FirestoreService | undefined;
+  let stateRef: ReturnType<typeof useStoreService>["state"] | undefined;
 
   const result = render(() => (
     <StoreServiceProvider localStorageNamePostfix={testId}>
@@ -59,6 +62,7 @@ export async function setupSearchTest(testId: string, db: DatabaseInfo, options?
                 const { updateState } = useStoreService();
 
                 const { state } = useStoreService();
+                stateRef = state;
 
                 onMount(() => {
                   (async () => {
@@ -152,6 +156,29 @@ export async function setupSearchTest(testId: string, db: DatabaseInfo, options?
                       ngramMap: child2Analysis.ngramMap,
                     });
 
+                    // Create many lifeLogs + ngrams matching the query "windowed" (for windowing tests).
+                    // Zero-padded ids keep the Firestore default (__name__) order numeric.
+                    const manyResultsCount = options?.manyResults?.count ?? 0;
+                    for (let i = 1; i <= manyResultsCount; i++) {
+                      const paddedIndex = String(i).padStart(3, "0");
+                      const text = `windowed result ${paddedIndex}`;
+                      const analysis = analyzeTextForNgrams(text);
+                      batch.set(doc(lifeLogs, `$wlog${paddedIndex}`), {
+                        text,
+                        hasTreeNodes: false,
+                        startAt: Timestamp.fromDate(baseTime),
+                        endAt: noneTimestamp,
+                        createdAt: Timestamp.fromDate(baseTime),
+                        updatedAt: Timestamp.fromDate(baseTime),
+                      });
+                      batch.set(doc(ngrams, `$wlog${paddedIndex}lifeLogs`), {
+                        collection: "lifeLogs",
+                        text,
+                        normalizedText: analysis.normalizedText,
+                        ngramMap: analysis.ngramMap,
+                      });
+                    }
+
                     await batch.commit();
 
                     // Set initial state
@@ -166,7 +193,7 @@ export async function setupSearchTest(testId: string, db: DatabaseInfo, options?
 
                 const content = (
                   <Show when={state.activePane === "search"}>
-                    <Search />
+                    <Search {...(options?.searchProps ?? {})} />
                   </Show>
                 );
                 return options?.withEditHistory ? <WithEditHistoryPanel>{content}</WithEditHistoryPanel> : content;
@@ -183,5 +210,6 @@ export async function setupSearchTest(testId: string, db: DatabaseInfo, options?
   return {
     result,
     firestore: firestoreRef!,
+    state: stateRef!,
   };
 }

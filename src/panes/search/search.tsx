@@ -5,18 +5,26 @@ import { Show, createEffect, createMemo, onCleanup, onMount, startTransition, un
 import { analyzeTextForNgrams } from "@/ngram";
 import { SearchMobileToolbar } from "@/panes/search/mobileToolbar";
 import { SearchResult } from "@/panes/search/searchResult";
+import { useIndexWindow } from "@/panes/search/useIndexWindow";
+import { useScrollFocus } from "@/panes/search/useScrollFocus";
 import "@/panes/store";
 import { useActionsService } from "@/services/actions";
-import { getCollection, useFirestoreService } from "@/services/firebase/firestore";
+import { type DocumentData, getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { encodeNgramKeyForFirestore } from "@/services/firebase/firestore/ngram";
 import { query, where } from "@/services/firebase/firestore/query";
+import { type Schema } from "@/services/firebase/firestore/schema";
 import { createSubscribeAllSignal } from "@/services/firebase/firestore/subscribe";
 import { useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
-import { ScrollContainer } from "@/solid/scroll";
+import { ScrollContainer, useScrollContainer } from "@/solid/scroll";
 import { styles } from "@/styles.css";
 
-export function Search() {
+export interface SearchProps {
+  windowSize?: number;
+  expandChunk?: number;
+}
+
+export function Search(props: SearchProps) {
   const firestore = useFirestoreService();
   const ngramsCol = getCollection(firestore, "ngrams");
   const { state, updateState } = useStoreService();
@@ -202,33 +210,91 @@ export function Search() {
         </div>
       </Show>
       <ScrollContainer class={styles.search.resultsContainer}>
-        <ul class={styles.search.resultsList}>
-          <Key each={resultItems$()} by={(item) => item.id}>
-            {(item$, index) => {
-              const ngramId = untrack(item$).id;
-              const ngram$ = createMemo(() => item$());
-              return (
-                <li>
-                  <SearchResult
-                    ngramId={ngramId}
-                    fallbackNgram={ngram$()}
-                    isSelected={state.panesSearch.selectedResultIndex === index()}
-                    onSelect={() => {
-                      const i = index();
-                      void startTransition(() => {
-                        updateState((s) => {
-                          s.panesSearch.selectedResultIndex = i;
-                        });
-                      });
-                    }}
-                  />
-                </li>
-              );
-            }}
-          </Key>
-        </ul>
+        <SearchResults results={resultItems$()} windowSize={props.windowSize} expandChunk={props.expandChunk} />
       </ScrollContainer>
       <SearchMobileToolbar />
     </div>
+  );
+}
+
+function SearchResults(props: {
+  results: DocumentData<Schema["ngrams"]>[];
+  windowSize?: number;
+  expandChunk?: number;
+}) {
+  const { state, updateState } = useStoreService();
+  const container$ = useScrollContainer();
+
+  const win = useIndexWindow({
+    totalCount$: () => props.results.length,
+    selectedIndex$: () => state.panesSearch.selectedResultIndex,
+    resetKey$: () => state.panesSearch.query,
+    windowSize: props.windowSize,
+    expandChunk: props.expandChunk,
+  });
+
+  const windowedItems$ = createMemo(() => props.results.slice(win.windowStart$(), win.windowEnd$()));
+
+  useScrollFocus({
+    renderedIds$: () => windowedItems$().map((item) => item.id),
+    anchorElementId$: () => {
+      const id = props.results.at(state.panesSearch.selectedResultIndex)?.id;
+      return id === undefined ? undefined : `search-result-${id}`;
+    },
+  });
+
+  // スクロールによるwindow展開
+  const handleScroll = () => {
+    if (win.isSliding$()) return;
+
+    const container = container$();
+    if (!container) return;
+
+    const isAtTop = container.scrollTop <= 1;
+    const isAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 1;
+
+    if (isAtTop) {
+      if (win.canExpandUp$()) void win.expandUp();
+    } else if (isAtBottom) {
+      if (win.canExpandDown$()) void win.expandDown();
+    }
+  };
+
+  createEffect(() => {
+    const container = container$();
+    if (!container) return;
+
+    container.addEventListener("scroll", handleScroll);
+    onCleanup(() => {
+      container.removeEventListener("scroll", handleScroll);
+    });
+  });
+
+  return (
+    <ul class={styles.search.resultsList}>
+      <Key each={windowedItems$()} by={(item) => item.id}>
+        {(item$, index) => {
+          const ngramId = untrack(item$).id;
+          const ngram$ = createMemo(() => item$());
+          return (
+            <li id={`search-result-${ngramId}`}>
+              <SearchResult
+                ngramId={ngramId}
+                fallbackNgram={ngram$()}
+                isSelected={state.panesSearch.selectedResultIndex === win.windowStart$() + index()}
+                onSelect={() => {
+                  const i = untrack(win.windowStart$) + index();
+                  void startTransition(() => {
+                    updateState((s) => {
+                      s.panesSearch.selectedResultIndex = i;
+                    });
+                  });
+                }}
+              />
+            </li>
+          );
+        }}
+      </Key>
+    </ul>
   );
 }
