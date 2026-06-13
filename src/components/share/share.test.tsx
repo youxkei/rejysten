@@ -1118,7 +1118,7 @@ describe("share", () => {
     expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(nodes[0].id);
   });
 
-  it("keeps amazon.co.jp search k param while stripping tracking params", async ({ db, task }) => {
+  it("keeps amazon.co.jp search URL query params as-is", async ({ db, task }) => {
     const searchUrl = "https://www.amazon.co.jp/s?k=test&ref_=nb_sb_noss";
     history.replaceState(null, "", `/?title=Search&url=${encodeURIComponent(searchUrl)}`);
 
@@ -1156,7 +1156,7 @@ describe("share", () => {
       fromServer: true,
     });
     expect(nodes).toHaveLength(1);
-    expect(nodes[0].text).toBe("[Search](https://www.amazon.co.jp/s?k=test)");
+    expect(nodes[0].text).toBe("[Search](https://www.amazon.co.jp/s?k=test&ref_=nb_sb_noss)");
   });
 
   it("detects duplicate when slug-form amazon.co.jp URL matches normalized existing node", async ({ db, task }) => {
@@ -1354,7 +1354,7 @@ describe("share", () => {
     expect(runningLogs).toHaveLength(0);
   });
 
-  it("strips tracking query params before storing", async ({ db, task }) => {
+  it("keeps tracking query params when storing", async ({ db, task }) => {
     const sharedUrl = "https://example.com/page?utm_source=newsletter&utm_medium=email";
     history.replaceState(null, "", `/?title=Example&url=${encodeURIComponent(sharedUrl)}`);
 
@@ -1392,14 +1392,14 @@ describe("share", () => {
       fromServer: true,
     });
     expect(nodes).toHaveLength(1);
-    expect(nodes[0].text).toBe("[Example](https://example.com/page)");
+    expect(nodes[0].text).toBe("[Example](https://example.com/page?utm_source=newsletter&utm_medium=email)");
   });
 
-  it("detects duplicate when re-shared with different tracking params", async ({ db, task }) => {
+  it("treats different query params as a distinct URL and appends a new node", async ({ db, task }) => {
     const sharedUrl = "https://example.com/page?utm_source=other&fbclid=xyz";
     history.replaceState(null, "", `/?title=Example&url=${encodeURIComponent(sharedUrl)}`);
 
-    const { ready, getFirestore, getShareResult } = setupShareTest(task.id, db, async (firestore) => {
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
       const batch = writeBatch(firestore.firestore);
       const batchVersion = getCollection(firestore, "batchVersion");
       const lifeLogs = getCollection(firestore, "lifeLogs");
@@ -1440,24 +1440,87 @@ describe("share", () => {
       expect(window.location.search).toBe("");
     });
 
-    expect(getShareResult()).toEqual({
-      lifeLogId: "$netsurf-tracking",
-      nodeId: "$node-tracking",
-      status: "duplicate",
-    });
-
     const firestore = getFirestore();
     const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
     const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf-tracking")), {
       fromServer: true,
     });
 
-    // Should still have only 1 node (no duplicate added)
-    expect(nodes).toHaveLength(1);
-    expect(nodes[0].text).toBe("[Example](https://example.com/page)");
+    // The query params make this a distinct URL, so a new node is appended rather than deduped
+    expect(nodes).toHaveLength(2);
+    const newNode = nodes.find((n) => n.text === "[Example](https://example.com/page?utm_source=other&fbclid=xyz)");
+    expect(newNode).toBeTruthy();
+    expect(newNode!.order > "a0").toBe(true);
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe("$netsurf-tracking");
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(newNode!.id);
   });
 
-  it("keeps youtube.com v param while stripping tracking params", async ({ db, task }) => {
+  it("detects duplicate when the same URL including query is re-shared", async ({ db, task }) => {
+    const sharedUrl = "https://example.com/page?v=123&t=42";
+    history.replaceState(null, "", `/?title=Example&url=${encodeURIComponent(sharedUrl)}`);
+
+    const { ready, getFirestore, getShareResult } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-samequery"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$node-samequery"), {
+        text: "[Example](https://example.com/page?v=123&t=42)",
+        lifeLogId: "$netsurf-samequery",
+        parentId: "$netsurf-samequery",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    // The query is part of the URL, so the identical query makes it a duplicate
+    expect(getShareResult()).toEqual({
+      lifeLogId: "$netsurf-samequery",
+      nodeId: "$node-samequery",
+      status: "duplicate",
+    });
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$netsurf-samequery")), {
+      fromServer: true,
+    });
+
+    // Should still have only 1 node (no duplicate added)
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toBe("[Example](https://example.com/page?v=123&t=42)");
+  });
+
+  it("keeps youtube.com query params including tracking ones", async ({ db, task }) => {
     const sharedUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ&utm_source=foo";
     history.replaceState(null, "", `/?title=Video&url=${encodeURIComponent(sharedUrl)}`);
 
@@ -1495,7 +1558,7 @@ describe("share", () => {
       fromServer: true,
     });
     expect(nodes).toHaveLength(1);
-    expect(nodes[0].text).toBe("[Video](https://www.youtube.com/watch?v=dQw4w9WgXcQ)");
+    expect(nodes[0].text).toBe("[Video](https://www.youtube.com/watch?v=dQw4w9WgXcQ&utm_source=foo)");
   });
 
   it("strips fragment before storing", async ({ db, task }) => {
@@ -1539,7 +1602,7 @@ describe("share", () => {
     expect(nodes[0].text).toBe("[Article](https://example.com/article)");
   });
 
-  it("keeps hash-routing fragment while stripping query params", async ({ db, task }) => {
+  it("keeps query params and hash-routing fragment", async ({ db, task }) => {
     const sharedUrl = "https://example.com/?utm_source=x#/dashboard";
     history.replaceState(null, "", `/?title=Dashboard&url=${encodeURIComponent(sharedUrl)}`);
 
@@ -1577,11 +1640,11 @@ describe("share", () => {
       fromServer: true,
     });
     expect(nodes).toHaveLength(1);
-    expect(nodes[0].text).toBe("[Dashboard](https://example.com/#/dashboard)");
+    expect(nodes[0].text).toBe("[Dashboard](https://example.com/?utm_source=x#/dashboard)");
   });
 
-  it("asks for confirmation when URL was shared in the past with different tracking params", async ({ db, task }) => {
-    const sharedUrl = "https://example.com/article?utm_source=x";
+  it("asks for confirmation when URL was shared in the past with a different fragment", async ({ db, task }) => {
+    const sharedUrl = "https://example.com/article#section-3";
     history.replaceState(null, "", `/?title=Article&url=${encodeURIComponent(sharedUrl)}`);
 
     const { ready, getFirestore, getShareResult } = setupShareTest(task.id, db, async (firestore) => {
@@ -1597,7 +1660,7 @@ describe("share", () => {
         updatedAt: Timestamp.fromDate(baseTime),
       });
 
-      batch.set(doc(lifeLogs, "$netsurf-past-tracking"), {
+      batch.set(doc(lifeLogs, "$netsurf-past-fragment"), {
         text: "ネットサーフィン",
         hasTreeNodes: true,
         startAt: Timestamp.fromDate(new Date(2026, 0, 1, 10, 0, 0, 0)),
@@ -1607,15 +1670,15 @@ describe("share", () => {
       });
 
       const pastNodeText = "[Article](https://example.com/article)";
-      batch.set(doc(lifeLogTreeNodes, "$node-past-tracking"), {
+      batch.set(doc(lifeLogTreeNodes, "$node-past-fragment"), {
         text: pastNodeText,
-        lifeLogId: "$netsurf-past-tracking",
-        parentId: "$netsurf-past-tracking",
+        lifeLogId: "$netsurf-past-fragment",
+        parentId: "$netsurf-past-fragment",
         order: "a0",
         createdAt: Timestamp.fromDate(baseTime),
         updatedAt: Timestamp.fromDate(baseTime),
       });
-      setNgramDoc(batch, firestore, "$node-past-tracking", "lifeLogTreeNodes", pastNodeText);
+      setNgramDoc(batch, firestore, "$node-past-fragment", "lifeLogTreeNodes", pastNodeText);
 
       await batch.commit();
     });
@@ -1627,12 +1690,12 @@ describe("share", () => {
       expect(window.location.search).toBe("");
     });
 
-    // Past share is found by the normalized URL, asking for confirmation
+    // The fragment is stripped, so the normalized URL matches the past share and asks for confirmation
     expect(getShareResult()).toEqual({
       status: "needsConfirmation",
       url: "https://example.com/article",
       markdownLink: "[Article](https://example.com/article)",
-      existingNodeId: "$node-past-tracking",
+      existingNodeId: "$node-past-fragment",
       existingNodeText: "[Article](https://example.com/article)",
     });
 

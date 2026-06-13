@@ -157,7 +157,7 @@ export async function handleShare(
     url = normalizeAmazonJpUrl(url);
   }
 
-  // extractAsin が query の ?asin= を読むので、汎用正規化は Amazon 処理の後に行う
+  // fragment（#/ ルーティング以外）を剥がして最終 URL を正規化する
   url = normalizeUrl(url);
 
   const readingDomains = [
