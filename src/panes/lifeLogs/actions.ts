@@ -1,5 +1,5 @@
 import { FirebaseError } from "firebase/app";
-import { Timestamp } from "firebase/firestore";
+import { startAfter, Timestamp } from "firebase/firestore";
 import { startTransition } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
@@ -131,17 +131,71 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
   }
 
   // Navigation actions
-  function navigateNext() {
-    if (state.panesLifeLogs.selectedLifeLogNodeId !== "" || context.nextId === "") return;
-    updateState((s) => {
-      s.panesLifeLogs.selectedLifeLogId = context.nextId;
-    });
+  async function navigateNext() {
+    // ツリーフォーカス中は何もしない
+    if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
+
+    // 読み込み済みウィンドウ内に次があればそれを選択
+    if (context.nextId !== "") {
+      updateState((s) => {
+        s.panesLifeLogs.selectedLifeLogId = context.nextId;
+      });
+      return;
+    }
+
+    // 境界に到達: ウィンドウ外の隣接lifeLogをFirestoreから探してジャンプ
+    await navigateBoundary("next");
   }
 
-  function navigatePrev() {
-    if (state.panesLifeLogs.selectedLifeLogNodeId !== "" || context.prevId === "") return;
+  async function navigatePrev() {
+    // ツリーフォーカス中は何もしない
+    if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
+
+    // 読み込み済みウィンドウ内に前があればそれを選択
+    if (context.prevId !== "") {
+      updateState((s) => {
+        s.panesLifeLogs.selectedLifeLogId = context.prevId;
+      });
+      return;
+    }
+
+    // 境界に到達: ウィンドウ外の隣接lifeLogをFirestoreから探してジャンプ
+    await navigateBoundary("prev");
+  }
+
+  // ウィンドウ境界で隣接するlifeLogを (endAt, startAt) 順でFirestoreから探し選択する。
+  // 選択IDがウィンドウ外になると lifeLogs.tsx の effect が resetToLifeLog を呼び、
+  // ターゲットを中心にレンジを再センターする (goToLatest と同じ仕組み)。
+  async function navigateBoundary(direction: "next" | "prev") {
+    const selectedId = state.panesLifeLogs.selectedLifeLogId;
+    if (selectedId === "") return;
+
+    // カーソル値として現在選択中のlifeLogの (endAt, startAt) を取得
+    const current = await getDoc(firestore, lifeLogsCol, selectedId);
+    if (!current) return;
+
+    // next: (endAt asc, startAt asc) で current より厳密に後ろの最初の1件
+    // prev: desc index + startAfter で current より厳密に前の最初の1件
+    //       (limit(1) が最近傍を返す。goToLatest の desc クエリと同じ並び)
+    const boundaryQuery =
+      direction === "next"
+        ? query(lifeLogsCol, orderBy("endAt"), orderBy("startAt"), startAfter(current.endAt, current.startAt), limit(1))
+        : query(
+            lifeLogsCol,
+            orderBy("endAt", "desc"),
+            orderBy("startAt", "desc"),
+            startAfter(current.endAt, current.startAt),
+            limit(1),
+          );
+
+    const docs = await getDocs(firestore, boundaryQuery);
+    if (docs.length === 0) return; // グローバル端: 何もしない
+
+    const targetId = docs[0].id;
+    if (targetId === selectedId) return; // 念のための自己選択ガード
+
     updateState((s) => {
-      s.panesLifeLogs.selectedLifeLogId = context.prevId;
+      s.panesLifeLogs.selectedLifeLogId = targetId;
     });
   }
 
@@ -1229,8 +1283,8 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
   }
 
   return {
-    navigateNext,
-    navigatePrev,
+    navigateNext: awaitable(navigateNext),
+    navigatePrev: awaitable(navigatePrev),
     goToFirst,
     goToLast,
     goToLatest: awaitable(goToLatest),

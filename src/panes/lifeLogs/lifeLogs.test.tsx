@@ -850,6 +850,133 @@ describe("<LifeLogs />", () => {
     expect(log1ElementAfterK3?.className).toContain(styles.lifeLogTree.selected);
   });
 
+  it("jumps to an older out-of-window LifeLog when pressing k at the loaded boundary", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db, {
+      outOfRangeLifeLogs: [{ id: "$older", text: "older out of range", daysAgo: 18, endDaysAgo: 18 }],
+      initialSelectedId: "$log1",
+      lifeLogsProps: { debounceMs: 0 },
+    });
+
+    await result.findByText("first lifelog");
+    // The out-of-window log is not loaded initially
+    expect(result.queryByText("older out of range")).toBeNull();
+
+    // $log1 is the oldest loaded log (and selected)
+    const log1El = result.getByText("first lifelog").closest(`.${styles.lifeLogTree.container}`);
+    expect(log1El?.className).toContain(styles.lifeLogTree.selected);
+
+    // k at the boundary jumps to the older out-of-window log, loading and centering it
+    await userEvent.keyboard("{k}");
+    await awaitPendingCallbacks();
+
+    await result.findByText("older out of range");
+    await waitFor(() => {
+      expectSelectedLifeLogText(result, "older out of range");
+    });
+  });
+
+  it("does not change selection when pressing j at the global newest LifeLog", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db, {
+      initialSelectedId: "$log4",
+      lifeLogsProps: { debounceMs: 0 },
+    });
+
+    await result.findByText("fourth lifelog");
+    await waitFor(() => {
+      expectSelectedLifeLogText(result, "fourth lifelog");
+    });
+
+    // $log4 is the global newest; j must find no neighbor and leave selection unchanged
+    await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
+
+    expectSelectedLifeLogText(result, "fourth lifelog");
+  });
+
+  it("jumps to a newer out-of-window LifeLog when pressing j at the loaded boundary", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db, {
+      outOfRangeLifeLogs: [
+        { id: "$mid", text: "mid out of range", daysAgo: 30, endDaysAgo: 30 },
+        { id: "$newer", text: "newer out of range", daysAgo: 10, endDaysAgo: 10 },
+      ],
+      initialSelectedId: "$mid",
+      lifeLogsProps: { debounceMs: 0 },
+    });
+
+    // Selecting $mid re-centers the window on a past date, so $newer (10 days ago)
+    // falls outside the loaded window on the newer side.
+    await result.findByText("mid out of range");
+    await waitFor(() => {
+      expectSelectedLifeLogText(result, "mid out of range");
+    });
+    expect(result.queryByText("newer out of range")).toBeNull();
+
+    // j at the boundary jumps to the newer out-of-window log, loading and centering it
+    await userEvent.keyboard("{j}");
+    await awaitPendingCallbacks();
+
+    await result.findByText("newer out of range");
+    await waitFor(() => {
+      expectSelectedLifeLogText(result, "newer out of range");
+    });
+  });
+
+  it("does not jump to an out-of-window LifeLog with k while a tree node is focused", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db, {
+      outOfRangeLifeLogs: [{ id: "$older", text: "older out of range", daysAgo: 18, endDaysAgo: 18 }],
+      initialSelectedId: "$log1",
+      lifeLogsProps: { debounceMs: 0 },
+    });
+
+    await result.findByText("first lifelog");
+
+    // Enter the tree of $log1 (which has tree nodes)
+    await userEvent.keyboard("{l}");
+    await awaitPendingCallbacks();
+    await result.findByText("first child");
+
+    // k inside the tree must not trigger a lifeLog-level boundary jump
+    await userEvent.keyboard("{k}");
+    await awaitPendingCallbacks();
+
+    expect(result.queryByText("older out of range")).toBeNull();
+  });
+
+  it("jumps across multiple out-of-window LifeLogs with repeated k presses", async ({ db, task }) => {
+    // Two older logs in separate gaps (>14 days apart) so each k press lands on a
+    // boundary again after the previous jump re-centered the window.
+    const { result } = await setupLifeLogsTest(task.id, db, {
+      outOfRangeLifeLogs: [
+        { id: "$older1", text: "older lifelog one", daysAgo: 18, endDaysAgo: 18 },
+        { id: "$older2", text: "older lifelog two", daysAgo: 40, endDaysAgo: 40 },
+      ],
+      initialSelectedId: "$log1",
+      lifeLogsProps: { debounceMs: 0 },
+    });
+
+    await result.findByText("first lifelog");
+    expect(result.queryByText("older lifelog one")).toBeNull();
+    expect(result.queryByText("older lifelog two")).toBeNull();
+
+    // First k: $log1 (oldest loaded) jumps to $older1 and re-centers on it.
+    await userEvent.keyboard("{k}");
+    await awaitPendingCallbacks();
+    await result.findByText("older lifelog one");
+    await waitFor(() => {
+      expectSelectedLifeLogText(result, "older lifelog one");
+    });
+    // $older2 is still >14 days away, so it remains out of the re-centered window.
+    expect(result.queryByText("older lifelog two")).toBeNull();
+
+    // Second k: $older1 is again the boundary, so it jumps once more to $older2.
+    await userEvent.keyboard("{k}");
+    await awaitPendingCallbacks();
+    await result.findByText("older lifelog two");
+    await waitFor(() => {
+      expectSelectedLifeLogText(result, "older lifelog two");
+    });
+  });
+
   it("can add new lifelog with o key", async ({ db, task }) => {
     const { result } = await setupLifeLogsTest(task.id, db);
 
@@ -2692,7 +2819,8 @@ describe("<LifeLogs />", () => {
       // $farPast should NOT be visible (endAt 20 days ago, outside 14-day range centered on $nearPast)
       expect(result.queryByText("far past lifelog")).toBeNull();
 
-      // Navigate with k key to go backwards — this triggers resetRange since it was initially expanded
+      // k from the oldest loaded log ($nearPast) jumps to the older out-of-window
+      // log ($farPast), which re-centers the range on it.
       await userEvent.keyboard("{k}");
       await awaitPendingCallbacks();
 
@@ -2700,8 +2828,11 @@ describe("<LifeLogs />", () => {
       await new Promise((r) => setTimeout(r, 50));
       await awaitPendingCallbacks();
 
-      // $nearPast should still be visible (it's within the range)
-      expect(result.getByText("near past lifelog")).toBeTruthy();
+      // $farPast becomes loaded, visible, and selected
+      await result.findByText("far past lifelog");
+      await waitFor(() => {
+        expectSelectedLifeLogText(result, "far past lifelog");
+      });
     });
 
     it("resets range when navigating with j key after expansion", async ({ db, task }) => {
