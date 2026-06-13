@@ -248,12 +248,23 @@ export function TimeRangedLifeLogs(props: {
     ),
   );
 
+  // 選択中のlifeLogが現在のウィンドウ(lifeLogs$)内にあるか。
+  // selectedLifeLogId だけでなく lifeLogs$ のメンバーシップにも反応させることで、
+  // endAt 編集などで選択中ログがウィンドウ外に出たケースも検知する。
+  // createMemo の重複排除により、レンジ展開で lifeLogs$ が変化しても
+  // メンバーシップが変わらなければ再センターのeffectは再実行されない。
+  const isSelectedInWindow$ = createMemo(() => {
+    const selectedId = state.panesLifeLogs.selectedLifeLogId;
+    if (selectedId === "") return true;
+    return lifeLogs$().some((l) => l.id === selectedId);
+  });
+
   createEffect(() => {
     const selectedId = state.panesLifeLogs.selectedLifeLogId;
+    const isSelectedInWindow = isSelectedInWindow$();
     if (!selectedId) return;
     if (!hasLoadedOnce$()) return;
-    const currentIds = untrack(() => lifeLogs$().map((l) => l.id));
-    if (currentIds.includes(selectedId) && !untrack(() => props.isExpanded)) return;
+    if (isSelectedInWindow && !untrack(() => props.isExpanded)) return;
     addActionEvent("scroll.resetDebounceScheduled", { "app.doc_id": selectedId });
     debouncedResetToSelected(selectedId);
   });

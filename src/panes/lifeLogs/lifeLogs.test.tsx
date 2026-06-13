@@ -694,6 +694,41 @@ describe("<LifeLogs />", () => {
     expect(duration, `Set endAt took ${duration.toFixed(2)}ms`).toBeLessThan(150);
   });
 
+  it("re-centers and keeps the LifeLog visible when its endAt is edited out of the window", async ({ db, task }) => {
+    // An ongoing log started 18 days ago (startAt outside the ±14d window, but
+    // endAt=unset keeps it loaded). A previous log sits far in the past.
+    const { result } = await setupLifeLogsTest(task.id, db, {
+      skipDefaultLifeLogs: true,
+      outOfRangeLifeLogs: [
+        { id: "$ongoing", text: "ongoing lifelog", daysAgo: 18 },
+        { id: "$prev", text: "previous lifelog", daysAgo: 40, endDaysAgo: 40 },
+      ],
+      initialSelectedId: "$ongoing",
+      lifeLogsProps: { debounceMs: 0 },
+    });
+
+    // The ongoing log is shown initially (endAt unset → inside the window).
+    await result.findByText("ongoing lifelog");
+
+    // Edit endAt to a few seconds after its startAt (~18 days ago, outside the window).
+    await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
+    await userEvent.keyboard("{Tab}"); // text -> startAt
+    await awaitPendingCallbacks();
+    await userEvent.keyboard("{Tab}"); // startAt -> endAt
+    await awaitPendingCallbacks();
+    await userEvent.keyboard("20251223 120005");
+    await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
+
+    // The range must re-center on the new endAt so the log stays visible
+    // (previously the window never moved and the pane went blank).
+    await result.findByText("ongoing lifelog");
+    await waitFor(() => {
+      expectSelectedLifeLogText(result, "ongoing lifelog");
+    });
+  });
+
   it("does not scroll away from neighbor when setting endAt with f key", async ({ db, task }) => {
     await page.viewport(1100, 600);
 
