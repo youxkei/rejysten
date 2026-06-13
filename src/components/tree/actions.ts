@@ -13,6 +13,8 @@ import {
   getBottomNodeExclusive,
   getFirstChildNode,
   indent,
+  moveNext,
+  movePrev,
 } from "@/services/firebase/firestore/treeNode";
 import { useStoreService } from "@/services/store";
 
@@ -34,6 +36,8 @@ declare module "@/services/actions" {
       goToLast: () => void;
       indentNode: () => void;
       dedentNode: () => void;
+      moveUp: () => void;
+      moveDown: () => void;
     };
   }
 }
@@ -149,6 +153,56 @@ actionsCreator.components.tree = ({ components: { tree: context } }, _actions) =
     }
   }
 
+  async function moveUp() {
+    if (!context.col || context.selectedId === "") return;
+    const col = context.col;
+
+    const node = await getDoc(firestore, col, context.selectedId);
+    if (!node) return;
+
+    try {
+      firestore.setClock(true);
+      await runBatch(
+        firestore,
+        async (batch) => {
+          await movePrev(firestore, batch, col, node);
+        },
+        { description: "ノード移動", prevSelection: currentSelection() },
+      );
+
+      await startTransition(() => {
+        firestore.setClock(false);
+      });
+    } finally {
+      firestore.setClock(false);
+    }
+  }
+
+  async function moveDown() {
+    if (!context.col || context.selectedId === "") return;
+    const col = context.col;
+
+    const node = await getDoc(firestore, col, context.selectedId);
+    if (!node) return;
+
+    try {
+      firestore.setClock(true);
+      await runBatch(
+        firestore,
+        async (batch) => {
+          await moveNext(firestore, batch, col, node);
+        },
+        { description: "ノード移動", prevSelection: currentSelection() },
+      );
+
+      await startTransition(() => {
+        firestore.setClock(false);
+      });
+    } finally {
+      firestore.setClock(false);
+    }
+  }
+
   return {
     navigateDown: awaitable(navigateDown),
     navigateUp: awaitable(navigateUp),
@@ -156,5 +210,7 @@ actionsCreator.components.tree = ({ components: { tree: context } }, _actions) =
     goToLast: awaitable(goToLast),
     indentNode: awaitable(indentNode),
     dedentNode: awaitable(dedentNode),
+    moveUp: awaitable(moveUp),
+    moveDown: awaitable(moveDown),
   };
 };

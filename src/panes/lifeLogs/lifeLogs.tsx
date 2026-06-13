@@ -218,9 +218,11 @@ export function TimeRangedLifeLogs(props: {
       links: link ? [link] : undefined,
       attributes: { "app.doc_id": lifeLogId },
     });
-    handle.runBody(() => props.resetToLifeLog(lifeLogId)).catch((error: unknown) => {
-      console.error("Error resetting LifeLogs range:", error);
-    });
+    handle
+      .runBody(() => props.resetToLifeLog(lifeLogId))
+      .catch((error: unknown) => {
+        console.error("Error resetting LifeLogs range:", error);
+      });
   }, props.scrollFocusDebounceMs ?? 300);
   onCleanup(() => {
     debouncedResetToSelected.clear();

@@ -6,7 +6,10 @@ import { useScrollContainer } from "@/solid/scroll";
  * 描画中の検索結果一覧が変わった際（window拡張で上にアイテムが追加されるなど）、
  * アンカー要素（選択中の結果）のビューポート内での位置を保持するためスクロール補正するフック
  */
-export function useScrollFocus(props: { renderedIds$: Accessor<string[]>; anchorElementId$: Accessor<string | undefined> }) {
+export function useScrollFocus(props: {
+  renderedIds$: Accessor<string[]>;
+  anchorElementId$: Accessor<string | undefined>;
+}) {
   const container$ = useScrollContainer();
 
   let savedRelativeTop: number | undefined;

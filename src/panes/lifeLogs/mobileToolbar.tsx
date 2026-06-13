@@ -86,6 +86,12 @@ function NavigationToolbar() {
   const handleDedent = withOwner(() => {
     treeActions.dedentNode();
   });
+  const handleMoveUp = withOwner(() => {
+    treeActions.moveUp();
+  });
+  const handleMoveDown = withOwner(() => {
+    treeActions.moveDown();
+  });
   const handleOpenSearch = withOwner(() => {
     searchActions.openSearch();
   });
@@ -184,6 +190,12 @@ function NavigationToolbar() {
         </button>
         <button class={styles.mobileToolbar.button} onClick={handleAddNodeBelow}>
           ⬇️➕
+        </button>
+        <button class={styles.mobileToolbar.button} onClick={handleMoveUp}>
+          🔼
+        </button>
+        <button class={styles.mobileToolbar.button} onClick={handleMoveDown}>
+          🔽
         </button>
         <button class={styles.mobileToolbar.button} onClick={handleDedent}>
           ⬅️

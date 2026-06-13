@@ -68,6 +68,21 @@ async function focusInput(input: HTMLInputElement) {
   });
 }
 
+// Asserts that the tree nodes with the given texts are direct siblings (share the
+// same parent <ul>) and appear in exactly the given order.
+function expectSiblingOrder(result: LifeLogsTestResult, texts: string[]) {
+  const lis = texts.map((text) => result.getByText(text).closest("li")!);
+  const parentUl = lis[0].parentElement!;
+  for (const li of lis) {
+    expect(li.parentElement).toBe(parentUl);
+  }
+  const children = Array.from(parentUl.children);
+  const indices = lis.map((li) => children.indexOf(li));
+  for (let i = 1; i < indices.length; i++) {
+    expect(indices[i - 1]).toBeLessThan(indices[i]);
+  }
+}
+
 afterEach(async () => {
   await awaitPendingCallbacks();
   await waitForCurrentPendingCommits();
@@ -291,6 +306,284 @@ describe("<LifeLog />", () => {
     // Assert each operation completes within 100ms
     expect(indentDuration, `Indent took ${indentDuration.toFixed(2)}ms`).toBeLessThan(150);
     expect(dedentDuration, `Dedent took ${dedentDuration.toFixed(2)}ms`).toBeLessThan(150);
+  });
+
+  describe("moving tree nodes with Shift+J/Shift+K", () => {
+    // Enters tree mode and navigates down `steps` times so the requested node is selected.
+    // Top-level siblings under $log1: first child (steps 0), second child (steps 3), third child (steps 4)
+    // (first child has grandchild -> great-grandchild in between).
+    async function enterTreeAndSelect(result: LifeLogsTestResult, text: string, steps: number) {
+      await result.findByText("first lifelog");
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+      await result.findByText("first child");
+      await result.findByText("second child");
+      await result.findByText("third child");
+      for (let i = 0; i < steps; i++) {
+        await userEvent.keyboard("{j}");
+        await awaitPendingCallbacks();
+      }
+      await waitForSelectedTreeText(result, text);
+    }
+
+    it("Shift+J moves the selected node down one position among siblings", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      // first child is selected on entering tree mode
+      await enterTreeAndSelect(result, "first child", 0);
+      expectSiblingOrder(result, ["first child", "second child", "third child"]);
+
+      await userEvent.keyboard("{Shift>}{j}{/Shift}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expectSiblingOrder(result, ["second child", "first child", "third child"]);
+      });
+    });
+
+    it("Shift+K moves the selected node up one position among siblings", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      // navigate to second child (first child -> grandchild -> great-grandchild -> second child)
+      await enterTreeAndSelect(result, "second child", 3);
+      expectSiblingOrder(result, ["first child", "second child", "third child"]);
+
+      await userEvent.keyboard("{Shift>}{k}{/Shift}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expectSiblingOrder(result, ["second child", "first child", "third child"]);
+      });
+    });
+
+    it("Shift+J on the last sibling is a no-op", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      // navigate to third child (last top-level sibling)
+      await enterTreeAndSelect(result, "third child", 4);
+
+      await userEvent.keyboard("{Shift>}{j}{/Shift}");
+      await awaitPendingCallbacks();
+
+      expectSiblingOrder(result, ["first child", "second child", "third child"]);
+      await waitForSelectedTreeText(result, "third child");
+    });
+
+    it("Shift+K on the first sibling is a no-op", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await enterTreeAndSelect(result, "first child", 0);
+
+      await userEvent.keyboard("{Shift>}{k}{/Shift}");
+      await awaitPendingCallbacks();
+
+      expectSiblingOrder(result, ["first child", "second child", "third child"]);
+      await waitForSelectedTreeText(result, "first child");
+    });
+
+    it("keeps the moved node selected after Shift+J", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await enterTreeAndSelect(result, "first child", 0);
+
+      await userEvent.keyboard("{Shift>}{j}{/Shift}");
+      await awaitPendingCallbacks();
+
+      // first child remains selected even though it moved below second child
+      await waitForSelectedTreeText(result, "first child");
+      await waitFor(() => {
+        expectSiblingOrder(result, ["second child", "first child", "third child"]);
+      });
+    });
+
+    it("carries the node's subtree when moving with Shift+J", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      // first child has grandchild -> great-grandchild
+      await enterTreeAndSelect(result, "first child", 0);
+      await result.findByText("grandchild");
+      await result.findByText("great-grandchild");
+
+      await userEvent.keyboard("{Shift>}{j}{/Shift}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expectSiblingOrder(result, ["second child", "first child", "third child"]);
+      });
+
+      // descendants stay nested under first child
+      const firstChildLi = result.getByText("first child").closest("li")!;
+      expect(firstChildLi.contains(result.getByText("grandchild").closest("li"))).toBe(true);
+      expect(firstChildLi.contains(result.getByText("great-grandchild").closest("li"))).toBe(true);
+    });
+
+    it("carries the subtree and keeps selection when moving up with Shift+K", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      // third child has "third grandchild"; moving it up inserts it between first and second child
+      await enterTreeAndSelect(result, "third child", 4);
+      await result.findByText("third grandchild");
+
+      await userEvent.keyboard("{Shift>}{k}{/Shift}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expectSiblingOrder(result, ["first child", "third child", "second child"]);
+      });
+
+      // third child stays selected and keeps its subtree
+      await waitForSelectedTreeText(result, "third child");
+      const thirdChildLi = result.getByText("third child").closest("li")!;
+      expect(thirdChildLi.contains(result.getByText("third grandchild").closest("li"))).toBe(true);
+    });
+
+    it("can move a node through multiple positions with repeated Shift+J", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await enterTreeAndSelect(result, "first child", 0);
+
+      await userEvent.keyboard("{Shift>}{j}{/Shift}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expectSiblingOrder(result, ["second child", "first child", "third child"]);
+      });
+
+      await userEvent.keyboard("{Shift>}{j}{/Shift}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expectSiblingOrder(result, ["second child", "third child", "first child"]);
+      });
+    });
+
+    it("Shift+J/Shift+K on a node without siblings is a no-op", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      // grandchild is the only child of first child
+      await enterTreeAndSelect(result, "grandchild", 1);
+
+      await userEvent.keyboard("{Shift>}{j}{/Shift}");
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{Shift>}{k}{/Shift}");
+      await awaitPendingCallbacks();
+
+      // structure is unchanged: grandchild still under first child, great-grandchild still under grandchild
+      await waitForSelectedTreeText(result, "grandchild");
+      const firstChildLi = result.getByText("first child").closest("li")!;
+      const grandchildLi = result.getByText("grandchild").closest("li")!;
+      expect(firstChildLi.contains(grandchildLi)).toBe(true);
+      expect(grandchildLi.contains(result.getByText("great-grandchild").closest("li"))).toBe(true);
+    });
+
+    it("does not move the node when Shift+J is pressed while editing", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await enterTreeAndSelect(result, "first child", 0);
+
+      // enter editing mode with cursor at the start
+      await userEvent.keyboard("{i}");
+      const input = await waitForInput(result);
+      await focusInput(input);
+
+      // Shift+J is typed into the input (the "j" character) and must not move the node
+      await userEvent.keyboard("{Shift>}{j}{/Shift}");
+      await awaitPendingCallbacks();
+
+      // save and exit editing
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+
+      // node text now starts with the typed "j" but it is still the first sibling
+      await waitFor(() => {
+        expectSiblingOrder(result, ["jfirst child", "second child", "third child"]);
+      });
+    });
+
+    it("can undo a Shift+J move", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, { withEditHistory: true });
+
+      await enterTreeAndSelect(result, "first child", 0);
+
+      await userEvent.keyboard("{Shift>}{j}{/Shift}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expectSiblingOrder(result, ["second child", "first child", "third child"]);
+      });
+
+      // undo restores the original sibling order
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expectSiblingOrder(result, ["first child", "second child", "third child"]);
+      });
+    });
+
+    it("can redo an undone Shift+J move", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, { withEditHistory: true });
+
+      await enterTreeAndSelect(result, "first child", 0);
+
+      await userEvent.keyboard("{Shift>}{j}{/Shift}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expectSiblingOrder(result, ["second child", "first child", "third child"]);
+      });
+
+      // undo, then redo re-applies the move
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expectSiblingOrder(result, ["first child", "second child", "third child"]);
+      });
+
+      await userEvent.keyboard("{r}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expectSiblingOrder(result, ["second child", "first child", "third child"]);
+      });
+    });
+
+    it("reorders siblings nested under a tree node (not the lifeLog)", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db);
+
+      await result.findByText("first lifelog");
+      await userEvent.keyboard("{l}");
+      await awaitPendingCallbacks();
+      await result.findByText("grandchild");
+
+      // navigate to grandchild (the only child of first child) and add a sibling below it
+      await userEvent.keyboard("{j}");
+      await awaitPendingCallbacks();
+      await waitForSelectedTreeText(result, "grandchild");
+
+      await userEvent.keyboard("{o}");
+      const input = await waitForInput(result);
+      await focusInput(input);
+      await userEvent.keyboard("sibling grandchild");
+      await waitFor(() => {
+        expect(input.value).toBe("sibling grandchild");
+      });
+      await awaitPendingCallbacks();
+      await userEvent.keyboard("{Escape}");
+      await awaitPendingCallbacks();
+      await result.findByText("sibling grandchild");
+
+      // first child now has two children at depth 2, in order
+      expectSiblingOrder(result, ["grandchild", "sibling grandchild"]);
+
+      // the newly added node is selected; move it up among its (nested) siblings
+      await waitForSelectedTreeText(result, "sibling grandchild");
+      await userEvent.keyboard("{Shift>}{k}{/Shift}");
+      await awaitPendingCallbacks();
+
+      await waitFor(() => {
+        expectSiblingOrder(result, ["sibling grandchild", "grandchild"]);
+      });
+
+      // both remain nested under first child
+      const firstChildLi = result.getByText("first child").closest("li")!;
+      expect(firstChildLi.contains(result.getByText("grandchild").closest("li"))).toBe(true);
+      expect(firstChildLi.contains(result.getByText("sibling grandchild").closest("li"))).toBe(true);
+    });
   });
 
   it("can edit node text with i key", async ({ db, task }) => {
@@ -1897,6 +2190,129 @@ describe("<LifeLog />", () => {
         const child1LiAfterDedent = result.getByText("first child").closest("li")!;
         const grandchildLiAfterDedent = result.getByText("grandchild").closest("li")!;
         expect(child1LiAfterDedent.parentElement).toBe(grandchildLiAfterDedent.parentElement);
+      });
+    });
+
+    describe("move buttons in tree mode", () => {
+      function clickToolbarButton(result: LifeLogsTestResult, emoji: string) {
+        const button = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).find(
+          (btn) => btn.textContent === emoji,
+        ) as HTMLButtonElement | undefined;
+        expect(button).toBeTruthy();
+        return userEvent.click(button!);
+      }
+
+      async function enterTreeAndSelect(result: LifeLogsTestResult, text: string, steps: number) {
+        await result.findByText("first lifelog");
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+        await result.findByText("first child");
+        await result.findByText("second child");
+        await result.findByText("third child");
+        for (let i = 0; i < steps; i++) {
+          await userEvent.keyboard("{j}");
+          await awaitPendingCallbacks();
+        }
+        await waitForSelectedTreeText(result, text);
+      }
+
+      it("moves the selected node up with the 🔼 button", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        // navigate to second child
+        await enterTreeAndSelect(result, "second child", 3);
+        expectSiblingOrder(result, ["first child", "second child", "third child"]);
+
+        await clickToolbarButton(result, "🔼");
+        await awaitPendingCallbacks();
+
+        await waitFor(() => {
+          expectSiblingOrder(result, ["second child", "first child", "third child"]);
+        });
+      });
+
+      it("moves the selected node down with the 🔽 button", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        // first child is selected on entering tree mode
+        await enterTreeAndSelect(result, "first child", 0);
+        expectSiblingOrder(result, ["first child", "second child", "third child"]);
+
+        await clickToolbarButton(result, "🔽");
+        await awaitPendingCallbacks();
+
+        await waitFor(() => {
+          expectSiblingOrder(result, ["second child", "first child", "third child"]);
+        });
+      });
+
+      it("🔼 on the first sibling is a no-op", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await enterTreeAndSelect(result, "first child", 0);
+
+        await clickToolbarButton(result, "🔼");
+        await awaitPendingCallbacks();
+
+        expectSiblingOrder(result, ["first child", "second child", "third child"]);
+        await waitForSelectedTreeText(result, "first child");
+      });
+
+      it("🔽 on the last sibling is a no-op", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await enterTreeAndSelect(result, "third child", 4);
+
+        await clickToolbarButton(result, "🔽");
+        await awaitPendingCallbacks();
+
+        expectSiblingOrder(result, ["first child", "second child", "third child"]);
+        await waitForSelectedTreeText(result, "third child");
+      });
+
+      it("shows 🔼/🔽 buttons only when a tree node is focused", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        await result.findByText("first lifelog");
+
+        // not in tree mode - move buttons hidden
+        const textsBeforeTree = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).map(
+          (btn) => btn.textContent,
+        );
+        expect(textsBeforeTree).not.toContain("🔼");
+        expect(textsBeforeTree).not.toContain("🔽");
+
+        // enter tree mode - move buttons visible
+        await userEvent.keyboard("{l}");
+        await awaitPendingCallbacks();
+        await result.findByText("first child");
+
+        const textsInTree = Array.from(result.container.querySelectorAll(`.${styles.mobileToolbar.button}`)).map(
+          (btn) => btn.textContent,
+        );
+        expect(textsInTree).toContain("🔼");
+        expect(textsInTree).toContain("🔽");
+      });
+
+      it("keeps selection and carries the subtree when moving with the 🔽 button", async ({ db, task }) => {
+        const { result } = await setupLifeLogsTest(task.id, db);
+
+        // first child (with grandchild/great-grandchild) is selected on entering tree mode
+        await enterTreeAndSelect(result, "first child", 0);
+        await result.findByText("grandchild");
+
+        await clickToolbarButton(result, "🔽");
+        await awaitPendingCallbacks();
+
+        await waitFor(() => {
+          expectSiblingOrder(result, ["second child", "first child", "third child"]);
+        });
+
+        // first child stays selected and keeps its descendants
+        await waitForSelectedTreeText(result, "first child");
+        const firstChildLi = result.getByText("first child").closest("li")!;
+        expect(firstChildLi.contains(result.getByText("grandchild").closest("li"))).toBe(true);
+        expect(firstChildLi.contains(result.getByText("great-grandchild").closest("li"))).toBe(true);
       });
     });
 

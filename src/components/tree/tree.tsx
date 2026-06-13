@@ -130,16 +130,22 @@ export function Node<C extends TreeNodeCollection>(props: {
 
     switch (event.code) {
       case "KeyJ": {
-        if (shiftKey) return;
         event.stopImmediatePropagation();
-        actions.navigateDown();
+        if (shiftKey) {
+          actions.moveDown();
+        } else {
+          actions.navigateDown();
+        }
         break;
       }
 
       case "KeyK": {
-        if (shiftKey) return;
         event.stopImmediatePropagation();
-        actions.navigateUp();
+        if (shiftKey) {
+          actions.moveUp();
+        } else {
+          actions.navigateUp();
+        }
         break;
       }
 
