@@ -1354,8 +1354,8 @@ describe("share", () => {
     expect(runningLogs).toHaveLength(0);
   });
 
-  it("keeps tracking query params when storing", async ({ db, task }) => {
-    const sharedUrl = "https://example.com/page?utm_source=newsletter&utm_medium=email";
+  it("strips tracking query params when storing, keeping content params", async ({ db, task }) => {
+    const sharedUrl = "https://example.com/page?id=42&utm_source=newsletter&utm_medium=email";
     history.replaceState(null, "", `/?title=Example&url=${encodeURIComponent(sharedUrl)}`);
 
     const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
@@ -1392,11 +1392,11 @@ describe("share", () => {
       fromServer: true,
     });
     expect(nodes).toHaveLength(1);
-    expect(nodes[0].text).toBe("[Example](https://example.com/page?utm_source=newsletter&utm_medium=email)");
+    expect(nodes[0].text).toBe("[Example](https://example.com/page?id=42)");
   });
 
   it("treats different query params as a distinct URL and appends a new node", async ({ db, task }) => {
-    const sharedUrl = "https://example.com/page?utm_source=other&fbclid=xyz";
+    const sharedUrl = "https://example.com/page?id=42&v=2";
     history.replaceState(null, "", `/?title=Example&url=${encodeURIComponent(sharedUrl)}`);
 
     const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
@@ -1448,7 +1448,7 @@ describe("share", () => {
 
     // The query params make this a distinct URL, so a new node is appended rather than deduped
     expect(nodes).toHaveLength(2);
-    const newNode = nodes.find((n) => n.text === "[Example](https://example.com/page?utm_source=other&fbclid=xyz)");
+    const newNode = nodes.find((n) => n.text === "[Example](https://example.com/page?id=42&v=2)");
     expect(newNode).toBeTruthy();
     expect(newNode!.order > "a0").toBe(true);
 
@@ -1520,8 +1520,8 @@ describe("share", () => {
     expect(nodes[0].text).toBe("[Example](https://example.com/page?v=123&t=42)");
   });
 
-  it("keeps youtube.com query params including tracking ones", async ({ db, task }) => {
-    const sharedUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ&utm_source=foo";
+  it("strips tracking params from a youtube URL, keeping the video id", async ({ db, task }) => {
+    const sharedUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ&utm_source=foo&si=abc";
     history.replaceState(null, "", `/?title=Video&url=${encodeURIComponent(sharedUrl)}`);
 
     const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
@@ -1558,7 +1558,7 @@ describe("share", () => {
       fromServer: true,
     });
     expect(nodes).toHaveLength(1);
-    expect(nodes[0].text).toBe("[Video](https://www.youtube.com/watch?v=dQw4w9WgXcQ&utm_source=foo)");
+    expect(nodes[0].text).toBe("[Video](https://www.youtube.com/watch?v=dQw4w9WgXcQ)");
   });
 
   it("strips fragment before storing", async ({ db, task }) => {
@@ -1603,7 +1603,7 @@ describe("share", () => {
   });
 
   it("keeps query params and hash-routing fragment", async ({ db, task }) => {
-    const sharedUrl = "https://example.com/?utm_source=x#/dashboard";
+    const sharedUrl = "https://example.com/?id=42#/dashboard";
     history.replaceState(null, "", `/?title=Dashboard&url=${encodeURIComponent(sharedUrl)}`);
 
     const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
@@ -1640,7 +1640,7 @@ describe("share", () => {
       fromServer: true,
     });
     expect(nodes).toHaveLength(1);
-    expect(nodes[0].text).toBe("[Dashboard](https://example.com/?utm_source=x#/dashboard)");
+    expect(nodes[0].text).toBe("[Dashboard](https://example.com/?id=42#/dashboard)");
   });
 
   it("asks for confirmation when URL was shared in the past with a different fragment", async ({ db, task }) => {
