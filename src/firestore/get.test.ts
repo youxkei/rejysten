@@ -90,6 +90,39 @@ describe("getDoc overlay boundary", () => {
     }
   });
 
+  it("returns a pending create from the overlay without a server read", async (test) => {
+    const col = testCollection(firestore, `${test.task.id}_${Date.now()}_get_doc_pending_create`);
+    // Not seeded — the doc exists only in the overlay (just-created node).
+
+    const batchId = `manual-${test.task.id}`;
+    client.overlay.apply(batchId, [
+      {
+        type: "set",
+        batchId: "",
+        collection: col.id,
+        id: "pending",
+        path: `${col.id}/pending`,
+        data: { text: "pending", value: 1 },
+      },
+    ]);
+
+    try {
+      // Default read materializes the doc straight from the overlay.
+      await test
+        .expect(getDoc({ client, ref: doc(col, "pending") }))
+        .resolves.toMatchObject({ id: "pending", text: "pending", value: 1 });
+
+      // Excluding the creating batch hides the overlay, so the short-circuit does
+      // not fire and the absent server doc resolves to undefined. This guards the
+      // read-your-own-write path in batch.ts.
+      await test
+        .expect(getDoc({ client, ref: doc(col, "pending"), excludeOverlayBatchId: batchId }))
+        .resolves.toBeUndefined();
+    } finally {
+      client.overlay.rollback(batchId, undefined);
+    }
+  });
+
   it("fromServer read can clear a committed overlay before the default read", async (test) => {
     const col = testCollection(firestore, `${test.task.id}_${Date.now()}_from_server_catchup`);
     await seedDocs(col, {

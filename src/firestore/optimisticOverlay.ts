@@ -57,7 +57,7 @@ export type OptimisticOverlay = {
   rollback: (batchId: string, error: unknown) => void;
   acknowledgeDocument: (path: string, serverData: object | undefined) => void;
   hasDocumentOverlay: (path: string) => boolean;
-  hasDocumentSetOverlay: (path: string) => boolean;
+  hasDocumentSetOverlay: (path: string, options?: { excludeBatchId?: string }) => boolean;
   mergeDocument: <T extends object>(
     collection: string,
     id: string,
@@ -597,8 +597,8 @@ export function createOptimisticOverlay(options?: OptimisticOverlayOptions): Opt
       return getMutationsForDocumentOnly(path).length > 0;
     },
 
-    hasDocumentSetOverlay(path) {
-      const mutations = getMutationsForDocumentOnly(path);
+    hasDocumentSetOverlay(path, options) {
+      const mutations = getMutationsForDocumentOnly(path, options);
       if (mutations.length === 0) return false;
       return composeMutationsForDocument(mutations).kind === "set";
     },

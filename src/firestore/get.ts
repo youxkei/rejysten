@@ -48,6 +48,20 @@ export async function getDoc<T extends object>(options: GetDocOptions<T>): Promi
         return mergeSnapshot(await getDocFromServer(ref));
       }
 
+      // A pending create lives only in the overlay — it is not yet in the
+      // Firestore SDK cache or on the server. Materialize it from the overlay
+      // directly so we don't fall through to a (slow, often hanging) server read
+      // for a document that doesn't exist server-side yet.
+      if (
+        options.applyOverlay !== false &&
+        client.overlay.hasDocumentSetOverlay(ref.path, { excludeBatchId: options.excludeOverlayBatchId })
+      ) {
+        span.setAttribute("app.source", "overlay");
+        return client.overlay.mergeDocument<T>(ref.parent.id, ref.id, undefined, {
+          excludeBatchId: options.excludeOverlayBatchId,
+        });
+      }
+
       try {
         const result = mergeSnapshot(await getDocFromCache(ref));
         span.setAttribute("app.source", "cache");

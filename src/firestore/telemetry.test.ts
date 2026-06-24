@@ -50,6 +50,35 @@ describe("firestore telemetry", () => {
     expect(["cache", "server"]).toContain(span.attributes["app.source"]);
   });
 
+  it("reads a pending create from the overlay without hitting the server", async (test) => {
+    initTelemetry({ mode: "memory" });
+
+    const col = testCollection(firestore, `${test.task.id}_${Date.now()}_telemetry_get_doc_overlay`);
+    // Intentionally not seeded on the server — the doc exists only in the overlay,
+    // mirroring a node that was just created locally and not yet committed.
+    client.overlay.apply("batch-telemetry-overlay-create", [
+      {
+        type: "set",
+        batchId: "",
+        collection: col.id,
+        id: "pending",
+        path: `${col.id}/pending`,
+        data: { text: "pending", value: 1 },
+      },
+    ]);
+
+    try {
+      const result = await getDoc({ client, ref: doc(col, "pending") });
+
+      expect(result).toMatchObject({ id: "pending", text: "pending", value: 1 });
+
+      const span = findSpan("firestore.getDoc");
+      expect(span.attributes["app.source"]).toBe("overlay");
+    } finally {
+      client.overlay.rollback("batch-telemetry-overlay-create", undefined);
+    }
+  });
+
   it("records getDocs spans with doc count", async (test) => {
     initTelemetry({ mode: "memory" });
 
