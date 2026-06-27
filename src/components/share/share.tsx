@@ -31,6 +31,22 @@ function normalizeAmazonJpUrl(url: string): string {
   return asin ? `https://www.amazon.co.jp/dp/${asin}` : url;
 }
 
+function isRocketNowHost(hostname: string): boolean {
+  return hostname === "rocketnow.co.jp" || hostname.endsWith(".rocketnow.co.jp");
+}
+
+// Keep only storeId on Rocket Now share URLs. Dropping the empty dishId and the per-share
+// key (UUID) lets duplicate detection match the same store; storeId alone is enough for
+// OGP. No-op for non-matching hosts.
+function normalizeRocketNowUrl(url: string): string {
+  const parsed = new URL(url);
+  if (!isRocketNowHost(parsed.hostname)) return url;
+
+  const storeId = parsed.searchParams.get("storeId");
+  if (!storeId) return url;
+  return `${parsed.origin}${parsed.pathname}?storeId=${encodeURIComponent(storeId)}`;
+}
+
 async function toAmazonJpLink(url: string, title: string, author: string): Promise<string> {
   let asin = extractAsin(url);
 
@@ -75,6 +91,28 @@ async function determineLinkTitle(preferredTitle: string | null, url: string, is
   }
 
   return url;
+}
+
+// Rocket Now's og:title looks like `[<store>] ★ <rating>(<count>)`; the leading `[...]` is
+// the store name. Fall back to the whole title if it doesn't match, or null if empty.
+function extractRocketNowStoreName(ogTitle: string | null): string | null {
+  if (!ogTitle) return null;
+  const matched = ogTitle.match(/^\s*\[(.+?)\]/);
+  return (matched ? matched[1] : ogTitle).trim() || null;
+}
+
+// For Rocket Now, use the store name extracted from OGP as the title (preferred over the
+// shared title). Fall back to the shared title, then the URL, if OGP is unavailable or its
+// format changed.
+async function determineRocketNowTitle(url: string, fallbackTitle: string | null): Promise<string> {
+  try {
+    const storeName = extractRocketNowStoreName((await fetchOGPMeta(url)).title);
+    if (storeName) return storeName;
+  } catch {
+    // fall through
+  }
+
+  return fallbackTitle ?? url;
 }
 
 function buildMarkdownLink(linkTitle: string, url: string): string {
@@ -155,6 +193,7 @@ export async function handleShare(
     url = kindleShare.url;
   } else {
     url = normalizeAmazonJpUrl(url);
+    url = normalizeRocketNowUrl(url);
   }
 
   // fragment（#/ ルーティング以外）を剥がして最終 URL を正規化する
@@ -169,10 +208,14 @@ export async function handleShare(
     "takecomic.jp",
   ];
   const hostname = new URL(url).hostname;
+  const isRocketNow = isRocketNowHost(hostname);
   const isReadingShare =
     Boolean(kindleShare) || readingDomains.some((d) => hostname === d || hostname.endsWith("." + d));
-  const category = isReadingShare ? "読書" : "ネットサーフィン";
-  const otherCategory = category === "読書" ? "ネットサーフィン" : "読書";
+  const category = isRocketNow ? "デリバリー注文" : isReadingShare ? "読書" : "ネットサーフィン";
+  // デリバリー注文 is a one-off event, so it is not mutually exclusive with the others (it
+  // ends nobody). Only 読書 and ネットサーフィン end each other.
+  const otherCategory =
+    category === "読書" ? "ネットサーフィン" : category === "ネットサーフィン" ? "読書" : null;
   const isX = hostname === "x.com" || hostname.endsWith(".x.com");
 
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
@@ -184,7 +227,9 @@ export async function handleShare(
   // The OGP fetch and the past-share ngram query are the two dominant costs
   // (seconds each); both depend only on the URL, so they run concurrently
   // with each other and with the running-log queries below.
-  const linkTitlePromise = determineLinkTitle(kindleShare?.title ?? title, url, isX);
+  const linkTitlePromise = isRocketNow
+    ? determineRocketNowTitle(url, kindleShare?.title ?? title)
+    : determineLinkTitle(kindleShare?.title ?? title, url, isX);
   const pastSharedNodePromise = options.skipPastDuplicateConfirmation
     ? undefined
     : findPastSharedNode(firestore, url, fromServer);
@@ -195,7 +240,7 @@ export async function handleShare(
   // Find all running lifeLogs
   const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), fromServer);
   const matchingLog = runningLogs.find((log) => log.text === category);
-  const otherLog = runningLogs.find((log) => log.text === otherCategory);
+  const otherLog = otherCategory != null ? runningLogs.find((log) => log.text === otherCategory) : undefined;
 
   const now = Timestamp.fromMillis(Math.floor(DateNow() / 1000) * 1000);
 

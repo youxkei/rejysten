@@ -27,10 +27,21 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const response = await fetch(targetUrl, {
       signal: AbortSignal.timeout(5000),
       headers: {
+        // Send a self-consistent Chrome navigation fingerprint. A Chrome User-Agent
+        // without client hints (sec-ch-ua) and sec-fetch-* headers looks inconsistent and
+        // gets blocked with 403 by bot defenses such as Akamai. Keep the sec-ch-ua v= in
+        // sync with the User-Agent's Chrome version (bump both together on updates).
         "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+        "sec-ch-ua": '"Google Chrome";v="149", "Chromium";v="149", "Not)A;Brand";v="24"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
+        "sec-fetch-dest": "document",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-site": "none",
+        "sec-fetch-user": "?1",
       },
       redirect: "follow",
     });

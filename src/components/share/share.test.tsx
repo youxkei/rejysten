@@ -3629,4 +3629,298 @@ describe("share", () => {
       releaseOGP({ title: null, description: null });
     }
   });
+
+  it("creates デリバリー注文 lifeLog with the store name extracted from rocketnow OGP", async ({ db, task }) => {
+    history.replaceState(
+      null,
+      "",
+      "/?url=" +
+        encodeURIComponent(
+          "https://customer-web.rocketnow.co.jp/share?storeId=88859&dishId&key=a2553ead-9720-40f6-8c95-4cd8ed1c41fe",
+        ),
+    );
+    vi.mocked(fetchOGPMeta).mockResolvedValueOnce({
+      title: "[玄品 上野 ふぐ・うなぎ料理] ★ 4.4(10)",
+      description: null,
+    });
+
+    const { ready, getFirestore, getStore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    const deliveryLog = logs.find((l) => l.text === "デリバリー注文");
+    expect(deliveryLog).toBeTruthy();
+    expect(deliveryLog!.hasTreeNodes).toBe(true);
+
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", deliveryLog!.id)), {
+      fromServer: true,
+    });
+    expect(nodes).toHaveLength(1);
+    // normalized to storeId only, with the store name extracted from the OGP title
+    expect(nodes[0].text).toBe(
+      "[玄品 上野 ふぐ・うなぎ料理](https://customer-web.rocketnow.co.jp/share?storeId=88859)",
+    );
+
+    const store = getStore();
+    expect(store.state.panesLifeLogs.selectedLifeLogId).toBe(deliveryLog!.id);
+    expect(store.state.panesLifeLogs.selectedLifeLogNodeId).toBe(nodes[0].id);
+  });
+
+  it("does not end running ネットサーフィン when sharing a rocketnow デリバリー注文", async ({ db, task }) => {
+    history.replaceState(
+      null,
+      "",
+      "/?url=" + encodeURIComponent("https://customer-web.rocketnow.co.jp/share?storeId=88859&key=abc"),
+    );
+    vi.mocked(fetchOGPMeta).mockResolvedValueOnce({ title: "[テスト店] ★ 4.0(1)", description: null });
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$netsurf-keep"), {
+        text: "ネットサーフィン",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    // ネットサーフィン stays running and coexists with デリバリー注文
+    expect(runningLogs.find((l) => l.id === "$netsurf-keep")).toBeTruthy();
+    expect(runningLogs.find((l) => l.text === "デリバリー注文")).toBeTruthy();
+  });
+
+  it("does not end running デリバリー注文 when sharing a ネットサーフィン URL", async ({ db, task }) => {
+    history.replaceState(null, "", "/?title=Example&url=https://example.com");
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$delivery-keep"), {
+        text: "デリバリー注文",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const runningLogs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    // デリバリー注文 stays running and coexists with ネットサーフィン
+    expect(runningLogs.find((l) => l.id === "$delivery-keep")).toBeTruthy();
+    expect(runningLogs.find((l) => l.text === "ネットサーフィン")).toBeTruthy();
+  });
+
+  it("treats re-sharing the same rocketnow store (different key) as a duplicate", async ({ db, task }) => {
+    history.replaceState(
+      null,
+      "",
+      "/?url=" +
+        encodeURIComponent("https://customer-web.rocketnow.co.jp/share?storeId=88859&dishId&key=different-key-zzzz"),
+    );
+
+    const { ready, getFirestore, getShareResult } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+      const lifeLogs = getCollection(firestore, "lifeLogs");
+      const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogs, "$delivery-dup"), {
+        text: "デリバリー注文",
+        hasTreeNodes: true,
+        startAt: Timestamp.fromDate(baseTime),
+        endAt: noneTimestamp,
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      batch.set(doc(lifeLogTreeNodes, "$node-delivery-dup"), {
+        text: "[玄品 上野 ふぐ・うなぎ料理](https://customer-web.rocketnow.co.jp/share?storeId=88859)",
+        lifeLogId: "$delivery-dup",
+        parentId: "$delivery-dup",
+        order: "a0",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    const firestore = getFirestore();
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", "$delivery-dup")), {
+      fromServer: true,
+    });
+    // a different key normalizes to the same storeId URL, so it is detected as a duplicate
+    expect(nodes).toHaveLength(1);
+    expect(getShareResult()?.status).toBe("duplicate");
+  });
+
+  it("uses the full rocketnow OGP title when it is not in [store] format", async ({ db, task }) => {
+    history.replaceState(
+      null,
+      "",
+      "/?url=" + encodeURIComponent("https://customer-web.rocketnow.co.jp/share?storeId=99999"),
+    );
+    vi.mocked(fetchOGPMeta).mockResolvedValueOnce({ title: "Rocket Now", description: null });
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    const deliveryLog = logs.find((l) => l.text === "デリバリー注文")!;
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", deliveryLog.id)), {
+      fromServer: true,
+    });
+    expect(nodes[0].text).toBe("[Rocket Now](https://customer-web.rocketnow.co.jp/share?storeId=99999)");
+  });
+
+  it("falls back to the shared title for rocketnow when the OGP fetch fails", async ({ db, task }) => {
+    history.replaceState(
+      null,
+      "",
+      "/?title=" +
+        encodeURIComponent("代替店名") +
+        "&url=" +
+        encodeURIComponent("https://customer-web.rocketnow.co.jp/share?storeId=77777"),
+    );
+    vi.mocked(fetchOGPMeta).mockRejectedValueOnce(new Error("ogp failed"));
+
+    const { ready, getFirestore } = setupShareTest(task.id, db, async (firestore) => {
+      const batch = writeBatch(firestore.firestore);
+      const batchVersion = getCollection(firestore, "batchVersion");
+
+      batch.set(doc(batchVersion, singletonDocumentId), {
+        version: "__INITIAL__",
+        prevVersion: "",
+        createdAt: Timestamp.fromDate(baseTime),
+        updatedAt: Timestamp.fromDate(baseTime),
+      });
+
+      await batch.commit();
+    });
+
+    await ready;
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+
+    const firestore = getFirestore();
+    const lifeLogsCol = getCollection(firestore, "lifeLogs");
+    const logs = await getDocs(firestore, query(lifeLogsCol, where("endAt", "==", noneTimestamp)), {
+      fromServer: true,
+    });
+    const deliveryLog = logs.find((l) => l.text === "デリバリー注文")!;
+    const treeNodesCol = getCollection(firestore, "lifeLogTreeNodes");
+    const nodes = await getDocs(firestore, query(treeNodesCol, where("parentId", "==", deliveryLog.id)), {
+      fromServer: true,
+    });
+    expect(nodes[0].text).toBe("[代替店名](https://customer-web.rocketnow.co.jp/share?storeId=77777)");
+  });
 });

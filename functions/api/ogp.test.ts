@@ -182,4 +182,22 @@ describe("OGP function", () => {
     expect(data.result.description).toBeNull();
     expect(data.result.ogp).toEqual({});
   });
+
+  it("sends a self-consistent Chrome navigation fingerprint (sec-ch-ua + sec-fetch)", async () => {
+    mockFetch(200, "<html><head></head></html>", { "content-type": "text/html" });
+
+    await onRequestPost(createContext({ url: "https://example.com/" }));
+
+    const fetchMock = vi.mocked(globalThis.fetch);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const headers = fetchMock.mock.calls[0][1]?.headers as Record<string, string>;
+    expect(headers["User-Agent"]).toContain("Chrome/149");
+    expect(headers["sec-ch-ua"]).toContain("Chromium");
+    expect(headers["sec-ch-ua-mobile"]).toBe("?0");
+    expect(headers["sec-ch-ua-platform"]).toBe('"Windows"');
+    expect(headers["sec-fetch-dest"]).toBe("document");
+    expect(headers["sec-fetch-mode"]).toBe("navigate");
+    expect(headers["sec-fetch-site"]).toBe("none");
+    expect(headers["sec-fetch-user"]).toBe("?1");
+  });
 });
