@@ -3,6 +3,7 @@ import { doc, Timestamp, writeBatch } from "firebase/firestore";
 import { createSignal, onMount, Show, Suspense } from "solid-js";
 
 import { WithEditHistoryPanel } from "@/components/editHistory";
+import { analyzeTextForNgrams } from "@/ngram";
 import { LifeLogs } from "@/panes/lifeLogs";
 import "@/panes/search/actions";
 import "@/panes/search/store";
@@ -39,6 +40,12 @@ export interface SetupLifeLogsTestOptions {
   includeLifeLogWithDuration?: boolean;
   withEditHistory?: boolean;
   withToast?: boolean;
+  // Past lifeLog texts to seed into the ngram corpus so text-completion has candidates.
+  // Only ngram docs are created (no visible lifeLogs), so the pane contents stay unchanged.
+  completionCandidates?: string[];
+  // Tree-node texts seeded into the ngram corpus (collection: "lifeLogTreeNodes"). Used to
+  // verify completion suggests lifeLog texts only and excludes tree-node texts.
+  completionTreeNodeCandidates?: string[];
 }
 
 export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, options?: SetupLifeLogsTestOptions) {
@@ -69,6 +76,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                 const batchVersion = getCollection(firestore, "batchVersion");
                 const lifeLogs = getCollection(firestore, "lifeLogs");
                 const lifeLogTreeNodes = getCollection(firestore, "lifeLogTreeNodes");
+                const ngrams = getCollection(firestore, "ngrams");
                 const { updateState } = useStoreService();
                 const [dataReady$, setDataReady] = createSignal(false);
 
@@ -256,6 +264,30 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                         updatedAt: Timestamp.fromDate(baseTime),
                       });
                     }
+
+                    // Seed ngram docs for text-completion candidates (no visible lifeLogs).
+                    const completionCandidates = options?.completionCandidates ?? [];
+                    completionCandidates.forEach((text, i) => {
+                      const analysis = analyzeTextForNgrams(text);
+                      batch.set(doc(ngrams, `$completion${i}lifeLogs`), {
+                        collection: "lifeLogs",
+                        text,
+                        normalizedText: analysis.normalizedText,
+                        ngramMap: analysis.ngramMap,
+                      });
+                    });
+
+                    // Seed tree-node ngram docs (must NOT appear as completion candidates).
+                    const completionTreeNodeCandidates = options?.completionTreeNodeCandidates ?? [];
+                    completionTreeNodeCandidates.forEach((text, i) => {
+                      const analysis = analyzeTextForNgrams(text);
+                      batch.set(doc(ngrams, `$completionTreeNode${i}lifeLogTreeNodes`), {
+                        collection: "lifeLogTreeNodes",
+                        text,
+                        normalizedText: analysis.normalizedText,
+                        ngramMap: analysis.ngramMap,
+                      });
+                    });
 
                     await batch.commit();
 

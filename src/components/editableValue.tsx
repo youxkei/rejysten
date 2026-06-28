@@ -1,7 +1,8 @@
 import { debounce } from "@solid-primitives/scheduled";
-import { createEffect, createSignal, on, onCleanup, Show, type JSX, onMount } from "solid-js";
+import { type Accessor, createEffect, createSignal, For, type JSX, on, onCleanup, onMount, Show } from "solid-js";
 
 import { addKeyDownEventListener } from "@/solid/event";
+import { styles } from "@/styles.css";
 
 export interface EditableValueProps<V> {
   value: V;
@@ -32,6 +33,10 @@ export interface EditableValueProps<V> {
   onInputRef?: (inputRef: HTMLInputElement) => void;
   // Callback to receive the preventBlurSave function
   onPreventBlurSave?: (fn: () => void) => void;
+  // Opt-in text completion: a reactive list of completion candidates (already
+  // deduped and length-limited by the caller). The caller is responsible for
+  // computing these from the current edit text (fed back via onTextChange).
+  completion?: { items$: Accessor<string[]> };
   debugId?: string;
 }
 
@@ -82,6 +87,25 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
         {(() => {
           let inputRef: HTMLInputElement | undefined;
           let isUnmounting = false;
+
+          // Text completion (opt-in via props.completion)
+          const completionItems$ = () => props.completion?.items$() ?? [];
+          const [highlightedIndex$, setHighlightedIndex] = createSignal(-1);
+          const [completionDismissed$, setCompletionDismissed] = createSignal(false);
+          const showCompletion$ = () => !!props.completion && !completionDismissed$() && completionItems$().length > 0;
+
+          function acceptCompletion(text: string) {
+            if (!inputRef) return;
+            inputRef.value = text;
+            setEditText(text);
+            debouncedSaveChanges(text);
+            props.onTextChange?.(text);
+            inputRef.setSelectionRange(text.length, text.length);
+            props.onSelectionChange?.(text.length);
+            inputRef.focus();
+            setCompletionDismissed(true);
+            setHighlightedIndex(-1);
+          }
 
           onMount(() => {
             const initialText = (props.toEditText ?? props.toText)(props.value);
@@ -134,7 +158,7 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
             debouncedSaveChanges.clear();
           });
 
-          return (
+          const inputEl = (
             <input
               ref={inputRef}
               type="text"
@@ -145,6 +169,9 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                 debouncedSaveChanges(newText);
                 props.onTextChange?.(newText);
                 props.onSelectionChange?.(e.currentTarget.selectionStart ?? 0);
+                // Typing re-opens the completion dropdown and resets highlight
+                setCompletionDismissed(false);
+                setHighlightedIndex(-1);
               }}
               onKeyUp={(e) => {
                 props.onSelectionChange?.(e.currentTarget.selectionStart ?? 0);
@@ -161,6 +188,36 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
 
                 // Stop propagation of ALL key events so parent components (tree.tsx) don't see them
                 e.stopPropagation();
+
+                // Completion dropdown navigation (skip while IME is composing so Enter/Arrow go to the IME)
+                if (showCompletion$() && !e.isComposing) {
+                  const candidates = completionItems$();
+                  if (e.code === "ArrowDown") {
+                    e.preventDefault();
+                    setHighlightedIndex((i) => Math.min(i + 1, candidates.length - 1));
+                    return;
+                  }
+                  if (e.code === "ArrowUp") {
+                    e.preventDefault();
+                    setHighlightedIndex((i) => Math.max(i - 1, 0));
+                    return;
+                  }
+                  if (e.code === "Enter") {
+                    const index = highlightedIndex$();
+                    if (index >= 0 && index < candidates.length) {
+                      e.preventDefault();
+                      acceptCompletion(candidates[index]);
+                      return;
+                    }
+                  }
+                  if (e.code === "Escape") {
+                    // First Escape only closes the dropdown; editing continues
+                    e.preventDefault();
+                    setCompletionDismissed(true);
+                    setHighlightedIndex(-1);
+                    return;
+                  }
+                }
 
                 // Handle Escape key - exit editing mode (common behavior)
                 if (e.code === "Escape") {
@@ -188,6 +245,41 @@ export function EditableValue<V>(props: EditableValueProps<V>) {
                 setEditText("");
               }}
             />
+          );
+
+          // Wrap with the completion dropdown only when completion is enabled, so
+          // non-completion fields (startAt/endAt, tree nodes) keep their bare input.
+          if (!props.completion) return inputEl;
+
+          return (
+            <div class={styles.editableValue.completionWrapper}>
+              {inputEl}
+              <Show when={showCompletion$()}>
+                <ul class={styles.editableValue.completionList}>
+                  <For each={completionItems$()}>
+                    {(candidate, i) => (
+                      <li
+                        class={styles.editableValue.completionItem}
+                        classList={{
+                          [styles.editableValue.completionItemHighlighted]: highlightedIndex$() === i(),
+                        }}
+                        // mousedown preventDefault keeps the input focused so blur-save doesn't fire
+                        // before the click; the accept runs on click, which fires for mouse and tap
+                        // alike. (Same pattern as the mobile editing toolbar buttons.)
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                        }}
+                        onClick={() => {
+                          acceptCompletion(candidate);
+                        }}
+                      >
+                        {candidate}
+                      </li>
+                    )}
+                  </For>
+                </ul>
+              </Show>
+            </div>
           );
         })()}
       </Show>

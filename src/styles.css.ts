@@ -348,6 +348,47 @@ export const styles = {
       minHeight: "1.5em",
     }),
   },
+  editableValue: {
+    completionWrapper: style({
+      position: "relative",
+    }),
+    completionList: style({
+      position: "absolute",
+      top: "100%",
+      left: 0,
+      zIndex: 10,
+      minWidth: "12rem",
+      maxWidth: "100%",
+      maxHeight: "12rem",
+      overflowY: "auto",
+      margin: "0.25rem 0 0",
+      padding: "0.25rem 0",
+      listStyle: "none",
+      backgroundColor: nord[1],
+      border: `1px solid ${nord[3]}`,
+      borderRadius: "0.25rem",
+      boxShadow: `0 0.5rem 1rem ${nord[0]}aa`,
+    }),
+    completionItem: style({
+      display: "flex",
+      alignItems: "center",
+      // Comfortable tap target on touch devices (rows are the primary way to pick on mobile).
+      minHeight: "2.5rem",
+      padding: "0.375rem 0.75rem",
+      fontSize: "0.9375rem",
+      color: nord[4],
+      cursor: "pointer",
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      ":hover": {
+        backgroundColor: `${nord[2]}88`,
+      },
+    }),
+    completionItemHighlighted: style({
+      backgroundColor: nord[2],
+    }),
+  },
   mobileToolbar: {
     container: style({
       backgroundColor: nord[1],

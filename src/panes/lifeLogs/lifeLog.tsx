@@ -1,17 +1,23 @@
+import { debounce } from "@solid-primitives/scheduled";
 import { doc } from "firebase/firestore";
-import { type Accessor, createEffect, createSignal, onCleanup, type Setter, Show } from "solid-js";
+import { type Accessor, createEffect, createMemo, createSignal, onCleanup, type Setter, Show } from "solid-js";
 
 import { EditableValue } from "@/components/editableValue";
 import { ChildrenNodes } from "@/components/tree";
+import { onQuerySnapshot } from "@/firestore/onSnapshot";
+import { analyzeTextForNgrams } from "@/ngram";
 import { LifeLogTreeNode } from "@/panes/lifeLogs/lifeLogTreeNode";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { useActionsService } from "@/services/actions";
 import { type DocumentData, getCollection, useFirestoreService } from "@/services/firebase/firestore";
+import { encodeNgramKeyForFirestore } from "@/services/firebase/firestore/ngram";
+import { query, where } from "@/services/firebase/firestore/query";
 import { type Schema } from "@/services/firebase/firestore/schema";
 import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
 import { scrollWithOffset } from "@/solid/scroll";
+import { createSubscribeWithSignal } from "@/solid/subscribe";
 import { styles } from "@/styles.css";
 import { formatDuration, timestampToTimeText, timeTextToTimestamp } from "@/timestamp";
 
@@ -33,6 +39,7 @@ export function LifeLog(props: {
   const { state, updateState } = useStoreService();
 
   const lifeLogsCol = getCollection(firestore, "lifeLogs");
+  const ngramsCol = getCollection(firestore, "ngrams");
   const subscribedLifeLog$ = createSubscribeSignal(
     firestore,
     () => (props.id === "" ? undefined : doc(lifeLogsCol, props.id)),
@@ -63,6 +70,68 @@ export function LifeLog(props: {
   const isSelected$ = () => state.panesLifeLogs.selectedLifeLogId === props.id;
   const isLifeLogSelected$ = () => isSelected$() && selectedLifeLogNodeId$() === "";
   const isLifeLogTreeFocused$ = () => isSelected$() && selectedLifeLogNodeId$() !== "";
+
+  // Live text of the text field while editing (fed by EditableValue's onTextChange),
+  // used to compute completion candidates.
+  const [editingText$, setEditingText] = createSignal("");
+  // Debounce so we don't re-subscribe on every keystroke.
+  const [debouncedEditingText$, setDebouncedEditingText] = createSignal("");
+  const updateDebouncedEditingText = debounce(setDebouncedEditingText, 200);
+  createEffect(() => {
+    updateDebouncedEditingText(editingText$());
+  });
+
+  // Completion candidates for the text field, drawn from past lifeLog texts via the
+  // ngram corpus (same query as the Search pane). Uses a plain onSnapshot subscription
+  // (not the resource-backed createSubscribeAllSignal) so a query change mid-edit can't
+  // trip the page Suspense boundary and unmount the edit input.
+  const MAX_COMPLETION_CANDIDATES = 8;
+  const isEditingText$ = () => props.isEditing && props.editingField === EditingField.Text && isLifeLogSelected$();
+  const completionResults$ = createSubscribeWithSignal<
+    DocumentData<Schema["ngrams"]>[],
+    DocumentData<Schema["ngrams"]>[]
+  >((setValue) => {
+    if (!isEditingText$()) {
+      setValue([]);
+      return;
+    }
+    const text = debouncedEditingText$();
+    if (text.trim().length < 2) {
+      setValue([]);
+      return;
+    }
+    const ngrams = Object.keys(analyzeTextForNgrams(text).ngramMap);
+    if (ngrams.length === 0) {
+      setValue([]);
+      return;
+    }
+    const client = firestore.firestoreClient;
+    if (!client) {
+      setValue([]);
+      return;
+    }
+    const q = query(
+      ngramsCol,
+      ...ngrams.map((ngram) => where(`ngramMap.${encodeNgramKeyForFirestore(ngram)}`, "==", true)),
+    );
+    const unsubscribe = onQuerySnapshot({ client, query: q, setValue });
+    onCleanup(unsubscribe);
+  }, []);
+  const completionItems$ = createMemo(() => {
+    if (!isEditingText$()) return [];
+    const current = editingText$();
+    const seen = new Set<string>();
+    const items: string[] = [];
+    for (const result of completionResults$()) {
+      if (result.collection !== "lifeLogs") continue; // suggest only from lifeLog texts
+      if (result.text === current) continue; // exclude the exact text being edited
+      if (seen.has(result.text)) continue; // dedupe
+      seen.add(result.text);
+      items.push(result.text);
+      if (items.length >= MAX_COMPLETION_CANDIDATES) break;
+    }
+    return items;
+  });
 
   const actionsService = useActionsService();
   const actions = {
@@ -315,6 +384,7 @@ export function LifeLog(props: {
               }}
               toText={(text) => text}
               fromText={(text) => text}
+              completion={{ items$: completionItems$ }}
               className={styles.lifeLogTree.text}
               editInputClassName={styles.lifeLogTree.editInput}
               initialCursorPosition={
@@ -323,6 +393,7 @@ export function LifeLog(props: {
                   : undefined
               }
               onTextChange={(text) => {
+                setEditingText(text);
                 actions.updateContext((ctx) => {
                   ctx.panes.lifeLogs.pendingText = text;
                 });
