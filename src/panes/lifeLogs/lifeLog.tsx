@@ -11,7 +11,7 @@ import { EditingField } from "@/panes/lifeLogs/schema";
 import { useActionsService } from "@/services/actions";
 import { type DocumentData, getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { encodeNgramKeyForFirestore } from "@/services/firebase/firestore/ngram";
-import { query, where } from "@/services/firebase/firestore/query";
+import { limit, query, where } from "@/services/firebase/firestore/query";
 import { type Schema } from "@/services/firebase/firestore/schema";
 import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { useStoreService } from "@/services/store";
@@ -82,10 +82,17 @@ export function LifeLog(props: {
   });
 
   // Completion candidates for the text field, drawn from past lifeLog texts via the
-  // ngram corpus (same query as the Search pane). Uses a plain onSnapshot subscription
-  // (not the resource-backed createSubscribeAllSignal) so a query change mid-edit can't
-  // trip the page Suspense boundary and unmount the edit input.
+  // ngram corpus. The query is constrained to collection == "lifeLogs" and bounded by a
+  // limit so the result set stays small: a short fragment (e.g. a single bigram) otherwise
+  // matches a large share of the whole corpus across every collection, forcing the
+  // subscription to transfer and re-merge thousands of docs on every edit just to surface
+  // at most a handful of suggestions. Uses a plain onSnapshot subscription (not the
+  // resource-backed createSubscribeAllSignal) so a query change mid-edit can't trip the
+  // page Suspense boundary and unmount the edit input.
   const MAX_COMPLETION_CANDIDATES = 8;
+  // Fetch more rows than we display so dedupe and dropping the text being edited still
+  // leave a full set of suggestions, while keeping the query bounded.
+  const COMPLETION_CANDIDATE_FETCH_LIMIT = 50;
   const isEditingText$ = () => props.isEditing && props.editingField === EditingField.Text && isLifeLogSelected$();
   const completionResults$ = createSubscribeWithSignal<
     DocumentData<Schema["ngrams"]>[],
@@ -112,7 +119,9 @@ export function LifeLog(props: {
     }
     const q = query(
       ngramsCol,
+      where("collection", "==", "lifeLogs"), // suggest only from lifeLog texts
       ...ngrams.map((ngram) => where(`ngramMap.${encodeNgramKeyForFirestore(ngram)}`, "==", true)),
+      limit(COMPLETION_CANDIDATE_FETCH_LIMIT),
     );
     const unsubscribe = onQuerySnapshot({ client, query: q, setValue });
     onCleanup(unsubscribe);
@@ -123,7 +132,6 @@ export function LifeLog(props: {
     const seen = new Set<string>();
     const items: string[] = [];
     for (const result of completionResults$()) {
-      if (result.collection !== "lifeLogs") continue; // suggest only from lifeLog texts
       if (result.text === current) continue; // exclude the exact text being edited
       if (seen.has(result.text)) continue; // dedupe
       seen.add(result.text);

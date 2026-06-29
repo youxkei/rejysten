@@ -327,6 +327,32 @@ describe("lifeLog text completion", () => {
     await result.findByText("gym session");
   });
 
+  it("fills the dropdown with lifeLog texts only, excluding other-collection matches at the query level", async ({
+    db,
+    task,
+  }) => {
+    // More distinct lifeLog candidates than the display cap, alongside matching tree-node
+    // ngram docs. The query now filters collection == "lifeLogs" and bounds the result with
+    // a limit, so the dropdown must surface a full set of 8 distinct lifeLog texts and never
+    // a tree-node text — without relying on client-side filtering of a huge result set.
+    const lifeLogCandidates = Array.from({ length: 12 }, (_, i) => `gym log ${i}`);
+    const treeNodeCandidates = Array.from({ length: 5 }, (_, i) => `gym tree ${i}`);
+    const { result } = await setupLifeLogsTest(task.id, db, {
+      completionCandidates: lifeLogCandidates,
+      completionTreeNodeCandidates: treeNodeCandidates,
+    });
+
+    await startEditingWithText(result, "gym");
+
+    await waitFor(() => {
+      expect(completionItems(result).length).toBe(8);
+    });
+    // Every shown item is a lifeLog candidate; no tree-node text leaked in.
+    for (const el of completionItems(result)) {
+      expect(el.textContent ?? "").toMatch(/^gym log \d+$/);
+    }
+  });
+
   it("suggests lifeLog texts only, not tree-node texts", async ({ db, task }) => {
     const { result } = await setupLifeLogsTest(task.id, db, {
       completionCandidates: ["gym workout 30min"],
