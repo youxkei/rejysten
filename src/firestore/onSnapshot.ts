@@ -157,44 +157,53 @@ export function onQuerySnapshot<T extends object>(options: OnQuerySnapshotOption
     setValue(value);
   }
 
-  const unsubscribeSnapshot = firestoreOnSnapshot(query.query, { includeMetadataChanges: true }, (snapshot) => {
-    // Snapshots fire outside any action lifetime; record them as their own
-    // roots linked to the most recent action so a write's echo stays findable.
-    const link = lastActionLink();
-    withSpan(
-      "snapshot.onQuerySnapshot",
-      (span) => {
-        withCurrentSpan(span, () => {
-          onServerSnapshot?.(snapshot);
-          docWithIds = snapshot.docs.flatMap((docSnap) => {
-            const docWithId = getDocumentWithId(docSnap);
-            return docWithId === undefined ? [] : [docWithId];
-          });
-          hasReceivedSnapshot = true;
-          if (shouldAcknowledgeSnapshotMetadata(snapshot.metadata)) {
-            suppressOverlayEmit = true;
-            for (const docSnap of snapshot.docs) {
+  const unsubscribeSnapshot = firestoreOnSnapshot(
+    query.query,
+    { includeMetadataChanges: true },
+    (snapshot) => {
+      // Snapshots fire outside any action lifetime; record them as their own
+      // roots linked to the most recent action so a write's echo stays findable.
+      const link = lastActionLink();
+      withSpan(
+        "snapshot.onQuerySnapshot",
+        (span) => {
+          withCurrentSpan(span, () => {
+            onServerSnapshot?.(snapshot);
+            docWithIds = snapshot.docs.flatMap((docSnap) => {
               const docWithId = getDocumentWithId(docSnap);
-              overlay.acknowledgeDocument(docSnap.ref.path, docWithId);
+              return docWithId === undefined ? [] : [docWithId];
+            });
+            hasReceivedSnapshot = true;
+            if (shouldAcknowledgeSnapshotMetadata(snapshot.metadata)) {
+              suppressOverlayEmit = true;
+              for (const docSnap of snapshot.docs) {
+                const docWithId = getDocumentWithId(docSnap);
+                overlay.acknowledgeDocument(docSnap.ref.path, docWithId);
+              }
+              suppressOverlayEmit = false;
             }
-            suppressOverlayEmit = false;
-          }
-          emit();
-        });
-      },
-      {
-        root: true,
-        links: link ? [link] : undefined,
-        attributes: {
-          "app.collection": query.collection,
-          "app.doc_count": snapshot.docs.length,
-          "app.from_cache": snapshot.metadata.fromCache,
-          "app.has_pending_writes": snapshot.metadata.hasPendingWrites,
-          "app.timestamp_prefix": timestampPrefix$?.(),
+            emit();
+          });
         },
-      },
-    );
-  });
+        {
+          root: true,
+          links: link ? [link] : undefined,
+          attributes: {
+            "app.collection": query.collection,
+            "app.doc_count": snapshot.docs.length,
+            "app.from_cache": snapshot.metadata.fromCache,
+            "app.has_pending_writes": snapshot.metadata.hasPendingWrites,
+            "app.timestamp_prefix": timestampPrefix$?.(),
+          },
+        },
+      );
+    },
+    (error) => {
+      // Without this handler a failing query (e.g. missing index) dies silently:
+      // no snapshot ever arrives and the consumer just sees an empty result.
+      console.error("[onQuerySnapshot] listener error", query.collection, error);
+    },
+  );
   const unsubscribeOverlay = overlay.subscribe((change) => {
     if (!hasReceivedSnapshot && !(allowInitialEmit?.() ?? false)) return;
     if (suppressOverlayEmit || !change.collections.has(query.collection)) return;

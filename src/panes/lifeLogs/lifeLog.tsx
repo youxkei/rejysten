@@ -4,6 +4,7 @@ import { type Accessor, createEffect, createMemo, createSignal, onCleanup, type 
 
 import { EditableValue } from "@/components/editableValue";
 import { ChildrenNodes } from "@/components/tree";
+import { DateNow } from "@/date";
 import { onQuerySnapshot } from "@/firestore/onSnapshot";
 import { analyzeTextForNgrams } from "@/ngram";
 import { LifeLogTreeNode } from "@/panes/lifeLogs/lifeLogTreeNode";
@@ -11,7 +12,7 @@ import { EditingField } from "@/panes/lifeLogs/schema";
 import { useActionsService } from "@/services/actions";
 import { type DocumentData, getCollection, useFirestoreService } from "@/services/firebase/firestore";
 import { encodeNgramKeyForFirestore } from "@/services/firebase/firestore/ngram";
-import { limit, query, where } from "@/services/firebase/firestore/query";
+import { limit, orderByDocumentId, query, where } from "@/services/firebase/firestore/query";
 import { type Schema } from "@/services/firebase/firestore/schema";
 import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { useStoreService } from "@/services/store";
@@ -20,6 +21,7 @@ import { scrollWithOffset } from "@/solid/scroll";
 import { createSubscribeWithSignal } from "@/solid/subscribe";
 import { styles } from "@/styles.css";
 import { formatDuration, timestampToTimeText, timeTextToTimestamp } from "@/timestamp";
+import { uuidV7ToMs } from "@/uuid";
 
 export function LifeLog(props: {
   id: string;
@@ -86,13 +88,17 @@ export function LifeLog(props: {
   // limit so the result set stays small: a short fragment (e.g. a single bigram) otherwise
   // matches a large share of the whole corpus across every collection, forcing the
   // subscription to transfer and re-merge thousands of docs on every edit just to surface
-  // at most a handful of suggestions. Uses a plain onSnapshot subscription (not the
-  // resource-backed createSubscribeAllSignal) so a query change mid-edit can't trip the
-  // page Suspense boundary and unmount the edit input.
+  // at most a handful of suggestions. Ordering by document id descending returns the newest
+  // matches first (uuidv7 ids sort by creation time), so the limited window holds recent
+  // lifeLogs; the age cutoff below then keeps only the last COMPLETION_WINDOW_MONTHS months.
+  // Uses a plain onSnapshot subscription (not the resource-backed createSubscribeAllSignal)
+  // so a query change mid-edit can't trip the page Suspense boundary and unmount the edit input.
   const MAX_COMPLETION_CANDIDATES = 8;
   // Fetch more rows than we display so dedupe and dropping the text being edited still
   // leave a full set of suggestions, while keeping the query bounded.
   const COMPLETION_CANDIDATE_FETCH_LIMIT = 50;
+  // Only suggest from lifeLogs created within this many months.
+  const COMPLETION_WINDOW_MONTHS = 2;
   const isEditingText$ = () => props.isEditing && props.editingField === EditingField.Text && isLifeLogSelected$();
   const completionResults$ = createSubscribeWithSignal<
     DocumentData<Schema["ngrams"]>[],
@@ -121,6 +127,7 @@ export function LifeLog(props: {
       ngramsCol,
       where("collection", "==", "lifeLogs"), // suggest only from lifeLog texts
       ...ngrams.map((ngram) => where(`ngramMap.${encodeNgramKeyForFirestore(ngram)}`, "==", true)),
+      orderByDocumentId("desc"), // newest lifeLogs first (uuidv7 ids sort by creation time)
       limit(COMPLETION_CANDIDATE_FETCH_LIMIT),
     );
     const unsubscribe = onQuerySnapshot({ client, query: q, setValue });
@@ -129,10 +136,20 @@ export function LifeLog(props: {
   const completionItems$ = createMemo(() => {
     if (!isEditingText$()) return [];
     const current = editingText$();
+    const cutoff = new Date(DateNow());
+    cutoff.setMonth(cutoff.getMonth() - COMPLETION_WINDOW_MONTHS);
+    const cutoffMs = cutoff.getTime();
+    // The edited lifeLog's own ngram doc matches the query too (the debounced save keeps
+    // writing the in-progress text), so exclude it by id — its saved text lags the input,
+    // and a text comparison only catches the moment they happen to be equal.
+    const selfNgramId = `${props.id}lifeLogs`;
     const seen = new Set<string>();
     const items: string[] = [];
     for (const result of completionResults$()) {
-      if (result.text === current) continue; // exclude the exact text being edited
+      // Keep only lifeLogs created within the window; a non-uuidv7 id (NaN) is dropped too.
+      if (!(uuidV7ToMs(result.id) >= cutoffMs)) continue;
+      if (result.id === selfNgramId) continue; // never suggest the lifeLog being edited
+      if (result.text === current) continue; // exclude candidates identical to the current input
       if (seen.has(result.text)) continue; // dedupe
       seen.add(result.text);
       items.push(result.text);

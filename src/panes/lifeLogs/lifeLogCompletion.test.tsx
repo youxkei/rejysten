@@ -366,6 +366,62 @@ describe("lifeLog text completion", () => {
     expect(result.queryByText("gym tree note")).toBeNull();
   });
 
+  it("does not suggest the edited lifeLog's own past text", async ({ db, task }) => {
+    // The selected lifeLog has a recent uuidv7 id, so its own ngram doc survives the age
+    // cutoff and matches the typed fragment — only the id-based self-exclusion keeps it out.
+    const { result } = await setupLifeLogsTest(task.id, db, {
+      completionSelfLifeLog: { text: "gym past text" },
+      completionCandidates: ["gym workout 30min"],
+    });
+
+    await result.findByText("gym past text");
+    await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
+
+    const input = await waitFor(() => {
+      const el = result.container.querySelector<HTMLInputElement>("input");
+      expect(el).toBeTruthy();
+      return el as HTMLInputElement;
+    });
+    input.focus();
+    await userEvent.keyboard("{Control>}a{/Control}");
+    await userEvent.keyboard("gym");
+    await awaitPendingCallbacks();
+
+    // A genuine candidate appears (proving the dropdown works here)...
+    await result.findByText("gym workout 30min");
+    // ...but the edited lifeLog's own stale text is not suggested.
+    expect(result.queryByText("gym past text")).toBeNull();
+  });
+
+  it("excludes lifeLog texts older than the completion window", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db, {
+      completionCandidates: ["gym workout 30min"], // recent
+      completionStaleCandidates: ["gym ancient history"], // older than the window
+    });
+
+    await startEditingWithText(result, "gym");
+
+    // The recent candidate is suggested...
+    await result.findByText("gym workout 30min");
+    // ...the one older than the window is not, even though it matches the fragment.
+    expect(result.queryByText("gym ancient history")).toBeNull();
+  });
+
+  it("suggests nothing when every match is older than the completion window", async ({ db, task }) => {
+    // The same texts would be suggested if recent (see other tests); staleness alone suppresses them.
+    const { result } = await setupLifeLogsTest(task.id, db, {
+      completionStaleCandidates: ["gym workout 30min", "gym session"],
+    });
+
+    await startEditingWithText(result, "gym");
+    await awaitPendingCallbacks();
+
+    await waitFor(() => {
+      expect(completionItems(result).length).toBe(0);
+    });
+  });
+
   it("does not offer completion while editing startAt", async ({ db, task }) => {
     // A candidate that would match the digits typed into startAt — so if completion were
     // (wrongly) wired to startAt, it would show. It must not.

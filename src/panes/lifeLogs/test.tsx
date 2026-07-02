@@ -41,11 +41,29 @@ export interface SetupLifeLogsTestOptions {
   withEditHistory?: boolean;
   withToast?: boolean;
   // Past lifeLog texts to seed into the ngram corpus so text-completion has candidates.
+  // Seeded with recent (baseTime) uuidv7 ids so they fall inside the completion window.
   // Only ngram docs are created (no visible lifeLogs), so the pane contents stay unchanged.
   completionCandidates?: string[];
+  // Like completionCandidates but seeded with a uuidv7 id older than the completion window,
+  // so they must NOT be suggested.
+  completionStaleCandidates?: string[];
+  // Seed an in-range lifeLog with a recent uuidv7-form id plus its own ngram doc, and
+  // auto-select it. Used to verify the edited lifeLog's own past text is never suggested:
+  // with a recent uuidv7 id its ngram doc survives the age cutoff, so only the id-based
+  // self-exclusion keeps it out of the dropdown.
+  completionSelfLifeLog?: { text: string };
   // Tree-node texts seeded into the ngram corpus (collection: "lifeLogTreeNodes"). Used to
   // verify completion suggests lifeLog texts only and excludes tree-node texts.
   completionTreeNodeCandidates?: string[];
+}
+
+// Build a uuidv7-shaped id whose embedded timestamp is `ms`, unique per `uniq`. Completion
+// relies on lifeLog ids being uuidv7 (creation time in the first 48 bits) to order by
+// recency and apply an age cutoff, so seeded ngram doc ids must have the same shape.
+function uuidV7FormFromMs(ms: number, uniq: number): string {
+  const hex = Math.floor(ms).toString(16).padStart(12, "0");
+  const u = (uniq & 0xfff).toString(16).padStart(3, "0");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-7${u}-8000-000000000000`;
 }
 
 export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, options?: SetupLifeLogsTestOptions) {
@@ -266,27 +284,58 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                     }
 
                     // Seed ngram docs for text-completion candidates (no visible lifeLogs).
-                    const completionCandidates = options?.completionCandidates ?? [];
-                    completionCandidates.forEach((text, i) => {
+                    // Recent candidates get baseTime ids; stale ones get an id well before
+                    // the completion window so the age cutoff must drop them.
+                    const recentMs = baseTime.getTime();
+                    const staleDate = new Date(baseTime);
+                    staleDate.setMonth(staleDate.getMonth() - 4);
+                    const staleMs = staleDate.getTime();
+
+                    let ngramUniq = 0;
+                    const seedNgram = (id: string, collection: string, text: string) => {
                       const analysis = analyzeTextForNgrams(text);
-                      batch.set(doc(ngrams, `$completion${i}lifeLogs`), {
-                        collection: "lifeLogs",
+                      batch.set(doc(ngrams, id), {
+                        collection,
                         text,
                         normalizedText: analysis.normalizedText,
                         ngramMap: analysis.ngramMap,
                       });
+                    };
+
+                    const completionCandidates = options?.completionCandidates ?? [];
+                    completionCandidates.forEach((text) => {
+                      seedNgram(`${uuidV7FormFromMs(recentMs, ngramUniq++)}lifeLogs`, "lifeLogs", text);
+                    });
+
+                    // In-range lifeLog with a recent uuidv7-form id and its own ngram doc
+                    // (auto-selected below) for self-exclusion tests. recentMs + 1 keeps the
+                    // id distinct from every candidate id above.
+                    const selfLifeLogId = uuidV7FormFromMs(recentMs + 1, 0);
+                    if (options?.completionSelfLifeLog) {
+                      batch.set(doc(lifeLogs, selfLifeLogId), {
+                        text: options.completionSelfLifeLog.text,
+                        hasTreeNodes: false,
+                        startAt: Timestamp.fromDate(baseTime),
+                        endAt: noneTimestamp,
+                        createdAt: Timestamp.fromDate(baseTime),
+                        updatedAt: Timestamp.fromDate(baseTime),
+                      });
+                      seedNgram(`${selfLifeLogId}lifeLogs`, "lifeLogs", options.completionSelfLifeLog.text);
+                    }
+
+                    const completionStaleCandidates = options?.completionStaleCandidates ?? [];
+                    completionStaleCandidates.forEach((text) => {
+                      seedNgram(`${uuidV7FormFromMs(staleMs, ngramUniq++)}lifeLogs`, "lifeLogs", text);
                     });
 
                     // Seed tree-node ngram docs (must NOT appear as completion candidates).
                     const completionTreeNodeCandidates = options?.completionTreeNodeCandidates ?? [];
-                    completionTreeNodeCandidates.forEach((text, i) => {
-                      const analysis = analyzeTextForNgrams(text);
-                      batch.set(doc(ngrams, `$completionTreeNode${i}lifeLogTreeNodes`), {
-                        collection: "lifeLogTreeNodes",
+                    completionTreeNodeCandidates.forEach((text) => {
+                      seedNgram(
+                        `${uuidV7FormFromMs(recentMs, ngramUniq++)}lifeLogTreeNodes`,
+                        "lifeLogTreeNodes",
                         text,
-                        normalizedText: analysis.normalizedText,
-                        ngramMap: analysis.ngramMap,
-                      });
+                      );
                     });
 
                     await batch.commit();
@@ -299,7 +348,11 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
 
                     // Select the first LifeLog that exists in the query results
                     // When lifeLogCount > 3, earlier LifeLogs might be filtered out by the time-based query
-                    if (options?.initialSelectedId) {
+                    if (options?.completionSelfLifeLog) {
+                      updateState((state) => {
+                        state.panesLifeLogs.selectedLifeLogId = selfLifeLogId;
+                      });
+                    } else if (options?.initialSelectedId) {
                       updateState((state) => {
                         state.panesLifeLogs.selectedLifeLogId = options.initialSelectedId!;
                       });

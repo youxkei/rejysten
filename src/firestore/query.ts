@@ -4,6 +4,7 @@ import {
   type Query,
   type QueryConstraint,
   type WhereFilterOp,
+  documentId,
   limit as firestoreLimit,
   orderBy as firestoreOrderBy,
   query as firestoreQuery,
@@ -64,6 +65,17 @@ export function orderBy(fieldPath: string, direction: OrderByDirection = "asc"):
     fieldPath,
     direction,
     constraint: firestoreOrderBy(fieldPath, direction),
+  };
+}
+
+// Order by document id. Recorded as the reserved "__name__" field path so the optimistic
+// overlay (which resolves "__name__" to the doc id) sorts consistently with Firestore.
+export function orderByDocumentId(direction: OrderByDirection = "asc"): OrderByConstraint {
+  return {
+    kind: "orderBy",
+    fieldPath: "__name__",
+    direction,
+    constraint: firestoreOrderBy(documentId(), direction),
   };
 }
 
