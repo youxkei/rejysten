@@ -381,6 +381,7 @@ export function TimeRangedLifeLogs(props: {
   // Handle "o" key when there are 0 lifeLogs
   addKeyDownEventListener((event) => {
     if (event.isComposing || event.ctrlKey) return;
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
     if (lifeLogs$().length > 0) return;
     if (event.code !== "KeyO") return;
 

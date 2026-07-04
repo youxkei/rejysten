@@ -24,8 +24,6 @@ export function analyzeTextForNgrams(text: string): {
   const chars = splitToChars(normalizedText);
   const ngramMap = {} as Partial<Record<string, true>>;
 
-  if (chars.length < 2) return { normalizedText, ngramMap };
-
   for (let i = 0; i < chars.length; i++) {
     // Skip if current character is non-printable
     if (nonPrintableRegex.test(chars[i])) continue;

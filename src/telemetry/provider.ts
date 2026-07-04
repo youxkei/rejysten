@@ -36,7 +36,13 @@ let cleanups: (() => void)[] = [];
 function defaultMode(): TelemetryMode {
   if (import.meta.env.MODE === "test" || import.meta.env.VITEST) return "none";
 
-  return import.meta.env.VITE_TELEMETRY_MODE ?? "otlp";
+  // VITE_TELEMETRY_MODE is typed as TelemetryMode, but its runtime value comes
+  // from the unvalidated build env; a typo would otherwise fall through the
+  // exhaustive switch in initTelemetry and leave spanProcessor undefined.
+  const mode = import.meta.env.VITE_TELEMETRY_MODE;
+  if (mode === "otlp" || mode === "console" || mode === "memory" || mode === "none") return mode;
+
+  return "otlp";
 }
 
 export function initTelemetry(options?: TelemetryInitOptions): void {

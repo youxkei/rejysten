@@ -1067,6 +1067,30 @@ describe("<LifeLogs />", () => {
     expect(listItems.length).toBe(1);
   });
 
+  it("does not create a first lifelog when 'o' is typed into the jump date dialog input", async ({ db, task }) => {
+    const { result } = await setupLifeLogsTest(task.id, db, { skipDefaultLifeLogs: true });
+
+    // No lifeLogs exist
+    expect(result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length).toBe(0);
+
+    // Open the jump date dialog and wait for its input to render
+    await userEvent.keyboard("{d}");
+    await awaitPendingCallbacks();
+    const input = await waitFor(() => {
+      const el = result.container.querySelector("input");
+      expect(el).toBeTruthy();
+      return el!;
+    });
+    input.focus();
+
+    // Typing "o" into the dialog input must go to the input, not trigger createFirstLifeLog
+    await userEvent.keyboard("o");
+    await awaitPendingCallbacks();
+
+    expect(result.container.querySelectorAll(`.${styles.lifeLogs.listItem}`).length).toBe(0);
+    expect(input.value).toContain("o");
+  });
+
   it("sets startAt to current time when adding lifelog from parent with noneTimestamp endAt", async ({ db, task }) => {
     const { result } = await setupLifeLogsTest(task.id, db);
 

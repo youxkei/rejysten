@@ -204,6 +204,18 @@ describe("ngram", () => {
       });
       expect(result.normalizedText).toBe("👨👩👧👦🇯🇵");
     });
+
+    it("indexes a single emoji as a unigram", () => {
+      const result = analyzeTextForNgrams("😀");
+      expect(result.ngramMap).toEqual({ "😀": true });
+      expect(result.normalizedText).toBe("😀");
+    });
+
+    it("produces no ngram for a single non-emoji character", () => {
+      const result = analyzeTextForNgrams("a");
+      expect(result.ngramMap).toEqual({});
+      expect(result.normalizedText).toBe("a");
+    });
   });
 
   describe("Firestore ngram keys", () => {
