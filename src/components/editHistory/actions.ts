@@ -39,10 +39,12 @@ actionsCreator.components.editHistory = ({ components: { editHistory: _context }
 
   let lastRedoParentId: string | null = null;
   let lastRedoChildIndex = -1;
+  let lastRedoChildId: string | null = null;
 
   function resetCycleState() {
     lastRedoParentId = null;
     lastRedoChildIndex = -1;
+    lastRedoChildId = null;
   }
 
   function getCurrentHeadId(): string {
@@ -105,16 +107,27 @@ actionsCreator.components.editHistory = ({ components: { editHistory: _context }
     try {
       let branchPointId: string;
 
-      if (lastRedoParentId !== null) {
+      const currentHeadId = getCurrentHeadId();
+      // Stay in the active cycle only while HEAD is either back at the branch
+      // point (the user pressed u once) or still at the child the previous R
+      // selected (repeated R). If HEAD has moved elsewhere — a manual undo past
+      // the branch point, a jump, or a fresh edit — the cycle context is stale.
+      const cyclingParentId =
+        lastRedoParentId !== null && (currentHeadId === lastRedoParentId || currentHeadId === lastRedoChildId)
+          ? lastRedoParentId
+          : null;
+
+      if (cyclingParentId !== null) {
         // Cycling mode: undo back to the branch point, but only if not already there
-        const currentHeadId = getCurrentHeadId();
-        if (currentHeadId !== lastRedoParentId) {
+        if (currentHeadId !== cyclingParentId) {
           await undoEngine(firestore, optimisticHistoryReadOptions);
         }
-        branchPointId = lastRedoParentId;
+        branchPointId = cyclingParentId;
       } else {
-        // First R press: we're at the branch point
-        branchPointId = getCurrentHeadId();
+        // First R press, or HEAD left the cycle: start a fresh cycle from the
+        // current HEAD instead of blindly undoing an unrelated entry.
+        resetCycleState();
+        branchPointId = currentHeadId;
       }
 
       const children = await getChildren(firestore, branchPointId, optimisticHistoryReadOptions);
@@ -150,6 +163,7 @@ actionsCreator.components.editHistory = ({ components: { editHistory: _context }
 
       lastRedoParentId = branchPointId;
       lastRedoChildIndex = nextIndex;
+      lastRedoChildId = children[nextIndex].id;
 
       const nextSelection = await redoEngine(firestore, children[nextIndex].id, optimisticHistoryReadOptions);
       await startTransition(() => {

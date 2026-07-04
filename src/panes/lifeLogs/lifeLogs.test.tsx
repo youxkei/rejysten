@@ -5234,6 +5234,61 @@ describe("<LifeLogs />", () => {
       });
     });
 
+    it("R after a fresh edit starts a new cycle instead of undoing the edit", async ({ db, task }) => {
+      const { result } = await setupLifeLogsTest(task.id, db, {
+        withEditHistory: true,
+      });
+
+      await result.findByText("first lifelog");
+
+      async function editPrefix(prefix: string): Promise<void> {
+        await userEvent.keyboard("{i}");
+        await awaitPendingCallbacks();
+        const input = result.container.querySelector("input") as HTMLInputElement;
+        input.focus();
+        await userEvent.keyboard(prefix);
+        await userEvent.keyboard("{Escape}");
+        await awaitPendingCallbacks();
+      }
+
+      // Branch A, B from the initial state
+      await editPrefix("A ");
+      await waitFor(() => {
+        expect(result.queryByText("A first lifelog")).toBeTruthy();
+      });
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      await editPrefix("B ");
+      await waitFor(() => {
+        expect(result.queryByText("B first lifelog")).toBeTruthy();
+      });
+      await userEvent.keyboard("{u}");
+      await awaitPendingCallbacks();
+
+      // R → branch A (enters the cycle)
+      await userEvent.keyboard("{Shift>}{r}{/Shift}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("A first lifelog")).toBeTruthy();
+      });
+
+      // A fresh edit on top of branch A moves HEAD out of the cycle
+      await editPrefix("C ");
+      await waitFor(() => {
+        expect(result.queryByText("C A first lifelog")).toBeTruthy();
+      });
+
+      // R must now start a new cycle from the current HEAD, not undo the "C " edit
+      // and jump to branch B (which the stale cycle pointer would have done).
+      await userEvent.keyboard("{Shift>}{r}{/Shift}");
+      await awaitPendingCallbacks();
+      await waitFor(() => {
+        expect(result.queryByText("C A first lifelog")).toBeTruthy();
+        expect(result.queryByText("B first lifelog")).toBeNull();
+      });
+    });
+
     it("R key with mixed lifeLog and tree node edits", async ({ db, task }) => {
       const { result } = await setupLifeLogsTest(task.id, db, {
         withEditHistory: true,
