@@ -544,13 +544,13 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
   }
 
   // Time operations
-  async function setStartAtNow() {
+  async function setTimeFieldNow(field: "startAt" | "endAt") {
     if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
 
     const selectedLifeLogId = state.panesLifeLogs.selectedLifeLogId;
 
     const lifeLog = await getDoc(firestore, lifeLogsCol, selectedLifeLogId);
-    if (!lifeLog || !lifeLog.startAt.isEqual(noneTimestamp)) return;
+    if (!lifeLog || !lifeLog[field].isEqual(noneTimestamp)) return;
 
     const newTimestamp = Timestamp.fromMillis(Math.floor(DateNow() / 1000) * 1000);
 
@@ -561,7 +561,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
         (batch) => {
           batch.update(lifeLogsCol, {
             id: selectedLifeLogId,
-            startAt: newTimestamp,
+            ...(field === "startAt" ? { startAt: newTimestamp } : { endAt: newTimestamp }),
           });
           return Promise.resolve();
         },
@@ -574,34 +574,12 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
     }
   }
 
+  async function setStartAtNow() {
+    await setTimeFieldNow("startAt");
+  }
+
   async function setEndAtNow() {
-    if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
-
-    const selectedLifeLogId = state.panesLifeLogs.selectedLifeLogId;
-
-    const lifeLog = await getDoc(firestore, lifeLogsCol, selectedLifeLogId);
-    if (!lifeLog || !lifeLog.endAt.isEqual(noneTimestamp)) return;
-
-    const newTimestamp = Timestamp.fromMillis(Math.floor(DateNow() / 1000) * 1000);
-
-    firestore.setClock(true);
-    try {
-      await runBatch(
-        firestore,
-        (batch) => {
-          batch.update(lifeLogsCol, {
-            id: selectedLifeLogId,
-            endAt: newTimestamp,
-          });
-          return Promise.resolve();
-        },
-        { description: "時刻設定", prevSelection: currentSelection() },
-      );
-    } finally {
-      await startTransition(() => {
-        firestore.setClock(false);
-      });
-    }
+    await setTimeFieldNow("endAt");
   }
 
   // Editing
@@ -681,7 +659,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
     }
   }
 
-  async function saveStartAt(stopEditing: boolean) {
+  async function saveTimeField(field: "startAt" | "endAt", stopEditing: boolean) {
     if (state.panesLifeLogs.selectedLifeLogNodeId !== "") {
       if (stopEditing) doStopEditing();
       return;
@@ -693,7 +671,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
       return;
     }
 
-    const newTimestamp = context.pendingStartAt;
+    const newTimestamp = field === "startAt" ? context.pendingStartAt : context.pendingEndAt;
     if (newTimestamp === undefined) {
       if (stopEditing) doStopEditing();
       return;
@@ -706,7 +684,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
         (batch) => {
           batch.update(lifeLogsCol, {
             id: selectedLifeLogId,
-            startAt: newTimestamp,
+            ...(field === "startAt" ? { startAt: newTimestamp } : { endAt: newTimestamp }),
           });
           return Promise.resolve();
         },
@@ -720,43 +698,12 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
     }
   }
 
+  async function saveStartAt(stopEditing: boolean) {
+    await saveTimeField("startAt", stopEditing);
+  }
+
   async function saveEndAt(stopEditing: boolean) {
-    if (state.panesLifeLogs.selectedLifeLogNodeId !== "") {
-      if (stopEditing) doStopEditing();
-      return;
-    }
-
-    const selectedLifeLogId = state.panesLifeLogs.selectedLifeLogId;
-    if (selectedLifeLogId === "") {
-      if (stopEditing) doStopEditing();
-      return;
-    }
-
-    const newTimestamp = context.pendingEndAt;
-    if (newTimestamp === undefined) {
-      if (stopEditing) doStopEditing();
-      return;
-    }
-
-    firestore.setClock(true);
-    try {
-      await runBatch(
-        firestore,
-        (batch) => {
-          batch.update(lifeLogsCol, {
-            id: selectedLifeLogId,
-            endAt: newTimestamp,
-          });
-          return Promise.resolve();
-        },
-        { description: "時刻編集", prevSelection: currentSelection() },
-      );
-    } finally {
-      await startTransition(() => {
-        if (stopEditing) doStopEditing();
-        firestore.setClock(false);
-      });
-    }
+    await saveTimeField("endAt", stopEditing);
   }
 
   // Delete operations for empty LifeLogs
@@ -809,11 +756,10 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
     }
   }
 
-  async function deleteEmptyLifeLogToPrev() {
+  async function deleteEmptyLifeLogToward(targetId: string, cursorAtEnd: boolean) {
     if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
 
     const selectedLifeLogId = state.panesLifeLogs.selectedLifeLogId;
-    const targetId = context.prevId;
     if (selectedLifeLogId === "" || targetId === "") return;
 
     const lifeLog = await getDoc(firestore, lifeLogsCol, selectedLifeLogId);
@@ -833,17 +779,20 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
       return; // Has tree nodes, cannot delete
     }
 
-    // Get previous LifeLog's text length for cursor position
-    const prevLifeLog = await getDoc(firestore, lifeLogsCol, targetId);
-    if (!prevLifeLog) return;
+    // Cursor lands at the end of the previous LifeLog's text, or the start of the next one
+    let cursorPosition = 0;
+    if (cursorAtEnd) {
+      const targetLifeLog = await getDoc(firestore, lifeLogsCol, targetId);
+      if (!targetLifeLog) return;
+      cursorPosition = targetLifeLog.text.length;
+    }
 
-    const cursorPosition = prevLifeLog.text.length;
     const prevSelection = currentSelection();
     const setIsEditing = context.setIsEditing;
     const setEditingField = context.setEditingField;
     const setLifeLogCursorInfo = context.setLifeLogCursorInfo;
 
-    // Delete current LifeLog and select previous
+    // Delete current LifeLog and select the target
     firestore.setClock(true);
     try {
       await runBatch(
@@ -875,65 +824,12 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
     }
   }
 
+  async function deleteEmptyLifeLogToPrev() {
+    await deleteEmptyLifeLogToward(context.prevId, true);
+  }
+
   async function deleteEmptyLifeLogToNext() {
-    if (state.panesLifeLogs.selectedLifeLogNodeId !== "") return;
-
-    const selectedLifeLogId = state.panesLifeLogs.selectedLifeLogId;
-    const targetId = context.nextId;
-    if (selectedLifeLogId === "" || targetId === "") return;
-
-    const lifeLog = await getDoc(firestore, lifeLogsCol, selectedLifeLogId);
-    if (!lifeLog) return;
-
-    // Check conditions for deletion: pending text empty, timestamps = none
-    if (
-      (context.pendingText ?? lifeLog.text) !== "" ||
-      !lifeLog.startAt.isEqual(noneTimestamp) ||
-      !lifeLog.endAt.isEqual(noneTimestamp)
-    ) {
-      return;
-    }
-
-    // Check for child tree nodes using the flag
-    if (lifeLog.hasTreeNodes) {
-      return; // Has tree nodes, cannot delete
-    }
-
-    const prevSelection = currentSelection();
-    const setIsEditing = context.setIsEditing;
-    const setEditingField = context.setEditingField;
-    const setLifeLogCursorInfo = context.setLifeLogCursorInfo;
-
-    // Delete current LifeLog and select next with cursor at start
-    firestore.setClock(true);
-    try {
-      await runBatch(
-        firestore,
-        (batch) => {
-          batch.delete(lifeLogsCol, selectedLifeLogId);
-          return Promise.resolve();
-        },
-        {
-          description: "LifeLog削除",
-          prevSelection,
-          nextSelection: { lifeLogs: targetId },
-        },
-      );
-
-      setLifeLogCursorInfo({ lifeLogId: targetId, cursorPosition: 0 });
-      await startTransition(() => {
-        // IMPORTANT: Call setIsEditing(true) BEFORE updateState, because updateState
-        // will trigger the old EditableValue to lose focus and call setIsEditing(false)
-        setEditingField(EditingField.Text);
-        setIsEditing(true);
-        updateState((state) => {
-          state.panesLifeLogs.selectedLifeLogId = targetId;
-        });
-        firestore.setClock(false);
-      });
-    } finally {
-      firestore.setClock(false);
-    }
+    await deleteEmptyLifeLogToward(context.nextId, false);
   }
 
   async function createFirstLifeLog() {
