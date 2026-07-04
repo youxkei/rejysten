@@ -1,9 +1,5 @@
 import { type Accessor, createComputed, createSignal } from "solid-js";
 
-export function mapSignal<T, U>(signal$: Accessor<T>, callback: (element: T) => U) {
-  return () => callback(signal$());
-}
-
 export function dumpSignal<T>(signal$: Accessor<T>) {
   createComputed(() => {
     console.log("dump: ", signal$());

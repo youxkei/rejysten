@@ -13,51 +13,6 @@ export function useScrollContainer(): Accessor<HTMLElement | undefined> {
 }
 
 /**
- * 要素がコンテナ内で可視かどうかをチェック（scrolloffを考慮）
- * @param container スクロールコンテナ
- * @param element チェック対象の要素
- * @param offsetPx 上下のマージン（scrolloff）
- * @returns 'visible' | 'above' | 'below'
- */
-export function isElementVisible(
-  container: HTMLElement,
-  element: HTMLElement,
-  offsetPx: number = DEFAULT_SCROLL_OFFSET_PX,
-): "visible" | "above" | "below" {
-  const containerRect = container.getBoundingClientRect();
-  const elementRect = element.getBoundingClientRect();
-
-  const visibleTop = containerRect.top + offsetPx;
-  const visibleBottom = containerRect.bottom - offsetPx;
-
-  if (elementRect.bottom < visibleTop) return "above";
-  if (elementRect.top > visibleBottom) return "below";
-  return "visible";
-}
-
-/**
- * 要素がコンテナ内で完全に可視かどうかをチェック（scrolloffを考慮）
- * isElementVisibleとは異なり、要素全体がマージン内に収まっている場合のみtrueを返す
- * @param container スクロールコンテナ
- * @param element チェック対象の要素
- * @param offsetPx 上下のマージン（scrolloff）
- * @returns 要素が完全に可視かどうか
- */
-export function isElementFullyVisible(
-  container: HTMLElement,
-  element: HTMLElement,
-  offsetPx: number = DEFAULT_SCROLL_OFFSET_PX,
-): boolean {
-  const containerRect = container.getBoundingClientRect();
-  const elementRect = element.getBoundingClientRect();
-
-  const visibleTop = containerRect.top + offsetPx;
-  const visibleBottom = containerRect.bottom - offsetPx;
-
-  return elementRect.top >= visibleTop && elementRect.bottom <= visibleBottom;
-}
-
-/**
  * スクロールコンテナ内で要素が見えるようにスクロール（scrolloff機能付き）
  * コンテナはScrollContainerContextから自動取得
  * @param element スクロール対象の要素
