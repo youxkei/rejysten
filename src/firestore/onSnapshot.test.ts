@@ -1,4 +1,4 @@
-import { doc, getDocFromServer, serverTimestamp, writeBatch } from "firebase/firestore";
+import { disableNetwork, doc, enableNetwork, getDocFromServer, serverTimestamp, writeBatch } from "firebase/firestore";
 import { afterAll, beforeAll, describe, it } from "vitest";
 
 import { optimisticBatch, waitForPendingOptimisticCommits } from "@/firestore/batch";
@@ -1016,6 +1016,124 @@ describe("onQuerySnapshot optimistic overlay", () => {
       test.expect(latest.map((docData) => docData.text)).toEqual(["recreated"]);
     } finally {
       unsubscribe();
+    }
+  });
+});
+
+describe("cache seed while the watch stream is unavailable", () => {
+  // A fresh listener mounts while the server is unreachable (disableNetwork
+  // stands in for a stalled watch stream) and must still emit the local cache
+  // merged with the overlay instead of hanging. NOTE: these guard the offline
+  // fresh-subscription behavior overall, not the cache-seed path specifically —
+  // with the network down the live listener itself also delivers a fromCache
+  // snapshot, so an assertion here can be satisfied by that path rather than by
+  // the getDoc(s)FromCache seed, and the production "connected-but-stalled"
+  // limbo the seed targets cannot be reproduced against the emulator.
+  // These tests share the module-level `firestore`; disableNetwork is global to
+  // that instance, so they rely on vitest running tests within a file
+  // sequentially (do not convert to `.concurrent`).
+  it("seeds a fresh query subscription from the local cache merged with the overlay", async (test) => {
+    const localClient = createFirestoreClient(firestore);
+    const col = testCollection(firestore, `${test.task.id}_${Date.now()}_query_cache_seed`);
+    await seedDocs(col, {
+      a: { text: "a", value: 1 },
+      b: { text: "b", value: 2 },
+    });
+
+    // Warm the SDK cache for this query, then drop the listener.
+    await new Promise<void>((resolve) => {
+      const unsubscribe = onQuerySnapshot({
+        client: localClient,
+        query: query(col, orderBy("value")),
+        setValue: (value) => {
+          if (value.length === 2) {
+            unsubscribe();
+            resolve();
+          }
+        },
+      });
+    });
+
+    await disableNetwork(firestore);
+    const batchId = `batch-${test.task.id}`;
+    try {
+      // Pending optimistic reorder: a.value 1 -> 5 pushes it after b.
+      localClient.overlay.apply(batchId, [
+        {
+          type: "update",
+          batchId: "",
+          collection: col.id,
+          id: "a",
+          path: `${col.id}/a`,
+          data: { value: 5 },
+        },
+      ]);
+
+      let latest: FirestoreTestDocWithId[] | undefined;
+      const unsubscribe = onQuerySnapshot({
+        client: localClient,
+        query: query(col, orderBy("value")),
+        setValue: (value) => {
+          latest = value;
+        },
+      });
+
+      try {
+        await waitUntil(() => latest !== undefined && latest.length === 2);
+        test.expect(latest?.map((docData) => docData.id)).toEqual(["b", "a"]);
+        test.expect(latest?.find((docData) => docData.id === "a")?.value).toBe(5);
+      } finally {
+        unsubscribe();
+      }
+    } finally {
+      // Re-enable the network FIRST: it restores the shared module-level
+      // `firestore`, so it must run even if the (per-test, local) overlay
+      // rollback throws — otherwise later tests in this file run offline.
+      await enableNetwork(firestore);
+      localClient.overlay.rollback(batchId, undefined);
+    }
+  });
+
+  it("seeds a fresh document subscription from the local cache", async (test) => {
+    const localClient = createFirestoreClient(firestore);
+    const col = testCollection(firestore, `${test.task.id}_${Date.now()}_doc_cache_seed`);
+    await seedDocs(col, {
+      doc1: { text: "cached", value: 1 },
+    });
+
+    // Warm the SDK cache, then drop the listener.
+    await new Promise<void>((resolve) => {
+      const unsubscribe = onDocumentSnapshot({
+        client: localClient,
+        ref: doc(col, "doc1"),
+        setValue: (value) => {
+          if (value?.text === "cached") {
+            unsubscribe();
+            resolve();
+          }
+        },
+      });
+    });
+
+    await disableNetwork(firestore);
+    try {
+      let latest: FirestoreTestDocWithId | undefined | "unset" = "unset";
+      const unsubscribe = onDocumentSnapshot({
+        client: localClient,
+        ref: doc(col, "doc1"),
+        setValue: (value) => {
+          latest = value;
+        },
+      });
+
+      try {
+        await waitUntil(() => latest !== "unset");
+        test.expect(latest).toMatchObject({ id: "doc1", text: "cached", value: 1 });
+      } finally {
+        unsubscribe();
+      }
+    } finally {
+      await enableNetwork(firestore);
     }
   });
 });

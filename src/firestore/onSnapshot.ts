@@ -2,6 +2,8 @@ import {
   type DocumentReference,
   type QuerySnapshot,
   Timestamp,
+  getDocFromCache,
+  getDocsFromCache,
   onSnapshot as firestoreOnSnapshot,
 } from "firebase/firestore";
 
@@ -47,6 +49,13 @@ function valuesEqualIgnoringFields(a: unknown, b: unknown, ignoredFields: Readon
   return true;
 }
 
+function toDocumentWithIds<T extends object>(snapshot: QuerySnapshot<T>): DocumentWithId<T>[] {
+  return snapshot.docs.flatMap((docSnap) => {
+    const docWithId = getDocumentWithId(docSnap);
+    return docWithId === undefined ? [] : [docWithId];
+  });
+}
+
 export type OnDocumentSnapshotOptions<T extends object> = {
   client: FirestoreClient;
   ref: DocumentReference<T>;
@@ -71,6 +80,8 @@ export function onDocumentSnapshot<T extends object>(options: OnDocumentSnapshot
   let suppressOverlayEmit = false;
   let hasEmitted = false;
   let lastEmitted: DocumentWithId<T> | undefined;
+  let hasReceivedSnapshot = false;
+  let disposed = false;
 
   function emit(options?: { requireSnapshotOrOverlay?: boolean }): void {
     if (options?.requireSnapshotOrOverlay && docWithId === undefined && !overlay.hasDocumentOverlay(ref.path)) return;
@@ -94,6 +105,7 @@ export function onDocumentSnapshot<T extends object>(options: OnDocumentSnapshot
       (span) => {
         withCurrentSpan(span, () => {
           docWithId = getDocumentWithId(snapshot);
+          hasReceivedSnapshot = true;
           if (shouldAcknowledgeSnapshotMetadata(snapshot.metadata)) {
             suppressOverlayEmit = true;
             overlay.acknowledgeDocument(ref.path, docWithId);
@@ -122,7 +134,26 @@ export function onDocumentSnapshot<T extends object>(options: OnDocumentSnapshot
 
   emit({ requireSnapshotOrOverlay: true });
 
+  // Seed the initial value from the local cache so a stalled watch stream does
+  // not block a document that is cached but not yet in the overlay (e.g. a node
+  // remounted at a new location by a tree move). A cached doc may be stale (e.g.
+  // deleted server-side while offline); the live snapshot reconciles it. Cache
+  // data is not server-confirmed, so we do not acknowledge. The rejection
+  // handler covers only the cache read (getDocFromCache rejects when the doc is
+  // absent) — an error thrown by emit must not be swallowed.
+  void getDocFromCache(ref).then(
+    (snapshot) => {
+      if (disposed || hasReceivedSnapshot) return;
+      docWithId = getDocumentWithId(snapshot);
+      emit({ requireSnapshotOrOverlay: true });
+    },
+    () => {
+      // Not in cache — fall back to the live snapshot.
+    },
+  );
+
   return () => {
+    disposed = true;
     unsubscribeOverlay();
     unsubscribeSnapshot();
   };
@@ -137,20 +168,27 @@ export function onQuerySnapshot<T extends object>(options: OnQuerySnapshotOption
   let hasEmitted = false;
   let lastEmitted: DocumentWithId<T>[] = [];
   let hasReceivedSnapshot = false;
+  let disposed = false;
 
-  function emit(): void {
-    const value = withSpan(
-      "overlay.mergeQuery",
-      () =>
-        overlay.mergeQuery<T>(docWithIds, {
-          collection: query.collection,
-          filters: query.filters,
-          orderBys: query.orderBys,
-          limit: query.limit,
-          hasUntrackedConstraints: query.hasUntrackedConstraints,
-        }),
-      { attributes: { "app.collection": query.collection, "app.doc_count": docWithIds.length } },
-    );
+  function emit(options?: { traced?: boolean }): void {
+    const mergeQuery = () =>
+      overlay.mergeQuery<T>(docWithIds, {
+        collection: query.collection,
+        filters: query.filters,
+        orderBys: query.orderBys,
+        limit: query.limit,
+        hasUntrackedConstraints: query.hasUntrackedConstraints,
+      });
+    // The cache seed merges outside any snapshot span, so skip the
+    // overlay.mergeQuery span for it — that span is meant to attribute merge cost
+    // to a snapshot delivery, and emitting it here would create an orphan
+    // (parentless) span. All other callers run inside a snapshot span.
+    const value =
+      options?.traced === false
+        ? mergeQuery()
+        : withSpan("overlay.mergeQuery", mergeQuery, {
+            attributes: { "app.collection": query.collection, "app.doc_count": docWithIds.length },
+          });
     if (hasEmitted && valuesEqualIgnoringFields(lastEmitted, value, ignoredFieldsForEquality)) return;
     hasEmitted = true;
     lastEmitted = value;
@@ -169,10 +207,7 @@ export function onQuerySnapshot<T extends object>(options: OnQuerySnapshotOption
         (span) => {
           withCurrentSpan(span, () => {
             onServerSnapshot?.(snapshot);
-            docWithIds = snapshot.docs.flatMap((docSnap) => {
-              const docWithId = getDocumentWithId(docSnap);
-              return docWithId === undefined ? [] : [docWithId];
-            });
+            docWithIds = toDocumentWithIds(snapshot);
             hasReceivedSnapshot = true;
             if (shouldAcknowledgeSnapshotMetadata(snapshot.metadata)) {
               suppressOverlayEmit = true;
@@ -205,7 +240,9 @@ export function onQuerySnapshot<T extends object>(options: OnQuerySnapshotOption
     },
   );
   const unsubscribeOverlay = overlay.subscribe((change) => {
-    if (!hasReceivedSnapshot && !(allowInitialEmit?.() ?? false)) return;
+    // Once we have a base result (server snapshot, cache seed, or an explicitly
+    // allowed initial emit), overlay changes may flow through.
+    if (!hasReceivedSnapshot && !hasEmitted && !(allowInitialEmit?.() ?? false)) return;
     if (suppressOverlayEmit || !change.collections.has(query.collection)) return;
     emit();
   });
@@ -214,7 +251,32 @@ export function onQuerySnapshot<T extends object>(options: OnQuerySnapshotOption
     emit();
   }
 
+  // Seed the first emit from the local cache so a stalled watch stream does not
+  // block a fresh query listener (which otherwise waits for the server
+  // snapshot; during a connection stall the resource — and the transition that
+  // reads it — hangs, freezing the UI). Only seed a NON-EMPTY cache result: an
+  // empty result may mean "not cached yet" rather than "truly empty", and an
+  // empty base would briefly show an incomplete query. A non-empty cache may
+  // still be partial or stale (docs written on other clients missing, a
+  // server-deleted doc lingering, or orderBy/limit computed over a subset); the
+  // live snapshot reconciles it. Cache data is not server-confirmed, so we
+  // neither acknowledge nor set hasReceivedSnapshot. The rejection handler
+  // covers only the cache read — an error thrown by emit must not be swallowed;
+  // getDocsFromCache resolves empty (rather than rejecting) when nothing is
+  // cached, so that path is handled by the snapshot.empty guard above.
+  void getDocsFromCache(query.query).then(
+    (snapshot) => {
+      if (disposed || hasReceivedSnapshot || snapshot.empty) return;
+      docWithIds = toDocumentWithIds(snapshot);
+      emit({ traced: false });
+    },
+    () => {
+      // Cache read unavailable — fall back to the live snapshot.
+    },
+  );
+
   return () => {
+    disposed = true;
     unsubscribeOverlay();
     unsubscribeSnapshot();
   };
