@@ -42,6 +42,10 @@ declare module "@/services/actions" {
       pendingText: string | undefined;
       pendingStartAt: Timestamp | undefined;
       pendingEndAt: Timestamp | undefined;
+      // Saved text of the selected lifeLog, mirrored from its live subscription by LifeLog. Lets
+      // saveText skip a no-op save by comparing against pendingText without a fresh read on the
+      // save's critical path (the UI is frozen via setClock until the save's transition settles).
+      currentLifeLogText: string | undefined;
 
       // Tree node data (constantly updated)
       lifeLogTextLength: number;
@@ -108,6 +112,7 @@ initialActionsContext.panes.lifeLogs = {
   pendingText: undefined,
   pendingStartAt: undefined,
   pendingEndAt: undefined,
+  currentLifeLogText: undefined,
   lifeLogTextLength: 0,
   pendingNodeText: undefined,
   nodeCursorPosition: 0,
@@ -631,9 +636,11 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
       return;
     }
 
-    // Skip no-op save when text hasn't changed
-    const currentLifeLog = await getDoc(firestore, lifeLogsCol, selectedLifeLogId);
-    if (currentLifeLog && currentLifeLog.text === newText) {
+    // Skip no-op save when text hasn't changed. currentLifeLogText mirrors the selected
+    // lifeLog's saved text from its live subscription, so this decides without a fresh getDoc on
+    // the critical path. Divergence only fails safe: a stale/undefined mirror at worst writes a
+    // redundant no-op, never skips a genuine edit (the mirror can't show newText before it saves).
+    if (context.currentLifeLogText === newText) {
       if (stopEditing) doStopEditing();
       return;
     }

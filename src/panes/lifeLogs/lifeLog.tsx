@@ -203,6 +203,8 @@ export function LifeLog(props: {
         ctx.panes.lifeLogs.setMergeCursorInfo = setMergeCursorInfo;
         // LifeLog text length for cursor positioning when exiting tree
         ctx.panes.lifeLogs.lifeLogTextLength = lifeLog$()?.text.length ?? 0;
+        // Saved text so saveText can detect a no-op without a fresh read
+        ctx.panes.lifeLogs.currentLifeLogText = lifeLog$()?.text;
       });
     }
   });
@@ -224,6 +226,7 @@ export function LifeLog(props: {
         ctx.panes.lifeLogs.setTabCursorInfo = () => undefined;
         ctx.panes.lifeLogs.setMergeCursorInfo = () => undefined;
         ctx.panes.lifeLogs.lifeLogTextLength = 0;
+        ctx.panes.lifeLogs.currentLifeLogText = undefined;
       });
     }
   });

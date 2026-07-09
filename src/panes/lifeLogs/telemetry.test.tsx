@@ -273,4 +273,41 @@ describe("lifeLogs action telemetry", () => {
     // slowed an Escape-confirm to seconds.
     expect(ngramSubscriptions.length).toBe(0);
   });
+
+  it("skips the batch when confirming unchanged text (no-op save)", async ({ db, task }) => {
+    initTelemetry({ mode: "memory" });
+
+    const { result, firestore } = await setupLifeLogsTest(task.id, db);
+    firestoreForCleanup = firestore;
+
+    await result.findByText("first lifelog");
+
+    // Enter text editing and re-type the identical text: pendingText is set but unchanged.
+    await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
+    const input = result.container.querySelector("input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+    input.focus();
+    await userEvent.keyboard("{Control>}a{/Control}");
+    await userEvent.keyboard("first lifelog");
+    await awaitPendingCallbacks();
+
+    // Escape confirms; the text matches the saved value, so saveText must not write a batch.
+    await userEvent.keyboard("{Escape}");
+    await awaitPendingCallbacks();
+    await waitForPendingCommitsForTest({ service: firestore });
+
+    const saveText = findRootSpan("action:panes.lifeLogs.saveText");
+    const saveTextId = saveText.spanContext().spanId;
+    const batchRuns = getFinishedSpansForTest().filter(
+      (s) => s.name === "batch.run" && s.parentSpanContext?.spanId === saveTextId,
+    );
+    // The no-op is detected against the mirrored saved text — no getDoc, no batch.
+    expect(batchRuns.length).toBe(0);
+    expect(getFinishedSpansForTest().some((s) => s.name === "firestore.getDoc")).toBe(false);
+
+    // Editing exited and the text is untouched.
+    expect(result.container.querySelector("input")).toBeNull();
+    await result.findByText("first lifelog");
+  });
 });
