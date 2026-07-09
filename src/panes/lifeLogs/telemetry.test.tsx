@@ -235,4 +235,42 @@ describe("lifeLogs action telemetry", () => {
     expect(slide.attributes["app.expand_ms"]).toBeTypeOf("number");
     expect(slide.attributes["app.range_width_ms"]).toBeTypeOf("number");
   });
+
+  it("completes text via a one-shot ngrams getDocs, not a live subscription", async ({ db, task }) => {
+    initTelemetry({ mode: "memory" });
+
+    const { result, firestore } = await setupLifeLogsTest(task.id, db, {
+      completionCandidates: ["gym workout 30min"],
+    });
+    firestoreForCleanup = firestore;
+
+    await result.findByText("first lifelog");
+
+    // Enter text editing and type a fragment matching the seeded candidate.
+    await userEvent.keyboard("{i}");
+    await awaitPendingCallbacks();
+    const input = result.container.querySelector("input") as HTMLInputElement;
+    expect(input).toBeTruthy();
+    input.focus();
+    await userEvent.keyboard("{Control>}a{/Control}");
+    await userEvent.keyboard("gym");
+    await awaitPendingCallbacks();
+
+    // The dropdown appearing proves the completion read ran and returned the candidate.
+    await result.findByText("gym workout 30min");
+
+    const spans = getFinishedSpansForTest();
+    const ngramGetDocs = spans.filter(
+      (s) => s.name === "firestore.getDocs" && s.attributes["app.collection"] === "ngrams",
+    );
+    const ngramSubscriptions = spans.filter(
+      (s) => s.name === "snapshot.onQuerySnapshot" && s.attributes["app.collection"] === "ngrams",
+    );
+
+    // Completion issues a one-shot read of the ngrams corpus...
+    expect(ngramGetDocs.length).toBeGreaterThan(0);
+    // ...and never opens a live watch stream on it, whose per-write re-renders were the churn that
+    // slowed an Escape-confirm to seconds.
+    expect(ngramSubscriptions.length).toBe(0);
+  });
 });

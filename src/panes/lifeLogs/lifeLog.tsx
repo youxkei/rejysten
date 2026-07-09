@@ -5,12 +5,11 @@ import { type Accessor, createEffect, createMemo, createSignal, onCleanup, type 
 import { EditableValue } from "@/components/editableValue";
 import { ChildrenNodes } from "@/components/tree";
 import { DateNow } from "@/date";
-import { onQuerySnapshot } from "@/firestore/onSnapshot";
 import { analyzeTextForNgrams } from "@/ngram";
 import { LifeLogTreeNode } from "@/panes/lifeLogs/lifeLogTreeNode";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { useActionsService } from "@/services/actions";
-import { type DocumentData, getCollection, useFirestoreService } from "@/services/firebase/firestore";
+import { type DocumentData, getCollection, getDocs, useFirestoreService } from "@/services/firebase/firestore";
 import { encodeNgramKeyForFirestore } from "@/services/firebase/firestore/ngram";
 import { limit, orderByDocumentId, query, where } from "@/services/firebase/firestore/query";
 import { type Schema } from "@/services/firebase/firestore/schema";
@@ -18,7 +17,6 @@ import { createSubscribeSignal } from "@/services/firebase/firestore/subscribe";
 import { useStoreService } from "@/services/store";
 import { addKeyDownEventListener } from "@/solid/event";
 import { scrollWithOffset } from "@/solid/scroll";
-import { createSubscribeWithSignal } from "@/solid/subscribe";
 import { styles } from "@/styles.css";
 import { formatDuration, timestampToTimeText, timeTextToTimestamp } from "@/timestamp";
 import { uuidV7ToMs } from "@/uuid";
@@ -100,27 +98,30 @@ export function LifeLog(props: {
   // Only suggest from lifeLogs created within this many months.
   const COMPLETION_WINDOW_MONTHS = 2;
   const isEditingText$ = () => props.isEditing && props.editingField === EditingField.Text && isLifeLogSelected$();
-  const completionResults$ = createSubscribeWithSignal<
-    DocumentData<Schema["ngrams"]>[],
-    DocumentData<Schema["ngrams"]>[]
-  >((setValue) => {
+  // Completion reads the corpus once per debounced text change rather than holding a live
+  // subscription. A persistent onQuerySnapshot on the ngrams corpus re-fires on every ngram
+  // write — including this app's own text saves — and each delivery re-renders the dropdown on
+  // the main thread; that churn competes with an Escape-confirm's own cache reads and transition
+  // flush, stretching the confirm to seconds. A one-shot cache-first getDocs surfaces the user's
+  // own recently-written ngrams without keeping a watch stream open during editing and saving.
+  const [completionResults$, setCompletionResults] = createSignal<DocumentData<Schema["ngrams"]>[]>([]);
+  createEffect(() => {
     if (!isEditingText$()) {
-      setValue([]);
+      setCompletionResults([]);
       return;
     }
     const text = debouncedEditingText$();
     if (text.trim().length < 2) {
-      setValue([]);
+      setCompletionResults([]);
       return;
     }
     const ngrams = Object.keys(analyzeTextForNgrams(text).ngramMap);
     if (ngrams.length === 0) {
-      setValue([]);
+      setCompletionResults([]);
       return;
     }
-    const client = firestore.firestoreClient;
-    if (!client) {
-      setValue([]);
+    if (!firestore.firestoreClient) {
+      setCompletionResults([]);
       return;
     }
     const q = query(
@@ -130,9 +131,21 @@ export function LifeLog(props: {
       orderByDocumentId("desc"), // newest lifeLogs first (uuidv7 ids sort by creation time)
       limit(COMPLETION_CANDIDATE_FETCH_LIMIT),
     );
-    const unsubscribe = onQuerySnapshot({ client, query: q, setValue });
-    onCleanup(unsubscribe);
-  }, []);
+    // A newer debounced text (or leaving the text field) supersedes an in-flight read; drop its
+    // result so a slow response can't overwrite fresher candidates.
+    let cancelled = false;
+    onCleanup(() => {
+      cancelled = true;
+    });
+    void getDocs(firestore, q).then(
+      (docs) => {
+        if (!cancelled) setCompletionResults(docs);
+      },
+      () => {
+        if (!cancelled) setCompletionResults([]);
+      },
+    );
+  });
   const completionItems$ = createMemo(() => {
     if (!isEditingText$()) return [];
     const current = editingText$();
