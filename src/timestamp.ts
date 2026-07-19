@@ -1,8 +1,15 @@
 import { Timestamp } from "firebase/firestore";
 
-import { NewDate } from "@/date";
+import { DateNow, NewDate } from "@/date";
 
 export const noneTimestamp = Timestamp.fromDate(new Date("3000-12-31T23:59:59Z"));
+
+// Stored lifeLog timestamps (startAt/endAt) are second-granular by contract; sub-second
+// precision from the raw clock is truncated. Deriving from DateNow() (not Timestamp.now())
+// keeps this on the same mockable clock seam as the rest of the app.
+export function TimestampNowSec(): Timestamp {
+  return Timestamp.fromMillis(Math.floor(DateNow() / 1000) * 1000);
+}
 
 export const hourMs = 60 * 60 * 1000;
 export const dayMs = 24 * hourMs;

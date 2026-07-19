@@ -1,9 +1,23 @@
 import { Timestamp } from "firebase/firestore";
 import { describe, it, expect } from "vitest";
 
-import { formatDuration, noneTimestamp, timestampToTimeText, timeTextToTimestamp } from "@/timestamp";
+import { formatDuration, noneTimestamp, TimestampNowSec, timestampToTimeText, timeTextToTimestamp } from "@/timestamp";
 
 describe("timestamp", () => {
+  describe("TimestampNowSec", () => {
+    it("truncates sub-second precision to whole seconds", () => {
+      expect(TimestampNowSec().toMillis() % 1000).toBe(0);
+    });
+
+    it("returns the current time truncated down to the second", () => {
+      const floorBefore = Math.floor(Date.now() / 1000) * 1000;
+      const result = TimestampNowSec().toMillis();
+      const floorAfter = Math.floor(Date.now() / 1000) * 1000;
+      expect(result).toBeGreaterThanOrEqual(floorBefore);
+      expect(result).toBeLessThanOrEqual(floorAfter);
+    });
+  });
+
   describe("timestampToTimeText", () => {
     it("returns undefined for noneTimestamp", () => {
       expect(timestampToTimeText(noneTimestamp)).toBeUndefined();

@@ -4,7 +4,7 @@ import { startTransition } from "solid-js";
 import { uuidv7 } from "uuidv7";
 
 import { awaitable } from "@/awaitableCallback";
-import { DateNow, TimestampNow } from "@/date";
+import { DateNow } from "@/date";
 import { EditingField } from "@/panes/lifeLogs/schema";
 import { type Actions, actionsCreator, initialActionsContext } from "@/services/actions";
 import { getCollection, getDoc, getDocs, useFirestoreService } from "@/services/firebase/firestore";
@@ -26,7 +26,7 @@ import {
 } from "@/services/firebase/firestore/treeNode";
 import { useStoreService } from "@/services/store";
 import { showToast } from "@/services/toast";
-import { noneTimestamp } from "@/timestamp";
+import { noneTimestamp, TimestampNowSec } from "@/timestamp";
 
 declare module "@/services/actions" {
   interface PanesActionsContext {
@@ -424,7 +424,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
             id: newLifeLogId,
             text: "",
             hasTreeNodes: false,
-            startAt: lifeLog.endAt.isEqual(noneTimestamp) ? TimestampNow() : lifeLog.endAt,
+            startAt: lifeLog.endAt.isEqual(noneTimestamp) ? TimestampNowSec() : lifeLog.endAt,
             endAt: noneTimestamp,
           });
           return Promise.resolve();
@@ -519,7 +519,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
               id: newLifeLogId,
               text: "",
               hasTreeNodes: false,
-              startAt: lifeLog.endAt.isEqual(noneTimestamp) ? TimestampNow() : lifeLog.endAt,
+              startAt: lifeLog.endAt.isEqual(noneTimestamp) ? TimestampNowSec() : lifeLog.endAt,
               endAt: noneTimestamp,
             });
             return Promise.resolve();
@@ -557,7 +557,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
     const lifeLog = await getDoc(firestore, lifeLogsCol, selectedLifeLogId);
     if (!lifeLog || !lifeLog[field].isEqual(noneTimestamp)) return;
 
-    const newTimestamp = Timestamp.fromMillis(Math.floor(DateNow() / 1000) * 1000);
+    const newTimestamp = TimestampNowSec();
 
     firestore.setClock(true);
     try {
@@ -851,7 +851,7 @@ actionsCreator.panes.lifeLogs = ({ panes: { lifeLogs: context } }, _actions: Act
             id: newLifeLogId,
             text: "",
             hasTreeNodes: false,
-            startAt: TimestampNow(),
+            startAt: TimestampNowSec(),
             endAt: noneTimestamp,
           });
           return Promise.resolve();
