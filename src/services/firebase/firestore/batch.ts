@@ -49,6 +49,9 @@ import { deleteNgram, setNgram } from "@/services/firebase/firestore/ngram";
 import { type Writer } from "@/services/firebase/firestore/writer";
 import { initialState } from "@/services/store";
 import { type Span, endSpan, startSpan, withSpan } from "@/telemetry/span";
+import { nextBatchVersionWrite } from "@/writeContract/batchVersion";
+import { buildHistoryEntry } from "@/writeContract/historyEntry";
+import { deriveInverseOps } from "@/writeContract/inverseOps";
 
 declare module "@/services/store" {
   interface State {
@@ -235,12 +238,14 @@ export class OperationRecordingBatch {
 
     this.set(editHistoryCol, {
       id: historyEntryId,
-      parentId,
-      description: options?.description ?? "",
-      operations: this._forwardOps,
-      inverseOperations: inverseOps,
-      prevSelection: options?.prevSelection ?? {},
-      nextSelection: options?.nextSelection ?? options?.prevSelection ?? {},
+      ...buildHistoryEntry<HistoryOperation, HistorySelection>({
+        parentId,
+        description: options?.description ?? "",
+        operations: this._forwardOps,
+        inverseOperations: inverseOps,
+        prevSelection: options?.prevSelection ?? {},
+        nextSelection: options?.nextSelection ?? options?.prevSelection ?? {},
+      }),
     });
 
     if (currentHead.exists) {
@@ -271,51 +276,7 @@ export class OperationRecordingBatch {
       }
     }
 
-    const inverseOps: HistoryOperation[] = [];
-
-    for (const fwd of this._forwardOps) {
-      const key = `${fwd.collection}/${fwd.id}`;
-
-      switch (fwd.type) {
-        case "set":
-          inverseOps.push({ type: "delete", collection: fwd.collection, id: fwd.id });
-          break;
-
-        case "update": {
-          const oldData = oldValues.get(key);
-          if (oldData) {
-            const inverseData: Record<string, unknown> = {};
-            for (const field of Object.keys(fwd.data)) {
-              if (field in oldData) {
-                inverseData[field] = oldData[field];
-              }
-            }
-            inverseOps.push({
-              type: "update",
-              collection: fwd.collection,
-              id: fwd.id,
-              data: inverseData,
-            } as HistoryOperation);
-          }
-          break;
-        }
-
-        case "delete": {
-          const oldData = oldValues.get(key);
-          if (oldData) {
-            inverseOps.push({
-              type: "set",
-              collection: fwd.collection,
-              id: fwd.id,
-              data: oldData,
-            } as HistoryOperation);
-          }
-          break;
-        }
-      }
-    }
-
-    return inverseOps.reverse();
+    return deriveInverseOps(this._forwardOps, oldValues) as HistoryOperation[];
   }
 
   commit(options?: BatchOptions, parentSpan?: Span): Promise<void> {
@@ -331,18 +292,12 @@ export class OperationRecordingBatch {
       await withSpan("batch.recordHistory", () => this.recordHistory(options), { parent: parentSpan });
 
       const batchVersionCol = getCollection(this.service, "batchVersion");
-      const newBatchVersion = uuidv7();
       const batchVersionVersion = await getOptimisticBatchVersion(this.service);
-      if (batchVersionVersion) {
-        this.updateSingleton(batchVersionCol, {
-          prevVersion: batchVersionVersion,
-          version: newBatchVersion,
-        });
+      const batchVersionWrite = nextBatchVersionWrite(batchVersionVersion, uuidv7());
+      if (batchVersionWrite.op === "update") {
+        this.updateSingleton(batchVersionCol, batchVersionWrite.data);
       } else {
-        this.setSingleton(batchVersionCol, {
-          prevVersion: "",
-          version: newBatchVersion,
-        });
+        this.setSingleton(batchVersionCol, batchVersionWrite.data);
       }
 
       writer.commit();
@@ -489,17 +444,11 @@ export async function runTransaction(
       await batch.recordHistory(options);
 
       // Update batchVersion after all reads are done
-      const newBatchVersion = uuidv7();
-      if (batchVersionDoc) {
-        batch.updateSingleton(batchVersionCol, {
-          prevVersion: batchVersionDoc.version,
-          version: newBatchVersion,
-        });
+      const batchVersionWrite = nextBatchVersionWrite(batchVersionDoc?.version, uuidv7());
+      if (batchVersionWrite.op === "update") {
+        batch.updateSingleton(batchVersionCol, batchVersionWrite.data);
       } else {
-        batch.setSingleton(batchVersionCol, {
-          prevVersion: "",
-          version: newBatchVersion,
-        });
+        batch.setSingleton(batchVersionCol, batchVersionWrite.data);
       }
       committedBatch = batch;
     });

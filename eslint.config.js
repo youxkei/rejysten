@@ -87,4 +87,17 @@ export default tseslint.config(
       "@typescript-eslint/no-unnecessary-condition": "off",
     },
   },
+  {
+    // src/writeContract is bundled by both the Web app (via `@/`) and
+    // Cloudflare Pages Functions (which relative-import it and cannot resolve
+    // the `@/` alias). Intra-folder imports must therefore be relative so both
+    // bundlers can follow them.
+    ...config,
+    files: ["src/writeContract/**/*.ts"],
+    ignores: ["**/*.test.{ts,tsx}"],
+    rules: {
+      ...config.rules,
+      "no-relative-import-paths/no-relative-import-paths": "off",
+    },
+  },
 );

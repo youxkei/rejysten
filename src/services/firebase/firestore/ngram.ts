@@ -2,9 +2,9 @@ import { doc } from "firebase/firestore";
 
 import { type FirestoreService, type SchemaCollectionReference, getCollection } from ".";
 import { type OverlayMutation } from "@/firestore/optimisticOverlay";
-import { analyzeTextForNgrams } from "@/ngram";
 import { type Schema } from "@/services/firebase/firestore/schema";
 import { type Writer } from "@/services/firebase/firestore/writer";
+import { buildNgramDoc, encodeNgramKeyForFirestore, encodeNgramMapForFirestore } from "@/writeContract/ngramDoc";
 
 declare module "@/services/firebase/firestore/schema" {
   interface Schema {
@@ -17,19 +17,12 @@ declare module "@/services/firebase/firestore/schema" {
   }
 }
 
+// The ngram encoding helpers now live in the firebase-free writeContract module
+// so the Worker can share them; re-exported here to keep every existing
+// importer of this path unchanged.
+export { encodeNgramKeyForFirestore, encodeNgramMapForFirestore };
+
 export const collectionNgramConfig: Partial<Record<string, true>> = {};
-
-export function encodeNgramKeyForFirestore(ngram: string): string {
-  return encodeURIComponent(ngram).replace(/_/g, "_5F").replace(/\./g, "_2E").replace(/%/g, "_");
-}
-
-export function encodeNgramMapForFirestore(ngramMap: Partial<Record<string, true>>): Partial<Record<string, true>> {
-  const encoded: Partial<Record<string, true>> = {};
-  for (const key of Object.keys(ngramMap)) {
-    encoded[encodeNgramKeyForFirestore(key)] = true;
-  }
-  return encoded;
-}
 
 export function setNgram<C extends keyof Schema>(
   service: FirestoreService,
@@ -43,30 +36,30 @@ export function setNgram<C extends keyof Schema>(
 
   const colId = col.id;
   if (colId === "ngrams") return;
-  if (text === "") {
-    deleteNgram(service, writer, col, id, recordOverlay);
+
+  const ngramsCol = getCollection(service, "ngrams");
+  const built = buildNgramDoc(colId, id, text);
+
+  if (built.action === "delete") {
+    writer.delete(doc(ngramsCol, built.ngramId));
+    recordOverlay?.({
+      type: "delete",
+      batchId: "",
+      collection: "ngrams",
+      id: built.ngramId,
+      path: `ngrams/${built.ngramId}`,
+    });
     return;
   }
 
-  const ngramsCol = getCollection(service, "ngrams");
-  const { normalizedText, ngramMap } = analyzeTextForNgrams(text);
-  const ngramId = `${id}${col.id}`;
-  const data = {
-    collection: colId,
-    text,
-    normalizedText,
-    ngramMap: encodeNgramMapForFirestore(ngramMap),
-  };
-
-  writer.set(doc(ngramsCol, ngramId), data);
-
+  writer.set(doc(ngramsCol, built.ngramId), built.data);
   recordOverlay?.({
     type: "set",
     batchId: "",
     collection: "ngrams",
-    id: ngramId,
-    path: `ngrams/${ngramId}`,
-    data,
+    id: built.ngramId,
+    path: `ngrams/${built.ngramId}`,
+    data: built.data,
   });
 }
 
