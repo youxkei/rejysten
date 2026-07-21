@@ -214,8 +214,7 @@ export async function handleShare(
   const category = isRocketNow ? "デリバリー注文" : isReadingShare ? "読書" : "ネットサーフィン";
   // デリバリー注文 is a one-off event, so it is not mutually exclusive with the others (it
   // ends nobody). Only 読書 and ネットサーフィン end each other.
-  const otherCategory =
-    category === "読書" ? "ネットサーフィン" : category === "ネットサーフィン" ? "読書" : null;
+  const otherCategory = category === "読書" ? "ネットサーフィン" : category === "ネットサーフィン" ? "読書" : null;
   const isX = hostname === "x.com" || hostname.endsWith(".x.com");
 
   const lifeLogsCol = getCollection(firestore, "lifeLogs");

@@ -331,11 +331,7 @@ export async function setupLifeLogsTest(testId: string, db: DatabaseInfo, option
                     // Seed tree-node ngram docs (must NOT appear as completion candidates).
                     const completionTreeNodeCandidates = options?.completionTreeNodeCandidates ?? [];
                     completionTreeNodeCandidates.forEach((text) => {
-                      seedNgram(
-                        `${uuidV7FormFromMs(recentMs, ngramUniq++)}lifeLogTreeNodes`,
-                        "lifeLogTreeNodes",
-                        text,
-                      );
+                      seedNgram(`${uuidV7FormFromMs(recentMs, ngramUniq++)}lifeLogTreeNodes`, "lifeLogTreeNodes", text);
                     });
 
                     await batch.commit();
