@@ -1,3 +1,4 @@
+- this is a monorepo: new subprojects (e.g. the Wear OS / Android app, mobile app) live in THIS repo, not a separate one — never propose splitting them out
 - use pnpm instead of npm
 - use `git <subcomand>` naturally
 - when you `git commit`, first check `git diff` and `git diff --cached`

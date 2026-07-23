@@ -6,7 +6,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Thin HTTPS client for the lifeLog write endpoints (functions/api/lifelog/*).
+ * Thin HTTPS client for the lifeLog write endpoints under functions/api/lifelog/.
  *
  * By design this holds ZERO write-contract logic: it forwards a Firebase ID
  * token as a Bearer header and posts the command; the Cloudflare Pages Function

@@ -1,0 +1,43 @@
+[versions]
+agp = "9.3.0"
+kotlin = "2.3.20"                 # also drives org.jetbrains.kotlin.plugin.compose
+wearCompose = "1.6.2"            # androidx.wear.compose:* (material3 / foundation / navigation)
+composeBom = "2026.06.01"        # pins Compose runtime/ui/foundation -> 1.11.4
+androidxActivity = "1.13.0"
+coreKtx = "1.19.0"
+lifecycleRuntimeKtx = "2.11.0"
+coroutines = "1.11.0"
+playServicesWearable = "20.0.1"
+
+# Phone-auth coordinates for the later step (not wired yet):
+# firebaseBom = "34.16.0"        # com.google.firebase:firebase-bom
+# credentials = "1.6.0"          # androidx.credentials:* (Credential Manager)
+# googleid = "1.2.0"             # com.google.android.libraries.identity.googleid:googleid
+# googleServices = "4.5.0"       # com.google.gms.google-services Gradle plugin
+
+[libraries]
+# Wear Compose (watch UI)
+androidx-wear-compose-material3 = { group = "androidx.wear.compose", name = "compose-material3", version.ref = "wearCompose" }
+androidx-wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wearCompose" }
+androidx-wear-compose-navigation = { group = "androidx.wear.compose", name = "compose-navigation", version.ref = "wearCompose" }
+
+# Compose BOM + BOM-managed members (no explicit versions)
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
+
+# Core / lifecycle / activity / coroutines
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivity" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+
+# Data Layer (phone <-> watch token hand-off; used when auth is wired)
+play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

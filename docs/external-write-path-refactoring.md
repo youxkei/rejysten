@@ -420,7 +420,7 @@ Cloudflare Pages Functions は既にこの repo で稼働中（`functions/api/`�
 - **#2 REST トランスポート**: `src/writeContract/rest/{types,errors,value,write,transaction}.ts`。emulator round-trip テスト `rest/roundtrip.test.ts`。
 - **#3 ドメイン操作 ＋ 差分ゲート**: `src/writeContract/ops/{shared,start,stop,switch,switchCandidates,http}.ts`。テストは 2 層: `ops/ops.test.ts`（REST 経路の契約 byte を spec どおり固定）＋ `ops/diffGate.test.ts`（Web `runBatch` と REST を突合、stop の inverse `endAt`＝§リスク #3 を含む）。
 - **#4 HTTP エンドポイント**: `functions/api/lifelog/{start,stop,switch,switch-candidates}.ts`（薄いラッパ）。`functions/api/lifelog/lifelog.test.ts`（Workers プール、`fetch` スタブ、401/400/404/409/503/200 の HTTP 面）。
-- **#5 Wear OS クライアント**: `wear/LifeLogClient.kt` ＋ `wear/README.md`。**このリポジトリに Android/Gradle プロジェクト・ツールチェインが無いためビルド/テスト未実施の骨組み**。実運用には別途 Wear OS アプリ（Gradle + Compose for Wear）と Firebase 設定が要る。
+- **#5 Wear OS クライアント**: `android/` に Nix devShell（gradle_9 + JDK25 + androidenv SDK）と Gradle プロジェクトを新設。`android/wear`（`LifeLogClient.kt` ＋ Compose for Wear の Start/Stop スケルトン）と `android/mobile`（プレースホルダ）が `gradle :wear:assembleDebug` でビルド green、Wear OS 6 エミュレータへ `installDebug`・起動まで実証済み。残: スマホ側 Firebase Auth＋Data Layer でのトークン受け渡し、switch 候補 UI、エンドポイントの Cloudflare Pages デプロイ。詳細は `android/README.md`。
 
 ### 共有モジュールの import 規約（実装で確定）
 

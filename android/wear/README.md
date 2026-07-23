@@ -7,12 +7,16 @@ carries **zero** contract logic — see `docs/external-write-path-refactoring.md
 
 ## Status
 
-`LifeLogClient.kt` is a self-contained client class, but **this repo has no
-Android/Gradle project and no Android toolchain**, so it is not built or tested
-here. To ship it you need a Wear OS app project (Gradle + Compose for Wear),
-a Firebase `google-services.json`, and Google Sign-In wired to the same Google
-account (uid) the Web app uses. Drop `LifeLogClient.kt` into that project's
-source set (adjust the package) and wire the token provider as below.
+This is now a real Gradle module — `LifeLogClient.kt` plus a Compose-for-Wear
+`MainActivity` (Start/Stop skeleton) — that builds via the Nix toolchain in
+`../` (`gradle :wear:assembleDebug`, verified green). See `../README.md` for the
+toolchain and version pins.
+
+Still missing before it is usable on a watch: the ID-token hand-off (the watch is
+not signed in — the paired phone mints the Firebase ID token and delivers it over
+the Wear Data Layer; wire that into `idTokenProvider`) and a switch-candidate picker
+UI. (The build → install → launch loop on a Wear OS emulator is already verified.)
+The `mobile/` module is where the phone's Firebase Auth / Google Sign-In will live.
 
 ## Endpoints
 
@@ -32,30 +36,24 @@ introduced. Responses are JSON.
 - **switch**: stops the open entry (if any) and starts a new one carrying `sourceId`'s text — one commit.
 - **switch-candidates**: recent closed, non-empty entries deduped by text (newest kept); pick a `sourceId` from these.
 
-## Wiring the ID token
+## Wiring the ID token (login is on the phone)
 
-`LifeLogClient` takes an `idTokenProvider: () -> String`. Wire it to FirebaseAuth
-(the call blocks, so the whole client must run off the main thread):
+The watch is **not** signed into Firebase. Login happens on the paired phone
+(`mobile/`): it signs in with Firebase Auth, and delivers a fresh ID token to the
+watch over the Wear Data Layer (`MessageClient`/`DataClient`, `play-services-wearable`).
+So `idTokenProvider: () -> String` must return the phone-delivered token from a
+local cache, not call `FirebaseAuth` on the watch.
 
-```kotlin
-import com.google.android.gms.tasks.Tasks
-import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+Two things this implies, still to build:
 
-val client = LifeLogClient(
-    baseUrl = "https://<your-pages-domain>",
-    idTokenProvider = {
-        val user = FirebaseAuth.getInstance().currentUser
-            ?: throw IllegalStateException("not signed in")
-        Tasks.await(user.getIdToken(false)).token
-            ?: throw IllegalStateException("no id token")
-    },
-)
+- **Token refresh:** Firebase ID tokens expire after ~1h and watch use is sporadic,
+  so the phone must re-push (on wake / periodically) and/or the watch must request a
+  fresh one on demand. `LifeLogClient` currently returns `Rejected(401)` without
+  retry — add a "on 401 → refresh token → retry once" path here.
+- **Off the main thread:** the calls block, so invoke from a coroutine:
+  `withContext(Dispatchers.IO) { client.start() }` (see `MainActivity.kt`).
 
-// From a coroutine:
-val outcome = withContext(Dispatchers.IO) { client.start() }
-```
+`baseUrl` is the Cloudflare Pages deployment of `functions/api/lifelog/*`.
 
 ## CORS
 
