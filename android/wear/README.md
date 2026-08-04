@@ -12,11 +12,18 @@ This is now a real Gradle module — `LifeLogClient.kt` plus a Compose-for-Wear
 `../` (`gradle :wear:assembleDebug`, verified green). See `../README.md` for the
 toolchain and version pins.
 
-Still missing before it is usable on a watch: the ID-token hand-off (the watch is
-not signed in — the paired phone mints the Firebase ID token and delivers it over
-the Wear Data Layer; wire that into `idTokenProvider`) and a switch-candidate picker
-UI. (The build → install → launch loop on a Wear OS emulator is already verified.)
-The `mobile/` module is where the phone's Firebase Auth / Google Sign-In will live.
+The ID-token hand-off is wired: `TokenStore` holds the token the paired phone
+publishes over the Wear Data Layer (`TokenListenerService` receives it) and asks for
+a fresher one on demand, and `LifeLogClient` retries a 401 once against it. Verified
+between a phone and a Wear emulator — see `../../docs/wear-os-next-steps.md`.
+
+**The watch APK deliberately carries the phone's `applicationId`
+(`com.rejysten.mobile`)**: the Data Layer only connects apps whose applicationId and
+signature match, and with two different ids the DataItem never arrives and no error
+is logged. The Kotlin namespace stays `com.rejysten.wear`.
+
+Still missing before it is usable on a watch: a switch-candidate picker UI, and a
+real `baseUrl` (the endpoints are not deployed yet, so Start/Stop cannot succeed).
 
 ## Endpoints
 
@@ -41,17 +48,23 @@ introduced. Responses are JSON.
 The watch is **not** signed into Firebase. Login happens on the paired phone
 (`mobile/`): it signs in with Firebase Auth, and delivers a fresh ID token to the
 watch over the Wear Data Layer (`MessageClient`/`DataClient`, `play-services-wearable`).
-So `idTokenProvider: () -> String` must return the phone-delivered token from a
-local cache, not call `FirebaseAuth` on the watch.
+So `idTokenProvider: (forceRefresh: Boolean) -> String?` reads the phone-delivered
+token from `TokenStore` rather than calling `FirebaseAuth` on the watch, and returns
+null when the phone has never delivered one (`LifeLogClient` then reports
+`Outcome.Unauthenticated` without issuing a request).
 
-Two things this implies, still to build:
+How the two halves work:
 
-- **Token refresh:** Firebase ID tokens expire after ~1h and watch use is sporadic,
-  so the phone must re-push (on wake / periodically) and/or the watch must request a
-  fresh one on demand. `LifeLogClient` currently returns `Rejected(401)` without
-  retry — add a "on 401 → refresh token → retry once" path here.
-- **Off the main thread:** the calls block, so invoke from a coroutine:
-  `withContext(Dispatchers.IO) { client.start() }` (see `MainActivity.kt`).
+- **Delivery:** the phone publishes the token as a `DataClient` item at `/id-token`
+  (retained, so a watch that was asleep still gets the latest one). `TokenStore`
+  persists it, so a cold start does not have to wait on the Data Layer.
+- **Refresh:** tokens expire after ~1h and watch use is sporadic, so `TokenStore`
+  can send `/request-id-token` to the phone, which mints a fresh token and
+  re-publishes it. `LifeLogClient` drives this on a 401 and retries once — but only
+  if the refreshed token actually differs, since retrying an unchanged one just
+  fails again.
+- **Off the main thread:** the calls block (and so does the refresh wait), so invoke
+  from a coroutine: `withContext(Dispatchers.IO) { client.start() }`.
 
 `baseUrl` is the Cloudflare Pages deployment of `functions/api/lifelog/*`.
 

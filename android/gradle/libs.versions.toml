@@ -8,6 +8,8 @@ coreKtx = "1.19.0"
 lifecycleRuntimeKtx = "2.11.0"
 coroutines = "1.11.0"
 playServicesWearable = "20.0.1"
+junit = "4.13.2"
+orgJson = "20250107"                # real org.json for JVM unit tests (see below)
 
 # Phone-auth coordinates (mobile module: Credential Manager -> Firebase Auth)
 firebaseBom = "34.16.0"          # com.google.firebase:firebase-bom
@@ -34,8 +36,13 @@ androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecyc
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivity" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 
-# Data Layer (phone <-> watch token hand-off; used when auth is wired)
+# Data Layer (phone <-> watch token hand-off)
 play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
+
+# JVM unit tests. android.jar stubs org.json with methods that throw, so a unit
+# test touching JSON needs a real implementation on the test classpath.
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
 
 # Phone auth (mobile module): Credential Manager mints a Google ID token that is
 # exchanged for a Firebase credential; firebase-auth is BOM-managed (no version).

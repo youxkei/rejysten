@@ -17,16 +17,18 @@ import kotlinx.coroutines.launch
  * Companion phone app: signs into Firebase with Google and surfaces the ID token.
  *
  * The UI is a deliberately bare test harness for the auth flow ([GoogleSignInController]);
- * pushing the token to the watch over the Wear Data Layer is the next step. The
- * token is shown by length/prefix only, never in full.
+ * publishing it to the watch over the Wear Data Layer ([TokenSync]). The token is
+ * shown by length/prefix only, never in full.
  */
 class MainActivity : ComponentActivity() {
     private lateinit var controller: GoogleSignInController
+    private lateinit var tokenSync: TokenSync
     private lateinit var status: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         controller = GoogleSignInController(getString(R.string.default_web_client_id))
+        tokenSync = TokenSync(applicationContext, controller)
 
         status = TextView(this)
         val content = LinearLayout(this).apply {
@@ -41,6 +43,10 @@ class MainActivity : ComponentActivity() {
             addView(Button(this@MainActivity).apply {
                 text = "Show ID token"
                 setOnClickListener { showToken() }
+            })
+            addView(Button(this@MainActivity).apply {
+                text = "Push token to watch"
+                setOnClickListener { pushToken() }
             })
             addView(Button(this@MainActivity).apply {
                 text = "Sign out"
@@ -71,7 +77,12 @@ class MainActivity : ComponentActivity() {
         status.text = "signing in…"
         lifecycleScope.launch {
             status.text = when (val result = controller.signIn(this@MainActivity)) {
-                is GoogleSignInController.SignInResult.Success -> "signed in: ${describe(result.user)}"
+                is GoogleSignInController.SignInResult.Success -> {
+                    // Push immediately: the watch cannot act until it holds a token, and
+                    // the user has no reason to open the phone app again just for that.
+                    val pushed = runCatching { tokenSync.push() }.getOrDefault(false)
+                    "signed in: ${describe(result.user)}${if (pushed) " (token pushed)" else " (push failed)"}"
+                }
                 is GoogleSignInController.SignInResult.Failure -> "sign-in failed: ${result.message}"
             }
         }
@@ -80,6 +91,17 @@ class MainActivity : ComponentActivity() {
     // The uid is shown because firestore.rules gates on one hard-coded uid: a phone
     // signed into the wrong Google account authenticates fine yet is denied every doc.
     private fun describe(user: FirebaseUser): String = "${user.email ?: "(no email)"} uid=${user.uid}"
+
+    private fun pushToken() {
+        status.text = "pushing…"
+        lifecycleScope.launch {
+            status.text = try {
+                if (tokenSync.push()) "pushed token to watch" else "not signed in"
+            } catch (t: Throwable) {
+                "push failed: ${t.message}"
+            }
+        }
+    }
 
     private fun showToken() {
         lifecycleScope.launch {

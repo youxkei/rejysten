@@ -10,7 +10,10 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.rejysten.wear"
+        // The Wear Data Layer only connects apps that share an applicationId (and
+        // signing key), so the watch APK must carry the phone's id even though its
+        // Kotlin package / namespace stays com.rejysten.wear.
+        applicationId = "com.rejysten.mobile"
         minSdk = 30
         targetSdk = 36
         versionCode = 1
@@ -43,5 +46,8 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.play.services.wearable)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    testImplementation(libs.junit)
+    testImplementation(libs.org.json)
 }

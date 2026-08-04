@@ -66,12 +66,21 @@ Firebase Auth で Web と同一 Google アカウント（uid `XoVR64j2pfgnlX8L05
   - 補助: `androidx.activity:activity-ktx`・`kotlinx-coroutines-play-services`（Task→coroutine の `.await()`）
 - **組織メモ**: Credential Manager / googleid が Mercari で未使用なら、利用前に社内 External Service Review の要否を確認（Firebase 自体は Web アプリで使用中）。
 
-### 3. スマホ⇄時計のトークン受け渡し（Wear Data Layer）
-- スマホが ID トークンを `MessageClient`/`DataClient`（`com.google.android.gms:play-services-wearable:20.0.1`、catalog にコメントで用意済み）で時計へ push。
-- **トークン寿命は約1時間**・時計操作は散発的なので、スマホが定期/起床時に再 push、または時計が必要時に pull する仕組みが要る。
-- 時計側 `LifeLogClient`:
-  - `idTokenProvider` を「スマホ由来のキャッシュ済みトークンを返す」実装に接続（現在 `TODO()`）。
-  - **401 → トークン再取得 → 1回リトライ**を追加（現状は `Rejected(401)` を返すだけ）。エンドポイントは期限切れ 401 を伝播する設計。
+### 3. スマホ⇄時計のトークン受け渡し（Wear Data Layer）【実装済み・両エミュレータで検証済み】
+
+- スマホ `TokenSync` が ID トークンを `DataClient` の `/id-token` に publish（`MessageClient` ではなく `DataClient` なのは保持されるため。時計が寝ていても再接続時に最新を受け取れる）。**同一 payload の put は破棄される**ので `refreshedAt` を必ず変える。
+- 時計 `TokenListenerService`（`DATA_CHANGED`）が受け取り `TokenStore` が SharedPreferences に永続化。
+- 時計 `TokenStore.requestFresh()` が `MessageClient` で `/request-id-token` を全ノードへ送り、スマホ `TokenRequestService` が `forceRefresh=true` で新トークンを publish。時計は変化をブロッキング待ち（`ReentrantLock`＋`Condition`、既定8秒）。
+- `LifeLogClient` は `idTokenProvider: (forceRefresh: Boolean) -> String?` になり、**401 → 再取得 → 1回だけリトライ**。同じトークンが返った場合・取得できない場合は無駄打ちせず 401 を返す。トークン未配信時は `Outcome.Unauthenticated`（リクエストを投げない）。
+
+**⚠️ 重大な制約（実験で確定）**: **Wear Data Layer は applicationId が一致するアプリ間しか繋がない**（署名も一致が必要）。`com.rejysten.mobile` と `com.rejysten.wear` では DataItem が一切届かず、`onDataChanged` が発火しない（GMS の WearableService にバインドはされるのでログにエラーも出ない＝原因が見えにくい）。**そのため `wear` の `applicationId` を `com.rejysten.mobile` に変更した**（Kotlin の namespace は `com.rejysten.wear` のまま）。両方を中立な id（例 `com.rejysten`）に改名する案は Firebase のアプリ再登録が要るため未実施。
+
+**検証済み**（phone AVD ＋ wear6 をペアリングした状態）:
+- スマホで「Push token to watch」→ 時計の「Token」で `len=1145` を確認。
+- 時計の「Refresh」→ 指紋が `fp=362366216` → `fp=648714234` に変化。＝ 要求→スマホが新規発行→配信の往復が動作（DataItem 再配信では指紋は変わらない）。
+- `LifeLogClient` の 401 リトライとパースは **JVM ユニットテスト13件**でカバー（`gradle :wear:testDebugUnitTest`）。
+
+**未検証**: 実エンドポイントに対する 401 の実挙動（step 1 のデプロイ待ち。`baseUrl` が仮値のため Start/Stop はまだ通らない）。
 
 ### 4. 時計 UI の作り込み（`wear`）
 - `baseUrl` を本番値に。
@@ -83,7 +92,10 @@ Firebase Auth で Web と同一 Google アカウント（uid `XoVR64j2pfgnlX8L05
   - **`hw.keyboard=yes` に変更済み**。`avdmanager` 作成の AVD は既定 `no` で、その状態ではホストの物理キーボード入力が端末に届かない（ソフトキーボードのマウス操作のみ）。変更は再起動後に有効で、`dumpsys input` に `Device 0: qwerty2 / KeyboardType: 2` が出れば効いている。
   - アカウント追加画面へは `adb shell am start -a android.settings.ADD_ACCOUNT_SETTINGS --esa account_types com.google` で直接飛べる。エミュレータには SIM が無いので電話番号照合の画面は **SKIP** で回避する（NEXT だと失敗する）。
   - もし将来 Play Store アプリが要るなら `phone.avd/config.ini` の `PlayStore.enabled=yes`（起動非互換なら戻す）。
-- 完全な E2E（スマホログイン→時計操作）は、スマホ・Wear 両 AVD ＋ Studio 無しの手動ペアリング（コンパニオンアプリ＋`adb forward tcp:5601 tcp:5601`）。
+- **ペアリング手順（実証済み・Studio 不要）**:
+  1. スマホ AVD の Play Store で「Wear OS by Google Smartwatch」を入れる（`adb shell am start -a android.intent.action.VIEW -d "market://details?id=com.google.android.wearable.app"` で直接開ける）。`PlayStore.enabled=no` でも Play Store は使える。
+  2. **`adb -s <phone> forward tcp:5601 tcp:5601`** ← 向きに注意。listen しているのは**スマホ側のコンパニオンアプリ**で、時計エミュレータがホストの 5601 へ繋ぎに来る。時計側に `forward` を張るとホストの 5601 を奪って永久に "Waiting for emulator to connect…" になる。
+  3. コンパニオンアプリの **⋮（More options）** からエミュレータ用ペアリングを開始。Bluetooth 検索画面（"Choose a device to be managed by…"）はキャンセルして良い。成功するとスマホに `wear6` / "Connected to emulator" が出る。
 - 時計アプリ単体の動作確認だけなら Wear AVD で足りる。
 
 ## 環境クイックリファレンス
@@ -96,7 +108,8 @@ Firebase Auth で Web と同一 Google アカウント（uid `XoVR64j2pfgnlX8L05
 gradle :wear:assembleDebug
 export ADB_SERVER_SOCKET=tcp:localhost:5037   # Windows の adb サーバへ（mirrored networking）
 gradle :wear:installDebug
-adb -e shell am start -n com.rejysten.wear/.MainActivity   # 時計上でアプリ起動
+# 時計アプリは applicationId がスマホ側と共通（Data Layer の要件）なので component 名は下記
+adb -e shell am start -n com.rejysten.mobile/com.rejysten.wear.MainActivity
 
 # エミュレータ起動（Windows 側。ANDROID_SDK_ROOT を設定して）: emulator -avd wear6
 #   AVD: wear6 (Wear OS 6, API 36, x86_64) / phone (pixel_7, API 36, google_apis_playstore, x86_64)

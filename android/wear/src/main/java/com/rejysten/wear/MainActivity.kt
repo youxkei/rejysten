@@ -17,6 +17,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.MaterialTheme
@@ -40,13 +41,17 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun WearApp() {
+    val context = LocalContext.current
+    val store = remember { TokenStore.get(context) }
     val client = remember {
         LifeLogClient(
             // TODO: the Cloudflare Pages domain hosting functions/api/lifelog/*.
             baseUrl = "https://rejysten.example",
-            // TODO: the watch is not signed in — the paired phone mints the Firebase
-            // ID token and delivers it over the Wear Data Layer. Wire that here.
-            idTokenProvider = { TODO("provide phone-delivered Firebase ID token") },
+            idTokenProvider = { forceRefresh ->
+                // A cache miss is also a reason to ask the phone: the watch app may
+                // never have received a push (fresh install, cleared data).
+                if (forceRefresh) store.requestFresh() else store.cached() ?: store.requestFresh()
+            },
         )
     }
     val scope = rememberCoroutineScope()
@@ -64,9 +69,31 @@ private fun WearApp() {
             Text(text = status)
             Button(onClick = { dispatch(scope, { client.start() }) { status = it } }) { Text("Start") }
             Button(onClick = { dispatch(scope, { client.stop() }) { status = it } }) { Text("Stop") }
+            Button(
+                onClick = {
+                    scope.launch {
+                        val token = withContext(Dispatchers.IO) { store.cached() ?: store.requestFresh() }
+                        status = describeToken(token)
+                    }
+                },
+            ) { Text("Token") }
+            Button(
+                onClick = {
+                    scope.launch {
+                        val token = withContext(Dispatchers.IO) { store.requestFresh() }
+                        status = describeToken(token)
+                    }
+                },
+            ) { Text("Refresh") }
         }
     }
 }
+
+// Identified by a fingerprint rather than its content: seeing that a refresh yielded
+// a *different* token is the only way to tell a fresh push from a replayed DataItem,
+// and a credential must not be rendered on screen to do it.
+private fun describeToken(token: String?): String =
+    if (token == null) "no token from phone" else "len=${token.length} fp=${token.hashCode()}"
 
 private fun dispatch(
     scope: CoroutineScope,

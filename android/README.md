@@ -82,7 +82,9 @@ Then from the WSL2 devShell, build and install:
 export ADB_SERVER_SOCKET=tcp:localhost:5037   # WSL2 adb -> Windows adb server
 adb devices                                   # emulator-5554 shows up
 gradle :wear:installDebug
-adb -e shell am start -n com.rejysten.wear/.MainActivity   # launch the app
+# the watch APK carries the phone's applicationId (the Data Layer requires it), so
+# the component is <phone id>/<wear namespace>.MainActivity:
+adb -e shell am start -n com.rejysten.mobile/com.rejysten.wear.MainActivity
 ```
 
 Notes:
