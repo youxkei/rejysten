@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "894303897507",
+    "project_id": "rejysten3-dev",
+    "storage_bucket": "rejysten3-dev.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:894303897507:android:1268aefb379ace292efc16",
+        "android_client_info": {
+          "package_name": "com.rejysten.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "894303897507-slfsq9l1ebj3ge5pi4df4p67vhsv9obv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rejysten.mobile",
+            "certificate_hash": "0d922730e7c4b01ef469b0c2a94c55bdd7f238e0"
+          }
+        },
+        {
+          "client_id": "894303897507-t8t90evamjpm434guhp7jl0qo9lbirjd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBNuh00kLojWVoJlf9HLu4y-NHZDWrnzNw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "894303897507-t8t90evamjpm434guhp7jl0qo9lbirjd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,6 +1,9 @@
 plugins {
     // AGP 9 has built-in Kotlin support; no org.jetbrains.kotlin.android needed.
     alias(libs.plugins.android.application)
+    // Reads google-services.json and generates R.string.default_web_client_id
+    // (the client_type 3 / Web OAuth client) used as the Credential Manager serverClientId.
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -28,4 +31,14 @@ android {
 }
 
 dependencies {
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.play.services)
 }

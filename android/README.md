@@ -49,28 +49,65 @@ gradle :mobile:assembleDebug
   metadata off the read-only `/nix/store`.
 - `JAVA_HOME` is set to the devShell JDK so `gradle` and `./gradlew` agree on it.
 
-## Emulator (Windows side)
+## Emulator (Windows side, no Android Studio)
 
-`.wslconfig` already sets `networkingMode=mirrored`, so Windows and WSL2 share
-`localhost`. Install Android Studio on Windows, create a Wear OS AVD (and a phone
-AVD if you want to exercise the phone-side login end to end — pair them with
-Studio's Wear OS pairing assistant), then from this shell:
+The emulator runs natively on Windows (WHPX acceleration is already available via
+WSL2's Hyper-V). `.wslconfig` sets `networkingMode=mirrored`, so Windows and WSL2
+share `localhost` and adb bridges cleanly. Set it up with winget + Google's
+`android` CLI — no full IDE:
 
-```sh
-export ADB_SERVER_SOCKET=tcp:localhost:5037   # talk to Windows' adb server
-adb devices                                   # the emulator shows up
-gradle :wear:installDebug
+```powershell
+# On Windows (PowerShell), one-time. android CLI installs into %LOCALAPPDATA%\Android\Sdk
+winget install Google.AndroidCLI Google.PlatformTools
+android sdk install platform-tools emulator system-images/android-36/android-wear-signed/x86_64
+# put these on PATH (or use full paths): %LOCALAPPDATA%\Android\Sdk\platform-tools,
+#   %LOCALAPPDATA%\Android\Sdk\emulator, %LOCALAPPDATA%\Android\Sdk\cmdline-tools\<ver>\bin
+# create the Wear AVD (avdmanager needs a JDK 17+ on PATH):
+avdmanager create avd -n wear6 -k "system-images;android-36;android-wear-signed;x86_64"
+# and a phone AVD for the companion app's Google sign-in (needs a Play Services image):
+android sdk install system-images/android-36/google_apis_playstore/x86_64
+avdmanager create avd -n phone -k "system-images;android-36;google_apis_playstore;x86_64" -d pixel_7
 ```
 
-If adb reports a client/server version mismatch, align the platform-tools version
-on both sides (or fall back to `adb connect localhost:5555`).
+Launch it (`ANDROID_SDK_ROOT` **must** be set or the emulator can't find the AVD):
+
+```powershell
+set ANDROID_SDK_ROOT=%LOCALAPPDATA%\Android\Sdk
+emulator -avd wear6
+```
+
+Then from the WSL2 devShell, build and install:
+
+```sh
+export ADB_SERVER_SOCKET=tcp:localhost:5037   # WSL2 adb -> Windows adb server
+adb devices                                   # emulator-5554 shows up
+gradle :wear:installDebug
+adb -e shell am start -n com.rejysten.wear/.MainActivity   # launch the app
+```
+
+Notes:
+- The `android` CLI has no Wear device profile, so create the AVD with `avdmanager`.
+- `avdmanager` writes `hw.keyboard=no`, which drops the host keyboard: typing only
+  works through the on-screen keyboard until you set `hw.keyboard=yes` in
+  `%USERPROFILE%\.android\avd\<name>.avd\config.ini` and restart the emulator. It
+  also leaves `avd.id`/`avd.name` as `<build>` and a cramped 800M data partition.
+- The phone AVD needs a Google account added (Settings > Passwords and accounts, or
+  `adb shell am start -a android.settings.ADD_ACCOUNT_SETTINGS --esa account_types
+  com.google`) before the companion app can sign in. Skip the phone-number lookup —
+  the emulator has no SIM, so that path fails.
+- The emulator needs `platform-tools` **inside** the SDK (the winget PlatformTools
+  package is separate); `android sdk install platform-tools` covers it.
+- If adb reports a client/server version mismatch, align the platform-tools versions
+  on both sides (or fall back to `adb connect localhost:5555`).
 
 ## What is and isn't done
 
 - **Done:** Nix toolchain; buildable `wear` (Compose for Wear skeleton: Start/Stop
-  buttons driving `LifeLogClient`) and `mobile` (placeholder Activity) modules;
-  verified end to end — built in WSL2 and installed/launched on a Wear OS 6 emulator
-  on Windows via the adb bridge.
-- **Not done yet:** the phone-side Firebase Auth + delivering the ID token to the
-  watch over the Wear Data Layer; a real switch-candidate picker UI; deploying the
-  endpoints to Cloudflare Pages. See `wear/README.md`.
+  buttons driving `LifeLogClient`); `mobile` signs into Firebase with Google through
+  Credential Manager. Both verified end to end — built in WSL2 and installed on
+  Windows emulators via the adb bridge; the phone app reached a signed-in state whose
+  uid matches the one `firestore.rules` gates on, and returned an ID token.
+- **Not done yet:** delivering that ID token to the watch over the Wear Data Layer
+  (and the watch's 401-refresh-retry); a real switch-candidate picker UI; deploying
+  the endpoints to Cloudflare Pages, which is what fixes the watch's `baseUrl`. See
+  `wear/README.md`.

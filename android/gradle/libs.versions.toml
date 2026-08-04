@@ -9,11 +9,11 @@ lifecycleRuntimeKtx = "2.11.0"
 coroutines = "1.11.0"
 playServicesWearable = "20.0.1"
 
-# Phone-auth coordinates for the later step (not wired yet):
-# firebaseBom = "34.16.0"        # com.google.firebase:firebase-bom
-# credentials = "1.6.0"          # androidx.credentials:* (Credential Manager)
-# googleid = "1.2.0"             # com.google.android.libraries.identity.googleid:googleid
-# googleServices = "4.5.0"       # com.google.gms.google-services Gradle plugin
+# Phone-auth coordinates (mobile module: Credential Manager -> Firebase Auth)
+firebaseBom = "34.16.0"          # com.google.firebase:firebase-bom
+credentials = "1.6.0"            # androidx.credentials:* (Credential Manager)
+googleid = "1.2.0"               # com.google.android.libraries.identity.googleid:googleid
+googleServices = "4.5.0"         # com.google.gms.google-services Gradle plugin
 
 [libraries]
 # Wear Compose (watch UI)
@@ -37,7 +37,19 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 # Data Layer (phone <-> watch token hand-off; used when auth is wired)
 play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
 
+# Phone auth (mobile module): Credential Manager mints a Google ID token that is
+# exchanged for a Firebase credential; firebase-auth is BOM-managed (no version).
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
+androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
+androidx-credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
+googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
+androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "androidxActivity" }
+# .await() bridges Play Services Task<T> (FirebaseAuth / getIdToken) to coroutines.
+kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutines" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
