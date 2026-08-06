@@ -14,3 +14,6 @@ __screenshots__
 
 # Local OTLP proxy secrets for `wrangler pages dev` (see functions/api/traces.ts)
 .dev.vars
+
+# Local state `wrangler pages dev` writes next to the project
+/.wrangler

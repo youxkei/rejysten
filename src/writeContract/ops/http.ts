@@ -17,7 +17,10 @@ export function buildOpDeps(args: {
   now?: () => number;
 }): OpDeps {
   return {
-    fetch: args.fetch,
+    // Bound to the global scope: the transport calls this as `config.fetch(...)`,
+    // and the Workers runtime rejects its fetch when `this` is some other object
+    // ("Illegal invocation"). Node's fetch tolerates it, so only production broke.
+    fetch: args.fetch.bind(globalThis),
     baseUrl: buildBaseUrl(args.projectId, args.emulatorHost),
     projectId: args.projectId,
     authHeader: args.authHeader,
