@@ -36,11 +36,30 @@ Wear OS から lifeLog を操作する機能の続き。**この doc ＋ 2つの
 
 ## 次にやること（依存順）
 
-### 1. エンドポイントを Cloudflare Pages にデプロイ ＋ env 設定 【人間】
-- **リポジトリに wrangler 設定も CI も無い**（確認済み）。デプロイは Cloudflare Pages プロジェクトの **Git 連携**（接続ブランチへの push で自動デプロイ）で、repo 内からは辿れない。`functions/api/lifelog/*` は既にコミット済みなので、接続ブランチに入れば自動で乗る。
-- **Cloudflare Pages ダッシュボードで環境変数 `FIRESTORE_PROJECT_ID`（dev = `rejysten3-dev`）を設定**。これが唯一の新規設定。
+### 1. Cloudflare Pages の env 設定 ＋ dev 用プロジェクト作成 【人間】
+
+**この step は完了している。**
+
+| Pages プロジェクト | ドメイン | `FIRESTORE_PROJECT_ID` |
+|---|---|---|
+| `rejysten`（本番） | `rejysten.youxkei.dev` / `rejysten.youxkei.run` / `rejysten.pages.dev` | `rejysten3-prod` |
+| `rejysten-dev` | `rejysten-dev.pages.dev` | `rejysten3-dev` |
+
+両方とも Git 連携で `main` を production branch にしており、push すれば両方が自動更新される。dev は `https://rejysten-dev.pages.dev/api/lifelog/switch-candidates` が `401 unauthorized` を返す（＝ Function 稼働）ところまで確認済み。時計の debug ビルドはこの URL を指す。
+
+**env の設定は wrangler で完結する（ただし secret として）**: 平文の環境変数を設定するコマンドは wrangler に無く、`wrangler pages secret put <KEY> --project-name <project>` だけがある（値は stdin から。production 環境が対象）。この repo は既に `functions/api/traces.ts` が `env.OTLP_ENDPOINT`（秘密でない URL）を secret から読んでいるので、**秘密でない設定値を secret に置くのは既存の作法**。Functions からの読み方は平文変数と同じ。
+
+**注意: Pages は env 変更を新しいデプロイまで反映しない。** 本番の `FIRESTORE_PROJECT_ID` は既存デプロイの後に追加したので、**次の main への push でビルドされるまで本番のエンドポイントは動かない**。エンドポイントに無認証 GET を投げると `401` が返るが、これは env を読む前（`switch-candidates.ts:12` の Authorization チェック、`FIRESTORE_PROJECT_ID` 参照は15行目）なので、**401 は env 設定や疎通の証拠にならない**。
+
+**作成方法は後から変更できない**: Cloudflare のドキュメント（`pages/get-started/direct-upload/`）に *"If you choose Direct Upload, you cannot switch to Git integration later."* と明記されている。`wrangler pages project create` は Direct Upload 型を作るので、**Git 連携が必要ならダッシュボードの「既存の Git リポジトリをインポートする」から作る**しかない。dev プロジェクトはこの方法で作成した（ビルド設定は本番と同じ `pnpm run build` / `dist` / ルートディレクトリ空）。
+
+**ダッシュボードを開く際の注意**: 本番プロジェクトの設定画面には「名前変更」「削除」があり、しかも見出し（ビルド構成・変数とシークレット）が新規作成時に設定する項目と同じなので、**作成タブと並べると新規作成フォームに見える**。実際にこれで本番プロジェクトがリネームされる事故が起きた（`rejysten` → `rejysten-dev`、その後リネームで復旧）。設定値を参照したいだけなら `wrangler pages download config <project>` で取得すれば、本番の画面を開く必要はない。
+
+**なぜ別プロジェクトか**: Preview 環境で env を分ける手もあるが、preview を更新するには main 以外のブランチへ push が必要で、main 直作業のスタイルと噛み合わない。別プロジェクトなら main 直作業のまま dev/prod 両方が自動更新される。ビルドは push ごとに2回走るが無料枠（500/月）で足りる。
+**SPA は増やしても無害**: web の Firebase 設定はビルドに焼き込まれず、アプリ内で貼り付ける永続 state（`src/services/firebase/store.ts` の初期値は空）。だから dev デプロイの SPA が勝手に本番を向くことはない。
+
 - 認証は **Firebase ID トークンの pass-through**: Function は受け取った `Authorization: Bearer <idToken>` をそのまま Firestore REST に転送するだけ。**サービスアカウント鍵は不要**で、`firestore.rules` の uid ゲートがそのまま効く。
-- これで時計が指す**本番 baseUrl** が確定する（現在 `android/wear/src/main/java/com/rejysten/wear/MainActivity.kt` の `baseUrl` は仮値 `https://rejysten.example`）。
+- 時計の baseUrl は**ビルドタイプで切り替わる**（実装済み）: release = `https://rejysten.youxkei.dev`、debug = dev プロジェクト。dev URL が未確定の間は `https://rejysten.invalid`（**到達不能な既定値**にしてあるのは、設定漏れの debug ビルドが本番へ書き込む事故を防ぐため）。一時的な上書きは `gradle :wear:assembleDebug -PrejystenBaseUrl=https://…`。
 
 ### 2. スマホ側ログイン（`mobile` モジュール）
 Firebase Auth で Web と同一 Google アカウント（uid `XoVR64j2pfgnlX8L05kL5V96y8n1`）にサインインし、ID トークンを取得する。
@@ -80,11 +99,11 @@ Firebase Auth で Web と同一 Google アカウント（uid `XoVR64j2pfgnlX8L05
 - 時計の「Refresh」→ 指紋が `fp=362366216` → `fp=648714234` に変化。＝ 要求→スマホが新規発行→配信の往復が動作（DataItem 再配信では指紋は変わらない）。
 - `LifeLogClient` の 401 リトライとパースは **JVM ユニットテスト13件**でカバー（`gradle :wear:testDebugUnitTest`）。
 
-**未検証**: 実エンドポイントに対する 401 の実挙動（step 1 のデプロイ待ち。`baseUrl` が仮値のため Start/Stop はまだ通らない）。
+**未検証**: 実エンドポイントに対する 401 の実挙動（dev プロジェクトと env の設定待ち。debug の `BASE_URL` が到達不能な既定値のため Start/Stop はまだ通らない）。
 
 ### 4. 時計 UI の作り込み（`wear`）
-- `baseUrl` を本番値に。
-- **switch 候補ピッカー**を追加（`GET /api/lifelog/switch-candidates` の結果から `sourceId` を選ぶ）。現状は Start/Stop のみ。
+- baseUrl のビルドタイプ切り替えは実装済み（§1）。**dev プロジェクトの URL が決まったら `wear/build.gradle.kts` の debug 側に入れる**だけ。
+- **switch 候補ピッカー**を追加（`GET /api/lifelog/switch-candidates` の結果から `sourceId` を選ぶ）。現状は Start/Stop ＋ 検証用の Token/Refresh のみ。**エンドポイント非依存なので今すぐ着手できる**。
 
 ### 5. E2E テスト環境
 - **スマホ AVD `phone` を作成済み**（Windows 側 / pixel_7・API 36・`google_apis_playstore`・x86_64、`emulator -avd phone` で起動）。Wear AVD は `wear6`。

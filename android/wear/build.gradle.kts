@@ -22,6 +22,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {
@@ -30,8 +31,18 @@ android {
     }
 
     buildTypes {
+        // Endpoint host per build type, so a debug watch can never write to the live
+        // data: release points at the production Pages project, debug at the separate
+        // dev one (whose FIRESTORE_PROJECT_ID is rejysten3-dev). Override ad hoc with
+        // -PrejystenBaseUrl=https://… (e.g. a preview deployment or a local wrangler).
+        getByName("debug") {
+            val devBaseUrl = providers.gradleProperty("rejystenBaseUrl")
+                .getOrElse("https://rejysten-dev.pages.dev")
+            buildConfigField("String", "BASE_URL", "\"$devBaseUrl\"")
+        }
         getByName("release") {
             isMinifyEnabled = false
+            buildConfigField("String", "BASE_URL", "\"https://rejysten.youxkei.dev\"")
         }
     }
 }

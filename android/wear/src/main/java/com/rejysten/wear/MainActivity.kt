@@ -45,8 +45,8 @@ private fun WearApp() {
     val store = remember { TokenStore.get(context) }
     val client = remember {
         LifeLogClient(
-            // TODO: the Cloudflare Pages domain hosting functions/api/lifelog/*.
-            baseUrl = "https://rejysten.example",
+            // Per build type: prod on release, the dev Pages project on debug.
+            baseUrl = BuildConfig.BASE_URL,
             idTokenProvider = { forceRefresh ->
                 // A cache miss is also a reason to ask the phone: the watch app may
                 // never have received a push (fresh install, cleared data).
