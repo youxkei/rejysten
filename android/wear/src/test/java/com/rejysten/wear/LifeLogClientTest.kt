@@ -145,9 +145,11 @@ class LifeLogClientTest {
         val candidates = client(transport).switchCandidates()
 
         assertEquals(
-            listOf(
-                LifeLogClient.SwitchCandidate("a", "work"),
-                LifeLogClient.SwitchCandidate("b", "rest"),
+            LifeLogClient.CandidateList.Loaded(
+                listOf(
+                    LifeLogClient.SwitchCandidate("a", "work"),
+                    LifeLogClient.SwitchCandidate("b", "rest"),
+                ),
             ),
             candidates,
         )
@@ -156,9 +158,35 @@ class LifeLogClientTest {
     }
 
     @Test
-    fun `switch candidates come back empty when the endpoint rejects the request`() {
+    fun `having nothing to switch to is distinct from failing to ask`() {
+        val loaded = FakeTransport(200 to """{"ok":true,"candidates":[]}""")
+        val rejected = FakeTransport(503 to """{"ok":false,"reason":"contention"}""", 503 to "")
+
+        assertEquals(LifeLogClient.CandidateList.Loaded(emptyList()), client(loaded).switchCandidates())
+        assertEquals(
+            LifeLogClient.CandidateList.Rejected(503, "contention"),
+            client(rejected).switchCandidates(),
+        )
+    }
+
+    @Test
+    fun `switch candidates report the rejection when the refreshed token is still unauthorized`() {
         val transport = FakeTransport(401 to "", 401 to "")
 
-        assertEquals(emptyList<LifeLogClient.SwitchCandidate>(), client(transport).switchCandidates())
+        assertEquals(
+            LifeLogClient.CandidateList.Rejected(401, "error"),
+            client(transport).switchCandidates(),
+        )
+        assertEquals(2, transport.calls.size)
+    }
+
+    @Test
+    fun `switch candidates are not requested while the phone has delivered no token`() {
+        val transport = FakeTransport()
+
+        val candidates = client(transport, tokens = listOf(null)).switchCandidates()
+
+        assertEquals(LifeLogClient.CandidateList.Unauthenticated, candidates)
+        assertTrue(transport.calls.isEmpty())
     }
 }

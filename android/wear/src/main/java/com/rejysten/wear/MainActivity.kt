@@ -56,6 +56,7 @@ private fun WearApp() {
     }
     val scope = rememberCoroutineScope()
     var status by remember { mutableStateOf("ready") }
+    var picking by remember { mutableStateOf<List<LifeLogClient.SwitchCandidate>?>(null) }
 
     MaterialTheme {
         Column(
@@ -67,24 +68,64 @@ private fun WearApp() {
             verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
         ) {
             Text(text = status)
-            Button(onClick = { dispatch(scope, { client.start() }) { status = it } }) { Text("Start") }
-            Button(onClick = { dispatch(scope, { client.stop() }) { status = it } }) { Text("Stop") }
-            Button(
-                onClick = {
-                    scope.launch {
-                        val token = withContext(Dispatchers.IO) { store.cached() ?: store.requestFresh() }
-                        status = describeToken(token)
+            when (val candidates = picking) {
+                null -> {
+                    Button(onClick = { dispatch(scope, { client.start() }) { status = it } }) { Text("Start") }
+                    Button(onClick = { dispatch(scope, { client.stop() }) { status = it } }) { Text("Stop") }
+                    Button(
+                        onClick = {
+                            status = "loading…"
+                            scope.launch {
+                                // The client throws on transport failures (DNS, TLS, timeout),
+                                // and an uncaught one here takes the whole watch app down.
+                                val result = try {
+                                    withContext(Dispatchers.IO) { client.switchCandidates() }
+                                } catch (t: Throwable) {
+                                    status = "error: ${t.message}"
+                                    return@launch
+                                }
+                                when (result) {
+                                    is LifeLogClient.CandidateList.Loaded -> {
+                                        picking = result.candidates
+                                        status = if (result.candidates.isEmpty()) "nothing to switch to" else "pick one"
+                                    }
+                                    is LifeLogClient.CandidateList.Rejected ->
+                                        status = "candidates rejected: ${result.status} ${result.reason}"
+                                    LifeLogClient.CandidateList.Unauthenticated ->
+                                        status = "no token from phone"
+                                }
+                            }
+                        },
+                    ) { Text("Switch…") }
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                val token = withContext(Dispatchers.IO) { store.cached() ?: store.requestFresh() }
+                                status = describeToken(token)
+                            }
+                        },
+                    ) { Text("Token") }
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                val token = withContext(Dispatchers.IO) { store.requestFresh() }
+                                status = describeToken(token)
+                            }
+                        },
+                    ) { Text("Refresh") }
+                }
+                else -> {
+                    candidates.forEach { candidate ->
+                        Button(
+                            onClick = {
+                                picking = null
+                                dispatch(scope, { client.switch(candidate.id) }) { status = it }
+                            },
+                        ) { Text(candidate.text) }
                     }
-                },
-            ) { Text("Token") }
-            Button(
-                onClick = {
-                    scope.launch {
-                        val token = withContext(Dispatchers.IO) { store.requestFresh() }
-                        status = describeToken(token)
-                    }
-                },
-            ) { Text("Refresh") }
+                    Button(onClick = { picking = null; status = "ready" }) { Text("Cancel") }
+                }
+            }
         }
     }
 }

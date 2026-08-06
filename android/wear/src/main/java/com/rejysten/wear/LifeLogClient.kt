@@ -41,6 +41,17 @@ class LifeLogClient(
 
     data class SwitchCandidate(val id: String, val text: String)
 
+    /**
+     * Reading candidates is kept distinct from an empty list: a picker that showed
+     * "nothing to switch to" for an expired token would hide the one thing the user
+     * can act on.
+     */
+    sealed interface CandidateList {
+        data class Loaded(val candidates: List<SwitchCandidate>) : CandidateList
+        data class Rejected(val status: Int, val reason: String) : CandidateList
+        data object Unauthenticated : CandidateList
+    }
+
     fun start(): Outcome =
         outcome(request("POST", "/api/lifelog/start", JSONObject())) { Outcome.Started(it.getString("id")) }
 
@@ -52,17 +63,22 @@ class LifeLogClient(
             Outcome.Switched(json.getString("id"), json.optString("stoppedId").ifEmpty { null })
         }
 
-    fun switchCandidates(): List<SwitchCandidate> {
-        val response = request("GET", "/api/lifelog/switch-candidates", null)
-        if (response !is Response.Http || response.status != 200 || !response.json.optBoolean("ok")) {
-            return emptyList()
+    fun switchCandidates(): CandidateList =
+        when (val response = request("GET", "/api/lifelog/switch-candidates", null)) {
+            Response.NoToken -> CandidateList.Unauthenticated
+            is Response.Http ->
+                if (response.status == 200 && response.json.optBoolean("ok")) {
+                    val array: JSONArray = response.json.optJSONArray("candidates") ?: JSONArray()
+                    CandidateList.Loaded(
+                        (0 until array.length()).map {
+                            val entry = array.getJSONObject(it)
+                            SwitchCandidate(entry.getString("id"), entry.getString("text"))
+                        },
+                    )
+                } else {
+                    CandidateList.Rejected(response.status, response.json.optString("reason", "error"))
+                }
         }
-        val array: JSONArray = response.json.optJSONArray("candidates") ?: JSONArray()
-        return (0 until array.length()).map {
-            val entry = array.getJSONObject(it)
-            SwitchCandidate(entry.getString("id"), entry.getString("text"))
-        }
-    }
 
     private sealed interface Response {
         data class Http(val status: Int, val json: JSONObject) : Response
