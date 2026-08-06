@@ -34,5 +34,10 @@ export function buildOpDeps(args: {
 export function httpErrorFor(error: unknown): { status: number; reason: string } {
   if (error instanceof RestUnauthorizedError) return { status: 401, reason: "unauthorized" };
   if (error instanceof RestContentionError) return { status: 503, reason: "contention" };
+  // 401 and 503 are outcomes the caller acts on; anything reaching here is a bug or
+  // an outage, and the handlers turn it into a bare "internal error" body. Without
+  // this line a deployed failure leaves no trace at all -- Cloudflare's tail only
+  // shows uncaught exceptions, and these are caught.
+  console.error("lifelog endpoint transport failure:", error);
   return { status: 500, reason: "internal error" };
 }
