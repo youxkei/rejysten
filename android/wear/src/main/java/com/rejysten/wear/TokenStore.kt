@@ -1,7 +1,11 @@
 package com.rejysten.wear
 
 import android.content.Context
+import android.net.Uri
+import android.util.Log
 import com.google.android.gms.tasks.Tasks
+import com.google.android.gms.wearable.DataMapItem
+import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.Wearable
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
@@ -27,6 +31,7 @@ object TokenTransfer {
  */
 class TokenStore private constructor(private val context: Context) {
     companion object {
+        const val TAG = "RejystenToken"
         private const val PREFS = "id-token"
         private val LOCK = Any()
 
@@ -45,6 +50,28 @@ class TokenStore private constructor(private val context: Context) {
 
     fun cached(): String? = prefs.getString(TokenTransfer.KEY_TOKEN, null)
 
+    /**
+     * Reads whatever the phone last published, instead of waiting to be told about it.
+     * A change event is delivered once; if the watch app or Play services was down when
+     * the phone pushed, the item is sitting there and nothing will announce it again.
+     */
+    fun readPublished(): String? {
+        val uri = Uri.Builder().scheme(PutDataRequest.WEAR_URI_SCHEME).path(TokenTransfer.DATA_PATH).build()
+        val items = runCatching { Tasks.await(Wearable.getDataClient(context).getDataItems(uri), 5, TimeUnit.SECONDS) }
+            .onFailure { Log.w(TAG, "getDataItems failed", it) }
+            .getOrNull()
+            ?: return null
+        val (count, token) = try {
+            items.count to
+                items.firstOrNull()?.let { DataMapItem.fromDataItem(it).dataMap.getString(TokenTransfer.KEY_TOKEN) }
+        } finally {
+            items.release()
+        }
+        Log.i(TAG, "readPublished: $count item(s), token len=${token?.length ?: 0} fp=${token?.hashCode()}")
+        if (!token.isNullOrEmpty()) save(token)
+        return token
+    }
+
     /** Called by [TokenListenerService] when the phone pushes a token. */
     fun save(token: String) {
         prefs.edit().putString(TokenTransfer.KEY_TOKEN, token).apply()
@@ -57,9 +84,17 @@ class TokenStore private constructor(private val context: Context) {
      */
     fun requestFresh(timeoutMs: Long = 8_000): String? {
         val previous = cached()
-        val nodes = runCatching {
+        // A push that arrived unannounced is already newer than what is cached, so
+        // there is no reason to make the phone mint another token for it.
+        readPublished()?.let { if (it != previous) return it }
+        val nodesResult = runCatching {
             Tasks.await(Wearable.getNodeClient(context).connectedNodes, 5, TimeUnit.SECONDS)
-        }.getOrNull().orEmpty()
+        }
+        // Logged because nothing else can see this path: when the phone does not answer,
+        // the watch UI can only say "no token" and the reason stays invisible.
+        nodesResult.exceptionOrNull()?.let { Log.w(TAG, "connectedNodes failed", it) }
+        val nodes = nodesResult.getOrNull().orEmpty()
+        Log.i(TAG, "requestFresh: ${nodes.size} connected node(s): ${nodes.map { it.displayName }}")
         if (nodes.isEmpty()) return null
 
         val messageClient = Wearable.getMessageClient(context)
@@ -72,9 +107,12 @@ class TokenStore private constructor(private val context: Context) {
                     5,
                     TimeUnit.SECONDS,
                 )
-            }
+            }.onFailure { Log.w(TAG, "sendMessage to ${node.id} failed", it) }
+                .onSuccess { Log.i(TAG, "asked ${node.displayName} for a token") }
         }
-        return awaitChange(previous, timeoutMs)
+        val fresh = awaitChange(previous, timeoutMs)
+        Log.i(TAG, "requestFresh: ${if (fresh == null) "timed out" else "got a new token"}")
+        return fresh
     }
 
     private fun awaitChange(previous: String?, timeoutMs: Long): String? {

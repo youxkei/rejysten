@@ -1,6 +1,7 @@
 package com.rejysten.mobile
 
 import android.content.Context
+import android.util.Log
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.tasks.await
@@ -21,6 +22,10 @@ object TokenTransfer {
  * reconnects, which matches how sporadically the watch is used.
  */
 class TokenSync(private val context: Context, private val controller: GoogleSignInController) {
+    companion object {
+        const val TAG = "RejystenToken"
+    }
+
     /** Returns false when signed out, i.e. there is no token to publish. */
     suspend fun push(forceRefresh: Boolean = false): Boolean {
         val token = controller.freshIdToken(forceRefresh) ?: return false
@@ -31,7 +36,13 @@ class TokenSync(private val context: Context, private val controller: GoogleSign
             // the watch waits for a *change*) without something that always varies.
             dataMap.putLong(TokenTransfer.KEY_REFRESHED_AT, System.currentTimeMillis())
         }
-        Wearable.getDataClient(context).putDataItem(request.asPutDataRequest().setUrgent()).await()
+        val item = Wearable.getDataClient(context).putDataItem(request.asPutDataRequest().setUrgent()).await()
+        // A successful put only means the phone stored it; whether it crossed to the
+        // watch shows up in the watch's own log. Matching fingerprints tie the two.
+        Log.i(
+            TAG,
+            "published a token (forceRefresh=$forceRefresh): len=${token.length} fp=${token.hashCode()} uri=${item.uri}",
+        )
         return true
     }
 }

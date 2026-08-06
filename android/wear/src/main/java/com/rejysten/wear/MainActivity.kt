@@ -1,5 +1,6 @@
 package com.rejysten.wear
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -67,6 +68,10 @@ private fun WearApp() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
         ) {
+            // Which deployment this build talks to. dev holds a copy of the real data,
+            // so the entries alone look identical to production -- telling them apart
+            // took a scripted comparison once, which is once too often.
+            Text(text = Uri.parse(BuildConfig.BASE_URL).host ?: BuildConfig.BASE_URL)
             Text(text = status)
             when (val candidates = picking) {
                 null -> {
