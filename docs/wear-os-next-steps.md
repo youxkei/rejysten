@@ -7,9 +7,11 @@ Wear OS から lifeLog を操作する機能の続き。**この doc ＋ 2つの
 サーバ側書き込み契約の内部設計を深掘りしたいときだけ
 [`external-write-path-refactoring.md`](./external-write-path-refactoring.md)（背景資料・必須ではない）。
 
-## 書き込みが Firestore に届かなかった件（原因確定・対処実装済み・実環境で未確認）
+## 書き込みが Firestore に届かなかった件（解決済み・実環境で検証済み）
 
-**対処（A を採用）**: トランザクションを廃止した。`runInTransaction` は **`runOptimistically`** になり、非トランザクションで読み → 1回の `commit`（トランザクション無しでも複数 doc にアトミック）→ 失敗したら読み直して再試行する。競合検出は `batchVersion` の `prevVersion` CAS（`firestore.rules` が強制）に委ねる。**reads がスナップショットでなくなる点も同じ CAS が守る**: 契約経由の書き込みは必ず version を上げるので、読んだ内容が動いていれば commit が拒否される。`beginTransaction` / `rollback` は削除した。**実 Firestore での確認は未実施**（emulator では元から通っていたため、テストは合格しても証拠にならない）。
+**対処（A を採用）**: トランザクションを廃止した。`runInTransaction` は **`runOptimistically`** になり、非トランザクションで読み → 1回の `commit`（トランザクション無しでも複数 doc にアトミック）→ 失敗したら読み直して再試行する。競合検出は `batchVersion` の `prevVersion` CAS（`firestore.rules` が強制）に委ねる。**reads がスナップショットでなくなる点も同じ CAS が守る**: 契約経由の書き込みは必ず version を上げるので、読んだ内容が動いていれば commit が拒否される。`beginTransaction` / `rollback` は削除した。
+
+**dev の実環境で検証済み（2026-08-07）**。時計から Start / Stop / switch を実行し、Firestore の状態まで突き合わせた。commit のログに `batchVersion/singleton[prevVersion,version] exists=true` が含まれ、CAS が実際に効いていることも確認できる。
 
 以下は原因の記録。
 
@@ -30,8 +32,10 @@ uid は `firestore.rules` がゲートしている値そのもので、`aud` も
 
 ## 現状（完了・検証済み）
 
-- **書き込みパス（サーバ側）**: `src/writeContract/` ＋ `functions/api/lifelog/{start,stop,switch,switch-candidates}` は実装・テスト済み（上記設計ドキュメント参照）。時計はこれを叩くだけで、契約ロジックは持たない。
-- **Android モノレポ（`android/`）**: Nix devShell（gradle_9 / JDK25 / androidenv SDK）＋ Gradle プロジェクト。`wear`（`LifeLogClient` ＋ Compose の Start/Stop スケルトン）と `mobile`（プレースホルダ）が `gradle :wear:assembleDebug` で green。**WSL2 でビルド → Windows の Wear OS 6 エミュレータへ `installDebug`・起動まで実証済み**。
+**2026-08-07 時点で、時計から lifeLog を操作する機能は端から端まで動作している。** スマホでサインイン → トークンが時計へ渡り → 時計から Start / Stop / switch を実行 → dev の Firestore に反映、までを実機相当（AVD 2台をペアリング）で確認済み。期限切れトークンからの 401 リトライも実地で発動した。
+
+- **書き込みパス（サーバ側）**: `src/writeContract/` ＋ `functions/api/lifelog/{start,stop,switch,switch-candidates}`。時計はこれを叩くだけで、契約ロジックは持たない。トランザクションは使わず `runOptimistically`（§冒頭）。
+- **Android モノレポ（`android/`）**: Nix devShell（gradle_9 / JDK25 / androidenv SDK）＋ Gradle プロジェクト。`wear`（`LifeLogClient` ＋ Compose の Start/Stop/Switch ピッカー）と `mobile`（Google サインイン ＋ トークン配信）。`gradle :wear:assembleDebug :mobile:assembleDebug` で green、JVM 単体テスト15件（`:wear:testDebugUnitTest`）。**WSL2 でビルド → Windows のエミュレータへ `installDebug`**。
 - **Firebase Android アプリ登録（`com.rejysten.mobile` / rejysten3-dev）**: `firebase` CLI で完了済み。App ID `1:894303897507:android:1268aefb379ace292efc16`、debug SHA-1（`0D:92:27:30:E7:C4:B0:1E:F4:69:B0:C2:A9:4C:55:BD:D7:F2:38:E0`）登録済み、`google-services.json` を `android/mobile/` に配置済み。Google サインインプロバイダは Web アプリ（`src/services/firebase/index.tsx`）が既に使用しているためプロジェクト単位で有効。**Credential Manager に渡す serverClientId は json 内の client_type 3**: `894303897507-t8t90evamjpm434guhp7jl0qo9lbirjd.apps.googleusercontent.com`。
 
 ## 確定している決定（再検討不要）
@@ -46,14 +50,14 @@ uid は `firestore.rules` がゲートしている値そのもので、`aud` も
 
 ## 作業分担（エージェント / 人間）
 
-次の作業は**人間（youxkei）にしかできない**（Cloudflare / Firebase / Google Cloud のコンソール権限や外部登録が要る）。エージェントはコードを書き、これらは youxkei に依頼すること:
+セットアップ系はすべて完了しているので、**現時点で人間待ちの作業は無い**。実際にやってみて分かった分担:
 
-- Cloudflare Pages ダッシュボードでの環境変数 `FIRESTORE_PROJECT_ID` 設定と、デプロイ（Git 連携。下記）。
-- Firebase コンソールでの Android アプリ登録・`google-services.json` 取得・Google Sign-In の OAuth クライアント / SHA-1 登録。
-- External Service Review の要否判断。
-- スマホ実機での最終確認（任意）。
+- **CLI で足りた**（エージェントが実行できた）: Firebase の Android アプリ登録・SHA-1 登録・`google-services.json` 取得（`firebase` CLI）、Cloudflare の secret 設定・プロジェクト一覧・デプロイ確認・Function ログの tail（`wrangler`、要 `wrangler login`）、AVD 作成、エミュレータ起動・アプリ導入・UI 操作（`adb` ＋ `uiautomator dump`）。
+- **ダッシュボード必須だったもの**: **Pages プロジェクトの Git 連携での作成のみ**（作成時に決まり、後から変換できない。§1）。
+- **人間に頼むべきもの**: Google アカウントのパスワード入力（サインイン）、本番リソースへの書き込み（クラシファイアにも止められる）、dev データの削除、`git push`。
+- **External Service Review**: Credential Manager / googleid は新規利用なので、要否は youxkei が判断する。
 
-エージェントが自走できるのは: Gradle/Kotlin 実装（mobile の認証コード・Data Layer・`LifeLogClient` の 401 リトライ・時計 UI）、`android/` でのビルド／エミュレータ検証、依存の有効化。**console 作業でブロックされたら、勝手に代替せず youxkei に依頼する。**
+**注意**: 参照用に本番プロジェクトの設定画面を開かせるのは避ける。設定値は `wrangler pages download config <project>` で取得できる。実際に、作成タブと並べたことで本番プロジェクトがリネームされる事故が起きた（§落とし穴）。
 
 ## 次にやること（依存順）
 
@@ -93,7 +97,7 @@ Firebase Auth で Web と同一 Google アカウント（uid `XoVR64j2pfgnlX8L05
 - アプリを force-stop → 再起動してもサインイン状態が保持される（FirebaseAuth の永続化が効いている）。
 - アカウント未追加時は `No credentials available` を graceful に表示（クラッシュ無し）＝ 失敗パスも確認済み。
 
-**残る未検証**: この ID トークンで Firestore が実際に許可を返すか（＝エンドポイント経由の書き込み）。step 1 のデプロイ後、step 3 でアプリ経由で確認する。トークン実体はログに残さない方針（UI も長さと先頭のみ表示）。
+この ID トークンで Firestore が書き込みを許可することも確認済み（§冒頭）。トークン実体はログに残さない方針（UI も長さと指紋のみ、サーバのログも uid と有効期限のみ）。
 
 **判明した落とし穴（修正済み）**: targetSdk 36 では edge-to-edge が強制されるため、インセット未処理のルートビューはステータスバー／ActionBar の裏に潜り込む（実際に上2要素が隠れた）。`ViewCompat.setOnApplyWindowInsetsListener` でシステムバー分をパディングし、テーマを `Theme.DeviceDefault.NoActionBar` にして解消。
 - **前提【完了】**: Firebase 側の登録は `firebase` CLI（youxkei@gmail.com は rejysten3-dev/prod にアクセス可）で完了済み。Android アプリ `com.rejysten.mobile` 登録・debug SHA-1 登録・`google-services.json` を `android/mobile/` に配置済み。OAuth クライアント（Android=client_type 1／Web=client_type 3）は SHA-1 登録時に自動生成され json に含まれる。Google プロバイダは Web アプリ使用中のため既に有効。残るコンソール作業は無し。**注意**: `android/.gitignore` は `google-services.json` を除外していないので、コミット可否は判断すること（Firebase Android の api_key は秘密情報ではなく、セキュリティは SHA-1＋firestore.rules で担保）。
@@ -122,15 +126,18 @@ Firebase Auth で Web と同一 Google アカウント（uid `XoVR64j2pfgnlX8L05
 - **401 リトライが実エンドポイントで動作**（2026-08-07）: 期限切れトークンで `start` を叩き、401 → 時計が `/token-request` を書く → スマホが `forceRefresh=true` で発行 → 時計が受領 → リトライ、までログで確認。
 - **読み取りの E2E が成立**: 時計の「Switch…」で dev の実データから候補が返りピッカーに並ぶ。dev を読んでいることは、同じ dedupe を dev/prod 双方から再現して表示順を突き合わせて確認（dev と一致、prod とは先頭から不一致）。
 
-**未検証**: 書き込み（`start` / `stop` / `switch`）。冒頭のブロッカー（`beginTransaction` 403）で止まっている。
+**書き込みも検証済み（2026-08-07、dev）**: 時計の Start → `Started(id=…)` で Firestore に進行中エントリが作られ、Stop → 同じ id が閉じ、ピッカーからの switch → 候補のテキストを引き継いだ新エントリ＋旧エントリの停止（`stoppedId` の endAt と新 startAt が同一時刻で連結）。**Start の1回目は `batchGet 401 expired=true` で、401 → 更新 → リトライが実地で発動した**。
 
 **実測で確定した方式の選択**: 要求は `MessageClient` ではなく **retained な DataItem**（`/token-request`）で送る。同一環境で2分以内に背中合わせで試した結果、DataItem は往復成功、`MessageClient` は送信成功するのにスマホの `WearableListenerService` が呼ばれず timeout だった。`MessageClient` が成功したのは初回ペアリング直後の一度きり。加えて retained なら切断中の要求も再接続時に届く。
 
 **通知の取りこぼしへの備え**: `TokenStore.readPublished()` が DataItem を直接読む。変更通知は一度しか来ないので、push 時に時計アプリや Play services が落ちていた場合、値は Data Layer に置かれたまま誰も知らせてくれない。
 
-### 4. 時計 UI の作り込み（`wear`）
-- baseUrl のビルドタイプ切り替えは実装済み（§1）。**dev プロジェクトの URL が決まったら `wear/build.gradle.kts` の debug 側に入れる**だけ。
-- **switch 候補ピッカー**を追加（`GET /api/lifelog/switch-candidates` の結果から `sourceId` を選ぶ）。現状は Start/Stop ＋ 検証用の Token/Refresh のみ。**エンドポイント非依存なので今すぐ着手できる**。
+### 4. 時計 UI【実装済み・検証済み】
+- baseUrl はビルドタイプ切り替え（§1）。debug = `https://rejysten-dev.pages.dev`、release = `https://rejysten.youxkei.dev`。
+- **switch 候補ピッカー**実装済み。`GET /api/lifelog/switch-candidates` の結果を並べ、タップで `switch`。候補の読み取りは `CandidateList`（`Loaded` / `Rejected` / `Unauthenticated`）で、**「候補ゼロ」と「トークン切れ・エラー」を区別する**（期限切れで「候補なし」と誤表示すると、ユーザーが唯一取れる行動を隠すことになる）。
+- 画面最上部に**接続先ホスト名**を表示する。dev は本番データの古いコピーを持つので、内容だけでは dev と prod を見分けられない（§落とし穴）。
+- 検証用に **Token / Refresh** ボタンがある（トークンは長さと `hashCode` の指紋のみ表示。指紋が変われば新しいトークンが届いた証拠になる）。
+- **残っている作り込み**: 進行中エントリの表示（今は Start/Stop の結果文字列のみ）、Wear らしい UI（`ScalingLazyColumn` 等）、タイル／コンプリケーション。いずれも動作には不要。
 
 ### 5. E2E テスト環境
 - **スマホ AVD `phone` を作成済み**（Windows 側 / pixel_7・API 36・`google_apis_playstore`・x86_64、`emulator -avd phone` で起動）。Wear AVD は `wear6`。
@@ -166,7 +173,7 @@ adb -e shell am start -n com.rejysten.mobile/com.rejysten.wear.MainActivity
 
 - **Android には JVM 単体テストがある**: `android/wear/src/test/.../LifeLogClientTest.kt`（15件、`gradle :wear:testDebugUnitTest`）。`LifeLogClient` は HTTP を差し替え可能な `Transport` seam を持つので、401 リトライ・レスポンスパース・候補読み取りの区別が純ロジックとして検証できる。`HttpURLConnection` 実装自体は fake が仕様を書き写すだけなので対象外。
 - **UI / Data Layer は instrumented テストが要る**が、CI が無いため当面は emulator 手動確認（本 doc の手順）。
-- **サーバ側で守れないこと**: emulator は rules 認証でも `beginTransaction` を通すため、上のブロッカーはどのテストでも再現しない。実 Firestore に対する検証には実 ID トークンが必要で、それを CI に置く手段は今のところ無い。**デプロイ後に一度手で叩く**のが現実的な防御線。
+- **サーバ側で守れないこと**: emulator は rules 認証でも `beginTransaction` を通すため、冒頭の `beginTransaction` 403 はどのテストでも再現しない。実 Firestore に対する検証には実 ID トークンが必要で、それを CI に置く手段は今のところ無い。**デプロイ後に一度手で叩く**のが現実的な防御線。
 - pre-commit フックは **TS の lint＋全テストを無条件で回す**（Android のみのコミットでも走る）。Android 自体は検証しないので、Android のビルド確認は手動（`gradle :wear:assembleDebug`）で行う。フックは重く flaky なこともある（規約どおりリトライ）。
 
 ## 発見済みの落とし穴（対処済み・要記憶）
