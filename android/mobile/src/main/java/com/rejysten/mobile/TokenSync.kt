@@ -9,9 +9,10 @@ import kotlinx.coroutines.tasks.await
 /** Wear Data Layer paths and keys; the watch side must agree (see wear/TokenStore.kt). */
 object TokenTransfer {
     const val DATA_PATH = "/id-token"
-    const val REQUEST_PATH = "/request-id-token"
+    const val REQUEST_PATH = "/token-request"
     const val KEY_TOKEN = "token"
     const val KEY_REFRESHED_AT = "refreshedAt"
+    const val KEY_REQUESTED_AT = "requestedAt"
 }
 
 /**

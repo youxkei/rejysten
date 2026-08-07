@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.DataMapItem
+import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.Wearable
 import java.util.concurrent.TimeUnit
@@ -14,9 +15,18 @@ import kotlin.concurrent.withLock
 /** Wear Data Layer paths and keys; the phone side must agree (see mobile/TokenSync.kt). */
 object TokenTransfer {
     const val DATA_PATH = "/id-token"
-    const val REQUEST_PATH = "/request-id-token"
+
+    /**
+     * The watch asks for a fresher token by writing here rather than by sending a
+     * message. A data item is retained, so a request made while the phone is
+     * unreachable arrives when it reconnects; a message is dropped. The path
+     * deliberately does not begin with [DATA_PATH], which a pathPrefix filter on the
+     * phone would also match.
+     */
+    const val REQUEST_PATH = "/token-request"
     const val KEY_TOKEN = "token"
     const val KEY_REFRESHED_AT = "refreshedAt"
+    const val KEY_REQUESTED_AT = "requestedAt"
 }
 
 /**
@@ -87,29 +97,23 @@ class TokenStore private constructor(private val context: Context) {
         // A push that arrived unannounced is already newer than what is cached, so
         // there is no reason to make the phone mint another token for it.
         readPublished()?.let { if (it != previous) return it }
-        val nodesResult = runCatching {
-            Tasks.await(Wearable.getNodeClient(context).connectedNodes, 5, TimeUnit.SECONDS)
+        // Written unconditionally, without first checking that a phone is reachable:
+        // the point of a retained item is that a request outlives the disconnection.
+        val request = PutDataMapRequest.create(TokenTransfer.REQUEST_PATH).apply {
+            // Always different, so the phone is told about a change rather than the
+            // Data Layer discarding a put identical to the item it already holds.
+            dataMap.putLong(TokenTransfer.KEY_REQUESTED_AT, System.currentTimeMillis())
         }
         // Logged because nothing else can see this path: when the phone does not answer,
         // the watch UI can only say "no token" and the reason stays invisible.
-        nodesResult.exceptionOrNull()?.let { Log.w(TAG, "connectedNodes failed", it) }
-        val nodes = nodesResult.getOrNull().orEmpty()
-        Log.i(TAG, "requestFresh: ${nodes.size} connected node(s): ${nodes.map { it.displayName }}")
-        if (nodes.isEmpty()) return null
-
-        val messageClient = Wearable.getMessageClient(context)
-        // Broadcast rather than pick a node: only the paired phone runs the companion,
-        // and a watch can legitimately see more than one connected node.
-        nodes.forEach { node ->
-            runCatching {
-                Tasks.await(
-                    messageClient.sendMessage(node.id, TokenTransfer.REQUEST_PATH, ByteArray(0)),
-                    5,
-                    TimeUnit.SECONDS,
-                )
-            }.onFailure { Log.w(TAG, "sendMessage to ${node.id} failed", it) }
-                .onSuccess { Log.i(TAG, "asked ${node.displayName} for a token") }
-        }
+        runCatching {
+            Tasks.await(
+                Wearable.getDataClient(context).putDataItem(request.asPutDataRequest().setUrgent()),
+                5,
+                TimeUnit.SECONDS,
+            )
+        }.onFailure { Log.w(TAG, "asking for a token failed", it) }
+            .onSuccess { Log.i(TAG, "asked the phone for a token") }
         val fresh = awaitChange(previous, timeoutMs)
         Log.i(TAG, "requestFresh: ${if (fresh == null) "timed out" else "got a new token"}")
         return fresh
