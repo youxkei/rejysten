@@ -19,8 +19,11 @@ export class RestRequestError extends Error {
   constructor(
     public status: number,
     public detail: string,
+    public method?: string,
   ) {
-    super(`Firestore REST request failed (${status}): ${detail}`);
+    // The method is named because the transport makes four different calls per
+    // transaction, and a status alone leaves the failing one to be guessed at.
+    super(`Firestore REST ${method ?? "request"} failed (${status}): ${detail}`);
     this.name = "RestRequestError";
   }
 }

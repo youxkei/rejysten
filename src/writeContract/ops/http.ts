@@ -9,6 +9,14 @@ export function buildBaseUrl(projectId: string, emulatorHost: string | undefined
   return `${origin}/v1/projects/${projectId}/databases/(default)/documents`;
 }
 
+/**
+ * One line per request, so a failure can be read against what was asked for. The
+ * transport logs the Firestore calls that follow; this ties them to an endpoint.
+ */
+export function logRequest(endpoint: string, projectId: string): void {
+  console.log(`lifelog endpoint ${endpoint} against ${projectId}`);
+}
+
 export function buildOpDeps(args: {
   projectId: string;
   emulatorHost?: string;

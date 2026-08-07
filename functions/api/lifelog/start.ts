@@ -1,5 +1,5 @@
 /* eslint-disable no-relative-import-paths/no-relative-import-paths */
-import { buildOpDeps, httpErrorFor } from "../../../src/writeContract/ops/http";
+import { buildOpDeps, httpErrorFor, logRequest } from "../../../src/writeContract/ops/http";
 import { startLifeLog } from "../../../src/writeContract/ops/start";
 
 interface Env {
@@ -18,6 +18,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     fetch: globalThis.fetch,
   });
 
+  logRequest("start", context.env.FIRESTORE_PROJECT_ID);
   try {
     const result = await startLifeLog(deps);
     return Response.json(result);

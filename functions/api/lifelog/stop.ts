@@ -1,5 +1,5 @@
 /* eslint-disable no-relative-import-paths/no-relative-import-paths */
-import { buildOpDeps, httpErrorFor } from "../../../src/writeContract/ops/http";
+import { buildOpDeps, httpErrorFor, logRequest } from "../../../src/writeContract/ops/http";
 import { stopLifeLog } from "../../../src/writeContract/ops/stop";
 
 interface Env {
@@ -18,6 +18,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     fetch: globalThis.fetch,
   });
 
+  logRequest("stop", context.env.FIRESTORE_PROJECT_ID);
   try {
     const result = await stopLifeLog(deps);
     // "no open entry" is a legitimate conflict, not a server error.

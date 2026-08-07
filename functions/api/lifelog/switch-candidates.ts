@@ -1,5 +1,5 @@
 /* eslint-disable no-relative-import-paths/no-relative-import-paths */
-import { buildOpDeps, httpErrorFor } from "../../../src/writeContract/ops/http";
+import { buildOpDeps, httpErrorFor, logRequest } from "../../../src/writeContract/ops/http";
 import { listSwitchCandidates } from "../../../src/writeContract/ops/switchCandidates";
 
 interface Env {
@@ -18,6 +18,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     fetch: globalThis.fetch,
   });
 
+  logRequest("switch-candidates", context.env.FIRESTORE_PROJECT_ID);
   try {
     const result = await listSwitchCandidates(deps);
     return Response.json(result);

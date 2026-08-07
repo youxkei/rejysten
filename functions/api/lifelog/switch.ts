@@ -1,5 +1,5 @@
 /* eslint-disable no-relative-import-paths/no-relative-import-paths */
-import { buildOpDeps, httpErrorFor } from "../../../src/writeContract/ops/http";
+import { buildOpDeps, httpErrorFor, logRequest } from "../../../src/writeContract/ops/http";
 import { switchLifeLog } from "../../../src/writeContract/ops/switch";
 
 interface Env {
@@ -30,6 +30,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     fetch: globalThis.fetch,
   });
 
+  logRequest("switch", context.env.FIRESTORE_PROJECT_ID);
   try {
     const result = await switchLifeLog(deps, { sourceId });
     return Response.json(result, { status: result.ok ? 200 : 404 });
