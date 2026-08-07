@@ -10,7 +10,7 @@ export class RestUnauthorizedError extends Error {
 
 export class RestContentionError extends Error {
   constructor(attempts: number) {
-    super(`Firestore REST transaction still contended after ${attempts} attempts`);
+    super(`Firestore REST commit still losing its CAS after ${attempts} attempts`);
     this.name = "RestContentionError";
   }
 }

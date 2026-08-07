@@ -45,7 +45,7 @@ function idOf(name: string): string {
 async function readBack(project: string) {
   const deps = restConfig(project, () => BASE_MS);
   const query = async (collectionId: string): Promise<Record<string, unknown>[]> => {
-    const docs = await runQuery(deps, undefined, { from: [{ collectionId }] });
+    const docs = await runQuery(deps, { from: [{ collectionId }] });
     return docs.map((d) => ({ id: idOf(d.name), ...decodeFields(d.fields) }));
   };
   return { lifeLogs: await query("lifeLogs"), editHistory: await query("editHistory") };

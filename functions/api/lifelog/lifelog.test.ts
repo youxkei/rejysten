@@ -32,10 +32,6 @@ function firestoreFetch(responses: { runQuery?: unknown[]; batchGet?: unknown[];
     const method = url.slice(url.lastIndexOf(":") + 1);
     const json = (value: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(value), { status }));
     switch (method) {
-      case "beginTransaction":
-        return json({ transaction: "tx" });
-      case "rollback":
-        return json({});
       case "batchGet":
         return json(responses.batchGet ?? []);
       case "runQuery":

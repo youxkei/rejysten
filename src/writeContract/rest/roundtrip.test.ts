@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 
 import { acquireEmulator, releaseEmulator } from "@/test";
-import { batchGet, runInTransaction, runQuery } from "@/writeContract/rest/transaction";
+import { batchGet, runOptimistically, runQuery } from "@/writeContract/rest/transaction";
 import { type RestConfig } from "@/writeContract/rest/types";
 import { decodeFields, fromValue, toValue } from "@/writeContract/rest/value";
 import { documentName, setRawFields, writeOpToWrite } from "@/writeContract/rest/write";
@@ -53,12 +53,9 @@ describe("REST transport against the emulator", () => {
       data: { text: "hello", hasTreeNodes: false, startAt, endAt },
     };
 
-    await runInTransaction(config, () => Promise.resolve({ writes: [writeOpToWrite(set, "demo")], value: undefined }));
+    await runOptimistically(config, () => Promise.resolve({ writes: [writeOpToWrite(set, "demo")], value: undefined }));
 
-    const read = await runInTransaction(config, async (tx) => {
-      const found = await batchGet(config, tx, [documentName("demo", col, id)]);
-      return { writes: null, value: found };
-    });
+    const read = await batchGet(config, [documentName("demo", col, id)]);
 
     const fields = read.get(documentName("demo", col, id));
     expect(fields).toBeTruthy();
@@ -83,15 +80,12 @@ describe("REST transport against the emulator", () => {
     };
     const update: WriteOp = { type: "update", collection: col, id, data: { text: "changed" } };
 
-    await runInTransaction(config, () => Promise.resolve({ writes: [writeOpToWrite(set, "demo")], value: undefined }));
-    await runInTransaction(config, () =>
+    await runOptimistically(config, () => Promise.resolve({ writes: [writeOpToWrite(set, "demo")], value: undefined }));
+    await runOptimistically(config, () =>
       Promise.resolve({ writes: [writeOpToWrite(update, "demo")], value: undefined }),
     );
 
-    const read = await runInTransaction(config, async (tx) => ({
-      writes: null,
-      value: await batchGet(config, tx, [documentName("demo", col, id)]),
-    }));
+    const read = await batchGet(config, [documentName("demo", col, id)]);
     const decoded = decodeFields(read.get(documentName("demo", col, id))!);
     expect(decoded.text).toBe("changed");
     expect(decoded.hasTreeNodes).toBe(false);
@@ -99,23 +93,17 @@ describe("REST transport against the emulator", () => {
 
   it("reports a missing document as null from batchGet", async (test) => {
     const col = `${test.task.id}_${Date.now()}`;
-    const read = await runInTransaction(config, async (tx) => ({
-      writes: null,
-      value: await batchGet(config, tx, [documentName("demo", col, "never")]),
-    }));
+    const read = await batchGet(config, [documentName("demo", col, "never")]);
     expect(read.get(documentName("demo", col, "never"))).toBeNull();
   });
 
-  it("rolls back without writing when the body returns writes: null", async (test) => {
+  it("writes nothing when the body returns writes: null", async (test) => {
     const col = `${test.task.id}_${Date.now()}`;
     const id = "doc1";
 
-    await runInTransaction(config, () => Promise.resolve({ writes: null, value: undefined }));
+    await runOptimistically(config, () => Promise.resolve({ writes: null, value: undefined }));
 
-    const read = await runInTransaction(config, async (tx) => ({
-      writes: null,
-      value: await batchGet(config, tx, [documentName("demo", col, id)]),
-    }));
+    const read = await batchGet(config, [documentName("demo", col, id)]);
     expect(read.get(documentName("demo", col, id))).toBeNull();
   });
 
@@ -124,14 +112,11 @@ describe("REST transport against the emulator", () => {
     const id = "ngram1";
     const fields = { collection: toValue("lifeLogs"), text: toValue("hello"), ngramMap: toValue({ he: true }) };
 
-    await runInTransaction(config, () =>
+    await runOptimistically(config, () =>
       Promise.resolve({ writes: [setRawFields(documentName("demo", col, id), fields)], value: undefined }),
     );
 
-    const read = await runInTransaction(config, async (tx) => ({
-      writes: null,
-      value: await batchGet(config, tx, [documentName("demo", col, id)]),
-    }));
+    const read = await batchGet(config, [documentName("demo", col, id)]);
     const stored = read.get(documentName("demo", col, id))!;
     expect(Object.keys(stored).sort()).toEqual(["collection", "ngramMap", "text"]);
     expect(stored.createdAt).toBeUndefined();
@@ -163,24 +148,21 @@ describe("REST transport against the emulator", () => {
       },
     };
 
-    await runInTransaction(config, () =>
+    await runOptimistically(config, () =>
       Promise.resolve({ writes: [writeOpToWrite(older, "demo")], value: undefined }),
     );
-    await runInTransaction(config, () =>
+    await runOptimistically(config, () =>
       Promise.resolve({ writes: [writeOpToWrite(newer, "demo")], value: undefined }),
     );
 
-    const docs = await runInTransaction(config, async (tx) => ({
-      writes: null,
-      value: await runQuery(config, tx, {
-        from: [{ collectionId: col }],
-        orderBy: [
-          { field: { fieldPath: "endAt" }, direction: "DESCENDING" },
-          { field: { fieldPath: "startAt" }, direction: "DESCENDING" },
-        ],
-        limit: 1,
-      }),
-    }));
+    const docs = await runQuery(config, {
+      from: [{ collectionId: col }],
+      orderBy: [
+        { field: { fieldPath: "endAt" }, direction: "DESCENDING" },
+        { field: { fieldPath: "startAt" }, direction: "DESCENDING" },
+      ],
+      limit: 1,
+    });
 
     expect(docs).toHaveLength(1);
     expect(docs[0].name.endsWith(`${marker}_newer`)).toBe(true);

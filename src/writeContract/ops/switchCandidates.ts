@@ -19,7 +19,7 @@ export async function listSwitchCandidates(
   deps: OpDeps,
   options: { scanLimit: number; take: number } = { scanLimit: 100, take: 20 },
 ): Promise<SwitchCandidatesResult> {
-  const docs = await runQuery(deps, undefined, { ...LATEST_LIFELOG_QUERY, limit: options.scanLimit });
+  const docs = await runQuery(deps, { ...LATEST_LIFELOG_QUERY, limit: options.scanLimit });
 
   const seen = new Set<string>();
   const candidates: SwitchCandidate[] = [];

@@ -7,7 +7,7 @@ import { startLifeLog } from "@/writeContract/ops/start";
 import { stopLifeLog } from "@/writeContract/ops/stop";
 import { switchLifeLog } from "@/writeContract/ops/switch";
 import { listSwitchCandidates } from "@/writeContract/ops/switchCandidates";
-import { runInTransaction, runQuery } from "@/writeContract/rest/transaction";
+import { runOptimistically, runQuery } from "@/writeContract/rest/transaction";
 import { decodeFields, encodeFields } from "@/writeContract/rest/value";
 import { documentName, setRawFields, updateWithTimestamp } from "@/writeContract/rest/write";
 
@@ -43,7 +43,7 @@ async function seedText(deps: OpDeps, id: string, text: string): Promise<void> {
       ? [setRawFields(documentName(deps.projectId, "ngrams", ngram.ngramId), encodeFields(ngram.data))]
       : []),
   ];
-  await runInTransaction(deps, () => Promise.resolve({ writes, value: undefined }));
+  await runOptimistically(deps, () => Promise.resolve({ writes, value: undefined }));
 }
 
 interface Dump {
@@ -56,7 +56,7 @@ interface Dump {
 
 async function dump(deps: OpDeps): Promise<Dump> {
   const query = async (collection: string) => {
-    const docs = await runQuery(deps, undefined, { from: [{ collectionId: collection }] });
+    const docs = await runQuery(deps, { from: [{ collectionId: collection }] });
     return docs.map((doc) => ({ id: idOf(doc.name), ...decodeFields(doc.fields) }));
   };
   return {

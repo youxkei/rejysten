@@ -1,4 +1,4 @@
-import { runInTransaction } from "../rest/transaction";
+import { runOptimistically } from "../rest/transaction";
 import { type WriteOp } from "../types";
 import {
   assembleContractWrites,
@@ -17,8 +17,8 @@ export type StopResult = { ok: true; id: string } | { ok: false; reason: "no ope
 export async function stopLifeLog(deps: OpDeps): Promise<StopResult> {
   const nowSec = secondFloorDate(deps.now());
 
-  return runInTransaction<StopResult>(deps, async (transaction) => {
-    const state = await readContractState(deps, transaction);
+  return runOptimistically<StopResult>(deps, async () => {
+    const state = await readContractState(deps);
     const open = openEntry(state);
     if (!open) return { writes: null, value: { ok: false, reason: "no open entry" } };
 

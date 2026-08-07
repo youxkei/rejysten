@@ -1,6 +1,6 @@
 import { uuidv7 } from "uuidv7";
 
-import { runInTransaction } from "../rest/transaction";
+import { runOptimistically } from "../rest/transaction";
 import { type WriteOp } from "../types";
 import {
   assembleContractWrites,
@@ -24,8 +24,8 @@ export async function startLifeLog(deps: OpDeps): Promise<StartResult> {
   const newId = uuidv7();
   const nowSec = secondFloorDate(deps.now());
 
-  return runInTransaction(deps, async (transaction) => {
-    const state = await readContractState(deps, transaction);
+  return runOptimistically(deps, async () => {
+    const state = await readContractState(deps);
 
     const latestEnd = state.latest ? latestEndAt(state.latest) : null;
     const startAt = latestEnd && !isSentinel(latestEnd) ? latestEnd : nowSec;

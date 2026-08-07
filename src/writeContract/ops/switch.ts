@@ -11,7 +11,7 @@ import {
   secondFloorDate,
   sentinelDate,
 } from "./shared";
-import { batchGet, runInTransaction } from "../rest/transaction";
+import { batchGet, runOptimistically } from "../rest/transaction";
 import { decodeFields } from "../rest/value";
 import { documentName, setRawFields, type Write } from "../rest/write";
 import { type WriteOp } from "../types";
@@ -28,12 +28,12 @@ export async function switchLifeLog(deps: OpDeps, args: { sourceId: string }): P
   const newId = uuidv7();
   const nowSec = secondFloorDate(deps.now());
 
-  return runInTransaction<SwitchResult>(deps, async (transaction) => {
-    const state = await readContractState(deps, transaction);
+  return runOptimistically<SwitchResult>(deps, async () => {
+    const state = await readContractState(deps);
 
     const sourceName = documentName(deps.projectId, "lifeLogs", args.sourceId);
     const sourceNgramName = documentName(deps.projectId, "ngrams", `${args.sourceId}lifeLogs`);
-    const sources = await batchGet(deps, transaction, [sourceName, sourceNgramName]);
+    const sources = await batchGet(deps, [sourceName, sourceNgramName]);
 
     const sourceFields = sources.get(sourceName);
     if (!sourceFields) return { writes: null, value: { ok: false, reason: "source not found" } };

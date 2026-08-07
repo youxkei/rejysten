@@ -59,14 +59,14 @@ export interface ContractState {
   latest: LatestLifeLog | null;
 }
 
-// Reads the three inputs every write needs (batchVersion for CAS chaining,
-// editHistoryHead for the undo linked-list parent, and the latest lifeLog for
-// entry chaining), all within the given transaction.
-export async function readContractState(deps: OpDeps, transaction: string): Promise<ContractState> {
+// Reads the three inputs every write needs: batchVersion for CAS chaining,
+// editHistoryHead for the undo linked-list parent, and the latest lifeLog for entry
+// chaining. Not a snapshot -- see runOptimistically for why the CAS is enough.
+export async function readContractState(deps: OpDeps): Promise<ContractState> {
   const batchVersionName = documentName(deps.projectId, "batchVersion", SINGLETON_ID);
   const headName = documentName(deps.projectId, "editHistoryHead", SINGLETON_ID);
 
-  const singletons = await batchGet(deps, transaction, [batchVersionName, headName]);
+  const singletons = await batchGet(deps, [batchVersionName, headName]);
   const batchVersionFields = singletons.get(batchVersionName);
   const headFields = singletons.get(headName);
 
@@ -76,7 +76,7 @@ export async function readContractState(deps: OpDeps, transaction: string): Prom
   const currentVersion = typeof batchVersionData?.version === "string" ? batchVersionData.version : undefined;
   const headEntryId = typeof headData?.entryId === "string" ? headData.entryId : null;
 
-  const latestDocs = await runQuery(deps, transaction, LATEST_LIFELOG_QUERY);
+  const latestDocs = await runQuery(deps, LATEST_LIFELOG_QUERY);
   const latest: LatestLifeLog | null =
     latestDocs.length > 0
       ? { id: idFromName(latestDocs[0].name), data: decodeFields(latestDocs[0].fields), fields: latestDocs[0].fields }

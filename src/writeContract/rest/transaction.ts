@@ -112,28 +112,8 @@ async function throwForResponse(res: Response, method: string): Promise<never> {
   throw new RestRequestError(res.status, detail, method);
 }
 
-export async function beginTransaction(config: RestConfig): Promise<string> {
-  const res = await firestoreRequest(config, "beginTransaction", { options: { readWrite: {} } });
-  if (!res.ok) await throwForResponse(res, "beginTransaction");
-  const json = (await res.json()) as { transaction: string };
-  return json.transaction;
-}
-
-export async function rollback(config: RestConfig, transaction: string): Promise<void> {
-  // Best-effort: a failed rollback just lets the abandoned transaction expire.
-  try {
-    await firestoreRequest(config, "rollback", { transaction });
-  } catch {
-    // ignore
-  }
-}
-
-export async function batchGet(
-  config: RestConfig,
-  transaction: string,
-  names: string[],
-): Promise<Map<string, FirestoreFields | null>> {
-  const res = await firestoreRequest(config, "batchGet", { documents: names, transaction });
+export async function batchGet(config: RestConfig, names: string[]): Promise<Map<string, FirestoreFields | null>> {
+  const res = await firestoreRequest(config, "batchGet", { documents: names });
   if (!res.ok) await throwForResponse(res, "batchGet");
   const json = (await res.json()) as { found?: { name: string; fields?: FirestoreFields }; missing?: string }[];
 
@@ -148,14 +128,8 @@ export async function batchGet(
   return result;
 }
 
-export async function runQuery(
-  config: RestConfig,
-  transaction: string | undefined,
-  structuredQuery: StructuredQuery,
-): Promise<FoundDocument[]> {
-  const body: { structuredQuery: StructuredQuery; transaction?: string } = { structuredQuery };
-  if (transaction !== undefined) body.transaction = transaction;
-  const res = await firestoreRequest(config, "runQuery", body);
+export async function runQuery(config: RestConfig, structuredQuery: StructuredQuery): Promise<FoundDocument[]> {
+  const res = await firestoreRequest(config, "runQuery", { structuredQuery });
   if (!res.ok) await throwForResponse(res, "runQuery");
   const json = (await res.json()) as { document?: { name: string; fields?: FirestoreFields } }[];
 
@@ -166,15 +140,16 @@ export async function runQuery(
   return documents;
 }
 
-async function commit(config: RestConfig, transaction: string, writes: Write[]): Promise<"ok" | "retry"> {
-  const res = await firestoreRequest(config, "commit", { transaction, writes });
+async function commit(config: RestConfig, writes: Write[]): Promise<"ok" | "retry"> {
+  const res = await firestoreRequest(config, "commit", { writes });
   if (res.ok) return "ok";
 
   const detail = await readErrorDetail(res);
   if (res.status === 401) throw new RestUnauthorizedError(detail);
 
-  // Serializable-isolation conflicts (a read document changed before commit) and
-  // failed existence/CAS preconditions are retryable by re-reading.
+  // A denied batchVersion CAS, a failed existence precondition and a write-contention
+  // abort all mean the same thing here: the state the writes were built from has
+  // moved, so re-reading and rebuilding them is the way forward.
   const status = firestoreStatus(detail);
   if (
     res.status === 409 ||
@@ -191,32 +166,32 @@ async function commit(config: RestConfig, transaction: string, writes: Write[]):
   throw new RestRequestError(res.status, detail, "commit");
 }
 
-export type TransactionBody<T> = (transaction: string) => Promise<{ writes: Write[] | null; value: T }>;
+export type WriteBody<T> = () => Promise<{ writes: Write[] | null; value: T }>;
 
-// Runs a read-write transaction: begin → the body reads with the token and
-// returns either writes to commit or `null` to roll back (a deterministic
-// business abort, e.g. "no open entry"). Commit conflicts re-run the whole body
-// with a fresh token up to `maxAttempts`; exhausting them raises contention.
-export async function runInTransaction<T>(config: RestConfig, body: TransactionBody<T>, maxAttempts = 5): Promise<T> {
+/**
+ * Reads through the body, then commits what it produced, re-reading whenever the
+ * commit says the state it was built from has moved. `null` writes are a
+ * deterministic business abort (e.g. "no open entry") and return as they are.
+ *
+ * There is no Firestore transaction here, and cannot be: a Firebase ID token
+ * authenticates against Security Rules, and beginTransaction answers such a caller
+ * with 403 regardless of what the rules allow. Consistency instead rests on the
+ * batchVersion CAS the rules already enforce -- every contract write chains
+ * prevVersion to the version it read, so a concurrent write makes this commit fail
+ * rather than overwrite. That also covers the reads not being a single snapshot:
+ * anything that could have changed under them bumps the version too.
+ *
+ * A commit without a transaction is still atomic across its documents, so a
+ * rejected attempt leaves nothing behind to roll back.
+ */
+export async function runOptimistically<T>(config: RestConfig, body: WriteBody<T>, maxAttempts = 5): Promise<T> {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const transaction = await beginTransaction(config);
+    const outcome = await body();
+    if (outcome.writes === null) return outcome.value;
 
-    let outcome: { writes: Write[] | null; value: T };
-    try {
-      outcome = await body(transaction);
-    } catch (error) {
-      await rollback(config, transaction);
-      throw error;
-    }
-
-    if (outcome.writes === null) {
-      await rollback(config, transaction);
-      return outcome.value;
-    }
-
-    const result = await commit(config, transaction, outcome.writes);
+    const result = await commit(config, outcome.writes);
     if (result === "ok") return outcome.value;
-    console.error(`${LOG_PREFIX} transaction attempt ${attempt}/${maxAttempts} did not commit; re-reading`);
+    console.error(`${LOG_PREFIX} attempt ${attempt}/${maxAttempts} did not commit; re-reading`);
   }
 
   throw new RestContentionError(maxAttempts);
