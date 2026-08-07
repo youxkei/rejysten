@@ -7,6 +7,27 @@ Wear OS から lifeLog を操作する機能の続き。**この doc ＋ 2つの
 サーバ側書き込み契約の内部設計を深掘りしたいときだけ
 [`external-write-path-refactoring.md`](./external-write-path-refactoring.md)（背景資料・必須ではない）。
 
+## 書き込みが Firestore に届かなかった件（原因確定・対処実装済み・実環境で未確認）
+
+**対処（A を採用）**: トランザクションを廃止した。`runInTransaction` は **`runOptimistically`** になり、非トランザクションで読み → 1回の `commit`（トランザクション無しでも複数 doc にアトミック）→ 失敗したら読み直して再試行する。競合検出は `batchVersion` の `prevVersion` CAS（`firestore.rules` が強制）に委ねる。**reads がスナップショットでなくなる点も同じ CAS が守る**: 契約経由の書き込みは必ず version を上げるので、読んだ内容が動いていれば commit が拒否される。`beginTransaction` / `rollback` は削除した。**実 Firestore での確認は未実施**（emulator では元から通っていたため、テストは合格しても証拠にならない）。
+
+以下は原因の記録。
+
+`start` / `stop` / `switch` は **`beginTransaction` が 403 `PERMISSION_DENIED`** で失敗する。dev のデプロイのログで確定（2026-08-07）:
+
+```
+lifelog endpoint start against rejysten3-dev
+lifelog firestore beginTransaction -> 403 in 67ms |
+  caller uid=XoVR64j2pfgnlX8L05kL5V96y8n1 aud=rejysten3-dev exp=… expired=false
+lifelog endpoint transport failure: RestRequestError: Firestore REST beginTransaction failed (403)
+```
+
+uid は `firestore.rules` がゲートしている値そのもので、`aud` も一致、期限切れでもない。同じトークンでの読み取り（`switch-candidates`）は 200 で通る。`beginTransaction` は doc 操作ではないので rules で許可しようがない。結論: **Firebase ID トークン（rules 認証）では Firestore REST の読み書きトランザクションを開始できない**（トランザクションはサービスアカウント／IAM 認証を要する）。`switch-candidates` だけが動いていたのは非トランザクションだから。
+
+**テストでは防げない**: emulator は rules 認証でも `beginTransaction` を通すため、`deployedRules.test.ts`（本番 rules で検証するテスト）でも 4件 pass する。実 Firestore でしか出ない差で、CI で守るには実 ID トークンが必要。
+
+採用しなかった案: **サービスアカウントを Function に持たせる**（トランザクションは使えるが rules をバイパスし、鍵を secret に置くことになる）／**書き込みを Web だけに留める**（時計からの操作を諦める）。
+
 ## 現状（完了・検証済み）
 
 - **書き込みパス（サーバ側）**: `src/writeContract/` ＋ `functions/api/lifelog/{start,stop,switch,switch-candidates}` は実装・テスト済み（上記設計ドキュメント参照）。時計はこれを叩くだけで、契約ロジックは持たない。
@@ -89,7 +110,7 @@ Firebase Auth で Web と同一 Google アカウント（uid `XoVR64j2pfgnlX8L05
 
 - スマホ `TokenSync` が ID トークンを `DataClient` の `/id-token` に publish（`MessageClient` ではなく `DataClient` なのは保持されるため。時計が寝ていても再接続時に最新を受け取れる）。**同一 payload の put は破棄される**ので `refreshedAt` を必ず変える。
 - 時計 `TokenListenerService`（`DATA_CHANGED`）が受け取り `TokenStore` が SharedPreferences に永続化。
-- 時計 `TokenStore.requestFresh()` が `MessageClient` で `/request-id-token` を全ノードへ送り、スマホ `TokenRequestService` が `forceRefresh=true` で新トークンを publish。時計は変化をブロッキング待ち（`ReentrantLock`＋`Condition`、既定8秒）。
+- 時計 `TokenStore.requestFresh()` が `/token-request` に DataItem を書き、スマホ `TokenRequestService`（`DATA_CHANGED`）が `forceRefresh=true` で新トークンを publish。時計は変化をブロッキング待ち（`ReentrantLock`＋`Condition`、既定8秒）。要求パスは `/id-token` で始めない（スマホ側の pathPrefix フィルタが両方に一致してしまう）。
 - `LifeLogClient` は `idTokenProvider: (forceRefresh: Boolean) -> String?` になり、**401 → 再取得 → 1回だけリトライ**。同じトークンが返った場合・取得できない場合は無駄打ちせず 401 を返す。トークン未配信時は `Outcome.Unauthenticated`（リクエストを投げない）。
 
 **⚠️ 重大な制約（実験で確定）**: **Wear Data Layer は applicationId が一致するアプリ間しか繋がない**（署名も一致が必要）。`com.rejysten.mobile` と `com.rejysten.wear` では DataItem が一切届かず、`onDataChanged` が発火しない（GMS の WearableService にバインドはされるのでログにエラーも出ない＝原因が見えにくい）。**そのため `wear` の `applicationId` を `com.rejysten.mobile` に変更した**（Kotlin の namespace は `com.rejysten.wear` のまま）。両方を中立な id（例 `com.rejysten`）に改名する案は Firebase のアプリ再登録が要るため未実施。
@@ -97,9 +118,15 @@ Firebase Auth で Web と同一 Google アカウント（uid `XoVR64j2pfgnlX8L05
 **検証済み**（phone AVD ＋ wear6 をペアリングした状態）:
 - スマホで「Push token to watch」→ 時計の「Token」で `len=1145` を確認。
 - 時計の「Refresh」→ 指紋が `fp=362366216` → `fp=648714234` に変化。＝ 要求→スマホが新規発行→配信の往復が動作（DataItem 再配信では指紋は変わらない）。
-- `LifeLogClient` の 401 リトライとパースは **JVM ユニットテスト13件**でカバー（`gradle :wear:testDebugUnitTest`）。
+- `LifeLogClient` の 401 リトライとパースは **JVM ユニットテスト15件**でカバー（`gradle :wear:testDebugUnitTest`）。
+- **401 リトライが実エンドポイントで動作**（2026-08-07）: 期限切れトークンで `start` を叩き、401 → 時計が `/token-request` を書く → スマホが `forceRefresh=true` で発行 → 時計が受領 → リトライ、までログで確認。
+- **読み取りの E2E が成立**: 時計の「Switch…」で dev の実データから候補が返りピッカーに並ぶ。dev を読んでいることは、同じ dedupe を dev/prod 双方から再現して表示順を突き合わせて確認（dev と一致、prod とは先頭から不一致）。
 
-**未検証**: 実エンドポイントに対する 401 の実挙動（dev プロジェクトと env の設定待ち。debug の `BASE_URL` が到達不能な既定値のため Start/Stop はまだ通らない）。
+**未検証**: 書き込み（`start` / `stop` / `switch`）。冒頭のブロッカー（`beginTransaction` 403）で止まっている。
+
+**実測で確定した方式の選択**: 要求は `MessageClient` ではなく **retained な DataItem**（`/token-request`）で送る。同一環境で2分以内に背中合わせで試した結果、DataItem は往復成功、`MessageClient` は送信成功するのにスマホの `WearableListenerService` が呼ばれず timeout だった。`MessageClient` が成功したのは初回ペアリング直後の一度きり。加えて retained なら切断中の要求も再接続時に届く。
+
+**通知の取りこぼしへの備え**: `TokenStore.readPublished()` が DataItem を直接読む。変更通知は一度しか来ないので、push 時に時計アプリや Play services が落ちていた場合、値は Data Layer に置かれたまま誰も知らせてくれない。
 
 ### 4. 時計 UI の作り込み（`wear`）
 - baseUrl のビルドタイプ切り替えは実装済み（§1）。**dev プロジェクトの URL が決まったら `wear/build.gradle.kts` の debug 側に入れる**だけ。
@@ -135,11 +162,11 @@ adb -e shell am start -n com.rejysten.mobile/com.rejysten.wear.MainActivity
 #   スマホ側ログイン確認: emulator -avd phone → gradle :mobile:installDebug → アプリで Sign in with Google
 ```
 
-## テスト方針（未整備・要検討）
+## テスト方針
 
-Android 側にはまだテスト基盤が無い。プロジェクト規約は「常にテストを追加」なので、実装時に方針を立てること:
-- `LifeLogClient` のレスポンスパース等は **JVM 単体テスト**（純ロジック）にしやすい。
-- UI / Data Layer は instrumented テスト（emulator 経由）が要るが、CI が無いため当面は emulator 手動確認が現実的。
+- **Android には JVM 単体テストがある**: `android/wear/src/test/.../LifeLogClientTest.kt`（15件、`gradle :wear:testDebugUnitTest`）。`LifeLogClient` は HTTP を差し替え可能な `Transport` seam を持つので、401 リトライ・レスポンスパース・候補読み取りの区別が純ロジックとして検証できる。`HttpURLConnection` 実装自体は fake が仕様を書き写すだけなので対象外。
+- **UI / Data Layer は instrumented テストが要る**が、CI が無いため当面は emulator 手動確認（本 doc の手順）。
+- **サーバ側で守れないこと**: emulator は rules 認証でも `beginTransaction` を通すため、上のブロッカーはどのテストでも再現しない。実 Firestore に対する検証には実 ID トークンが必要で、それを CI に置く手段は今のところ無い。**デプロイ後に一度手で叩く**のが現実的な防御線。
 - pre-commit フックは **TS の lint＋全テストを無条件で回す**（Android のみのコミットでも走る）。Android 自体は検証しないので、Android のビルド確認は手動（`gradle :wear:assembleDebug`）で行う。フックは重く flaky なこともある（規約どおりリトライ）。
 
 ## 発見済みの落とし穴（対処済み・要記憶）
@@ -149,3 +176,9 @@ Android 側にはまだテスト基盤が無い。プロジェクト規約は「
 - **`avdmanager` は JAVA_HOME を尊重せず古い java を拾うことがある**。JDK17+ を PATH 先頭に置くか `SKIP_JDK_VERSION_CHECK=1`。
 - `cmdline-tools 17.0` は「SDK XML version 4」警告を出すが AVD 作成は成功する（無害）。
 - WSL から `cmd.exe` は UNC カレントディレクトリで警告を出す。絶対パスの `.bat` を実行すれば問題ない。
+- **エミュレータはスナップショット復帰で時刻が止まる**。Wear AVD が2日前の時刻で動き、dev の証明書（当日発行）が `notBefore` 未達となって **TLS チェーン検証に失敗**した。`adb root` は production build で不可、`auto_time` も効かない。**`emulator -avd wear6 -no-snapshot-load` でコールドブート**すればホスト時刻に一致する。症状は `SSLHandshakeException: Chain validation failed`。
+- **時計がコンパニオンにダイヤルするのは起動時だけ**。`adb forward` が消えたり GMS を再起動するとペアリングの TCP が切れ、時計は自力で張り直さない。**時計を `adb reboot` すれば復帰する**（スマホ側の再起動だけでは足りない）。`netstat -tn | grep 5601` が ESTABLISHED かで判定。
+- **Data Layer の同期は一時的に止まることがある**。ノードは見えていて `sendMessage` も成功するのに相手のアプリに何も届かない状態が続き、その後（数十分〜翌日）自然回復した。コードを疑う前に `readPublished()` 相当で DataItem が実在するか確認する。
+- **Pages の新デプロイは数分間 API が 404 を返す**。デプロイ直後は静的アセットだけが配信され、`/api/*` が 404、`wrangler pages deployment tail` も「does not have a Pages Function」を返す。この間エイリアスは**1つ前のデプロイ**を配り続ける（＝新しいコードで検証したつもりが旧コードだった、という誤りを2回やった）。デプロイ固有 URL が 401 を返すまで待ってから検証する。
+- **dev の Firestore は本番データの古いコピー**（最新は 2026-01-24、本番は当日）。候補ピッカーは時刻を表示しないので、**内容だけでは dev と prod を区別できない**。時計の画面にホスト名を出しているのはこのため。
+- **`Bearer owner` は emulator の rules バイパス**。既存テストがこれを使っているため、rules を通る経路は検証されていなかった。`deployedRules.test.ts` は署名なし JWT（`alg: none`、`user_id` に uid）で rules を評価させる。
