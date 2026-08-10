@@ -135,9 +135,19 @@ Firebase Auth で Web と同一 Google アカウント（uid `XoVR64j2pfgnlX8L05
 ### 4. 時計 UI【実装済み・検証済み】
 - baseUrl はビルドタイプ切り替え（§1）。debug = `https://rejysten-dev.pages.dev`、release = `https://rejysten.youxkei.dev`。
 - **switch 候補ピッカー**実装済み。`GET /api/lifelog/switch-candidates` の結果を並べ、タップで `switch`。候補の読み取りは `CandidateList`（`Loaded` / `Rejected` / `Unauthenticated`）で、**「候補ゼロ」と「トークン切れ・エラー」を区別する**（期限切れで「候補なし」と誤表示すると、ユーザーが唯一取れる行動を隠すことになる）。
-- 画面最上部に**接続先ホスト名**を表示する。dev は本番データの古いコピーを持つので、内容だけでは dev と prod を見分けられない（§落とし穴）。
+- 画面最上部に**環境名（`dev` / `prod`）**を表示する。dev は本番データの古いコピーを持つので、内容だけでは dev と prod を見分けられない（§落とし穴）。ホスト名は丸型画面に収まらず両端が切れたため、ビルドタイプから環境名を埋め込む形にした（`BuildConfig.ENVIRONMENT`）。
+- **進行中エントリを表示**する（`食事 · 41m`）。経過時間は `startAt` からローカルで算出し 20 秒ごとに再計算するので、画面を開いたまま放置しても進む（エンドポイントは叩き直さない）。何も動いていなければ `idle`。
+- 各行は**1行＋省略記号**で、丸型では折り返すと行末が欠けるため。操作結果も `started` / `stopped` / `switched` / `no open entry` のような短い語にしている（id は画面幅を超え、しかも上の行が名前で答えている）。
 - 検証用に **Token / Refresh** ボタンがある（トークンは長さと `hashCode` の指紋のみ表示。指紋が変われば新しいトークンが届いた証拠になる）。
-- **残っている作り込み**: 進行中エントリの表示（今は Start/Stop の結果文字列のみ）、Wear らしい UI（`ScalingLazyColumn` 等）、タイル／コンプリケーション。いずれも動作には不要。
+
+**タイル（`LifeLogTileService`）【実装済み・検証済み】** — ウォッチフェイスから1スワイプで出る面。進行中エントリ＋経過時間、`Start`/`Stop`、`Switch` を持ち、**候補選択もタイル内で完結する**（クリックがタイルの state に action を載せ、`onTileRequest` がそれを見て `switch` を実行し、結果のレイアウトを返す）。
+
+- **タイルはスクロールできない**ので候補は**3件ずつのページ送り**（`▼` で次ページ、`←` で戻る）。入らない分は切れるだけで、スクロールで到達できない。
+- ProtoLayout で書く（Compose ではない）。丸型に合わせて `Box` で上下中央寄せ＋左右 24dp のインセットが必要（`Column` に縦中央寄せは無い）。テキストは1行＋省略記号、ボタンは角丸背景を付けないと押せる範囲が分からない。
+- 経過時間は**タイル生成時に計算**し、`setFreshnessIntervalMillis` で約1分ごとに再要求させている。ProtoLayout には `DynamicInstant.platformTimeWithSecondsPrecision()` から `DynamicDuration` を作って**自走させる**手段があり、そちらが本来の答えだが未実装。
+- `onTileRequest` の中でネットワークを待つので、トークン更新を挟むと数秒かかる。楽観的に結果を返して裏で実行し `getUpdater(context).requestUpdate()` で確定させる形が本来は望ましい。
+
+**残っている作り込み**: 上記のタイルの自走経過時間と楽観更新、Wear らしいリスト（`ScalingLazyColumn` 等）、コンプリケーション。いずれも動作には不要。
 
 ### 5. E2E テスト環境
 - **スマホ AVD `phone` を作成済み**（Windows 側 / pixel_7・API 36・`google_apis_playstore`・x86_64、`emulator -avd phone` で起動）。Wear AVD は `wear6`。
@@ -188,4 +198,6 @@ adb -e shell am start -n com.rejysten.mobile/com.rejysten.wear.MainActivity
 - **Data Layer の同期は一時的に止まることがある**。ノードは見えていて `sendMessage` も成功するのに相手のアプリに何も届かない状態が続き、その後（数十分〜翌日）自然回復した。コードを疑う前に `readPublished()` 相当で DataItem が実在するか確認する。
 - **Pages の新デプロイは数分間 API が 404 を返す**。デプロイ直後は静的アセットだけが配信され、`/api/*` が 404、`wrangler pages deployment tail` も「does not have a Pages Function」を返す。この間エイリアスは**1つ前のデプロイ**を配り続ける（＝新しいコードで検証したつもりが旧コードだった、という誤りを2回やった）。デプロイ固有 URL が 401 を返すまで待ってから検証する。
 - **dev の Firestore は本番データの古いコピー**（最新は 2026-01-24、本番は当日）。候補ピッカーは時刻を表示しないので、**内容だけでは dev と prod を区別できない**。時計の画面にホスト名を出しているのはこのため。
+- **`avdmanager create avd` に `-d` を渡さないと時計にならない**。`wear6` は既定値のまま **320×640・density 160・角型**で作られていて、丸型なら切れるはずのレイアウトが「収まっている」ように見えていた（実際にアプリのホスト名とボタン配置が丸型で壊れていた）。**Pixel Watch 4 と同じ 456×456・density 320・`hw.lcd.circular = true`** に `config.ini` を直接書き換えて対処（解像度変更なのでコールドブートが必要。`wm size` / `wm density` で確認できる）。`avdmanager list device` に Pixel Watch 名義のプロファイルは無く、`wearos_large_round` 等しかないので解像度は直接指定する。Pixel Watch には回転ベゼルがあるので `hw.rotaryInput = yes` も併せて設定した。
+- **タイルの追加は adb からできない**。`settings` にも出てこず、時計の UI（タイル一覧で長押し → `+` → 一覧から選択）が要る。`input swipe` での長押しは編集モードに入っても次のタップで解除されてしまい、自動化できなかった（その過程で Timer タイルの「New」を押して20分タイマーを起動させる事故もあった）。**タイル追加は人間に依頼するのが速い**。追加後の操作（表示確認・ボタン・ページ送り）は `uiautomator dump` ＋ `input tap` で自動化できる。
 - **`Bearer owner` は emulator の rules バイパス**。既存テストがこれを使っているため、rules を通る経路は検証されていなかった。`deployedRules.test.ts` は署名なし JWT（`alg: none`、`user_id` に uid）で rules を評価させる。
