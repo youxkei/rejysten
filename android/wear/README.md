@@ -37,11 +37,13 @@ introduced. Responses are JSON.
 | `POST /api/lifelog/stop` | `{}` | `{ok:true, id}` | 409 `no open entry`, 401, 503 |
 | `POST /api/lifelog/switch` | `{sourceId}` | `{ok:true, id, stoppedId}` | 400 `bad request`, 404 `source not found`, 401, 503 |
 | `GET /api/lifelog/switch-candidates` | — | `{ok:true, candidates:[{id,text}]}` | 401 |
+| `GET /api/lifelog/current` | — | `{ok:true, current:{id,text,startAt}\|null}` | 401 |
 
 - **start**: begins a new entry; startAt chains from the last closed entry's endAt (or now).
 - **stop**: closes the open entry at `now`.
 - **switch**: stops the open entry (if any) and starts a new one carrying `sourceId`'s text — one commit.
-- **switch-candidates**: recent closed, non-empty entries deduped by text (newest kept); pick a `sourceId` from these.
+- **switch-candidates**: recent closed, non-empty entries deduped by text (newest kept); pick a `sourceId` from these. Ordering is recency of the last occurrence, nothing else — no frequency or time-of-day weighting — over a scan of the 100 most recent entries, which in production spans roughly two days.
+- **current**: the entry in progress, or `null` when the newest one is already closed. `text` is empty for an entry started from the watch, since only a switch gives one its text. `startAt` is ISO-8601.
 
 ## Wiring the ID token (login is on the phone)
 

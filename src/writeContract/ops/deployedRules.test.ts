@@ -4,6 +4,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 // which the @/ alias does not reach, and they are data rather than a module.
 import deployedRules from "../../../firestore.rules?raw";
 import { acquireEmulator, releaseEmulator } from "@/test";
+import { readCurrentLifeLog } from "@/writeContract/ops/current";
 import { buildOpDeps } from "@/writeContract/ops/http";
 import { type OpDeps } from "@/writeContract/ops/shared";
 import { startLifeLog } from "@/writeContract/ops/start";
@@ -72,6 +73,16 @@ describe("the endpoints under the deployed firestore.rules", () => {
     await loadDeployedRules(project);
 
     await expect(listSwitchCandidates(deps(project))).resolves.toEqual({ ok: true, candidates: [] });
+  });
+
+  it("reads the entry in progress for the gated uid", async () => {
+    const project = "deployed-rules-current";
+    await loadDeployedRules(project);
+    const started = await startLifeLog(deps(project));
+
+    const result = await readCurrentLifeLog(deps(project));
+
+    expect(result.current?.id).toBe(started.id);
   });
 
   it("starts an entry for the gated uid", async () => {

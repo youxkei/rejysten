@@ -137,6 +137,57 @@ class LifeLogClientTest {
     }
 
     @Test
+    fun `the current entry is reported with the text and start the endpoint returned`() {
+        val transport = FakeTransport(
+            200 to """{"ok":true,"current":{"id":"log-1","text":"work","startAt":"2026-08-07T17:25:28.000Z"}}""",
+        )
+
+        val state = client(transport).current()
+
+        assertEquals(
+            LifeLogClient.CurrentState.Loaded(
+                LifeLogClient.Current("log-1", "work", "2026-08-07T17:25:28.000Z"),
+            ),
+            state,
+        )
+        assertEquals("GET", transport.calls.single().method)
+        assertEquals("https://example.test/api/lifelog/current", transport.calls.single().url)
+    }
+
+    @Test
+    fun `nothing in progress is distinct from failing to ask`() {
+        val idle = FakeTransport(200 to """{"ok":true,"current":null}""")
+        val rejected = FakeTransport(503 to """{"ok":false,"reason":"contention"}""", 503 to "")
+
+        assertEquals(LifeLogClient.CurrentState.Loaded(null), client(idle).current())
+        assertEquals(LifeLogClient.CurrentState.Rejected(503, "contention"), client(rejected).current())
+    }
+
+    @Test
+    fun `the current entry is not requested while the phone has delivered no token`() {
+        val transport = FakeTransport()
+
+        val state = client(transport, tokens = listOf(null)).current()
+
+        assertEquals(LifeLogClient.CurrentState.Unauthenticated, state)
+        assertTrue(transport.calls.isEmpty())
+    }
+
+    @Test
+    fun `an entry started without a source reports an empty text`() {
+        val transport = FakeTransport(
+            200 to """{"ok":true,"current":{"id":"log-2","startAt":"2026-08-07T17:25:28.000Z"}}""",
+        )
+
+        val state = client(transport).current()
+
+        assertEquals(
+            LifeLogClient.CurrentState.Loaded(LifeLogClient.Current("log-2", "", "2026-08-07T17:25:28.000Z")),
+            state,
+        )
+    }
+
+    @Test
     fun `switch candidates are parsed in the order the endpoint returned them`() {
         val transport = FakeTransport(
             200 to """{"ok":true,"candidates":[{"id":"a","text":"work"},{"id":"b","text":"rest"}]}""",

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,6 +28,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Duration
+import java.time.Instant
 
 /**
  * Skeleton Wear OS UI: two buttons that drive the lifeLog HTTP endpoints through
@@ -58,6 +61,25 @@ private fun WearApp() {
     val scope = rememberCoroutineScope()
     var status by remember { mutableStateOf("ready") }
     var picking by remember { mutableStateOf<List<LifeLogClient.SwitchCandidate>?>(null) }
+    var current by remember { mutableStateOf("…") }
+
+    // What is running right now, refreshed on open and after anything that changes it.
+    // Without it the buttons are pressed blind: the watch could not tell a stopped
+    // timeline from a running one, so Start on an already-open entry looked the same.
+    val refreshCurrent: () -> Unit = {
+        scope.launch {
+            current = try {
+                when (val state = withContext(Dispatchers.IO) { client.current() }) {
+                    is LifeLogClient.CurrentState.Loaded -> describeCurrent(state.current)
+                    is LifeLogClient.CurrentState.Rejected -> "? ${state.status} ${state.reason}"
+                    LifeLogClient.CurrentState.Unauthenticated -> "? no token"
+                }
+            } catch (t: Throwable) {
+                "? ${t.message}"
+            }
+        }
+    }
+    LaunchedEffect(Unit) { refreshCurrent() }
 
     MaterialTheme {
         Column(
@@ -72,11 +94,26 @@ private fun WearApp() {
             // so the entries alone look identical to production -- telling them apart
             // took a scripted comparison once, which is once too often.
             Text(text = Uri.parse(BuildConfig.BASE_URL).host ?: BuildConfig.BASE_URL)
+            Text(text = current)
             Text(text = status)
             when (val candidates = picking) {
                 null -> {
-                    Button(onClick = { dispatch(scope, { client.start() }) { status = it } }) { Text("Start") }
-                    Button(onClick = { dispatch(scope, { client.stop() }) { status = it } }) { Text("Stop") }
+                    Button(
+                        onClick = {
+                            dispatch(scope, { client.start() }) {
+                                status = it
+                                refreshCurrent()
+                            }
+                        },
+                    ) { Text("Start") }
+                    Button(
+                        onClick = {
+                            dispatch(scope, { client.stop() }) {
+                                status = it
+                                refreshCurrent()
+                            }
+                        },
+                    ) { Text("Stop") }
                     Button(
                         onClick = {
                             status = "loading…"
@@ -124,7 +161,10 @@ private fun WearApp() {
                         Button(
                             onClick = {
                                 picking = null
-                                dispatch(scope, { client.switch(candidate.id) }) { status = it }
+                                dispatch(scope, { client.switch(candidate.id) }) {
+                                    status = it
+                                    refreshCurrent()
+                                }
                             },
                         ) { Text(candidate.text) }
                     }
@@ -133,6 +173,17 @@ private fun WearApp() {
             }
         }
     }
+}
+
+// An entry started from the watch has no text until it is switched to a source, so
+// it is named by its elapsed time instead of being left blank. The elapsed time is
+// the point of the line anyway: on a watch the question is how long this has run.
+private fun describeCurrent(current: LifeLogClient.Current?): String {
+    if (current == null) return "idle"
+    val label = current.text.ifEmpty { "(untitled)" }
+    val startedAt = runCatching { Instant.parse(current.startAt) }.getOrNull() ?: return label
+    val minutes = Duration.between(startedAt, Instant.now()).toMinutes()
+    return if (minutes < 60) "$label · ${minutes}m" else "$label · ${minutes / 60}h${minutes % 60}m"
 }
 
 // Identified by a fingerprint rather than its content: seeing that a refresh yielded

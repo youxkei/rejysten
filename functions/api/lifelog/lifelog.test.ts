@@ -1,6 +1,7 @@
 /* eslint-disable no-relative-import-paths/no-relative-import-paths */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { onRequestGet as currentGet } from "./current";
 import { onRequestPost as startPost } from "./start";
 import { onRequestPost as stopPost } from "./stop";
 import { onRequestGet as candidatesGet } from "./switch-candidates";
@@ -128,5 +129,67 @@ describe("GET /api/lifelog/switch-candidates", () => {
     const res = await candidatesGet(makeContext({ method: "GET", auth: "Bearer token" }));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, candidates: [] });
+  });
+});
+
+describe("GET /api/lifelog/current", () => {
+  it("401 without an Authorization header", async () => {
+    globalThis.fetch = vi.fn(() => {
+      throw new Error("must not fetch");
+    });
+    const res = await currentGet(makeContext({ method: "GET" }));
+    expect(res.status).toBe(401);
+  });
+
+  it("reports no entry in progress on an empty timeline", async () => {
+    globalThis.fetch = firestoreFetch({ runQuery: [] });
+    const res = await currentGet(makeContext({ method: "GET", auth: "Bearer token" }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, current: null });
+  });
+
+  it("reports the entry in progress with its text and start", async () => {
+    globalThis.fetch = firestoreFetch({
+      runQuery: [
+        {
+          document: {
+            name: "projects/demo/databases/(default)/documents/lifeLogs/log-1",
+            fields: {
+              text: { stringValue: "食事" },
+              startAt: { timestampValue: "2026-08-07T17:25:28.000Z" },
+              endAt: { timestampValue: "3000-12-31T23:59:59.000Z" },
+            },
+          },
+        },
+      ],
+    });
+
+    const res = await currentGet(makeContext({ method: "GET", auth: "Bearer token" }));
+
+    expect(await res.json()).toEqual({
+      ok: true,
+      current: { id: "log-1", text: "食事", startAt: "2026-08-07T17:25:28.000Z" },
+    });
+  });
+
+  it("reports no entry in progress when the newest one is already closed", async () => {
+    globalThis.fetch = firestoreFetch({
+      runQuery: [
+        {
+          document: {
+            name: "projects/demo/databases/(default)/documents/lifeLogs/log-1",
+            fields: {
+              text: { stringValue: "食事" },
+              startAt: { timestampValue: "2026-08-07T17:25:28.000Z" },
+              endAt: { timestampValue: "2026-08-07T17:26:42.000Z" },
+            },
+          },
+        },
+      ],
+    });
+
+    const res = await currentGet(makeContext({ method: "GET", auth: "Bearer token" }));
+
+    expect(await res.json()).toEqual({ ok: true, current: null });
   });
 });

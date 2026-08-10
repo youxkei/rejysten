@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 
 import { acquireEmulator, releaseEmulator } from "@/test";
 import { buildNgramDoc } from "@/writeContract/ngramDoc";
+import { readCurrentLifeLog } from "@/writeContract/ops/current";
 import { type OpDeps, sentinelDate } from "@/writeContract/ops/shared";
 import { startLifeLog } from "@/writeContract/ops/start";
 import { stopLifeLog } from "@/writeContract/ops/stop";
@@ -254,5 +255,25 @@ describe("lifeLog REST ops against the emulator", () => {
     const { candidates } = await listSwitchCandidates(deps);
     expect(candidates.map((c) => c.text)).toEqual(["A", "B"]);
     expect(candidates.find((c) => c.text === "A")?.id).toBe(a2.id);
+  });
+
+  it("reports the entry in progress, and nothing once it is stopped", async () => {
+    const deps = makeDeps(`current-${Date.now()}`);
+    clockMs = BASE_MS;
+
+    expect(await readCurrentLifeLog(deps)).toEqual({ ok: true, current: null });
+
+    const started = await startLifeLog(deps);
+    await seedText(deps, started.id, "作業");
+
+    expect(await readCurrentLifeLog(deps)).toEqual({
+      ok: true,
+      current: { id: started.id, text: "作業", startAt: new Date(BASE_MS).toISOString() },
+    });
+
+    clockMs = BASE_MS + 60_000;
+    await stopLifeLog(deps);
+
+    expect(await readCurrentLifeLog(deps)).toEqual({ ok: true, current: null });
   });
 });

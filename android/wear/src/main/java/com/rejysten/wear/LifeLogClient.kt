@@ -41,6 +41,32 @@ class LifeLogClient(
 
     data class SwitchCandidate(val id: String, val text: String)
 
+    /** The entry in progress; [text] is empty for one started without a source. */
+    data class Current(val id: String, val text: String, val startAt: String)
+
+    /** Reading the current entry keeps "nothing in progress" apart from "could not ask". */
+    sealed interface CurrentState {
+        data class Loaded(val current: Current?) : CurrentState
+        data class Rejected(val status: Int, val reason: String) : CurrentState
+        data object Unauthenticated : CurrentState
+    }
+
+    fun current(): CurrentState =
+        when (val response = request("GET", "/api/lifelog/current", null)) {
+            Response.NoToken -> CurrentState.Unauthenticated
+            is Response.Http ->
+                if (response.status == 200 && response.json.optBoolean("ok")) {
+                    val entry = response.json.optJSONObject("current")
+                    CurrentState.Loaded(
+                        entry?.let {
+                            Current(it.getString("id"), it.optString("text"), it.optString("startAt"))
+                        },
+                    )
+                } else {
+                    CurrentState.Rejected(response.status, response.json.optString("reason", "error"))
+                }
+        }
+
     /**
      * Reading candidates is kept distinct from an empty list: a picker that showed
      * "nothing to switch to" for an expired token would hide the one thing the user
