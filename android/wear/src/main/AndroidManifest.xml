@@ -33,6 +33,17 @@
             </intent-filter>
         </activity>
 
+        <!-- The surface reached by swiping from the watch face. -->
+        <service
+            android:name=".LifeLogTileService"
+            android:exported="true"
+            android:label="rejysten"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+        </service>
+
         <service
             android:name=".TokenListenerService"
             android:exported="true">

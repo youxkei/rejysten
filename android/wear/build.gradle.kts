@@ -39,10 +39,14 @@ android {
             val devBaseUrl = providers.gradleProperty("rejystenBaseUrl")
                 .getOrElse("https://rejysten-dev.pages.dev")
             buildConfigField("String", "BASE_URL", "\"$devBaseUrl\"")
+            // Named rather than derived from the host, which does not fit across a round
+            // screen and gets its ends clipped when it is drawn full width.
+            buildConfigField("String", "ENVIRONMENT", "\"dev\"")
         }
         getByName("release") {
             isMinifyEnabled = false
             buildConfigField("String", "BASE_URL", "\"https://rejysten.youxkei.dev\"")
+            buildConfigField("String", "ENVIRONMENT", "\"prod\"")
         }
     }
 }
@@ -58,6 +62,11 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.play.services.wearable)
+    implementation(libs.androidx.wear.tiles)
+    implementation(libs.androidx.wear.protolayout)
+    implementation(libs.androidx.wear.protolayout.material3)
+    implementation(libs.androidx.wear.protolayout.expression)
+    implementation(libs.androidx.concurrent.futures)
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
     testImplementation(libs.org.json)

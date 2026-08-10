@@ -8,6 +8,9 @@ coreKtx = "1.19.0"
 lifecycleRuntimeKtx = "2.11.0"
 coroutines = "1.11.0"
 playServicesWearable = "20.0.1"
+wearTiles = "1.6.2"              # androidx.wear.tiles:*
+protolayout = "1.4.2"            # androidx.wear.protolayout:* (the tile's layout & expressions)
+concurrentFutures = "1.3.0"      # ListenableFuture from a blocking call, for onTileRequest
 junit = "4.13.2"
 orgJson = "20250107"                # real org.json for JVM unit tests (see below)
 
@@ -38,6 +41,15 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 
 # Data Layer (phone <-> watch token hand-off)
 play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
+
+# Tile (the surface reached by swiping from the watch face). Laid out with
+# ProtoLayout rather than Compose, and its elapsed time ticks from an expression.
+androidx-wear-tiles = { group = "androidx.wear.tiles", name = "tiles", version.ref = "wearTiles" }
+androidx-wear-protolayout = { group = "androidx.wear.protolayout", name = "protolayout", version.ref = "protolayout" }
+androidx-wear-protolayout-material3 = { group = "androidx.wear.protolayout", name = "protolayout-material3", version.ref = "protolayout" }
+androidx-wear-protolayout-expression = { group = "androidx.wear.protolayout", name = "protolayout-expression", version.ref = "protolayout" }
+# onTileRequest returns a ListenableFuture, and LifeLogClient blocks: this bridges them.
+androidx-concurrent-futures = { group = "androidx.concurrent", name = "concurrent-futures", version.ref = "concurrentFutures" }
 
 # JVM unit tests. android.jar stubs org.json with methods that throw, so a unit
 # test touching JSON needs a real implementation on the test classpath.
