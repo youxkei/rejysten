@@ -62,4 +62,18 @@ class CurrentLineTest {
     fun `the line is a placeholder until the first answer arrives`() {
         assertEquals("…", describeCurrentState(null, startedAt))
     }
+
+    @Test
+    fun `an outcome reads as a word, without the entry ids that overflow the screen`() {
+        assertEquals("started", describeOutcome(LifeLogClient.Outcome.Started("019f-long-id")))
+        assertEquals("stopped", describeOutcome(LifeLogClient.Outcome.Stopped("019f-long-id")))
+        assertEquals("switched", describeOutcome(LifeLogClient.Outcome.Switched("019f-a", "019f-b")))
+    }
+
+    @Test
+    fun `a rejection reads as the endpoint's own reason, falling back to its status`() {
+        assertEquals("no open entry", describeOutcome(LifeLogClient.Outcome.Rejected(409, "no open entry")))
+        assertEquals("failed 503", describeOutcome(LifeLogClient.Outcome.Rejected(503, "")))
+        assertEquals("no token", describeOutcome(LifeLogClient.Outcome.Unauthenticated))
+    }
 }

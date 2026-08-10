@@ -1,6 +1,5 @@
 package com.rejysten.wear
 
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,6 +19,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.MaterialTheme
@@ -103,16 +104,19 @@ private fun WearApp() {
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                // Inset enough that a full-width line stays inside the circle: on a round
+                // screen the corners are off-display, and 16dp all round was not enough --
+                // the endpoint's host name lost both its ends.
+                .padding(horizontal = 28.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
         ) {
             // Which deployment this build talks to. dev holds a copy of the real data,
             // so the entries alone look identical to production -- telling them apart
             // took a scripted comparison once, which is once too often.
-            Text(text = Uri.parse(BuildConfig.BASE_URL).host ?: BuildConfig.BASE_URL)
-            Text(text = describeCurrentState(currentState, now))
-            Text(text = status)
+            line(BuildConfig.ENVIRONMENT)
+            line(describeCurrentState(currentState, now))
+            line(status)
             when (val candidates = picking) {
                 null -> {
                     Button(
@@ -192,6 +196,18 @@ private fun WearApp() {
     }
 }
 
+// Kept to one line and centred: text that wraps on a round screen loses the ends of
+// the lines it wraps to, so anything too long is better ellipsised than folded.
+@Composable
+private fun line(value: String) {
+    Text(
+        text = value,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Center,
+    )
+}
+
 /**
  * The line describing what is running, as of [now] rather than of when the endpoint
  * was last asked. Pure so the wording and the elapsed-time arithmetic are testable;
@@ -238,10 +254,26 @@ private fun dispatch(
     scope.launch {
         val result =
             try {
-                withContext(Dispatchers.IO) { action() }.toString()
+                describeOutcome(withContext(Dispatchers.IO) { action() })
             } catch (t: Throwable) {
                 "error: ${t.message}"
             }
         onResult(result)
     }
 }
+
+/**
+ * What happened, in words that fit a watch. The outcome's own toString carries the
+ * entry ids, which are the width of the screen and of no use to the wearer: what an
+ * id would answer -- which entry this was -- the line above already shows by name.
+ */
+internal fun describeOutcome(outcome: LifeLogClient.Outcome): String =
+    when (outcome) {
+        is LifeLogClient.Outcome.Started -> "started"
+        is LifeLogClient.Outcome.Stopped -> "stopped"
+        is LifeLogClient.Outcome.Switched -> "switched"
+        // The reason is the endpoint's own word for a business outcome ("no open
+        // entry"), which is worth showing; the status only matters when there is none.
+        is LifeLogClient.Outcome.Rejected -> outcome.reason.ifEmpty { "failed ${outcome.status}" }
+        LifeLogClient.Outcome.Unauthenticated -> "no token"
+    }
