@@ -26,6 +26,7 @@ import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Duration
@@ -36,6 +37,10 @@ import java.time.Instant
  * [LifeLogClient]. This proves the toolchain and the client compile and lay out;
  * the token hand-off and the switch-candidate picker are wired later.
  */
+// The line only ever shows whole minutes, so ticking faster would redraw the same
+// text; ticking slower would let it sit a minute behind what the wearer sees.
+private const val TICK_MS = 20_000L
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,25 +66,37 @@ private fun WearApp() {
     val scope = rememberCoroutineScope()
     var status by remember { mutableStateOf("ready") }
     var picking by remember { mutableStateOf<List<LifeLogClient.SwitchCandidate>?>(null) }
-    var current by remember { mutableStateOf("…") }
+    // The entry itself rather than a rendered line, so the elapsed time can be
+    // recomputed from its startAt without asking the endpoint again.
+    var currentState by remember { mutableStateOf<LifeLogClient.CurrentState?>(null) }
+    var now by remember { mutableStateOf(Instant.now()) }
 
     // What is running right now, refreshed on open and after anything that changes it.
     // Without it the buttons are pressed blind: the watch could not tell a stopped
     // timeline from a running one, so Start on an already-open entry looked the same.
     val refreshCurrent: () -> Unit = {
         scope.launch {
-            current = try {
-                when (val state = withContext(Dispatchers.IO) { client.current() }) {
-                    is LifeLogClient.CurrentState.Loaded -> describeCurrent(state.current)
-                    is LifeLogClient.CurrentState.Rejected -> "? ${state.status} ${state.reason}"
-                    LifeLogClient.CurrentState.Unauthenticated -> "? no token"
-                }
+            currentState = try {
+                withContext(Dispatchers.IO) { client.current() }
             } catch (t: Throwable) {
-                "? ${t.message}"
+                LifeLogClient.CurrentState.Rejected(0, t.message ?: "error")
             }
+            now = Instant.now()
         }
     }
     LaunchedEffect(Unit) { refreshCurrent() }
+
+    // Ticks the clock rather than re-reading the endpoint: how long the entry has run
+    // is derivable from a startAt already in hand, and a watch is mostly looked at
+    // rather than pressed, so a line frozen at the moment of the last tap is the one
+    // thing this display must not do. Compose stops composing while the screen is
+    // off, which is when a wearable spends most of its time.
+    LaunchedEffect(currentState) {
+        while (true) {
+            delay(TICK_MS)
+            now = Instant.now()
+        }
+    }
 
     MaterialTheme {
         Column(
@@ -94,7 +111,7 @@ private fun WearApp() {
             // so the entries alone look identical to production -- telling them apart
             // took a scripted comparison once, which is once too often.
             Text(text = Uri.parse(BuildConfig.BASE_URL).host ?: BuildConfig.BASE_URL)
-            Text(text = current)
+            Text(text = describeCurrentState(currentState, now))
             Text(text = status)
             when (val candidates = picking) {
                 null -> {
@@ -175,15 +192,36 @@ private fun WearApp() {
     }
 }
 
-// An entry started from the watch has no text until it is switched to a source, so
-// it is named by its elapsed time instead of being left blank. The elapsed time is
-// the point of the line anyway: on a watch the question is how long this has run.
-private fun describeCurrent(current: LifeLogClient.Current?): String {
-    if (current == null) return "idle"
-    val label = current.text.ifEmpty { "(untitled)" }
-    val startedAt = runCatching { Instant.parse(current.startAt) }.getOrNull() ?: return label
-    val minutes = Duration.between(startedAt, Instant.now()).toMinutes()
-    return if (minutes < 60) "$label · ${minutes}m" else "$label · ${minutes / 60}h${minutes % 60}m"
+/**
+ * The line describing what is running, as of [now] rather than of when the endpoint
+ * was last asked. Pure so the wording and the elapsed-time arithmetic are testable;
+ * the caller supplies the clock and re-renders on a tick.
+ *
+ * An entry started from the watch carries no text until it is switched to a source,
+ * so it is labelled untitled rather than left blank.
+ */
+internal fun describeCurrentState(state: LifeLogClient.CurrentState?, now: Instant): String =
+    when (state) {
+        null -> "…"
+        is LifeLogClient.CurrentState.Rejected -> "? ${state.status} ${state.reason}"
+        LifeLogClient.CurrentState.Unauthenticated -> "? no token"
+        is LifeLogClient.CurrentState.Loaded -> {
+            val current = state.current
+            if (current == null) {
+                "idle"
+            } else {
+                val label = current.text.ifEmpty { "(untitled)" }
+                val startedAt = runCatching { Instant.parse(current.startAt) }.getOrNull()
+                if (startedAt == null) label else "$label · ${elapsed(startedAt, now)}"
+            }
+        }
+    }
+
+// Clamped at zero: a watch whose clock runs behind the server's would otherwise
+// render a negative age for an entry that has only just started.
+private fun elapsed(startedAt: Instant, now: Instant): String {
+    val minutes = Duration.between(startedAt, now).toMinutes().coerceAtLeast(0)
+    return if (minutes < 60) "${minutes}m" else "${minutes / 60}h${minutes % 60}m"
 }
 
 // Identified by a fingerprint rather than its content: seeing that a refresh yielded
