@@ -225,6 +225,81 @@ describe("fetchOGPMeta", () => {
     expect(fetchSpans.map((span) => span.attributes["app.success"])).toEqual([false, true]);
   });
 
+  it("retries the Cloudflare fallback while it answers HTTP 403", async () => {
+    let fallbackCalls = 0;
+    setupFetch((endpoint) => {
+      if (endpoint === SCANNER_ENDPOINT) {
+        return Response.json({ success: false, reason: "Received error from target server" });
+      }
+      if (endpoint === FALLBACK_ENDPOINT) {
+        fallbackCalls++;
+        if (fallbackCalls < 3) return Response.json({ success: false, reason: "HTTP 403", colo: "KIX" });
+        return Response.json({
+          success: true,
+          result: { title: null, description: null, ogp: { "og:title": ["third"] } },
+        });
+      }
+      throw new Error(`unexpected endpoint ${endpoint}`);
+    });
+
+    const result = await fetchOGPMeta("https://example.com");
+    expect(result).toEqual({ title: "third", description: null });
+    expect(getFetchCalls().map((call) => call.endpoint)).toEqual([
+      SCANNER_ENDPOINT,
+      FALLBACK_ENDPOINT,
+      FALLBACK_ENDPOINT,
+      FALLBACK_ENDPOINT,
+    ]);
+  });
+
+  it("gives up on the Cloudflare fallback after three HTTP 403 answers", async () => {
+    setupFetch((endpoint) => {
+      if (endpoint === SCANNER_ENDPOINT) return Response.json({ success: false, reason: "blocked" });
+      return Response.json({ success: false, reason: "HTTP 403" });
+    });
+
+    const result = await fetchOGPMeta("https://example.com");
+    expect(result).toEqual({ title: null, description: null });
+    expect(getFetchCalls()).toHaveLength(4);
+  });
+
+  it("does not retry the Cloudflare fallback when it fails for another reason", async () => {
+    setupFetch((endpoint) => {
+      if (endpoint === SCANNER_ENDPOINT) return Response.json({ success: false, reason: "blocked" });
+      return Promise.reject(new Error("timeout"));
+    });
+
+    await fetchOGPMeta("https://example.com");
+    expect(getFetchCalls()).toHaveLength(2);
+  });
+
+  it("records the failure reason, colo and attempt on each fetch span", async () => {
+    initTelemetry({ mode: "memory" });
+    let fallbackCalls = 0;
+    setupFetch((endpoint) => {
+      if (endpoint === SCANNER_ENDPOINT) return Response.json({ success: false, reason: "blocked" });
+      fallbackCalls++;
+      if (fallbackCalls === 1) return Response.json({ success: false, reason: "HTTP 403", colo: "KIX" });
+      return new Response("boom", { status: 502 });
+    });
+
+    await fetchOGPMeta("https://example.com");
+
+    const fetchSpans = getFinishedSpansForTest().filter((span) => span.name === "ogp.fetch");
+    expect(
+      fetchSpans.map((span) => ({
+        endpoint: span.attributes["app.endpoint"],
+        attempt: span.attributes["app.attempt"],
+        reason: span.attributes["app.reason"],
+        colo: span.attributes["app.colo"],
+      })),
+    ).toEqual([
+      { endpoint: SCANNER_ENDPOINT, attempt: 1, reason: "blocked", colo: undefined },
+      { endpoint: FALLBACK_ENDPOINT, attempt: 1, reason: "HTTP 403", colo: "KIX" },
+      { endpoint: FALLBACK_ENDPOINT, attempt: 2, reason: "HTTP 502", colo: undefined },
+    ]);
+  });
+
   it("records a single successful fetch span when the scanner answers", async () => {
     initTelemetry({ mode: "memory" });
     setupFetch((endpoint) => {

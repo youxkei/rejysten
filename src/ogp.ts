@@ -9,11 +9,16 @@ type OGPScannerResponse =
         ogp: Record<string, string[] | undefined>;
       };
     }
-  | { success: false; reason: string };
+  | { success: false; reason: string; colo?: string | null };
 
 type ResolveUrlResponse = { success: true; url: string } | { success: false; reason: string };
 
-async function callOGPEndpoint(endpoint: string, url: string, parent: Span): Promise<OGPScannerResponse | null> {
+async function callOGPEndpoint(
+  endpoint: string,
+  url: string,
+  parent: Span,
+  attempt = 1,
+): Promise<OGPScannerResponse | null> {
   return withSpan(
     "ogp.fetch",
     async (span) => {
@@ -26,17 +31,23 @@ async function callOGPEndpoint(endpoint: string, url: string, parent: Span): Pro
         });
         if (!res.ok) {
           span.setAttribute("app.success", false);
+          span.setAttribute("app.reason", `HTTP ${res.status}`);
           return null;
         }
         const data = (await res.json()) as OGPScannerResponse;
         span.setAttribute("app.success", data.success);
+        if (!data.success) {
+          span.setAttribute("app.reason", data.reason);
+          if (data.colo) span.setAttribute("app.colo", data.colo);
+        }
         return data;
-      } catch {
+      } catch (error) {
         span.setAttribute("app.success", false);
+        span.setAttribute("app.reason", error instanceof Error ? error.message : String(error));
         return null;
       }
     },
-    { parent, attributes: { "app.endpoint": endpoint } },
+    { parent, attributes: { "app.endpoint": endpoint, "app.attempt": attempt } },
   );
 }
 
@@ -72,13 +83,21 @@ function parseOGP(data: OGPScannerResponse): { title: string | null; description
   };
 }
 
+const fallbackAttempts = 3;
+
 export async function fetchOGPMeta(url: string): Promise<{ title: string | null; description: string | null }> {
   return withSpan("ogp.fetchMeta", async (span) => {
     const scannerResult = await callOGPEndpoint("https://ogp-scanner.kunon.jp/v2/ogp_info", url, span);
     if (scannerResult?.success) return parseOGP(scannerResult);
 
-    const fallbackResult = await callOGPEndpoint("/api/ogp", url, span);
-    if (fallbackResult?.success) return parseOGP(fallbackResult);
+    // Bot defenses such as Akamai refuse a share of requests from the function at random with a
+    // quick 403, and a fresh request can leave Cloudflare from a different egress address. Other
+    // failures are not retried: a timeout would multiply the wait before the share is recorded.
+    for (let attempt = 1; attempt <= fallbackAttempts; attempt++) {
+      const fallbackResult = await callOGPEndpoint("/api/ogp", url, span, attempt);
+      if (fallbackResult?.success) return parseOGP(fallbackResult);
+      if (fallbackResult?.reason !== "HTTP 403") break;
+    }
 
     return { title: null, description: null };
   });

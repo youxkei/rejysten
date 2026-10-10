@@ -191,7 +191,8 @@ describe("OGP function", () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const headers = fetchMock.mock.calls[0][1]?.headers as Record<string, string>;
-    expect(headers["User-Agent"]).toContain("Chrome/149");
+    expect(headers["User-Agent"]).toContain("Chrome/154");
+    expect(headers["sec-ch-ua"]).toContain('v="154"');
     expect(headers["sec-ch-ua"]).toContain("Chromium");
     expect(headers["sec-ch-ua-mobile"]).toBe("?0");
     expect(headers["sec-ch-ua-platform"]).toBe('"Windows"');
@@ -199,5 +200,53 @@ describe("OGP function", () => {
     expect(headers["sec-fetch-mode"]).toBe("navigate");
     expect(headers["sec-fetch-site"]).toBe("none");
     expect(headers["sec-fetch-user"]).toBe("?1");
+  });
+
+  it("retries when upstream returns 403 and succeeds on a later attempt", async () => {
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("", { status: 403 }))
+      .mockResolvedValueOnce(new Response("", { status: 403 }))
+      .mockResolvedValueOnce(
+        new Response('<html><head><meta property="og:title" content="Third Time"></head></html>', {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+      );
+
+    const response = await onRequestPost(createContext({ url: "https://example.com/" }));
+    const data = (await response.json()) as SuccessResponse;
+    expect(data.success).toBe(true);
+    expect(data.result.ogp["og:title"]).toEqual(["Third Time"]);
+    expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(3);
+  });
+
+  it("gives up after three 403 responses", async () => {
+    globalThis.fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response("", { status: 403 })));
+
+    const response = await onRequestPost(createContext({ url: "https://example.com/" }));
+    const data = (await response.json()) as FailureResponse;
+    expect(data.success).toBe(false);
+    expect(data.reason).toBe("HTTP 403");
+    expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not retry non-403 failures", async () => {
+    mockFetch(500, "", { "content-type": "text/html" });
+
+    await onRequestPost(createContext({ url: "https://example.com/" }));
+
+    expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports the Cloudflare colo on failure", async () => {
+    mockFetch(500, "", { "content-type": "text/html" });
+
+    const context = createContext({ url: "https://example.com/" });
+    Object.defineProperty(context.request, "cf", { value: { colo: "KIX" } });
+
+    const response = await onRequestPost(context);
+    const data = (await response.json()) as FailureResponse & { colo: string | null };
+    expect(data.colo).toBe("KIX");
   });
 });
