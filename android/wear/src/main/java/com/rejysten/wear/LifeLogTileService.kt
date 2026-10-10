@@ -19,6 +19,8 @@ import androidx.wear.tiles.RequestBuilders
 import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
 import com.google.common.util.concurrent.ListenableFuture
+import org.json.JSONArray
+import org.json.JSONObject
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.Executors
@@ -55,6 +57,46 @@ private class LastKnown(context: Context) {
         const val STATE = "state"
     }
 }
+
+/**
+ * The candidate list as it was last fetched, so paging through it asks for nothing.
+ *
+ * A tile request carries no state from the one before it, so each page used to fetch the
+ * whole list again: picking one entry out of twenty cost nine round trips over a list
+ * that had not changed, which on a watch is battery. Entering the picker fetches and
+ * stores here; the numbered pages after it read it.
+ */
+private class CachedCandidates(context: Context) {
+    private val prefs = context.getSharedPreferences("tile-candidates", Context.MODE_PRIVATE)
+
+    fun load(): List<LifeLogClient.SwitchCandidate>? = candidatesFromJson(prefs.getString(CANDIDATES, null))
+
+    fun save(candidates: List<LifeLogClient.SwitchCandidate>) {
+        prefs.edit().putString(CANDIDATES, candidatesToJson(candidates)).apply()
+    }
+
+    private companion object {
+        const val CANDIDATES = "candidates"
+    }
+}
+
+// JSON rather than the separator encoding the state key uses: an activity is named by
+// the wearer, so a name holding a tab or a newline must round trip rather than come
+// back as a different list than the one that was stored.
+internal fun candidatesToJson(candidates: List<LifeLogClient.SwitchCandidate>): String =
+    JSONArray().apply {
+        candidates.forEach { put(JSONObject().put("id", it.id).put("text", it.text)) }
+    }.toString()
+
+/** The inverse of [candidatesToJson]; null when nothing usable has been stored. */
+internal fun candidatesFromJson(json: String?): List<LifeLogClient.SwitchCandidate>? =
+    runCatching {
+        val array = JSONArray(json ?: return null)
+        (0 until array.length()).map {
+            val entry = array.getJSONObject(it)
+            LifeLogClient.SwitchCandidate(entry.getString("id"), entry.getString("text"))
+        }
+    }.getOrNull()
 
 // A tab, written as an escape so the source carries no control character of its own. An
 // activity's name would have to contain one to confuse this, and the cost if it did is a
@@ -131,7 +173,7 @@ class LifeLogTileService : TileService() {
             if (action.startsWith(PICK)) {
                 worker.execute {
                     completer.set(
-                        runCatching { tileOf(pickLayout(client().switchCandidates(), page(action))) }
+                        runCatching { tileOf(pickLayout(candidates(action), page(action))) }
                             .onFailure { Log.w(TAG, "listing candidates failed", it) }
                             .getOrElse { tileOf(message(it.message ?: "error")) },
                     )
@@ -142,6 +184,27 @@ class LifeLogTileService : TileService() {
             }
             "lifelog tile"
         }
+
+    /**
+     * The candidates to page through: fetched on the way into the picker, read back from
+     * that fetch while paging within it.
+     *
+     * A missing store still fetches, so a page whose list was never stored -- a first
+     * pick, or one the system replayed after this process died -- shows the list rather
+     * than nothing.
+     */
+    private fun candidates(action: String): LifeLogClient.CandidateList {
+        val stored = CachedCandidates(this)
+        if (action != PICK_FRESH) {
+            stored.load()?.let {
+                Log.i(TAG, "paging ${it.size} candidate(s) without asking")
+                return LifeLogClient.CandidateList.Loaded(it)
+            }
+        }
+        val listed = client().switchCandidates()
+        if (listed is LifeLogClient.CandidateList.Loaded) stored.save(listed.candidates)
+        return listed
+    }
 
     /** What the tap is about to make true, so the tile can show it before it is. */
     private fun expected(action: String, label: String): LifeLogClient.CurrentState? =
@@ -237,7 +300,7 @@ class LifeLogTileService : TileService() {
             heading,
             row(
                 if (running != null) button("Stop", STOP) else button("Start", START),
-                button("Switch", PICK0),
+                button("Switch", PICK_FRESH),
             ),
         )
     }
@@ -448,7 +511,11 @@ class LifeLogTileService : TileService() {
         const val START = "start"
         const val STOP = "stop"
         const val PICK = "pick:"
-        const val PICK0 = "pick:0"
+
+        // Entering the picker, as against paging within it. It shares the prefix so one
+        // check still recognises both, and its page component is deliberately not a
+        // number: this is the one request that fetches, and page() reads it as the first.
+        const val PICK_FRESH = "pick:fresh"
         const val SWITCH = "switch:"
     }
 }
