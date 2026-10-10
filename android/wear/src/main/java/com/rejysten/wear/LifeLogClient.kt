@@ -1,5 +1,6 @@
 package com.rejysten.wear
 
+import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -21,6 +22,11 @@ class LifeLogClient(
     private val baseUrl: String,
     private val idTokenProvider: (forceRefresh: Boolean) -> String?,
     private val transport: Transport = HttpTransport(),
+    // Injected rather than calling Log where it is used, for two reasons: the JVM
+    // tests would have to stub android.util.Log to construct a client at all, and
+    // what a request reports becomes something a test can read -- which is how the
+    // rule that no line may carry the bearer token is held to.
+    private val log: (String) -> Unit = { Log.i(TAG, it) },
 ) {
     /** One HTTP round trip, as a seam so the retry and parsing logic is unit-testable. */
     fun interface Transport {
@@ -120,21 +126,44 @@ class LifeLogClient(
         }
 
     private fun request(method: String, path: String, body: JSONObject?): Response {
-        val token = idTokenProvider(false) ?: return Response.NoToken
+        val token = idTokenProvider(false)
+        if (token == null) {
+            log("$method $path: the phone has delivered no token")
+            return Response.NoToken
+        }
         val payload = body?.toString()
-        val first = transport.exchange(method, baseUrl + path, token, payload)
+        val first = attempt(method, path, token, payload)
         if (first.first != HttpURLConnection.HTTP_UNAUTHORIZED) return first.toResponse()
 
         // ID tokens last ~1h and the watch is used sporadically, so a 401 is far more
         // likely to be an expired token than a genuine authorization failure. Retrying
         // with the same token would just fail again, so only retry on a changed one.
         val refreshed = idTokenProvider(true)
-        if (refreshed == null || refreshed == token) return first.toResponse()
-        return transport.exchange(method, baseUrl + path, refreshed, payload).toResponse()
+        if (refreshed == null || refreshed == token) {
+            log("$method $path: 401, and the phone had no fresher token")
+            return first.toResponse()
+        }
+        log("$method $path: 401, retrying with a fresher token")
+        return attempt(method, path, refreshed, payload).toResponse()
+    }
+
+    // The whole URL and not just the path, so a log tells which deployment answered:
+    // a debug APK left pointing at production is the mistake this is here to expose.
+    private fun attempt(method: String, path: String, token: String, payload: String?): Pair<Int, String> {
+        val url = baseUrl + path
+        val startedAt = System.currentTimeMillis()
+        return runCatching { transport.exchange(method, url, token, payload) }
+            .onSuccess { log("$method $url -> ${it.first} in ${System.currentTimeMillis() - startedAt}ms") }
+            .onFailure { log("$method $url failed after ${System.currentTimeMillis() - startedAt}ms: $it") }
+            .getOrThrow()
     }
 
     private fun Pair<Int, String>.toResponse(): Response =
         Response.Http(first, if (second.isBlank()) JSONObject() else JSONObject(second))
+
+    private companion object {
+        const val TAG = "RejystenLifeLog"
+    }
 }
 
 /** Default [LifeLogClient.Transport]: java.net over HTTPS. */

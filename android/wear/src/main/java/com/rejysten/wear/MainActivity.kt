@@ -1,6 +1,7 @@
 package com.rejysten.wear
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +42,12 @@ import java.time.Instant
 // The line only ever shows whole minutes, so ticking faster would redraw the same
 // text; ticking slower would let it sit a minute behind what the wearer sees.
 private const val TICK_MS = 20_000L
+
+// Distinct from the tile's and the token store's tags: which of the three surfaces
+// acted is the first thing a log has to answer, and only the app has buttons whose
+// taps can go missing -- a screenshot cannot tell an unhandled tap from a request
+// that failed, and on a watch the two look the same.
+private const val TAG = "RejystenApp"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -121,7 +128,7 @@ private fun WearApp() {
                 null -> {
                     Button(
                         onClick = {
-                            dispatch(scope, { client.start() }) {
+                            dispatch(scope, "Start", { client.start() }) {
                                 status = it
                                 refreshCurrent()
                             }
@@ -129,7 +136,7 @@ private fun WearApp() {
                     ) { Text("Start") }
                     Button(
                         onClick = {
-                            dispatch(scope, { client.stop() }) {
+                            dispatch(scope, "Stop", { client.stop() }) {
                                 status = it
                                 refreshCurrent()
                             }
@@ -137,6 +144,7 @@ private fun WearApp() {
                     ) { Text("Stop") }
                     Button(
                         onClick = {
+                            Log.i(TAG, "tapped Switch")
                             status = "loading…"
                             scope.launch {
                                 // The client throws on transport failures (DNS, TLS, timeout),
@@ -144,11 +152,13 @@ private fun WearApp() {
                                 val result = try {
                                     withContext(Dispatchers.IO) { client.switchCandidates() }
                                 } catch (t: Throwable) {
+                                    Log.w(TAG, "listing candidates failed", t)
                                     status = "error: ${t.message}"
                                     return@launch
                                 }
                                 when (result) {
                                     is LifeLogClient.CandidateList.Loaded -> {
+                                        Log.i(TAG, "Switch: ${result.candidates.size} candidate(s)")
                                         picking = result.candidates
                                         status = if (result.candidates.isEmpty()) "nothing to switch to" else "pick one"
                                     }
@@ -162,17 +172,21 @@ private fun WearApp() {
                     ) { Text("Switch…") }
                     Button(
                         onClick = {
+                            Log.i(TAG, "tapped Token")
                             scope.launch {
                                 val token = withContext(Dispatchers.IO) { store.cached() ?: store.requestFresh() }
                                 status = describeToken(token)
+                                Log.i(TAG, "Token: ${describeToken(token)}")
                             }
                         },
                     ) { Text("Token") }
                     Button(
                         onClick = {
+                            Log.i(TAG, "tapped Refresh")
                             scope.launch {
                                 val token = withContext(Dispatchers.IO) { store.requestFresh() }
                                 status = describeToken(token)
+                                Log.i(TAG, "Refresh: ${describeToken(token)}")
                             }
                         },
                     ) { Text("Refresh") }
@@ -182,7 +196,7 @@ private fun WearApp() {
                         Button(
                             onClick = {
                                 picking = null
-                                dispatch(scope, { client.switch(candidate.id) }) {
+                                dispatch(scope, "Switch to ${candidate.text}", { client.switch(candidate.id) }) {
                                     status = it
                                     refreshCurrent()
                                 }
@@ -248,16 +262,20 @@ private fun describeToken(token: String?): String =
 
 private fun dispatch(
     scope: CoroutineScope,
+    name: String,
     action: () -> LifeLogClient.Outcome,
     onResult: (String) -> Unit,
 ) {
+    Log.i(TAG, "tapped $name")
     scope.launch {
         val result =
             try {
                 describeOutcome(withContext(Dispatchers.IO) { action() })
             } catch (t: Throwable) {
+                Log.w(TAG, "$name failed", t)
                 "error: ${t.message}"
             }
+        Log.i(TAG, "$name: $result")
         onResult(result)
     }
 }

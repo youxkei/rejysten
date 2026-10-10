@@ -123,6 +123,10 @@ class LifeLogTileService : TileService() {
             val action = request.currentState.keyToValueMapping[ACTION]?.stringValue ?: MAIN
             val label = request.currentState.keyToValueMapping[LABEL]?.stringValue.orEmpty()
             val lastKnown = LastKnown(this)
+            // A tile that read the endpoint and agreed with what it had drawn used to
+            // pass without a trace, which makes "the tile is stale" and "the tile was
+            // never asked" the same log -- and they have opposite causes.
+            Log.i(TAG, "asked for $action")
 
             if (action.startsWith(PICK)) {
                 worker.execute {
@@ -177,6 +181,7 @@ class LifeLogTileService : TileService() {
         // again. Storing first would make every comparison agree and nothing redraw.
         val redrawNeeded = !lastKnown.alreadyShows(actual)
         lastKnown.save(actual)
+        Log.i(TAG, "read ${currentStateKey(actual)}: ${if (redrawNeeded) "redrawing" else "already drawn"}")
         if (redrawNeeded) TileService.getUpdater(this).requestUpdate(LifeLogTileService::class.java)
     }
 

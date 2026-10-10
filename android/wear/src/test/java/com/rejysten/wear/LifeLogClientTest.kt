@@ -19,12 +19,14 @@ class LifeLogClientTest {
     private fun client(
         transport: FakeTransport,
         tokens: List<String?> = listOf("token-1", "token-2"),
+        log: MutableList<String> = mutableListOf(),
     ): LifeLogClient {
         val fresh = tokens.getOrNull(1)
         return LifeLogClient(
             baseUrl = "https://example.test",
             idTokenProvider = { forceRefresh -> if (forceRefresh) fresh else tokens.firstOrNull() },
             transport = transport,
+            log = { log += it },
         )
     }
 
@@ -239,5 +241,75 @@ class LifeLogClientTest {
 
         assertEquals(LifeLogClient.CandidateList.Unauthenticated, candidates)
         assertTrue(transport.calls.isEmpty())
+    }
+
+    @Test
+    fun `a request reports the method, the whole url and the status it got`() {
+        val log = mutableListOf<String>()
+        val transport = FakeTransport(409 to """{"ok":false,"reason":"no open entry"}""")
+
+        client(transport, log = log).stop()
+
+        assertTrue(
+            log.toString(),
+            log.single().startsWith("POST https://example.test/api/lifelog/stop -> 409 in "),
+        )
+    }
+
+    @Test
+    fun `no line carries the bearer token`() {
+        val log = mutableListOf<String>()
+        val transport = FakeTransport(401 to "", 200 to """{"ok":true,"id":"log-1"}""")
+
+        client(transport, log = log).start()
+
+        assertEquals(listOf("token-1", "token-2"), transport.calls.map { it.token })
+        assertTrue(log.toString(), log.none { it.contains("token-1") || it.contains("token-2") })
+    }
+
+    @Test
+    fun `a token the phone refreshed is reported as a retry, and one it could not as the end of it`() {
+        val retried = mutableListOf<String>()
+        val exhausted = mutableListOf<String>()
+
+        client(FakeTransport(401 to "", 200 to """{"ok":true,"id":"log-1"}"""), log = retried).start()
+        client(FakeTransport(401 to ""), tokens = listOf("token-1", null), log = exhausted).start()
+
+        assertTrue(retried.toString(), retried.any { it.endsWith("401, retrying with a fresher token") })
+        assertTrue(exhausted.toString(), exhausted.any { it.endsWith("401, and the phone had no fresher token") })
+    }
+
+    @Test
+    fun `a request never sent for want of a token still says so`() {
+        val log = mutableListOf<String>()
+
+        client(FakeTransport(), tokens = listOf(null), log = log).current()
+
+        assertEquals(listOf("GET /api/lifelog/current: the phone has delivered no token"), log)
+    }
+
+    @Test
+    fun `a transport that throws is reported before the throw leaves the client`() {
+        val log = mutableListOf<String>()
+        val throwing = object : LifeLogClient.Transport {
+            override fun exchange(method: String, url: String, token: String, body: String?): Pair<Int, String> =
+                throw java.net.SocketTimeoutException("timeout")
+        }
+        val client = LifeLogClient(
+            baseUrl = "https://example.test",
+            idTokenProvider = { "token-1" },
+            transport = throwing,
+            log = { log += it },
+        )
+
+        try {
+            client.start()
+            throw AssertionError("the timeout should have reached the caller")
+        } catch (expected: java.net.SocketTimeoutException) {
+            assertEquals("timeout", expected.message)
+        }
+
+        assertTrue(log.toString(), log.single().contains("POST https://example.test/api/lifelog/start failed after "))
+        assertTrue(log.toString(), log.single().contains("timeout"))
     }
 }
