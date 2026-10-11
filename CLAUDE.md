@@ -1,22 +1,20 @@
 - this is a monorepo: new subprojects (e.g. the Wear OS / Android app, mobile app) live in THIS repo, not a separate one — never propose splitting them out
 - use pnpm instead of npm
-- use `git <subcomand>` naturally
-- when you `git commit`, first check `git diff` and `git diff --cached`
-  - ignore previous output and always run these commands fresh before committing
-  - NEVER use `--no-verify` to skip pre-commit hooks
-  - when pre-commit hook failed, try `pnpm run fix` first
-  - if pre-commit hook fails due to flaky tests, retry the commit
+- version control is `jj` (colocated with git); no `git` commands
+- jj runs no git hooks, so `.githooks/pre-commit` never fires — run its checks (`pnpm lint` and `pnpm test`) yourself before calling work done
+  - when they fail on lint/format, try `pnpm run fix` first
+  - if they fail due to flaky tests, retry
 - NEVER use for loops in Bash — run commands directly
 - when piping long command output through grep, first write output to a file with `tee`, then grep the file
 - use `pnpm test` to run all test cases, `pnpm test/case "case title"` to run one case
   - always consider to run cases one by one first
-  - pre-commit hook runs all tests, so they should all pass without any changes
+  - all tests pass on `main`, so they should all pass without any changes
   - use `pnpm test ${file}` to run tests in a file
-- use `git restore` instead of `git checkout` to restore file content from commit
+- use `jj restore --from <rev> <paths>` to restore file content from a commit
 - use `pnpm tsc` for type check
 - if test fails, add `console.log` to debug first to investigate the problem
   - use `createComputed` to trace the signal changes
-  - NEVER stash/revert changes to check if a test was already failing — pre-commit hook guarantees all tests passed before changes. Always debug forward with console.log/createComputed
+  - NEVER revert changes to check if a test was already failing — all tests passed before changes. Always debug forward with console.log/createComputed
 - use `pnpm lint` for lint
 - for planning, always consider adding tests instead of manual testing
 - use `agent-browser` CLI for Storybook visual verification on `http://localhost:6006`
