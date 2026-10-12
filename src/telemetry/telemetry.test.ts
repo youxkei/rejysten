@@ -159,6 +159,28 @@ describe("telemetry", () => {
     expect(getCurrentActionSpan()).toBeUndefined();
   });
 
+  it("leaves no current action once overlapping action bodies end out of order", async () => {
+    initTelemetry({ mode: "memory" });
+
+    let finishFirst!: () => void;
+    let finishSecond!: () => void;
+    const first = beginAction("panes.lifeLogs.saveText");
+    const firstBody = first.runBody(() => new Promise<void>((resolve) => (finishFirst = resolve)));
+    const second = beginAction("scroll.slideNewer", { root: true });
+    const secondBody = second.runBody(() => new Promise<void>((resolve) => (finishSecond = resolve)));
+
+    finishFirst();
+    await firstBody;
+    expect(getCurrentActionSpan()).toBe(second.span);
+
+    finishSecond();
+    await secondBody;
+    expect(getCurrentActionSpan()).toBeUndefined();
+
+    beginAction("panes.lifeLogs.navigateNext").endSync();
+    expect(findSpan("action:panes.lifeLogs.navigateNext").parentSpanContext).toBeUndefined();
+  });
+
   it("adds action events only while an action is running", async () => {
     initTelemetry({ mode: "memory" });
 

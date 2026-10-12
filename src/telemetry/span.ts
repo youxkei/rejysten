@@ -23,11 +23,32 @@ export function setTelemetryTracer(newTracer: Tracer | undefined): void {
   tracer = newTracer ?? noopTracer;
 }
 
-// The current user action. A module variable is sound because awaitable()
-// runs action bodies strictly sequentially.
+type ActionScope = { span: Span; context: Context };
+
+// The current user action is the most recently entered scope still running. Not a variable saved and
+// restored around each body: bodies run outside awaitable() (scroll.slideNewer, search window expansion)
+// overlap the serialized ones and end out of order, and restoring the value saved on entry would put
+// back an action that has already ended, parenting every later action under it.
+const actionScopes: ActionScope[] = [];
 let currentActionSpan: Span | undefined;
 let currentActionContext: Context | undefined;
 let lastActionSpanContext: SpanContext | undefined;
+
+function enterActionScope(span: Span, context: Context): ActionScope {
+  const scope = { span, context };
+  actionScopes.push(scope);
+  currentActionSpan = span;
+  currentActionContext = context;
+  return scope;
+}
+
+function exitActionScope(scope: ActionScope): void {
+  const index = actionScopes.lastIndexOf(scope);
+  if (index !== -1) actionScopes.splice(index, 1);
+  const top = actionScopes.at(-1);
+  currentActionSpan = top?.span;
+  currentActionContext = top?.context;
+}
 
 function recordError(span: Span, error: unknown): void {
   span.recordException(error instanceof Error ? error : String(error));
@@ -87,18 +108,14 @@ export function beginAction(name: string, options?: BeginActionOptions): ActionH
     },
 
     runBody: async (body) => {
-      const prevSpan = currentActionSpan;
-      const prevContext = currentActionContext;
-      currentActionSpan = span;
-      currentActionContext = ctx;
+      const scope = enterActionScope(span, ctx);
       try {
         return await body();
       } catch (error) {
         recordError(span, error);
         throw error;
       } finally {
-        currentActionSpan = prevSpan;
-        currentActionContext = prevContext;
+        exitActionScope(scope);
         end();
       }
     },
@@ -223,15 +240,11 @@ export function getCurrentActionSpan(): Span | undefined {
  * interleaving on the microtask queue would inherit the scope.
  */
 export function withCurrentSpan<T>(span: Span, fn: () => T): T {
-  const prevSpan = currentActionSpan;
-  const prevContext = currentActionContext;
-  currentActionSpan = span;
-  currentActionContext = trace.setSpan(otelContext.active(), span);
+  const scope = enterActionScope(span, trace.setSpan(otelContext.active(), span));
   try {
     return fn();
   } finally {
-    currentActionSpan = prevSpan;
-    currentActionContext = prevContext;
+    exitActionScope(scope);
   }
 }
 
@@ -260,6 +273,7 @@ export function recordLongTask(startTimeMs: number, durationMs: number): void {
 }
 
 export function resetTelemetrySpanStateForTest(): void {
+  actionScopes.length = 0;
   currentActionSpan = undefined;
   currentActionContext = undefined;
   lastActionSpanContext = undefined;
